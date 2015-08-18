@@ -20,7 +20,7 @@
 # --source ../include/connection_setup.inc
 # --source ../include/connection_load.inc
 # --source ../include/connection_cleanup.inc
-# and a t/connection_xxx-master.opt file
+# and a t/connection_xxx-primary.opt file
 #
 # Naming conventions for t/connection_xxx.test are as follows:
 # t/connection_<account><user><host>

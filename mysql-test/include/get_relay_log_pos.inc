@@ -1,11 +1,11 @@
-# For a given event which is at position $master_log_pos in the the master's
-# binary log, returns its position in the slave's relay log file
+# For a given event which is at position $primary_log_pos in the the primary's
+# binary log, returns its position in the replica's relay log file
 # $relay_log_file.  
 # The position is stored in the variable $relay_log_pos.
 
 # Usage:
 #   let $relay_log_file= 'relay-log-bin.000001'; 
-#   let $master_log_pos= 106; 
+#   let $primary_log_pos= 106; 
 #   source include/get_relay_log_pos.inc; 
 #   # at this point, get_relay_log_pos.inc sets $relay_log_pos. echo position
 #   # in $relay_log_file: $relay_log_pos. 
@@ -15,9 +15,9 @@ if (!$relay_log_file)
   --die 'variable $relay_log_file is null'
 }
 
-if (!$master_log_pos)
+if (!$primary_log_pos)
 {
-  --die 'variable $master_log_pos is null'
+  --die 'variable $primary_log_pos is null'
 }
 
 let $MYSQLD_DATADIR= `select @@datadir`;
@@ -45,16 +45,16 @@ eval LOAD DATA LOCAL INFILE '$_tmp_file' INTO TABLE mysqlbinlog_events
 CREATE TEMPORARY TABLE events_at(c1 INT AUTO_INCREMENT KEY, c2 varchar(256))
   SELECT c2 FROM mysqlbinlog_events WHERE c2 LIKE ' at%' ORDER BY c1;
 
-# Event pos in master log file is inserted into table events_pos
+# Event pos in primary log file is inserted into table events_pos
 CREATE TEMPORARY TABLE events_pos(c1 INT AUTO_INCREMENT KEY, c2 varchar(256))
   SELECT c2 FROM mysqlbinlog_events WHERE c2 LIKE '% end_log_pos %' ORDER BY c1;
 --enable_warnings
 
 #  events_at                                events_pos
 #  c1------c2--------------------------     c1------c2------------------------
-#  1       ev1's begin pos in relay log     1      ev1's end pos in master log
-#  2       ev2's begin pos in relay log     2      ev2's end pos in master log
-#  3       ev3's begin pos in relay log     3      ev3's end pos in master log
+#  1       ev1's begin pos in relay log     1      ev1's end pos in primary log
+#  2       ev2's begin pos in relay log     2      ev2's end pos in primary log
+#  3       ev3's begin pos in relay log     3      ev3's end pos in primary log
 #  events always keep the same sequence.  
 #  Because event[N]'s end pos is equal to event[N+1]'s begin pos we want to
 #  find event's end pos in relay log, we can find the right relay_log_pos
@@ -64,7 +64,7 @@ CREATE TEMPORARY TABLE events_pos(c1 INT AUTO_INCREMENT KEY, c2 varchar(256))
 # as it is not output by mysqlbinlog
 let $relay_log_pos= `SELECT SUBSTRING(a.c2, 5)
   FROM events_at a, events_pos b
-  WHERE a.c1=b.c1+1 and b.c2 LIKE '% $master_log_pos%'`;
+  WHERE a.c1=b.c1+1 and b.c2 LIKE '% $primary_log_pos%'`;
 DROP TEMPORARY TABLE mysqlbinlog_events, events_at, events_pos;
 --remove_file $_tmp_file
 --enable_query_log

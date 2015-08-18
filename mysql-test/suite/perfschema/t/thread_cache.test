@@ -6,7 +6,7 @@
 #
 # Important note:
 # this test is extremely sensitive to how threads are running inside the server,
-# so it has it's own -master.opt file, to enforce it runs alone in mysqld
+# so it has it's own -primary.opt file, to enforce it runs alone in mysqld
 #
 
 # Setup

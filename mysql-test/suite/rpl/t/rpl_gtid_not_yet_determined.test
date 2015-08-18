@@ -1,6 +1,6 @@
 # ==== Purpose ====
 #
-# Background: For 5.7 binary logs (after WL#7592), the slave applier
+# Background: For 5.7 binary logs (after WL#7592), the replica applier
 # thread sets GTID_NEXT according to the Gtid_log_event or
 # Anonymous_log_event preceding every transaction.  For 5.6 binary
 # logs using GTID_MODE=ON, it does the same.  But for 5.6 binary log
@@ -25,9 +25,9 @@
 # However, if the applier thread begins execution in the middle of a
 # transaction, it is possible that a row event is processed when
 # gtid_next.type is NOT_YET_DETERMINED_GROUP.  This can happen if
-# an explicit CHANGE MASTER TO RELAY_LOG_POS statement positions the
+# an explicit CHANGE PRIMARY TO RELAY_LOG_POS statement positions the
 # applier thread after the BEGIN statement, or if an explicit CHANGE
-# MASTER TO MASTER_LOG_POS statement positions the receiver thread in
+# PRIMARY TO PRIMARY_LOG_POS statement positions the receiver thread in
 # the middle of a transaction.
 #
 # Therefore, even Rows_log_events need to upgrade
@@ -50,10 +50,10 @@
 #         GTID_NEXT = NOT_YET_DETERMINED and GTID_MODE = ON.
 #    1.7. It is allowed to set any other value for GTID_NEXT after
 #         it has been set to NOT_YET_DETERMINED.
-# 2. Position the slave receiver thread after a BEGIN event in the
-#    master's binary log and verify that replication works (no crash).
-# 3. Position the slave applier thread after a BEGIN event in the
-#    slave's relay log and verify that replication works (no crash).
+# 2. Position the replica receiver thread after a BEGIN event in the
+#    primary's binary log and verify that replication works (no crash).
+# 3. Position the replica applier thread after a BEGIN event in the
+#    replica's relay log and verify that replication works (no crash).
 #
 # ==== Related bugs and worklogs ====
 #
@@ -74,16 +74,16 @@
 --source include/have_binlog_format_mixed_or_row.inc
 
 # MTS does not allow row events outside transactions.
---source include/not_mts_slave_parallel_workers.inc
+--source include/not_mts_replica_parallel_workers.inc
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo #### Initialize ####
 
 CREATE TABLE t1 (a INT);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 CALL mtr.add_suppression('QUERY.*COMMIT or ROLLBACK.* or XID_LOG_EVENT is not expected in an event stream outside a transaction');
-CALL mtr.add_suppression('An unexpected event sequence was detected by the IO thread while queuing the event received from master');
+CALL mtr.add_suppression('An unexpected event sequence was detected by the IO thread while queuing the event received from primary');
 
 --echo #### 1. Check basic properties of GTID_NEXT = NOT_YET_DETERMINED ####
 
@@ -176,49 +176,49 @@ ROLLBACK;
 SET @@SESSION.GTID_NEXT = 'AUTOMATIC';
 SET GLOBAL GTID_MODE = OFF;
 
---echo #### 2. CHANGE MASTER TO MASTER_LOG_POS ####
+--echo #### 2. CHANGE PRIMARY TO PRIMARY_LOG_POS ####
 
---connection slave
---source include/stop_slave_io.inc
---connection master
---let $file= query_get_value(SHOW MASTER STATUS, File, 1)
---let $position= query_get_value(SHOW MASTER STATUS, Position, 1)
+--connection replica
+--source include/stop_replica_io.inc
+--connection primary
+--let $file= query_get_value(SHOW PRIMARY STATUS, File, 1)
+--let $position= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 INSERT INTO t1 VALUES (1);
 
-# Force slave to skip the Anonymous_gtid_log_event and
+# Force replica to skip the Anonymous_gtid_log_event and
 # Query_log_event(BEGIN) so that the first event it sees is a
 # Table_map_log_event.
 --let $position= query_get_value(SHOW BINLOG EVENTS IN '$file' FROM $position, End_log_pos, 2)
 
---connection slave
+--connection replica
 --replace_result $file FILE $position POSITION
-eval CHANGE MASTER TO MASTER_LOG_FILE = '$file', MASTER_LOG_POS = $position;
---source include/start_slave_io.inc
+eval CHANGE PRIMARY TO PRIMARY_LOG_FILE = '$file', PRIMARY_LOG_POS = $position;
+--source include/start_replica_io.inc
 
---connection master
---source include/sync_slave_sql_with_master.inc
+--connection primary
+--source include/sync_replica_sql_with_primary.inc
 
---echo #### 3. CHANGE MASTER TO RELAY_LOG_POS ####
+--echo #### 3. CHANGE PRIMARY TO RELAY_LOG_POS ####
 
---let $file= query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1)
---let $position= query_get_value(SHOW SLAVE STATUS, Relay_Log_Pos, 1)
---source include/stop_slave_sql.inc
+--let $file= query_get_value(SHOW REPLICA STATUS, Relay_Log_File, 1)
+--let $position= query_get_value(SHOW REPLICA STATUS, Relay_Log_Pos, 1)
+--source include/stop_replica_sql.inc
 
---connection master
+--connection primary
 INSERT INTO t1 VALUES (2);
---source include/sync_slave_io_with_master.inc
+--source include/sync_replica_io_with_primary.inc
 --let $position = query_get_value(SHOW RELAYLOG EVENTS IN '$file' FROM $position, Pos, 3)
 
 --replace_result $file FILE $position POSITION
-eval CHANGE MASTER TO RELAY_LOG_FILE = '$file', RELAY_LOG_POS = $position;
---source include/start_slave.inc
+eval CHANGE PRIMARY TO RELAY_LOG_FILE = '$file', RELAY_LOG_POS = $position;
+--source include/start_replica.inc
 
---connection master
---source include/sync_slave_sql_with_master.inc
+--connection primary
+--source include/sync_replica_sql_with_primary.inc
 
 --echo #### Clean up ####
 
---connection master
+--connection primary
 DROP TABLE t1;
 
 --source include/rpl_end.inc

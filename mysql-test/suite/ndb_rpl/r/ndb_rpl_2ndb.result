@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET default_storage_engine=ndb;
 
 === NDB -> NDB ===
@@ -20,7 +20,7 @@ total BIGINT UNSIGNED,
 y YEAR, 
 t DATE, 
 PRIMARY KEY(id));
---- Show table on master ---
+--- Show table on primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -35,7 +35,7 @@ t1	CREATE TABLE `t1` (
   `t` date DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1
---- Show table on slave ---
+--- Show table on replica ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -50,12 +50,12 @@ t1	CREATE TABLE `t1` (
   `t` date DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-START SLAVE;
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+START REPLICA;
 --- Populate t1 with data ---
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select *
 from t1 
 order by id;
@@ -65,7 +65,7 @@ id	b1	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select *
 from t1 
 order by id;
@@ -75,13 +75,13 @@ id	b1	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Perform basic operation on master ---
+--- Perform basic operation on primary ---
 --- and ensure replicated correctly ---
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, bc='updated', t="2006-02-22" 
 WHERE id < 100 
 ORDER BY id;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -90,7 +90,7 @@ id	b1	vc	bc	d	f	total	y	t
 2	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 4	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 42	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -99,13 +99,13 @@ id	b1	vc	bc	d	f	total	y	t
 2	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 4	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 42	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 412;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
@@ -113,7 +113,7 @@ TRUNCATE TABLE t1;
 --- Check that simple Alter statements are replicated correctly --
 ALTER TABLE t1 DROP PRIMARY KEY;
 ALTER TABLE t1 MODIFY vc char(32);
---- Show the new improved table on the master ---
+--- Show the new improved table on the primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -127,7 +127,7 @@ t1	CREATE TABLE `t1` (
   `y` year(4) DEFAULT NULL,
   `t` date DEFAULT NULL
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1
---- Make sure that our tables on slave are still same engine ---
+--- Make sure that our tables on replica are still same engine ---
 --- and that the alter statements replicated correctly ---
 SHOW CREATE TABLE t1;
 Table	Create Table
@@ -142,12 +142,12 @@ t1	CREATE TABLE `t1` (
   `y` year(4) DEFAULT NULL,
   `t` date DEFAULT NULL
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-START SLAVE;
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+START REPLICA;
 --- Populate t1 with data ---
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select *
 from t1 
 order by id;
@@ -157,7 +157,7 @@ id	b1	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a coo	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a coo	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a coo	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select *
 from t1 
 order by id;
@@ -167,13 +167,13 @@ id	b1	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a coo	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a coo	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a coo	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Perform basic operation on master ---
+--- Perform basic operation on primary ---
 --- and ensure replicated correctly ---
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, bc='updated', t="2006-02-22" 
 WHERE id < 100 
 ORDER BY id;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -182,7 +182,7 @@ id	b1	vc	bc	d	f	total	y	t
 2	0	Testing MySQL databases is a coo	updated	654321.4321	15.21	0	1965	2006-02-22
 4	0	Testing MySQL databases is a coo	updated	654321.4321	15.21	0	1965	2006-02-22
 42	0	Testing MySQL databases is a coo	updated	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -191,18 +191,18 @@ id	b1	vc	bc	d	f	total	y	t
 2	0	Testing MySQL databases is a coo	updated	654321.4321	15.21	0	1965	2006-02-22
 4	0	Testing MySQL databases is a coo	updated	654321.4321	15.21	0	1965	2006-02-22
 42	0	Testing MySQL databases is a coo	updated	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 412;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
 TRUNCATE TABLE t1;
---- Check that replication works when slave has more columns than master
+--- Check that replication works when replica has more columns than primary
 ALTER TABLE t1 ADD PRIMARY KEY(id,total);
 ALTER TABLE t1 MODIFY vc TEXT;
 INSERT INTO t1 VALUES(3,1,'Testing MySQL databases is a cool ',
@@ -214,11 +214,11 @@ INSERT INTO t1 VALUES(20,1,'Testing MySQL databases is a cool ',
 INSERT INTO t1 VALUES(50,1,'Testing MySQL databases is a cool ',
 'Must make it bug free for the customer',
 654321.4321,15.21,0,1965,"1985-11-14");
---- Add columns on slave ---
+--- Add columns on replica ---
 ALTER TABLE t1 ADD (u int, v char(16) default 'default');
 UPDATE t1 SET u=7 WHERE id < 50;
 UPDATE t1 SET v='explicit' WHERE id >10;
---- Show changed table on slave ---
+--- Show changed table on replica ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -242,12 +242,12 @@ id	b1	vc	bc	d	f	total	y	t	u	v
 3	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14	7	default
 20	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14	7	explicit
 50	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1985-11-14	NULL	explicit
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-START SLAVE;
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+START REPLICA;
 --- Populate t1 with data ---
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select *
 from t1 
 order by id;
@@ -260,7 +260,7 @@ id	b1	vc	bc	d	f	total	y	t
 50	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1985-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select *
 from t1 
 order by id;
@@ -273,13 +273,13 @@ id	b1	vc	bc	d	f	total	y	t	u	v
 50	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1985-11-14	NULL	explicit
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14	NULL	default
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14	NULL	default
---- Perform basic operation on master ---
+--- Perform basic operation on primary ---
 --- and ensure replicated correctly ---
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, bc='updated', t="2006-02-22" 
 WHERE id < 100 
 ORDER BY id;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -291,7 +291,7 @@ id	b1	vc	bc	d	f	total	y	t
 20	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 42	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 50	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -303,25 +303,25 @@ id	b1	vc	bc	d	f	total	y	t	u	v
 20	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22	7	explicit
 42	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22	NULL	default
 50	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22	NULL	explicit
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 412;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 7
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 7
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t1;
---- Check that replication works when master has more columns than slave
---- Remove columns on slave ---
+--- Check that replication works when primary has more columns than replica
+--- Remove columns on replica ---
 ALTER TABLE t1 DROP COLUMN v;
 ALTER TABLE t1 DROP COLUMN u;
 ALTER TABLE t1 DROP COLUMN t;
 ALTER TABLE t1 DROP COLUMN y;
---- Show changed table on slave ---
+--- Show changed table on replica ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -334,12 +334,12 @@ t1	CREATE TABLE `t1` (
   `total` bigint(20) unsigned NOT NULL,
   PRIMARY KEY (`id`,`total`)
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-START SLAVE;
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+START REPLICA;
 --- Populate t1 with data ---
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select *
 from t1 
 order by id;
@@ -349,7 +349,7 @@ id	b1	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select *
 from t1 
 order by id;
@@ -359,13 +359,13 @@ id	b1	vc	bc	d	f	total
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0
---- Perform basic operation on master ---
+--- Perform basic operation on primary ---
 --- and ensure replicated correctly ---
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, bc='updated', t="2006-02-22" 
 WHERE id < 100 
 ORDER BY id;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -374,7 +374,7 @@ id	b1	vc	bc	d	f	total	y	t
 2	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 4	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
 42	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT *
 FROM t1 
 WHERE id < 100
@@ -383,13 +383,13 @@ id	b1	vc	bc	d	f	total
 2	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0
 4	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0
 42	0	Testing MySQL databases is a cool 	updated	654321.4321	15.21	0
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 412;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4

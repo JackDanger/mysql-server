@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP DATABASE IF EXISTS d1;
 DROP DATABASE IF EXISTS d2;
 DROP DATABASE IF EXISTS d3;
@@ -54,9 +54,9 @@ END;
 //
 CREATE INDEX i1 ON t1 (a);
 CREATE VIEW v1 AS SELECT a FROM t1 WHERE a < 100;
-include/sync_slave_sql_with_master.inc
-[on master]
-[on master1]
+include/sync_replica_sql_with_primary.inc
+[on primary]
+[on primary1]
 CREATE DATABASE d2;
 source include/kill_query.inc;
 include/rpl_diff.inc

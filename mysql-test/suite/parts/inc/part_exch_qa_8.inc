@@ -20,8 +20,8 @@ GRANT CREATE, ALTER, DROP, INSERT, SELECT on test.* TO test2@localhost;
 GRANT CREATE, ALTER, DROP, INSERT, SELECT on testdb.* TO test2@localhost;
 
 # 8) Exchanges partition and table and back in 2 sessions with 2 databases.
---echo connect (test2,localhost,test2,,test,MASTER_MYPORT,MASTER_MYSOCK);
-connect (test2,localhost,test2,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+--echo connect (test2,localhost,test2,,test,PRIMARY_MYPORT,PRIMARY_MYSOCK);
+connect (test2,localhost,test2,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 # Privileges on both DB's
 ALTER TABLE tp EXCHANGE PARTITION p0 WITH TABLE testdb.t_10;
 --sorted_result
@@ -53,8 +53,8 @@ disconnect test2;
 connection default;
 REVOKE INSERT ON testdb.* FROM test2@localhost;
 
---echo connect (test2,localhost,test2,,test,MASTER_MYPORT,MASTER_MYSOCK);
-connect (test2,localhost,test2,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+--echo connect (test2,localhost,test2,,test,PRIMARY_MYPORT,PRIMARY_MYSOCK);
+connect (test2,localhost,test2,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 --error ER_TABLEACCESS_DENIED_ERROR
 ALTER TABLE tp EXCHANGE PARTITION p0 WITH TABLE testdb.t_10;
 --error ER_TABLEACCESS_DENIED_ERROR

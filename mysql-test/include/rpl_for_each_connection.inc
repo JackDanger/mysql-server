@@ -1,20 +1,20 @@
 # ==== Purpose ====
 #
-# Execute a .inc file once for master-slave connection that was
+# Execute a .inc file once for primary-replica connection that was
 # configured by rpl_init.inc.  For each connection, it sets the
 # following variables:
 #
-# $rpl_master, $rpl_slave
-#   The server number of the master and of the slave.
+# $rpl_primary, $rpl_replica
+#   The server number of the primary and of the replica.
 #
 # $rpl_channel_name
 #   If $rpl_multi_source is set, the name of the channel by which
-#   the slave connects to the master. Otherwise the empty string.
+#   the replica connects to the primary. Otherwise the empty string.
 #
 # $rpl_connection_number
 #   1 for the first connection, 2 for the second connection, etc.
 #
-# Moreover, the current connection will be set to server_$rpl_slave.
+# Moreover, the current connection will be set to server_$rpl_replica.
 #
 # ==== Usage ====
 #
@@ -43,29 +43,29 @@ while ($rpl_connection_number <= $rpl_connection_count)
   # 'mX sY mZ sW ...'
   #        ^ _rfec_offset points here in the second iteration
   --let $_rfec_offset= 1 + ($rpl_connection_number - 1) * 2 * (2 + $rpl_server_count_length)
-  --let $rpl_master= `SELECT SUBSTRING('$rpl_connection_list', $_rfec_offset + 1, $rpl_server_count_length)`
-  --let $rpl_slave= `SELECT SUBSTRING('$rpl_connection_list', $_rfec_offset + 1 + $rpl_server_count_length + 2, $rpl_server_count_length)`
+  --let $rpl_primary= `SELECT SUBSTRING('$rpl_connection_list', $_rfec_offset + 1, $rpl_server_count_length)`
+  --let $rpl_replica= `SELECT SUBSTRING('$rpl_connection_list', $_rfec_offset + 1 + $rpl_server_count_length + 2, $rpl_server_count_length)`
 
   --let $rpl_channel_name=
   if ($rpl_multi_source)
   {
-    --let $rpl_channel_name= channel_$rpl_master
+    --let $rpl_channel_name= channel_$rpl_primary
   }
 
   if ($rpl_debug)
   {
-    --echo # debug: rpl_for_each_connection.inc: connection=$rpl_connection master=$rpl_master slave=$rpl_slave
+    --echo # debug: rpl_for_each_connection.inc: connection=$rpl_connection primary=$rpl_primary replica=$rpl_replica
   }
 
-  --let $rpl_connection_name= server_$rpl_slave
+  --let $rpl_connection_name= server_$rpl_replica
   --source include/rpl_connection.inc
   --source $rpl_source_file
 
   --inc $rpl_connection_number
 }
 
---let $rpl_master=
---let $rpl_slave=
+--let $rpl_primary=
+--let $rpl_replica=
 --let $rpl_connection_number=
 --let $rpl_channel_name=
 

@@ -76,7 +76,7 @@ struct SchemaTransImplRef
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     TooManySchemaTrans = 780,
     InvalidTransKey = 781,
     InvalidTransId = 782,
@@ -92,7 +92,7 @@ struct SchemaTransImplRef
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 

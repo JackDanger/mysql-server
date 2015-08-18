@@ -1,8 +1,8 @@
 source include/have_binlog_format_mixed_or_row.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
-SET @saved_slave_type_conversions = @@slave_type_conversions;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS = 'ALL_NON_LOSSY';
+SET @saved_replica_type_conversions = @@replica_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS = 'ALL_NON_LOSSY';
 
 CREATE DATABASE track;
 USE track;
@@ -44,14 +44,14 @@ CREATE TABLE `visits_events` (
   KEY `data` (`data`)
 ) AUTO_INCREMENT=33900731 DEFAULT CHARSET=latin1;
 
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!40019 SET @@session.max_insert_delayed_threads=0*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 --delimiter /*!*/;
 
 # at 4 (0x4)
 #071204 14:29:31 server id 1  end_log_pos 106 
-# Position  Timestamp   Type   Master ID        Size      Master Pos    Flags
+# Position  Timestamp   Type   Primary ID        Size      Primary Pos    Flags
 #        4 3b 56 55 47   0f   01 00 00 00   66 00 00 00   6a 00 00 00   00 00
 #       17 04 00 35 2e 31 2e 32 33  2d 72 63 2d 64 65 62 75 |..5.1.23.rc.debu|
 #       27 67 2d 6c 6f 67 00 00 00  00 00 00 00 00 00 00 00 |g.log...........|
@@ -125,7 +125,7 @@ SET INSERT_ID=21231039/*!*/;
 #  9c90ded 2d 63 6f 6e 6e 65 63 74  6f 72 2d 6a 61 76 61 2d |.connector.java.|
 #  9c90dfd 33 2e 30 2e 31 37 2d 67  61 2e 7a 69 70  |3.0.17.ga.zip|
 # 	Query	thread_id=28278824	exec_time=0	error_code=0
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 use track/*!*/;
 SET TIMESTAMP=1190087942/*!*/;
 SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=1, @@session.unique_checks=1/*!*/;
@@ -141,11 +141,11 @@ VALUES ('3m3l4rhs6do0sf5p1i9lr94g928a272v', '', '', INET_ATON('71.118.124.98'), 
 SELECT * FROM visits;
 SELECT * FROM visits_events;
 
-SET GLOBAL SLAVE_TYPE_CONVERSIONS = @saved_slave_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS = @saved_replica_type_conversions;
 
 # Cleanup
 DROP DATABASE track;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo End of 5.1 tests
 --source include/rpl_end.inc

@@ -16,7 +16,7 @@
 #----------------------------------------------------------#
 #----------------------------------------------------------#
 # BUG 12929941 - SEGFAULT IN STRMAKE/CONVERT_DIRNAME WHEN  #
-#                USING --RELAY-LOG=SLAVE-RELAY-BIN         #
+#                USING --RELAY-LOG=REPLICA-RELAY-BIN         #
 #----------------------------------------------------------#
 
 # Check if datadir was changed to the correct value via

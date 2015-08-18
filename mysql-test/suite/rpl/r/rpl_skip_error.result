@@ -1,19 +1,19 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 ==== Test Without sql_mode=strict_trans_tables ====
-[on master]
+[on primary]
 create table t1 (n int not null primary key);
-[on slave]
-include/sync_slave_sql_with_master.inc
+[on replica]
+include/sync_replica_sql_with_primary.inc
 insert into t1 values (1);
-[on master]
+[on primary]
 insert into t1 values (1);
 insert into t1 values (2),(3);
-include/sync_slave_sql_with_master.inc
-[on slave]
+include/sync_replica_sql_with_primary.inc
+[on replica]
 select * from t1 order by n;
 n
 1
@@ -21,14 +21,14 @@ n
 3
 ==== Test With sql_mode=strict_trans_tables ====
 insert into t1 values (7),(8);
-[on master]
+[on primary]
 set sql_mode=strict_trans_tables;
 Warnings:
 Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into t1 values (7), (8), (9);
-[on slave]
-include/sync_slave_sql_with_master.inc
+[on replica]
+include/sync_replica_sql_with_primary.inc
 select * from t1 order by n;
 n
 1
@@ -36,10 +36,10 @@ n
 3
 7
 8
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 ==== Clean Up ====
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 create table t1(a int primary key);
 insert into t1 values (1),(2);
 SET SQL_LOG_BIN=0;
@@ -49,16 +49,16 @@ set sql_mode=strict_trans_tables;
 Warnings:
 Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 insert into t1 values (1), (2), (3);
-[on slave]
-include/sync_slave_sql_with_master.inc
+[on replica]
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 1
 2
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 ==== Clean Up ====
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ==== Using Innodb ====
 SET SQL_LOG_BIN=0;
 CREATE TABLE t1(id INT NOT NULL PRIMARY KEY, data INT) Engine=InnoDB;
@@ -70,7 +70,7 @@ t1	CREATE TABLE `t1` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 SET SQL_LOG_BIN=1;
-call mtr.add_suppression("Slave SQL.*Could not execute .*te_rows event on table test.t.; Duplicate entry.* Error_code: 1062");
+call mtr.add_suppression("Replica SQL.*Could not execute .*te_rows event on table test.t.; Duplicate entry.* Error_code: 1062");
 CREATE TABLE t1(id INT NOT NULL PRIMARY KEY, data INT) Engine=InnoDB;
 SHOW CREATE TABLE t1;
 Table	Create Table
@@ -87,7 +87,7 @@ SET SQL_LOG_BIN=0;
 DELETE FROM t1 WHERE id = 4;
 SET SQL_LOG_BIN=1;
 UPDATE t1 SET id= id + 3, data = 2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
 **** We cannot execute a select as there are differences in the 
 **** behavior between STMT and RBR.
@@ -118,12 +118,12 @@ SET SQL_LOG_BIN=0;
 DELETE FROM t2 WHERE id = 5;
 SET SQL_LOG_BIN=1;
 UPDATE t2 SET id= id + 3, data = 2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
 **** We cannot execute a select as there are differences in the 
 **** behavior between STMT and RBR.
 ==== Clean Up ====
 DROP TABLE t1;
 DROP TABLE t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

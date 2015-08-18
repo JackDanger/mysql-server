@@ -1,19 +1,19 @@
 # Created: 2014-06-26  Lalit Choudhary
 # WL#7909
 # JSON datatype and funtions testing with replication.
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---connection master
+--connection primary
 SET SESSION sql_log_bin= 0;
 call mtr.add_suppression('.*Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.*');
 SET SESSION sql_log_bin= 1;
 
---connection slave
+--connection replica
 SET SESSION sql_log_bin= 0;
 call mtr.add_suppression('.*Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.*');
 SET SESSION sql_log_bin= 1;
 
---connection master
+--connection primary
 
 --echo #
 --echo # WL#8132 JSON datatype and binary storage format
@@ -212,20 +212,20 @@ SELECT * FROM t1 ORDER BY i;
 UPDATE t1 SET j2 = JSON_OBJECT('abc', j);
 SELECT * FROM t1 ORDER BY i;
 
---source include/sync_slave_sql_with_master.inc
---echo [Connection Slave]
+--source include/sync_replica_sql_with_primary.inc
+--echo [Connection Replica]
 
---let $diff_tables= master:t1, slave:t1
---let $diff_tables= master:t2, slave:t2
---let $diff_tables= master:t3, slave:t3
---let $diff_tables= master:t4, slave:t4
---let $diff_tables= master:t5, slave:t5
+--let $diff_tables= primary:t1, replica:t1
+--let $diff_tables= primary:t2, replica:t2
+--let $diff_tables= primary:t3, replica:t3
+--let $diff_tables= primary:t4, replica:t4
+--let $diff_tables= primary:t5, replica:t5
 --source include/diff_tables.inc
 
---echo [Connection Master]
---connection master
+--echo [Connection Primary]
+--connection primary
 DROP TABLE t1, t2, t3, t4, t5;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --source include/rpl_end.inc
 # End:

@@ -1186,7 +1186,7 @@ bool acl_getroot(Security_context *sctx, char *user, char *host,
 
   mysql_mutex_lock(&acl_cache->lock);
 
-  sctx->set_master_access(0);
+  sctx->set_primary_access(0);
   sctx->set_db_access(0);
   sctx->assign_priv_user("", 0);
   sctx->assign_priv_host("", 0);
@@ -1229,7 +1229,7 @@ bool acl_getroot(Security_context *sctx, char *user, char *host,
         }
       }
     }
-    sctx->set_master_access(acl_user->access);
+    sctx->set_primary_access(acl_user->access);
     sctx->assign_priv_user(user, user ? strlen(user) : 0);
 
     sctx->assign_priv_host(acl_user->host.get_host(),
@@ -1816,7 +1816,7 @@ static my_bool acl_load(THD *thd, TABLE_LIST *tables)
         /* Convert old privileges */
         user.access|= LOCK_TABLES_ACL | CREATE_TMP_ACL | SHOW_DB_ACL;
         if (user.access & FILE_ACL)
-          user.access|= REPL_CLIENT_ACL | REPL_SLAVE_ACL;
+          user.access|= REPL_CLIENT_ACL | REPL_REPLICA_ACL;
         if (user.access & PROCESS_ACL)
           user.access|= SUPER_ACL | EXECUTE_ACL;
       }

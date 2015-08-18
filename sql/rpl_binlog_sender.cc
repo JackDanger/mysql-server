@@ -21,8 +21,8 @@
 #include "log_event.h"               // MAX_MAX_ALLOWED_PACKET
 #include "rpl_constants.h"           // BINLOG_DUMP_NON_BLOCK
 #include "rpl_handler.h"             // RUN_HOOK
-#include "rpl_master.h"              // opt_sporadic_binlog_dump_fail
-#include "rpl_reporting.h"           // MAX_SLAVE_ERRMSG
+#include "rpl_primary.h"              // opt_sporadic_binlog_dump_fail
+#include "rpl_reporting.h"           // MAX_REPLICA_ERRMSG
 #include "sql_class.h"               // THD
 
 #include "pfs_file_provider.h"
@@ -82,7 +82,7 @@ void Binlog_sender::init()
 
   if (DBUG_EVALUATE_IF("simulate_no_server_id", true, server_id == 0))
   {
-    set_fatal_error("Misconfigured master - master server_id is 0");
+    set_fatal_error("Misconfigured primary - primary server_id is 0");
     DBUG_VOID_RETURN;
   }
 
@@ -103,8 +103,8 @@ void Binlog_sender::init()
   if (check_start_file())
     DBUG_VOID_RETURN;
 
-  sql_print_information("Start binlog_dump to master_thread_id(%u) "
-                        "slave_server(%u), pos(%s, %llu)",
+  sql_print_information("Start binlog_dump to primary_thread_id(%u) "
+                        "replica_server(%u), pos(%s, %llu)",
                         thd->thread_id(), thd->server_id,
                         m_start_file, m_start_pos);
 
@@ -131,9 +131,9 @@ void Binlog_sender::init()
 
     When mysqlbinlog --stop-never is used, it sets a 'fake'
     server_id that defaults to 1 but can be set to anything
-    else using stop-never-slave-server-id. This has the
+    else using stop-never-replica-server-id. This has the
     drawback that if the server_id conflicts with any other
-    running slave, or with any other instance of mysqlbinlog
+    running replica, or with any other instance of mysqlbinlog
     --stop-never, then that other instance will be killed.  It
     is also an unnecessary burden on the user to have to
     specify a server_id different from all other server_ids
@@ -158,7 +158,7 @@ void Binlog_sender::init()
 
 #ifndef DBUG_OFF
   if (opt_sporadic_binlog_dump_fail && (binlog_dump_count++ % 2))
-    set_unknow_error("Master fails in COM_BINLOG_DUMP because of "
+    set_unknow_error("Primary fails in COM_BINLOG_DUMP because of "
                      "--sporadic-binlog-dump-fail");
   m_event_count= 0;
 #endif
@@ -205,7 +205,7 @@ void Binlog_sender::run()
       Faked rotate event is only required in a few cases(see comment of the
       function). But even so, a faked rotate event is always sent before sending
       event log file, even if a rotate log event exists in last binlog and
-      was already sent. The slave then gets an extra rotation and records
+      was already sent. The replica then gets an extra rotation and records
       two Rotate_log_events.
 
       The main issue here are some dependencies on mysqlbinlog, that should be
@@ -221,7 +221,7 @@ void Binlog_sender::run()
       break;
     }
 
-    THD_STAGE_INFO(m_thd, stage_sending_binlog_event_to_slave);
+    THD_STAGE_INFO(m_thd, stage_sending_binlog_event_to_replica);
     if (send_binlog(&log_cache, start_pos))
       break;
 
@@ -244,19 +244,19 @@ void Binlog_sender::run()
   }
 
   THD_STAGE_INFO(m_thd, stage_waiting_to_finalize_termination);
-  char error_text[MAX_SLAVE_ERRMSG];
+  char error_text[MAX_REPLICA_ERRMSG];
 
   /*
-    If the dump thread was killed because of a duplicate slave UUID we
-    will fail throwing an error to the slave so it will not try to
+    If the dump thread was killed because of a duplicate replica UUID we
+    will fail throwing an error to the replica so it will not try to
     reconnect anymore.
   */
   mysql_mutex_lock(&m_thd->LOCK_thd_data);
-  bool was_killed_by_duplicate_slave_uuid= m_thd->duplicate_slave_uuid;
+  bool was_killed_by_duplicate_replica_uuid= m_thd->duplicate_replica_uuid;
   mysql_mutex_unlock(&m_thd->LOCK_thd_data);
-  if (was_killed_by_duplicate_slave_uuid)
-    set_fatal_error("A slave with the same server_uuid as this slave "
-                    "has connected to the master");
+  if (was_killed_by_duplicate_replica_uuid)
+    set_fatal_error("A replica with the same server_uuid as this replica "
+                    "has connected to the primary");
 
   if (file > 0)
   {
@@ -300,7 +300,7 @@ my_off_t Binlog_sender::send_binlog(IO_CACHE *log_cache, my_off_t start_pos)
   }
 
   /*
-    Slave is requesting a position which is in the middle of a file,
+    Replica is requesting a position which is in the middle of a file,
     so seek to the correct position.
   */
   if (my_b_tell(log_cache) != start_pos)
@@ -449,7 +449,7 @@ int Binlog_sender::send_events(IO_CACHE *log_cache, my_off_t end_pos)
     {
       /*
         A heartbeat is required before sending a event, If some events are
-        skipped. It notifies the slave to increase master_log_pos for
+        skipped. It notifies the replica to increase primary_log_pos for
         excluded events.
       */
       if (exclude_group_end_pos)
@@ -478,8 +478,8 @@ int Binlog_sender::send_events(IO_CACHE *log_cache, my_off_t end_pos)
 
   /*
     A heartbeat is needed before waiting for more events, if some
-    events are skipped. This is needed so that the slave can increase
-    master_log_pos correctly.
+    events are skipped. This is needed so that the replica can increase
+    primary_log_pos correctly.
   */
   if (unlikely(in_exclude_group))
   {
@@ -497,13 +497,13 @@ bool Binlog_sender::check_event_type(Log_event_type type,
   {
     /*
       Normally, there will not be any anonymous events when
-      auto_position is enabled, since both the master and the slave
-      refuse to connect if the master is not using GTID_MODE=ON.
-      However, if the master changes GTID_MODE after the connection
-      was initialized, or if the slave requests to replicate
+      auto_position is enabled, since both the primary and the replica
+      refuse to connect if the primary is not using GTID_MODE=ON.
+      However, if the primary changes GTID_MODE after the connection
+      was initialized, or if the replica requests to replicate
       transactions that appear before the last anonymous event, then
       this can happen. Then we generate this error to prevent sending
-      anonymous transactions to the slave.
+      anonymous transactions to the replica.
     */
     if (m_using_gtid_protocol)
     {
@@ -518,10 +518,10 @@ bool Binlog_sender::check_event_type(Log_event_type type,
       return true;
     }
     /*
-      Normally, there will not be any anonymous events when master has
+      Normally, there will not be any anonymous events when primary has
       GTID_MODE=ON, since anonymous events are not generated when
-      GTID_MODE=ON.  However, this can happen if the master changes
-      GTID_MODE to ON when the slave has not yet replicated all
+      GTID_MODE=ON.  However, this can happen if the primary changes
+      GTID_MODE to ON when the replica has not yet replicated all
       anonymous transactions.
     */
     else if (get_gtid_mode(GTID_MODE_LOCK_NONE) == GTID_MODE_ON)
@@ -536,10 +536,10 @@ bool Binlog_sender::check_event_type(Log_event_type type,
   else if (type == binary_log::GTID_LOG_EVENT)
   {
     /*
-      Normally, there will not be any GTID events when master has
+      Normally, there will not be any GTID events when primary has
       GTID_MODE=OFF, since GTID events are not generated when
-      GTID_MODE=OFF.  However, this can happen if the master changes
-      GTID_MODE to OFF when the slave has not yet replicated all GTID
+      GTID_MODE=OFF.  However, this can happen if the primary changes
+      GTID_MODE to OFF when the replica has not yet replicated all GTID
       transactions.
     */
     if (get_gtid_mode(GTID_MODE_LOCK_NONE) == GTID_MODE_OFF)
@@ -589,7 +589,7 @@ int Binlog_sender::wait_new_events(my_off_t log_pos)
   mysql_bin_log.lock_binlog_end_pos();
   m_thd->ENTER_COND(mysql_bin_log.get_log_cond(),
                     mysql_bin_log.get_binlog_end_pos_lock(),
-                    &stage_master_has_sent_all_binlog_to_slave,
+                    &stage_primary_has_sent_all_binlog_to_replica,
                     &old_stage);
 
   if (mysql_bin_log.get_binlog_end_pos() <= log_pos &&
@@ -624,7 +624,7 @@ inline int Binlog_sender::wait_with_heartbeat(my_off_t log_pos)
 #ifndef DBUG_OFF
       if (hb_info_counter < 3)
       {
-        sql_print_information("master sends heartbeat message");
+        sql_print_information("primary sends heartbeat message");
         hb_info_counter++;
         if (hb_info_counter == 3)
           sql_print_information("the rest of heartbeat info skipped ...");
@@ -645,7 +645,7 @@ inline int Binlog_sender::wait_without_heartbeat()
 void Binlog_sender::init_heartbeat_period()
 {
   my_bool null_value;
-  LEX_STRING name=  { C_STRING_WITH_LEN("master_heartbeat_period")};
+  LEX_STRING name=  { C_STRING_WITH_LEN("primary_heartbeat_period")};
 
   /* Protects m_thd->user_vars. */
   mysql_mutex_lock(&m_thd->LOCK_thd_data);
@@ -675,24 +675,24 @@ int Binlog_sender::check_start_file()
   else if (m_using_gtid_protocol)
   {
     /*
-      In normal scenarios, it is not possible that Slave will
-      contain more gtids than Master with resepctive to Master's
-      UUID. But it could be possible case if Master's binary log
-      is truncated(due to raid failure) or Master's binary log is
+      In normal scenarios, it is not possible that Replica will
+      contain more gtids than Primary with resepctive to Primary's
+      UUID. But it could be possible case if Primary's binary log
+      is truncated(due to raid failure) or Primary's binary log is
       deleted but GTID_PURGED was not set properly. That scenario
       needs to be validated, i.e., it should *always* be the case that
-      Slave's gtid executed set (+retrieved set) is a subset of
-      Master's gtid executed set with respective to Master's UUID.
+      Replica's gtid executed set (+retrieved set) is a subset of
+      Primary's gtid executed set with respective to Primary's UUID.
       If it happens, dump thread will be stopped during the handshake
-      with Slave (thus the Slave's I/O thread will be stopped with the
-      error. Otherwise, it can lead to data inconsistency between Master
-      and Slave.
+      with Replica (thus the Replica's I/O thread will be stopped with the
+      error. Otherwise, it can lead to data inconsistency between Primary
+      and Replica.
     */
-    Sid_map* slave_sid_map= m_exclude_gtid->get_sid_map();
-    DBUG_ASSERT(slave_sid_map);
+    Sid_map* replica_sid_map= m_exclude_gtid->get_sid_map();
+    DBUG_ASSERT(replica_sid_map);
     global_sid_lock->wrlock();
     const rpl_sid &server_sid= gtid_state->get_server_sid();
-    rpl_sidno subset_sidno= slave_sid_map->sid_to_sidno(server_sid);
+    rpl_sidno subset_sidno= replica_sid_map->sid_to_sidno(server_sid);
     Gtid_set
       gtid_executed_and_owned(gtid_state->get_executed_gtids()->get_sid_map());
 
@@ -708,7 +708,7 @@ int Binlog_sender::check_start_file()
                                            gtid_state->get_server_sidno(),
                                            subset_sidno))
     {
-      errmsg= ER(ER_SLAVE_HAS_MORE_GTIDS_THAN_MASTER);
+      errmsg= ER(ER_REPLICA_HAS_MORE_GTIDS_THAN_PRIMARY);
       global_sid_lock->unlock();
       set_fatal_error(errmsg);
       return 1;
@@ -719,29 +719,29 @@ int Binlog_sender::check_start_file()
       leaves first binary log with empty previous_gtids and second
       binary log's previous_gtids with the value of gtid_purged.
       In find_first_log_not_in_gtid_set() while we search for a binary
-      log whose previous_gtid_set is subset of slave_gtid_executed,
+      log whose previous_gtid_set is subset of replica_gtid_executed,
       in this particular case, server will always find the first binary
       log with empty previous_gtids which is subset of any given
-      slave_gtid_executed. Thus Master thinks that it found the first
+      replica_gtid_executed. Thus Primary thinks that it found the first
       binary log which is actually not correct and unable to catch
       this error situation. Hence adding below extra if condition
-      to check the situation. Slave should know about Master's purged GTIDs.
-      If Slave's GTID executed + retrieved set does not contain Master's
-      complete purged GTID list, that means Slave is requesting(expecting)
-      GTIDs which were purged by Master. We should let Slave know about the
-      situation. i.e., throw error if slave's GTID executed set is not
-      a superset of Master's purged GTID set.
+      to check the situation. Replica should know about Primary's purged GTIDs.
+      If Replica's GTID executed + retrieved set does not contain Primary's
+      complete purged GTID list, that means Replica is requesting(expecting)
+      GTIDs which were purged by Primary. We should let Replica know about the
+      situation. i.e., throw error if replica's GTID executed set is not
+      a superset of Primary's purged GTID set.
       The other case, where user deleted binary logs manually
       (without using 'PURGE BINARY LOGS' command) but gtid_purged
       is not set by the user, the following if condition cannot catch it.
       But that is not a problem because in find_first_log_not_in_gtid_set()
       while checking for subset previous_gtids binary log, the logic
-      will not find one and an error ER_MASTER_HAS_PURGED_REQUIRED_GTIDS
+      will not find one and an error ER_PRIMARY_HAS_PURGED_REQUIRED_GTIDS
       is thrown from there.
     */
     if (!gtid_state->get_lost_gtids()->is_subset(m_exclude_gtid))
     {
-      errmsg= ER(ER_MASTER_HAS_PURGED_REQUIRED_GTIDS);
+      errmsg= ER(ER_PRIMARY_HAS_PURGED_REQUIRED_GTIDS);
       global_sid_lock->unlock();
       set_fatal_error(errmsg);
       return 1;
@@ -767,7 +767,7 @@ int Binlog_sender::check_start_file()
     /*
       If we are skipping at least the first transaction of the binlog,
       we must clear the "created" field of the FD event (set it to 0)
-      to avoid cleaning up temp tables on slave.
+      to avoid cleaning up temp tables on replica.
     */
     m_gtid_clear_fd_created_flag= (first_gtid.sidno >= 1 &&
                                    first_gtid.gno >= 1 &&
@@ -788,7 +788,7 @@ int Binlog_sender::check_start_file()
 
   if (m_start_pos < BIN_LOG_HEADER_SIZE)
   {
-    set_fatal_error("Client requested master to start replication "
+    set_fatal_error("Client requested primary to start replication "
                     "from position < 4");
     return 1;
   }
@@ -805,7 +805,7 @@ int Binlog_sender::check_start_file()
 
   if (m_start_pos > size)
   {
-    set_fatal_error("Client requested master to start replication from "
+    set_fatal_error("Client requested primary to start replication from "
                     "position > file size");
     return 1;
   }
@@ -818,10 +818,10 @@ void Binlog_sender::init_checksum_alg()
 {
   DBUG_ENTER("init_binlog_checksum");
 
-  LEX_STRING name= {C_STRING_WITH_LEN("master_binlog_checksum")};
+  LEX_STRING name= {C_STRING_WITH_LEN("primary_binlog_checksum")};
   user_var_entry *entry;
 
-  m_slave_checksum_alg= binary_log::BINLOG_CHECKSUM_ALG_UNDEF;
+  m_replica_checksum_alg= binary_log::BINLOG_CHECKSUM_ALG_UNDEF;
 
   /* Protects m_thd->user_vars. */
   mysql_mutex_lock(&m_thd->LOCK_thd_data);
@@ -830,9 +830,9 @@ void Binlog_sender::init_checksum_alg()
                                           (uchar*) name.str, name.length);
   if (entry)
   {
-    m_slave_checksum_alg=
+    m_replica_checksum_alg=
       static_cast<enum_binlog_checksum_alg>(find_type((char*) entry->ptr(), &binlog_checksum_typelib, 1) - 1);
-    DBUG_ASSERT(m_slave_checksum_alg < binary_log::BINLOG_CHECKSUM_ALG_ENUM_END);
+    DBUG_ASSERT(m_replica_checksum_alg < binary_log::BINLOG_CHECKSUM_ALG_ENUM_END);
   }
 
   mysql_mutex_unlock(&m_thd->LOCK_thd_data);
@@ -841,9 +841,9 @@ void Binlog_sender::init_checksum_alg()
     m_event_checksum_alg should be set to the checksum algorithm in
     Format_description_log_event. But it is used by fake_rotate_event() which
     will be called before reading any Format_description_log_event. In that case,
-    m_slave_checksum_alg is set as the value of m_event_checksum_alg.
+    m_replica_checksum_alg is set as the value of m_event_checksum_alg.
   */
-  m_event_checksum_alg= m_slave_checksum_alg;
+  m_event_checksum_alg= m_replica_checksum_alg;
   DBUG_VOID_RETURN;
 }
 
@@ -865,7 +865,7 @@ int Binlog_sender::fake_rotate_event(const char *next_log_file,
   uchar *header= (uchar *)m_packet.ptr() + event_offset;
   uchar *rotate_header= header + LOG_EVENT_HEADER_LEN;
   /*
-    'when' (the timestamp) is set to 0 so that slave could distinguish between
+    'when' (the timestamp) is set to 0 so that replica could distinguish between
     real and fake Rotate events (if necessary)
   */
   int4store(header, 0);
@@ -947,16 +947,16 @@ int Binlog_sender::send_format_description_event(IO_CACHE *log_cache,
   DBUG_ASSERT(m_event_checksum_alg < binary_log::BINLOG_CHECKSUM_ALG_ENUM_END ||
               m_event_checksum_alg == binary_log::BINLOG_CHECKSUM_ALG_UNDEF);
 
-  /* Slave does not support checksum, but binary events include checksum */
-  if (m_slave_checksum_alg == binary_log::BINLOG_CHECKSUM_ALG_UNDEF &&
+  /* Replica does not support checksum, but binary events include checksum */
+  if (m_replica_checksum_alg == binary_log::BINLOG_CHECKSUM_ALG_UNDEF &&
       event_checksum_on())
   {
-    set_fatal_error("Slave can not handle replication events with the "
-                    "checksum that master is configured to log");
+    set_fatal_error("Replica can not handle replication events with the "
+                    "checksum that primary is configured to log");
 
-    sql_print_warning("Master is configured to log replication events "
+    sql_print_warning("Primary is configured to log replication events "
                       "with checksum, but will not send such events to "
-                      "slaves that cannot process them");
+                      "replicas that cannot process them");
     DBUG_RETURN(1);
   }
 
@@ -970,7 +970,7 @@ int Binlog_sender::send_format_description_event(IO_CACHE *log_cache,
       /*
         As we are skipping at least the first transaction of the binlog,
         we must clear the "created" field of the FD event (set it to 0)
-        to avoid destroying temp tables on slave.
+        to avoid destroying temp tables on replica.
       */
       int4store(event_ptr + LOG_EVENT_MINIMAL_HEADER_LEN + ST_CREATED_OFFSET,
                 0);
@@ -981,15 +981,15 @@ int Binlog_sender::send_format_description_event(IO_CACHE *log_cache,
   {
     /*
       If we are skipping the beginning of the binlog file based on the position
-      asked by the slave, we must clear the log_pos and the created flag of the
+      asked by the replica, we must clear the log_pos and the created flag of the
       Format_description_log_event to be sent. Mark that this event with
-      "log_pos=0", so the slave should not increment master's binlog position
-      (rli->group_master_log_pos)
+      "log_pos=0", so the replica should not increment primary's binlog position
+      (rli->group_primary_log_pos)
     */
     int4store(event_ptr + LOG_POS_OFFSET, 0);
     /*
       Set the 'created' field to 0 to avoid destroying
-      temp tables on slave.
+      temp tables on replica.
     */
     int4store(event_ptr + LOG_EVENT_MINIMAL_HEADER_LEN + ST_CREATED_OFFSET, 0);
     event_updated= true;
@@ -1028,17 +1028,17 @@ const char* Binlog_sender::log_read_error_msg(int error)
     return "bogus data in log event";
   case LOG_READ_TOO_LARGE:
     return "log event entry exceeded max_allowed_packet; Increase "
-      "max_allowed_packet on master";
+      "max_allowed_packet on primary";
   case LOG_READ_IO:
     return "I/O error reading log event";
   case LOG_READ_MEM:
     return "memory allocation failed reading log event";
   case LOG_READ_TRUNC:
-    return "binlog truncated in the middle of event; consider out of disk space on master";
+    return "binlog truncated in the middle of event; consider out of disk space on primary";
   case LOG_READ_CHECKSUM_FAILURE:
     return "event read from binlog did not pass crc check";
   default:
-    return "unknown error reading log event on the master";
+    return "unknown error reading log event on the primary";
   }
 }
 
@@ -1086,7 +1086,7 @@ inline int Binlog_sender::read_event(IO_CACHE *log_cache, enum_binlog_checksum_a
   DBUG_RETURN(0);
 read_error:
   /*
-    In theory, it should never happen. But RESET MASTER deletes binlog file
+    In theory, it should never happen. But RESET PRIMARY deletes binlog file
     directly without checking if there is any dump thread working.
   */
   error= (error == LOG_READ_EOF) ? LOG_READ_IO : error;

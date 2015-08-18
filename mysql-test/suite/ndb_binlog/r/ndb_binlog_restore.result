@@ -7,7 +7,7 @@ insert into t1 values (1,1);
 #
 # reset and restore schema
 drop table t1;
-reset master;
+reset primary;
 show tables;
 Tables_in_test
 t1
@@ -24,7 +24,7 @@ mysqld-bin.000001	#	Query	#	#	use `test`; create table binlogmarker (a int) engi
 # reset and restore schema again
 drop table binlogmarker;
 drop table t1;
-reset master;
+reset primary;
 show tables;
 Tables_in_test
 t1
@@ -86,7 +86,7 @@ PRIMARY KEY USING HASH (ACCOUNT_TYPE_ID))
 ENGINE = NDB;
 #
 # reset, restore and  binlog should _not_ happen
-reset master;
+reset primary;
 select count(*) from TRANSACTION;
 count(*)
 3444

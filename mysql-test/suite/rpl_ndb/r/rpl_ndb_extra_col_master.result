@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 set binlog_format=row;
 
 ***********************************************************
@@ -14,7 +14,7 @@ set binlog_format=row;
 ***********************************************************
 ***********************************************************
 
-***** Testing more columns on the Master *****
+***** Testing more columns on the Primary *****
 
 CREATE TABLE t1 (f1 INT, f2 INT, f3 INT PRIMARY KEY, f4 CHAR(20),
 /* extra */
@@ -26,13 +26,13 @@ f9 LONGBLOB,
 f10 BIT(63),
 f11 VARBINARY(64))ENGINE='NDB';
 
-* Alter Table on Slave and drop columns f5 through f11 *
+* Alter Table on Replica and drop columns f5 through f11 *
 
 alter table t1 drop f5, drop f6, drop f7, drop f8, drop f9, drop f10, drop f11;
 
-* Insert data in Master then update and delete some rows*
+* Insert data in Primary then update and delete some rows*
 
-* Select count and 20 rows from Master *
+* Select count and 20 rows from Primary *
 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -62,7 +62,7 @@ f1	f2	f3	f4	f5	f6	f7	f8	f9	hex(f10)	hex(f11)
 29	29	29	second	2	kaks	2	got stolen from the paradise	very fat blob	1555	123456
 30	30	30	next	2	kaks	2	got stolen from the paradise	very fat blob	1555	123456
 
-* Select count and 20 rows from Slave *
+* Select count and 20 rows from Replica *
 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -90,7 +90,7 @@ f1	f2	f3	f4
 27	27	27	next
 29	29	29	second
 30	30	30	next
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 
 ***** Testing Altering table def scenario *****
 
@@ -162,7 +162,7 @@ f34 VARBINARY(1025),
 f35 VARCHAR(257)       
 ) ENGINE='NDB';
 
-** Alter tables on slave and drop columns **
+** Alter tables on replica and drop columns **
 
 alter table t2 drop f5, drop f6, drop f7, drop f8, drop f9, drop f10, drop f11, drop
 f12;
@@ -175,7 +175,7 @@ drop f19, drop f20, drop f21, drop f22, drop f23, drop f24, drop f25,
 drop f26, drop f27, drop f28, drop f29, drop f30, drop f31, drop f32,
 drop f33, drop f34, drop f35;
 
-** Insert Data into Master **
+** Insert Data into Primary **
 INSERT into t2 set f1=1, f2=1, f3=1, f4='first', f8='f8: medium size blob', f10='f10:
 some var char';
 INSERT into t2 values (2, 2, 2, 'second',
@@ -334,7 +334,7 @@ Warning	1264	Out of range value for column 'f5' at row 2
 Warning	1264	Out of range value for column 'f24' at row 2
 Warning	1264	Out of range value for column 'f24' at row 3
 
-** Sync slave with master ** 
+** Sync replica with primary ** 
 ** Do selects from tables **
 
 select * from t1 order by f3;
@@ -399,7 +399,7 @@ f1	f2	f3	f4
 1	1	5	fifth
 1	1	6	sixth
 
-** Do updates master **
+** Do updates primary **
 
 update t31 set f5=555555555555555 where f3=6;
 update t31 set f2=2 where f3=2;
@@ -408,7 +408,7 @@ update ignore t31 set f3=NULL, f27=NULL, f35='f35 new value' where f3=3;
 Warnings:
 Warning	1048	Column 'f3' cannot be null
 
-** Delete from Master **
+** Delete from Primary **
 
 delete from t1;
 delete from t2;
@@ -418,32 +418,32 @@ delete from t31;
 select * from t31;
 f1	f2	f3	f4
 
-** Check slave status **
+** Check replica status **
 
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 
 ****************************************
-* columns in master at middle of table *
+* columns in primary at middle of table *
 * Expect: Proper error message         *
 ****************************************
 
-** Stop and Reset Slave **
+** Stop and Reset Replica **
 
-STOP SLAVE;
+STOP REPLICA;
 
-** create table slave side **
+** create table replica side **
 CREATE TABLE t10 (a INT PRIMARY KEY, b BLOB, c CHAR(5)
 ) ENGINE='NDB';
 
-** Connect to master and create table **
+** Connect to primary and create table **
 
 CREATE TABLE t10 (a INT KEY, b BLOB, f DOUBLE DEFAULT '233',
 c CHAR(5), e INT DEFAULT '1')ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t10 () VALUES(1,@b1,DEFAULT,'Kyle',DEFAULT),
@@ -451,32 +451,32 @@ INSERT INTO t10 () VALUES(1,@b1,DEFAULT,'Kyle',DEFAULT),
 (3,@b1,DEFAULT,'QA',DEFAULT);
 
 ********************************************
-*** Expect slave to fail with Error 1677 ***
+*** Expect replica to fail with Error 1677 ***
 ********************************************
 
-include/wait_for_slave_sql_error_and_skip.inc [errno=1677]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1677]
 
 *** Drop t10  ***
 DROP TABLE t10;
 
 *********************************************
-* More columns in master at middle of table *
+* More columns in primary at middle of table *
 * Expect: Proper error message              *
 *********************************************
 
-*** Create t11 on slave  ***
-STOP SLAVE;
+*** Create t11 on replica  ***
+STOP REPLICA;
 CREATE TABLE t11 (a INT PRIMARY KEY, b BLOB, c VARCHAR(254)
 ) ENGINE='NDB';
 
-*** Create t11 on Master ***
+*** Create t11 on Primary ***
 CREATE TABLE t11 (a INT KEY, b BLOB, f TEXT,
 c CHAR(5) DEFAULT 'test', e INT DEFAULT '1')ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t11 () VALUES(1,@b1,'Testing is fun','Kyle',DEFAULT),
@@ -484,32 +484,32 @@ INSERT INTO t11 () VALUES(1,@b1,'Testing is fun','Kyle',DEFAULT),
 (3,@b1,DEFAULT,'QA',DEFAULT);
 
 ********************************************
-*** Expect slave to fail with Error 1677 ***
+*** Expect replica to fail with Error 1677 ***
 ********************************************
 
-include/wait_for_slave_sql_error_and_skip.inc [errno=1677]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1677]
 
 *** Drop t11  ***
 DROP TABLE t11;
 
 *********************************************
-* More columns in master at middle of table *
+* More columns in primary at middle of table *
 * Expect: This one should pass blob-text    *
 *********************************************
 
-*** Create t12 on slave  ***
-STOP SLAVE;
+*** Create t12 on replica  ***
+STOP REPLICA;
 CREATE TABLE t12 (a INT PRIMARY KEY, b BLOB, c BLOB
 ) ENGINE='NDB';
 
-*** Create t12 on Master ***
+*** Create t12 on Primary ***
 CREATE TABLE t12 (a INT KEY, b BLOB, f TEXT,
 c CHAR(5) DEFAULT 'test', e INT DEFAULT '1')ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t12 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -522,7 +522,7 @@ a	hex(b)	f	c	e
 2	62316231623162316231623162316231	JOE	test	1
 3	62316231623162316231623162316231	QA	test	1
 
-*** Select on Slave ***
+*** Select on Replica ***
 SELECT a,hex(b),c FROM t12 ORDER BY a;
 a	hex(b)	c
 1	62316231623162316231623162316231	Kyle
@@ -533,26 +533,26 @@ a	hex(b)	c
 DROP TABLE t12;
 
 ****************************************************
-* - Alter Master adding columns at middle of table *
+* - Alter Primary adding columns at middle of table *
 *   Expect: columns added                          *
 ****************************************************
 
 
-*** Create t14 on slave  ***
-STOP SLAVE;
+*** Create t14 on replica  ***
+STOP REPLICA;
 CREATE TABLE t14 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t14 on Master ***
+*** Create t14 on Primary ***
 CREATE TABLE t14 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 ALTER TABLE t14 ADD COLUMN c2 DECIMAL(8,2) AFTER c1;
 ALTER TABLE t14 ADD COLUMN c3 TEXT AFTER c2;
 
@@ -568,7 +568,7 @@ c1	c2	c3	hex(c4)	c5	c6	c7
 2	2.00	This Test Should work	62316231623162316231623162316231	JOE	1	CURRENT_TIMESTAMP
 3	3.00	If is does not, I will open a bug	62316231623162316231623162316231	QA	1	CURRENT_TIMESTAMP
 
-*** Select on Slave ****
+*** Select on Replica ****
 SELECT c1,c2,c3,hex(c4),c5 FROM t14 ORDER BY c1;
 c1	c2	c3	hex(c4)	c5
 1	1.00	Replication Testing Extra Col	62316231623162316231623162316231	Kyle
@@ -576,15 +576,15 @@ c1	c2	c3	hex(c4)	c5
 3	3.00	If is does not, I will open a bug	62316231623162316231623162316231	QA
 
 ****************************************************
-* - Alter Master Dropping columns from the middle. *
+* - Alter Primary Dropping columns from the middle. *
 *   Expect: columns dropped                        *
 ****************************************************
 
-*** connect to master and drop columns ***
+*** connect to primary and drop columns ***
 ALTER TABLE t14 DROP COLUMN c2;
 ALTER TABLE t14 DROP COLUMN c7;
 
-*** Select from Master ***
+*** Select from Primary ***
 SELECT c1,c3,hex(c4),c5,c6 FROM t14 ORDER BY c1;
 c1	c3	hex(c4)	c5	c6
 1	Replication Testing Extra Col	62316231623162316231623162316231	Kyle	1
@@ -594,8 +594,8 @@ c1	c3	hex(c4)	c5	c6
 ************
 * Bug30415 *
 ************
-include/wait_for_slave_sql_error.inc [errno=1091]
-STOP SLAVE;
+include/wait_for_replica_sql_error.inc [errno=1091]
+STOP REPLICA;
 
 *** Drop t14  ***
 DROP TABLE t14;
@@ -603,25 +603,25 @@ DROP TABLE t14;
 include/rpl_reset.inc
 
 *************************************************
-* - Alter Master adding columns at end of table *
+* - Alter Primary adding columns at end of table *
 *   Expect: Error 1054                          *
 *************************************************
 
-*** Create t15 on slave  ***
-STOP SLAVE;
+*** Create t15 on replica  ***
+STOP REPLICA;
 CREATE TABLE t15 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t15 on Master ***
+*** Create t15 on Primary ***
 CREATE TABLE t15 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 ALTER TABLE t15 ADD COLUMN c2 DECIMAL(8,2) AFTER c7;
 Warnings:
 Warning	1478	Converted FIXED field 'c2' to DYNAMIC to enable on-line ADD COLUMN
@@ -637,11 +637,11 @@ c1	hex(c4)	c5	c6	c7	c2
 3	62316231623162316231623162316231	QA	1	CURRENT_TIMESTAMP	3.00
 
 ********************************************
-*** Expect slave to fail with Error 1054 ***
+*** Expect replica to fail with Error 1054 ***
 ********************************************
 
-include/wait_for_slave_sql_error.inc [errno=1054]
-STOP SLAVE;
+include/wait_for_replica_sql_error.inc [errno=1054]
+STOP REPLICA;
 
 *** Drop t15  ***
 DROP TABLE t15;
@@ -649,25 +649,25 @@ DROP TABLE t15;
 include/rpl_reset.inc
 
 ************************************************
-* - Create index on Master column not on slave *
+* - Create index on Primary column not on replica *
 *   Expect:Warning                             *
 ************************************************
 
-*** Create t16 on slave  ***
-STOP SLAVE;
+*** Create t16 on replica  ***
+STOP REPLICA;
 CREATE TABLE t16 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t16 on Master ***
+*** Create t16 on Primary ***
 CREATE TABLE t16 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Create Index and Data Insert ***
+*** Primary Create Index and Data Insert ***
 CREATE INDEX part_of_c6 ON t16 (c6);
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
@@ -684,8 +684,8 @@ c1	hex(c4)	c5	c6	c7
 *** BUG 30434 ***
 *****************
 
-include/wait_for_slave_sql_error.inc [errno=1072]
-STOP SLAVE;
+include/wait_for_replica_sql_error.inc [errno=1072]
+STOP REPLICA;
 
 *** Drop t16  ***
 DROP TABLE t16;
@@ -693,25 +693,25 @@ DROP TABLE t16;
 include/rpl_reset.inc
 
 *****************************************************
-* - Delete rows using column on Master not on slave *
+* - Delete rows using column on Primary not on replica *
 *   Expect: Rows Deleted                            *
 *****************************************************
 
-*** Create t17 on slave  ***
-STOP SLAVE;
+*** Create t17 on replica  ***
+STOP REPLICA;
 CREATE TABLE t17 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t17 on Master ***
+*** Create t17 on Primary ***
 CREATE TABLE t17 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t17 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -723,21 +723,21 @@ c1	hex(c4)	c5	c6	c7
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 3	62316231623162316231623162316231	QA	3	CURRENT_TIMESTAMP
 
-** Select * from Slave **
+** Select * from Replica **
 SELECT c1,hex(c4),c5 FROM t17 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
 2	62316231623162316231623162316231	JOE
 3	62316231623162316231623162316231	QA
 
-** Delete from master **
+** Delete from primary **
 DELETE FROM t17 WHERE c6 = 3;
 SELECT c1,hex(c4),c5,c6,c7 FROM t17 ORDER BY c1;
 c1	hex(c4)	c5	c6	c7
 1	62316231623162316231623162316231	Kyle	1	CURRENT_TIMESTAMP
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 
-** Check slave **
+** Check replica **
 SELECT c1,hex(c4),c5 FROM t17 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
@@ -746,28 +746,28 @@ DROP TABLE t17;
 
 
 *****************************************************
-* - Update row using column on Master not on slave *
+* - Update row using column on Primary not on replica *
 *   Expect: Rows updated                           *
 *****************************************************
 
 ** Bug30674 **
 
-*** Create t18 on slave  ***
+*** Create t18 on replica  ***
 
-STOP SLAVE;
+STOP REPLICA;
 CREATE TABLE t18 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t18 on Master ***
+*** Create t18 on Primary ***
 CREATE TABLE t18 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t18 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -779,14 +779,14 @@ c1	hex(c4)	c5	c6	c7
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 3	62316231623162316231623162316231	QA	3	CURRENT_TIMESTAMP
 
-** Select * from Slave **
+** Select * from Replica **
 SELECT c1,hex(c4),c5 FROM t18 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
 2	62316231623162316231623162316231	JOE
 3	62316231623162316231623162316231	QA
 
-** update from master **
+** update from primary **
 UPDATE t18 SET c5 = 'TEST' WHERE c6 = 3;
 SELECT c1,hex(c4),c5,c6,c7 FROM t18 ORDER BY c1;
 c1	hex(c4)	c5	c6	c7
@@ -794,7 +794,7 @@ c1	hex(c4)	c5	c6	c7
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 3	62316231623162316231623162316231	TEST	3	CURRENT_TIMESTAMP
 
-** Check slave **
+** Check replica **
 SELECT c1,hex(c4),c5 FROM t18 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
@@ -804,25 +804,25 @@ DROP TABLE t18;
 
 
 *****************************************************
-* - Insert UUID  column on Master not on slave *
+* - Insert UUID  column on Primary not on replica *
 *   Expect: Rows inserted                      *
 *****************************************************
 
-*** Create t5 on slave  ***
-STOP SLAVE;
+*** Create t5 on replica  ***
+STOP REPLICA;
 CREATE TABLE t5 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t5 on Master ***
+*** Create t5 on Primary ***
 CREATE TABLE t5 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 LONG, 
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 INSERT INTO t5 () VALUES(1,@b1,'Kyle',UUID(),DEFAULT),
 (2,@b1,'JOE',UUID(),DEFAULT),
@@ -833,7 +833,7 @@ c1	hex(c4)	c5	c6	c7
 2	6231623162316231	JOE	UUID	TIME
 3	6231623162316231	QA	UUID	TIME
 
-** Select * from Slave **
+** Select * from Replica **
 SELECT c1,hex(c4),c5 FROM t5 ORDER BY c1;
 c1	hex(c4)	c5
 1	6231623162316231	Kyle
@@ -870,7 +870,7 @@ set binlog_format=mixed;
 ***********************************************************
 ***********************************************************
 
-***** Testing more columns on the Master *****
+***** Testing more columns on the Primary *****
 
 CREATE TABLE t1 (f1 INT, f2 INT, f3 INT PRIMARY KEY, f4 CHAR(20),
 /* extra */
@@ -882,13 +882,13 @@ f9 LONGBLOB,
 f10 BIT(63),
 f11 VARBINARY(64))ENGINE='NDB';
 
-* Alter Table on Slave and drop columns f5 through f11 *
+* Alter Table on Replica and drop columns f5 through f11 *
 
 alter table t1 drop f5, drop f6, drop f7, drop f8, drop f9, drop f10, drop f11;
 
-* Insert data in Master then update and delete some rows*
+* Insert data in Primary then update and delete some rows*
 
-* Select count and 20 rows from Master *
+* Select count and 20 rows from Primary *
 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -918,7 +918,7 @@ f1	f2	f3	f4	f5	f6	f7	f8	f9	hex(f10)	hex(f11)
 29	29	29	second	2	kaks	2	got stolen from the paradise	very fat blob	1555	123456
 30	30	30	next	2	kaks	2	got stolen from the paradise	very fat blob	1555	123456
 
-* Select count and 20 rows from Slave *
+* Select count and 20 rows from Replica *
 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -946,7 +946,7 @@ f1	f2	f3	f4
 27	27	27	next
 29	29	29	second
 30	30	30	next
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 
 ***** Testing Altering table def scenario *****
 
@@ -1018,7 +1018,7 @@ f34 VARBINARY(1025),
 f35 VARCHAR(257)       
 ) ENGINE='NDB';
 
-** Alter tables on slave and drop columns **
+** Alter tables on replica and drop columns **
 
 alter table t2 drop f5, drop f6, drop f7, drop f8, drop f9, drop f10, drop f11, drop
 f12;
@@ -1031,7 +1031,7 @@ drop f19, drop f20, drop f21, drop f22, drop f23, drop f24, drop f25,
 drop f26, drop f27, drop f28, drop f29, drop f30, drop f31, drop f32,
 drop f33, drop f34, drop f35;
 
-** Insert Data into Master **
+** Insert Data into Primary **
 INSERT into t2 set f1=1, f2=1, f3=1, f4='first', f8='f8: medium size blob', f10='f10:
 some var char';
 INSERT into t2 values (2, 2, 2, 'second',
@@ -1190,7 +1190,7 @@ Warning	1264	Out of range value for column 'f5' at row 2
 Warning	1264	Out of range value for column 'f24' at row 2
 Warning	1264	Out of range value for column 'f24' at row 3
 
-** Sync slave with master ** 
+** Sync replica with primary ** 
 ** Do selects from tables **
 
 select * from t1 order by f3;
@@ -1255,7 +1255,7 @@ f1	f2	f3	f4
 1	1	5	fifth
 1	1	6	sixth
 
-** Do updates master **
+** Do updates primary **
 
 update t31 set f5=555555555555555 where f3=6;
 update t31 set f2=2 where f3=2;
@@ -1264,7 +1264,7 @@ update ignore t31 set f3=NULL, f27=NULL, f35='f35 new value' where f3=3;
 Warnings:
 Warning	1048	Column 'f3' cannot be null
 
-** Delete from Master **
+** Delete from Primary **
 
 delete from t1;
 delete from t2;
@@ -1274,32 +1274,32 @@ delete from t31;
 select * from t31;
 f1	f2	f3	f4
 
-** Check slave status **
+** Check replica status **
 
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 
 ****************************************
-* columns in master at middle of table *
+* columns in primary at middle of table *
 * Expect: Proper error message         *
 ****************************************
 
-** Stop and Reset Slave **
+** Stop and Reset Replica **
 
-STOP SLAVE;
+STOP REPLICA;
 
-** create table slave side **
+** create table replica side **
 CREATE TABLE t10 (a INT PRIMARY KEY, b BLOB, c CHAR(5)
 ) ENGINE='NDB';
 
-** Connect to master and create table **
+** Connect to primary and create table **
 
 CREATE TABLE t10 (a INT KEY, b BLOB, f DOUBLE DEFAULT '233',
 c CHAR(5), e INT DEFAULT '1')ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t10 () VALUES(1,@b1,DEFAULT,'Kyle',DEFAULT),
@@ -1307,32 +1307,32 @@ INSERT INTO t10 () VALUES(1,@b1,DEFAULT,'Kyle',DEFAULT),
 (3,@b1,DEFAULT,'QA',DEFAULT);
 
 ********************************************
-*** Expect slave to fail with Error 1677 ***
+*** Expect replica to fail with Error 1677 ***
 ********************************************
 
-include/wait_for_slave_sql_error_and_skip.inc [errno=1677]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1677]
 
 *** Drop t10  ***
 DROP TABLE t10;
 
 *********************************************
-* More columns in master at middle of table *
+* More columns in primary at middle of table *
 * Expect: Proper error message              *
 *********************************************
 
-*** Create t11 on slave  ***
-STOP SLAVE;
+*** Create t11 on replica  ***
+STOP REPLICA;
 CREATE TABLE t11 (a INT PRIMARY KEY, b BLOB, c VARCHAR(254)
 ) ENGINE='NDB';
 
-*** Create t11 on Master ***
+*** Create t11 on Primary ***
 CREATE TABLE t11 (a INT KEY, b BLOB, f TEXT,
 c CHAR(5) DEFAULT 'test', e INT DEFAULT '1')ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t11 () VALUES(1,@b1,'Testing is fun','Kyle',DEFAULT),
@@ -1340,32 +1340,32 @@ INSERT INTO t11 () VALUES(1,@b1,'Testing is fun','Kyle',DEFAULT),
 (3,@b1,DEFAULT,'QA',DEFAULT);
 
 ********************************************
-*** Expect slave to fail with Error 1677 ***
+*** Expect replica to fail with Error 1677 ***
 ********************************************
 
-include/wait_for_slave_sql_error_and_skip.inc [errno=1677]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1677]
 
 *** Drop t11  ***
 DROP TABLE t11;
 
 *********************************************
-* More columns in master at middle of table *
+* More columns in primary at middle of table *
 * Expect: This one should pass blob-text    *
 *********************************************
 
-*** Create t12 on slave  ***
-STOP SLAVE;
+*** Create t12 on replica  ***
+STOP REPLICA;
 CREATE TABLE t12 (a INT PRIMARY KEY, b BLOB, c BLOB
 ) ENGINE='NDB';
 
-*** Create t12 on Master ***
+*** Create t12 on Primary ***
 CREATE TABLE t12 (a INT KEY, b BLOB, f TEXT,
 c CHAR(5) DEFAULT 'test', e INT DEFAULT '1')ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t12 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -1378,7 +1378,7 @@ a	hex(b)	f	c	e
 2	62316231623162316231623162316231	JOE	test	1
 3	62316231623162316231623162316231	QA	test	1
 
-*** Select on Slave ***
+*** Select on Replica ***
 SELECT a,hex(b),c FROM t12 ORDER BY a;
 a	hex(b)	c
 1	62316231623162316231623162316231	Kyle
@@ -1389,26 +1389,26 @@ a	hex(b)	c
 DROP TABLE t12;
 
 ****************************************************
-* - Alter Master adding columns at middle of table *
+* - Alter Primary adding columns at middle of table *
 *   Expect: columns added                          *
 ****************************************************
 
 
-*** Create t14 on slave  ***
-STOP SLAVE;
+*** Create t14 on replica  ***
+STOP REPLICA;
 CREATE TABLE t14 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t14 on Master ***
+*** Create t14 on Primary ***
 CREATE TABLE t14 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 ALTER TABLE t14 ADD COLUMN c2 DECIMAL(8,2) AFTER c1;
 ALTER TABLE t14 ADD COLUMN c3 TEXT AFTER c2;
 
@@ -1424,7 +1424,7 @@ c1	c2	c3	hex(c4)	c5	c6	c7
 2	2.00	This Test Should work	62316231623162316231623162316231	JOE	1	CURRENT_TIMESTAMP
 3	3.00	If is does not, I will open a bug	62316231623162316231623162316231	QA	1	CURRENT_TIMESTAMP
 
-*** Select on Slave ****
+*** Select on Replica ****
 SELECT c1,c2,c3,hex(c4),c5 FROM t14 ORDER BY c1;
 c1	c2	c3	hex(c4)	c5
 1	1.00	Replication Testing Extra Col	62316231623162316231623162316231	Kyle
@@ -1432,15 +1432,15 @@ c1	c2	c3	hex(c4)	c5
 3	3.00	If is does not, I will open a bug	62316231623162316231623162316231	QA
 
 ****************************************************
-* - Alter Master Dropping columns from the middle. *
+* - Alter Primary Dropping columns from the middle. *
 *   Expect: columns dropped                        *
 ****************************************************
 
-*** connect to master and drop columns ***
+*** connect to primary and drop columns ***
 ALTER TABLE t14 DROP COLUMN c2;
 ALTER TABLE t14 DROP COLUMN c7;
 
-*** Select from Master ***
+*** Select from Primary ***
 SELECT c1,c3,hex(c4),c5,c6 FROM t14 ORDER BY c1;
 c1	c3	hex(c4)	c5	c6
 1	Replication Testing Extra Col	62316231623162316231623162316231	Kyle	1
@@ -1450,8 +1450,8 @@ c1	c3	hex(c4)	c5	c6
 ************
 * Bug30415 *
 ************
-include/wait_for_slave_sql_error.inc [errno=1091]
-STOP SLAVE;
+include/wait_for_replica_sql_error.inc [errno=1091]
+STOP REPLICA;
 
 *** Drop t14  ***
 DROP TABLE t14;
@@ -1459,25 +1459,25 @@ DROP TABLE t14;
 include/rpl_reset.inc
 
 *************************************************
-* - Alter Master adding columns at end of table *
+* - Alter Primary adding columns at end of table *
 *   Expect: Error 1054                          *
 *************************************************
 
-*** Create t15 on slave  ***
-STOP SLAVE;
+*** Create t15 on replica  ***
+STOP REPLICA;
 CREATE TABLE t15 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t15 on Master ***
+*** Create t15 on Primary ***
 CREATE TABLE t15 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 ALTER TABLE t15 ADD COLUMN c2 DECIMAL(8,2) AFTER c7;
 Warnings:
 Warning	1478	Converted FIXED field 'c2' to DYNAMIC to enable on-line ADD COLUMN
@@ -1493,11 +1493,11 @@ c1	hex(c4)	c5	c6	c7	c2
 3	62316231623162316231623162316231	QA	1	CURRENT_TIMESTAMP	3.00
 
 ********************************************
-*** Expect slave to fail with Error 1054 ***
+*** Expect replica to fail with Error 1054 ***
 ********************************************
 
-include/wait_for_slave_sql_error.inc [errno=1054]
-STOP SLAVE;
+include/wait_for_replica_sql_error.inc [errno=1054]
+STOP REPLICA;
 
 *** Drop t15  ***
 DROP TABLE t15;
@@ -1505,25 +1505,25 @@ DROP TABLE t15;
 include/rpl_reset.inc
 
 ************************************************
-* - Create index on Master column not on slave *
+* - Create index on Primary column not on replica *
 *   Expect:Warning                             *
 ************************************************
 
-*** Create t16 on slave  ***
-STOP SLAVE;
+*** Create t16 on replica  ***
+STOP REPLICA;
 CREATE TABLE t16 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t16 on Master ***
+*** Create t16 on Primary ***
 CREATE TABLE t16 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Create Index and Data Insert ***
+*** Primary Create Index and Data Insert ***
 CREATE INDEX part_of_c6 ON t16 (c6);
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
@@ -1540,8 +1540,8 @@ c1	hex(c4)	c5	c6	c7
 *** BUG 30434 ***
 *****************
 
-include/wait_for_slave_sql_error.inc [errno=1072]
-STOP SLAVE;
+include/wait_for_replica_sql_error.inc [errno=1072]
+STOP REPLICA;
 
 *** Drop t16  ***
 DROP TABLE t16;
@@ -1549,25 +1549,25 @@ DROP TABLE t16;
 include/rpl_reset.inc
 
 *****************************************************
-* - Delete rows using column on Master not on slave *
+* - Delete rows using column on Primary not on replica *
 *   Expect: Rows Deleted                            *
 *****************************************************
 
-*** Create t17 on slave  ***
-STOP SLAVE;
+*** Create t17 on replica  ***
+STOP REPLICA;
 CREATE TABLE t17 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t17 on Master ***
+*** Create t17 on Primary ***
 CREATE TABLE t17 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t17 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -1579,21 +1579,21 @@ c1	hex(c4)	c5	c6	c7
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 3	62316231623162316231623162316231	QA	3	CURRENT_TIMESTAMP
 
-** Select * from Slave **
+** Select * from Replica **
 SELECT c1,hex(c4),c5 FROM t17 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
 2	62316231623162316231623162316231	JOE
 3	62316231623162316231623162316231	QA
 
-** Delete from master **
+** Delete from primary **
 DELETE FROM t17 WHERE c6 = 3;
 SELECT c1,hex(c4),c5,c6,c7 FROM t17 ORDER BY c1;
 c1	hex(c4)	c5	c6	c7
 1	62316231623162316231623162316231	Kyle	1	CURRENT_TIMESTAMP
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 
-** Check slave **
+** Check replica **
 SELECT c1,hex(c4),c5 FROM t17 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
@@ -1602,28 +1602,28 @@ DROP TABLE t17;
 
 
 *****************************************************
-* - Update row using column on Master not on slave *
+* - Update row using column on Primary not on replica *
 *   Expect: Rows updated                           *
 *****************************************************
 
 ** Bug30674 **
 
-*** Create t18 on slave  ***
+*** Create t18 on replica  ***
 
-STOP SLAVE;
+STOP REPLICA;
 CREATE TABLE t18 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t18 on Master ***
+*** Create t18 on Primary ***
 CREATE TABLE t18 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 INT DEFAULT '1',
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t18 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -1635,14 +1635,14 @@ c1	hex(c4)	c5	c6	c7
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 3	62316231623162316231623162316231	QA	3	CURRENT_TIMESTAMP
 
-** Select * from Slave **
+** Select * from Replica **
 SELECT c1,hex(c4),c5 FROM t18 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
 2	62316231623162316231623162316231	JOE
 3	62316231623162316231623162316231	QA
 
-** update from master **
+** update from primary **
 UPDATE t18 SET c5 = 'TEST' WHERE c6 = 3;
 SELECT c1,hex(c4),c5,c6,c7 FROM t18 ORDER BY c1;
 c1	hex(c4)	c5	c6	c7
@@ -1650,7 +1650,7 @@ c1	hex(c4)	c5	c6	c7
 2	62316231623162316231623162316231	JOE	2	CURRENT_TIMESTAMP
 3	62316231623162316231623162316231	TEST	3	CURRENT_TIMESTAMP
 
-** Check slave **
+** Check replica **
 SELECT c1,hex(c4),c5 FROM t18 ORDER BY c1;
 c1	hex(c4)	c5
 1	62316231623162316231623162316231	Kyle
@@ -1660,25 +1660,25 @@ DROP TABLE t18;
 
 
 *****************************************************
-* - Insert UUID  column on Master not on slave *
+* - Insert UUID  column on Primary not on replica *
 *   Expect: Rows inserted                      *
 *****************************************************
 
-*** Create t5 on slave  ***
-STOP SLAVE;
+*** Create t5 on replica  ***
+STOP REPLICA;
 CREATE TABLE t5 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
 ) ENGINE='NDB';
 
-*** Create t5 on Master ***
+*** Create t5 on Primary ***
 CREATE TABLE t5 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
 c6 LONG, 
 c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
 )ENGINE='NDB';
 
-*** Start Slave ***
+*** Start Replica ***
 include/rpl_reset.inc
 
-*** Master Data Insert ***
+*** Primary Data Insert ***
 set @b1 = 'b1b1b1b1';
 INSERT INTO t5 () VALUES(1,@b1,'Kyle',UUID(),DEFAULT),
 (2,@b1,'JOE',UUID(),DEFAULT),
@@ -1689,7 +1689,7 @@ c1	hex(c4)	c5	c6	c7
 2	6231623162316231	JOE	UUID	TIME
 3	6231623162316231	QA	UUID	TIME
 
-** Select * from Slave **
+** Select * from Replica **
 SELECT c1,hex(c4),c5 FROM t5 ORDER BY c1;
 c1	hex(c4)	c5
 1	6231623162316231	Kyle

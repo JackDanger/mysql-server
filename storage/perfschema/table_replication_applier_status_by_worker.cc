@@ -25,7 +25,7 @@
 #include "table_replication_applier_status_by_worker.h"
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_info.h"
 #include  "rpl_rli.h"
 #include "rpl_mi.h"
@@ -125,7 +125,7 @@ void table_replication_applier_status_by_worker::reset_position(void)
 ha_rows table_replication_applier_status_by_worker::get_row_count()
 {
   /*
-    Return an estimate, number of master info's multipled by worker threads
+    Return an estimate, number of primary info's multipled by worker threads
   */
  return msr_map.get_max_channels()*32;
 }
@@ -133,8 +133,8 @@ ha_rows table_replication_applier_status_by_worker::get_row_count()
 
 int table_replication_applier_status_by_worker::rnd_next(void)
 {
-  Slave_worker *worker;
-  Master_info *mi;
+  Replica_worker *worker;
+  Primary_info *mi;
 
   mysql_mutex_lock(&LOCK_msr_map);
 
@@ -163,8 +163,8 @@ int table_replication_applier_status_by_worker::rnd_next(void)
 
 int table_replication_applier_status_by_worker::rnd_pos(const void *pos)
 {
-  Slave_worker *worker;
-  Master_info *mi;
+  Replica_worker *worker;
+  Primary_info *mi;
 
   set_position(pos);
 
@@ -194,7 +194,7 @@ int table_replication_applier_status_by_worker::rnd_pos(const void *pos)
   return HA_ERR_RECORD_DELETED;
 }
 
-void table_replication_applier_status_by_worker::make_row(Slave_worker *w)
+void table_replication_applier_status_by_worker::make_row(Replica_worker *w)
 {
   m_row_exists= false;
 
@@ -206,7 +206,7 @@ void table_replication_applier_status_by_worker::make_row(Slave_worker *w)
   memcpy(m_row.channel_name, (char*)w->get_channel(), m_row.channel_name_length);
 
   mysql_mutex_lock(&w->jobs_lock);
-  if (w->running_status == Slave_worker::RUNNING)
+  if (w->running_status == Replica_worker::RUNNING)
   {
     PSI_thread *psi= thd_get_psi(w->info_thd);
     PFS_thread *pfs= reinterpret_cast<PFS_thread *> (psi);
@@ -221,7 +221,7 @@ void table_replication_applier_status_by_worker::make_row(Slave_worker *w)
   else
     m_row.thread_id_is_null= true;
 
-  if (w->running_status == Slave_worker::RUNNING)
+  if (w->running_status == Replica_worker::RUNNING)
     m_row.service_state= PS_RPL_YES;
   else
     m_row.service_state= PS_RPL_NO;

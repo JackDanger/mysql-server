@@ -4,35 +4,35 @@
 --source include/force_myisam_default.inc
 
 --source include/have_ndb.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 #
 # Test add column
 #
---connection master
+--connection primary
 CREATE TABLE t1 (c1 INT KEY) ROW_FORMAT=DYNAMIC ENGINE=NDB;
 
 INSERT INTO t1 VALUES (1),(2),(3);
 
 ALTER TABLE t1 ADD c2 INT;
 
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 SELECT * FROM t1 ORDER BY c1;
 
-connection master;
+connection primary;
 
 INSERT INTO t1 VALUES (6,6),(7,7),(8,8);
 SELECT * FROM t1 ORDER BY c1;
 
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 SELECT * FROM t1 ORDER BY c1;
 
 #
 # Test online alter table for various types
 #
-connection master;
+connection primary;
 ALTER TABLE t1 algorithm=inplace, ADD c CHAR(19);
 INSERT INTO t1 values (11,1,"a");
 ALTER TABLE t1 algorithm=inplace, ADD d FLOAT;
@@ -47,39 +47,39 @@ INSERT INTO t1 VALUES(15, 5,'e', -3.402823466E+38, 456.78, '2007-10-26 12:00:00'
 ALTER TABLE t1 algorithm=inplace, ADD h BINARY(4);
 INSERT INTO t1 VALUES(16, 6,'f', -3.402823466E+38, 456.78, '2007-10-26 12:00:00',"abcd");
 --echo **********************
---echo "Master data"
+--echo "Primary data"
 --echo **********************
 SELECT * FROM t1 ORDER BY c1;
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 --echo **********************
---echo "Slave data"
+--echo "Replica data"
 --echo **********************
 SELECT * FROM t1 ORDER BY c1;
  
 #
 # Update the new added column
 #
-connection master;
+connection primary;
 UPDATE t1 SET c = "abcdef", d = 3.402823466E+38, f = 987.65, g = '2007-10-22 22:22:22', h = "aaaa";
 --echo ***************************
---echo "Master Data After Update"
+--echo "Primary Data After Update"
 --echo ***************************
 SELECT * FROM t1 ORDER BY c1;
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 --echo *************************
---echo "Slave Data After Update"
+--echo "Replica Data After Update"
 --echo *************************
 SELECT * FROM t1 ORDER BY c1;
 
-connection master;
+connection primary;
 DROP TABLE t1;
 
 --echo *************************************************
 --echo * Insert And Update New Added Columns With Commit
 --echo *************************************************
-connection master;
+connection primary;
 CREATE TABLE t1 (a INT UNSIGNED KEY, b INT UNSIGNED) ROW_FORMAT=DYNAMIC ENGINE NDB;
 INSERT INTO t1 VALUES(1,1),(2,2);
 BEGIN;
@@ -88,17 +88,17 @@ INSERT INTO t1 VALUES (3,0,'3','3','3'),(4,0,'4','4','4'),(5,0,null,null,null);
 UPDATE t1 SET c = 'aaa', d = 'bbb', e = 'ccc' WHERE a = 4;
 COMMIT;
 SELECT * FROM t1 ORDER BY a;
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 --echo *************************
---echo "Slave Data With Commit
+--echo "Replica Data With Commit
 --echo *************************
 SELECT * FROM t1 ORDER BY a;
 
 --echo ***************************************************
 --echo * Insert And Update New Added Columns With Rollback
 --echo ***************************************************
-connection master;
+connection primary;
 DROP TABLE t1;
 CREATE TABLE t1 (a INT UNSIGNED KEY, b INT UNSIGNED) ROW_FORMAT=DYNAMIC ENGINE NDB;
 INSERT INTO t1 VALUES(1,1),(2,2);
@@ -109,15 +109,15 @@ UPDATE t1 SET c = 'aaa', d = 'bbb', e = 'ccc' WHERE a = 4;
 ROLLBACK;
 SHOW CREATE TABLE t1;
 SELECT * FROM t1 ORDER BY a;
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 --echo *************************
---echo "Slave Data With Rollback
+--echo "Replica Data With Rollback
 --echo *************************
 SHOW CREATE TABLE t1;
 SELECT * FROM t1 ORDER BY a;
 
 # cleanup
---connection master
+--connection primary
 DROP TABLE t1;
 -- source include/rpl_end.inc

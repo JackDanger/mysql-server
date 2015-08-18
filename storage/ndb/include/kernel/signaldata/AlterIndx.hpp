@@ -55,7 +55,7 @@ struct AlterIndxRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     IndexNotFound = 4243,
     IndexExists = 4244,
     BadRequestType = 4247,
@@ -75,7 +75,7 @@ struct AlterIndxRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 

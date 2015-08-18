@@ -631,7 +631,7 @@ bool sp_head::execute(THD *thd, bool merge_da_on_success)
     goto done;
   }
 
-  thd->is_slave_error= 0;
+  thd->is_replica_error= 0;
   old_arena= thd->stmt_arena;
 
   /* Push a new Diagnostics Area. */
@@ -920,8 +920,8 @@ bool sp_head::execute(THD *thd, bool merge_da_on_success)
   DBUG_ASSERT(thd->get_stmt_da() == caller_da);
 
  done:
-  DBUG_PRINT("info", ("err_status: %d  killed: %d  is_slave_error: %d  report_error: %d",
-                      err_status, thd->killed, thd->is_slave_error,
+  DBUG_PRINT("info", ("err_status: %d  killed: %d  is_replica_error: %d  report_error: %d",
+                      err_status, thd->killed, thd->is_replica_error,
                       thd->is_error()));
 
   if (thd->killed)

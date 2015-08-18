@@ -1,12 +1,12 @@
-# Setup semisync master
+# Setup semisync primary
 # Usage:
-# [--let $semisync_master_enabled = [ON|OFF]]
-# --source include/install_semisync_master.inc
+# [--let $semisync_primary_enabled = [ON|OFF]]
+# --source include/install_semisync_primary.inc
 #
-# $semisync_master_enabled is optional. semisync_master will be enabled if
-# $semisync_master_enabled is not set.
+# $semisync_primary_enabled is optional. semisync_primary will be enabled if
+# $semisync_primary_enabled is not set.
 
---let $include_filename= install_semisync_master.inc
+--let $include_filename= install_semisync_primary.inc
 --source include/begin_include_file.inc
 
 --source include/not_embedded.inc
@@ -14,15 +14,15 @@
 
 --disable_query_log
 
---let $value = query_get_value(show variables like 'rpl_semi_sync_master_enabled', Value, 1)
+--let $value = query_get_value(show variables like 'rpl_semi_sync_primary_enabled', Value, 1)
 if ($value == No such row)
 {
-  eval INSTALL PLUGIN rpl_semi_sync_master SONAME '$SEMISYNC_MASTER_PLUGIN';
-  if ($semisync_master_enabled == '')
+  eval INSTALL PLUGIN rpl_semi_sync_primary SONAME '$SEMISYNC_PRIMARY_PLUGIN';
+  if ($semisync_primary_enabled == '')
   {
-    --let $semisync_master_enabled= ON
+    --let $semisync_primary_enabled= ON
   }
-  eval SET GLOBAL rpl_semi_sync_master_enabled = $semisync_master_enabled;
+  eval SET GLOBAL rpl_semi_sync_primary_enabled = $semisync_primary_enabled;
 }
 
 SET @save_sql_log_bin= @@sql_log_bin;

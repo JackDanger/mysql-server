@@ -2,13 +2,13 @@
 # (LOAD DATA LOCAL INFILE is not written to the binlog
 # the same way as LOAD DATA INFILE : Append_blocks are smaller).
 # In MySQL 4.0 <4.0.12 there were 2 bugs with LOAD DATA LOCAL INFILE :
-# - the loaded file was not written entirely to the master's binlog,
+# - the loaded file was not written entirely to the primary's binlog,
 # only the first 4KB, 8KB or 16KB usually.
 # - the loaded file's first line was not written entirely to the
-# master's binlog (1st char was absent)
+# primary's binlog (1st char was absent)
 --source include/not_group_replication_plugin.inc
 source include/not_gtid_enabled.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 create table t1(a int);
 let $1=10000;
@@ -29,11 +29,11 @@ truncate table t1;
 --replace_result $MYSQLD_DATADIR MYSQLD_DATADIR
 eval load data local infile '$MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile' into table t1;
 --remove_file $MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select a,count(*) from t1 group by a;
-connection master;
+connection primary;
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 4.1 tests
 
@@ -42,7 +42,7 @@ drop table t1;
 # we met duplicates in tables to which we are adding rows.
 # (It supposed that LOAD DATA LOCAL ignores such errors)
 #
-connection master;
+connection primary;
 create table t1(a int);
 insert into t1 values (1), (2), (2), (3);
 --replace_result $MYSQLD_DATADIR MYSQLD_DATADIR
@@ -53,15 +53,15 @@ create table t1(a int primary key);
 eval load data local infile '$MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile' into table t1;
 --remove_file $MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile
 SELECT * FROM t1 ORDER BY a;
-save_master_pos;
-connection slave;
-sync_with_master;
+save_primary_pos;
+connection replica;
+sync_with_primary;
 SELECT * FROM t1 ORDER BY a;
-connection master;
+connection primary;
 drop table t1;
-save_master_pos;
-connection slave;
-sync_with_master;
+save_primary_pos;
+connection replica;
+sync_with_primary;
 
 
 #
@@ -69,8 +69,8 @@ sync_with_master;
 #
 --echo ==== Bug22504 Initialize ====
 
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 
 SET sql_mode='ignore_space';
 CREATE TABLE t1(a int);
@@ -83,26 +83,26 @@ eval load data local infile '$MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile' i
 --remove_file $MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile
 SELECT * FROM t1 ORDER BY a;
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY a;
 
 --echo ==== Clean up ====
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 DROP TABLE t1;
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 
 --echo
 --echo Bug #43746:
 --echo "return wrong query string when parse 'load data infile' sql statement"
 --echo
 
---echo [master]
-connection master;
+--echo [primary]
+connection primary;
 let $MYSQLD_DATADIR= `select @@datadir`;
 SELECT @@SESSION.sql_mode INTO @old_mode;
 
@@ -150,16 +150,16 @@ SET sql_mode='PIPES_AS_CONCAT,ANSI_QUOTES,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIE
 --replace_result $MYSQLD_DATADIR MYSQLD_DATADIR
 eval LOAD DATA LOCAL INFILE '$MYSQLD_DATADIR/bug43746.sql' INTO TABLE t1;
 
---echo [slave]
---source include/sync_slave_sql_with_master.inc
+--echo [replica]
+--source include/sync_replica_sql_with_primary.inc
 
 --echo
 --echo  Bug #59267:
---echo "LOAD DATA LOCAL INFILE not executed on slave with SBR"
+--echo "LOAD DATA LOCAL INFILE not executed on replica with SBR"
 --echo
 
---echo [master]
-connection master;
+--echo [primary]
+connection primary;
 
 --replace_result $MYSQLD_DATADIR MYSQLD_DATADIR
 eval SELECT * INTO OUTFILE '$MYSQLD_DATADIR/bug59267.sql' FROM t1;
@@ -168,15 +168,15 @@ TRUNCATE TABLE t1;
 --replace_result $MYSQLD_DATADIR MYSQLD_DATADIR
 eval LOAD DATA LOCAL INFILE '$MYSQLD_DATADIR/bug59267.sql' INTO TABLE t1;
 
-SELECT 'Master', COUNT(*) FROM t1;
+SELECT 'Primary', COUNT(*) FROM t1;
 
---echo [slave]
---source include/sync_slave_sql_with_master.inc
-SELECT 'Slave', COUNT(*) FROM t1;
+--echo [replica]
+--source include/sync_replica_sql_with_primary.inc
+SELECT 'Replica', COUNT(*) FROM t1;
 
 # cleanup
---echo [master]
-connection master;
+--echo [primary]
+connection primary;
 
 --remove_file $MYSQLD_DATADIR/bug43746.sql
 --remove_file $MYSQLD_DATADIR/bug59267.sql
@@ -184,18 +184,18 @@ connection master;
 DROP TABLE t1;
 SET SESSION sql_mode=@old_mode;
 
---echo [slave]
---source include/sync_slave_sql_with_master.inc
+--echo [replica]
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 
 --echo
 --echo Bug #60580/#11902767:
---echo "statement improperly replicated crashes slave sql thread"
+--echo "statement improperly replicated crashes replica sql thread"
 --echo
 
---echo [master]
-connection master;
+--echo [primary]
+connection primary;
 let $MYSQLD_DATADIR= `select @@datadir`;
 
 CREATE TABLE t1(f1 INT, f2 INT);
@@ -220,23 +220,23 @@ SELECT * FROM t1;
 
 sleep 1;
 
---echo [slave]
---source include/sync_slave_sql_with_master.inc
+--echo [replica]
+--source include/sync_replica_sql_with_primary.inc
 
 SELECT * FROM t1;
 
 --remove_file $MYSQLD_DATADIR/bug60580.csv
 
---echo [master]
-connection master;
+--echo [primary]
+connection primary;
 
 DROP VIEW v1;
 DROP TABLE t1, t2, t3;
 
---echo [slave]
---source include/sync_slave_sql_with_master.inc
+--echo [replica]
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 --source include/rpl_end.inc
 
 --echo # End of 5.1 tests

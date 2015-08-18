@@ -455,7 +455,7 @@ struct ServerHelloDone : public HandShakeBase {
 };
 
 
-struct PreMasterSecret {
+struct PrePrimarySecret {
     opaque  random_[SECRET_LEN];     // first two bytes Protocol Version
 };
 
@@ -469,12 +469,12 @@ struct ClientKeyBase : public virtual_base {
 };
 
 
-class EncryptedPreMasterSecret : public ClientKeyBase {
+class EncryptedPrePrimarySecret : public ClientKeyBase {
     opaque* secret_;
     int     length_;
 public:
-    EncryptedPreMasterSecret();
-    ~EncryptedPreMasterSecret();
+    EncryptedPrePrimarySecret();
+    ~EncryptedPrePrimarySecret();
 
     void    build(SSL&);
     void    read(SSL&, input_buffer&);
@@ -483,8 +483,8 @@ public:
     void    alloc(int sz);
 private:
     // hide copy and assign
-    EncryptedPreMasterSecret(const EncryptedPreMasterSecret&);           
-    EncryptedPreMasterSecret& operator=(const EncryptedPreMasterSecret&);
+    EncryptedPrePrimarySecret(const EncryptedPrePrimarySecret&);           
+    EncryptedPrePrimarySecret& operator=(const EncryptedPrePrimarySecret&);
 };
 
 
@@ -498,8 +498,8 @@ struct FortezzaKeys : public ClientKeyBase {
     opaque  wrapped_server_write_key_ [12];     // wrapped by the TEK
     opaque  client_write_iv_          [24];      
     opaque  server_write_iv_          [24];
-    opaque  master_secret_iv_         [24];     // IV used to encrypt preMaster
-    opaque  encrypted_preMasterSecret_[48];     // random & crypted by the TEK
+    opaque  primary_secret_iv_         [24];     // IV used to encrypt prePrimary
+    opaque  encrypted_prePrimarySecret_[48];     // random & crypted by the TEK
 };
 
 
@@ -604,8 +604,8 @@ class RandomPool;  // forward for connection
 
 // SSL Connection defined on page 11
 struct Connection {
-    opaque          *pre_master_secret_;
-    opaque          master_secret_[SECRET_LEN];
+    opaque          *pre_primary_secret_;
+    opaque          primary_secret_[SECRET_LEN];
     opaque          client_random_[RAN_LEN];
     opaque          server_random_[RAN_LEN];
     opaque          sessionID_[ID_LEN];
@@ -617,9 +617,9 @@ struct Connection {
     opaque          server_write_IV_[AES_IV_SZ];
     uint32          sequence_number_;
     uint32          peer_sequence_number_;
-    uint32          pre_secret_len_;                   // pre master length
+    uint32          pre_secret_len_;                   // pre primary length
     bool            send_server_key_;                  // server key exchange?
-    bool            master_clean_;                     // master secret clean?
+    bool            primary_clean_;                     // primary secret clean?
     bool            TLS_;                              // TLSv1 or greater
     bool            TLSv1_1_;                          // TLSv1.1 or greater
     bool            sessionID_Set_;                    // do we have a session
@@ -632,8 +632,8 @@ struct Connection {
     ~Connection();
 
     void AllocPreSecret(uint sz);
-    void CleanPreMaster();
-    void CleanMaster();
+    void CleanPrePrimary();
+    void CleanPrimary();
     void TurnOffTLS();
     void TurnOffTLS1_1();
 private:

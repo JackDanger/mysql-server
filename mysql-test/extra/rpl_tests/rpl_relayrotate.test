@@ -1,20 +1,20 @@
 # When the relay log gets rotated while the I/O thread
 # is reading a transaction, the transaction spans on two or more
-# relay logs. If STOP SLAVE occurs while the SQL thread is
+# relay logs. If STOP REPLICA occurs while the SQL thread is
 # executing a part of the transaction in the non-first relay logs,
-# we test if START SLAVE will resume in the beginning of the
+# we test if START REPLICA will resume in the beginning of the
 # transaction (i.e., step back to the first relay log)
   
-# The slave is started with max_binlog_size=16384 bytes,
+# The replica is started with max_binlog_size=16384 bytes,
 # to force many rotations (approximately 30 rotations)
 
-# We have to sync with master, to ensure slave had time to start properly
+# We have to sync with primary, to ensure replica had time to start properly
 # before we stop it. If not, we get errors about UNIX_TIMESTAMP() in the log.
-connection master;
---source include/sync_slave_sql_with_master.inc
-connection slave;
-stop slave;
-connection master;
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
+stop replica;
+connection primary;
 --disable_warnings
 eval create table t1 (a int) engine=$engine_type;
 --enable_warnings
@@ -29,37 +29,37 @@ while ($1)
  dec $1;
 }
 commit;
-# This will generate a 500kB master's binlog,
-# which corresponds to 30 slave's relay logs.
+# This will generate a 500kB primary's binlog,
+# which corresponds to 30 replica's relay logs.
 enable_query_log;
-save_master_pos;
-connection slave;
-reset slave;
-start slave;
+save_primary_pos;
+connection replica;
+reset replica;
+start replica;
 # We wait 1 sec for the SQL thread to be somewhere in
 # the middle of the transaction, hopefully not in
 # the first relay log, and hopefully before the COMMIT.
 # Usually it stops when the SQL thread is around the 15th relay log.
-# We cannot use MASTER_POS_WAIT() as master's position
-# increases only when the slave executes the COMMIT.
-# Note that except when using Valgrind, 1 second is enough for the I/O slave
-# thread to fetch the whole master's binlog.
+# We cannot use PRIMARY_POS_WAIT() as primary's position
+# increases only when the replica executes the COMMIT.
+# Note that except when using Valgrind, 1 second is enough for the I/O replica
+# thread to fetch the whole primary's binlog.
 sleep 1;
-stop slave;
+stop replica;
 # We suppose the SQL thread stopped before COMMIT.
 # If so the transaction was rolled back
 # and the table is now empty.
 # Now restart
-start slave;
+start replica;
 # And see if the table contains $loop_max
 # which proves that the transaction restarted at
 # the right place.
 # We must wait for the transaction to commit before
-# reading, with a sync_with_master.
-sync_with_master;
+# reading, with a sync_with_primary.
+sync_with_primary;
 --replace_result $loop_max loop_max
 select max(a) from t1;
-connection master;
+connection primary;
 
 # The following DROP is a very important cleaning task:
 # imagine the next test is run with --skip-innodb: it will do
@@ -71,9 +71,9 @@ connection master;
 # InnoDB: Error: table t1 already exists in InnoDB internal
 # InnoDB: data dictionary. Have you deleted the .frm file etc
 drop table t1;
-# wait until this drop is executed on slave
-save_master_pos;
-connection slave;
-sync_with_master;
+# wait until this drop is executed on replica
+save_primary_pos;
+connection replica;
+sync_with_primary;
 
 # End of 4.1 tests

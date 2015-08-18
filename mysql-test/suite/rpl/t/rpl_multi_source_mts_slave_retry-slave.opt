@@ -1,2 +1,2 @@
---master-info-repository=TABLE
+--primary-info-repository=TABLE
 --relay-log-info-repository=TABLE

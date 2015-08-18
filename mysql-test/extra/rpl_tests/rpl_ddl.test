@@ -1,11 +1,11 @@
 ################# extra/rpl_tests/rpl_ddl.test ########################
 #                                                                     #
 # DDL statements (sometimes with implicit COMMIT) and other stuff     #
-# executed on the master and it's propagation into the slave.         #
+# executed on the primary and it's propagation into the replica.         #
 #                                                                     #
 # The variables                                                       #
 #    $engine_type       -- storage engine to be tested/used for the   #
-#                          permanent tables within the master         #
+#                          permanent tables within the primary         #
 #    $temp_engine_type  -- storage engine which supports TEMPORARY    #
 #                          tables <> $engine_type                     #
 #                          $temp_engine_type must point to an all     #
@@ -30,7 +30,7 @@
 # have to be set before sourcing this script.                         #
 #                                                                     #
 # General assumption about the ideal replication behaviour:           #
-#    Whatever on the master is executed the content of the slave must #
+#    Whatever on the primary is executed the content of the replica must #
 #    be in sync with it.                                              #
 #                                                                     #
 #    Tests of special interest:                                       #
@@ -38,20 +38,20 @@
 #       This is also of interest outside of replication.              #
 #    b) Transactions modifying table content ending with              #
 #       - explicit COMMIT or ROLLBACK                                 #
-#       - implicit COMMIT because the connection to the master        #
+#       - implicit COMMIT because the connection to the primary        #
 #         executed a corresponding DDL statement or runs in           #
 #         AUTOCOMMIT mode                                             #
 #       - something similar to "implicit COMMIT" if the storage       #
-#         engine (master) is not transactional                        #
+#         engine (primary) is not transactional                        #
 #    c) Command which change no data like SELECT or SHOW              #
-#       They do not change anything within the master but             #
-#       this must be also valid for the slave.                        #
+#       They do not change anything within the primary but             #
+#       this must be also valid for the replica.                        #
 #                                                                     #
 #######################################################################
 
 # Last update:
-# 2007-02-12 ML: - slave needs AUTOCOMMIT = 1, because we want to check only
-#                  the propagation of actions of the master connection.
+# 2007-02-12 ML: - replica needs AUTOCOMMIT = 1, because we want to check only
+#                  the propagation of actions of the primary connection.
 #                - replace comments via SQL by "--echo ..."
 #                - remove some bugs within the testscripts
 #                - remove the use of include/rpl_stmt_seq2.inc
@@ -66,12 +66,12 @@
 #
 #    Typical test architecture (--> include/rpl_stmt_seq.inc)
 #    --------------------------------------------------------
-#    1. Master (no AUTOCOMMIT!): INSERT INTO mysqltest1.t1 without commit
-#    2. Master and slave: Check the content of mysqltest1.t1
-#    3. Master (no AUTOCOMMIT!): EXECUTE the statement to be tested
-#    4. Master and slave: Check the content of mysqltest1.t1
-#    5. Master (no AUTOCOMMIT!): ROLLBACK
-#    6. Master and slave: Check the content of mysqltest1.t1
+#    1. Primary (no AUTOCOMMIT!): INSERT INTO mysqltest1.t1 without commit
+#    2. Primary and replica: Check the content of mysqltest1.t1
+#    3. Primary (no AUTOCOMMIT!): EXECUTE the statement to be tested
+#    4. Primary and replica: Check the content of mysqltest1.t1
+#    5. Primary (no AUTOCOMMIT!): ROLLBACK
+#    6. Primary and replica: Check the content of mysqltest1.t1
 #       If the previous into mysqltest1.t1 inserted row is visible,
 #       than the statement to be tested caused an explicit COMMIT
 #       (statement = COMMIT) or an implicit COMMIT (example CREATE TABLE).
@@ -87,22 +87,22 @@
 #       avoided if possible. The only known exception is around LOCK TABLE.
 #               
 #    2. The test logics needs for
-#           master connection: AUTOCOMMIT = 0
-#           slave  connection: AUTOCOMMIT = 1
-#       The master connection  is the actor and the slave connection is 
-#       only an observer. I.e. the slave connection must not influence
-#       the activities of master connection.
+#           primary connection: AUTOCOMMIT = 0
+#           replica  connection: AUTOCOMMIT = 1
+#       The primary connection  is the actor and the replica connection is 
+#       only an observer. I.e. the replica connection must not influence
+#       the activities of primary connection.
 #
 #    3. !All! objects to be dropped, renamed, altered ... must be created
 #       before the tests start.
-#       --> less switching of AUTOCOMMIT mode on master side.
+#       --> less switching of AUTOCOMMIT mode on primary side.
 #
 #    4. Never use a test object, which was direct or indirect affected by a
 #       preceding test sequence again.
 #       If one preceding test sequence hits a (sometimes not visible,
 #       because the sql error code of the statement might be 0) bug
 #       and these rules are ignored, a following test sequence might earn ugly
-#       effects like failing 'sync_slave_with_master', crashes of the slave or
+#       effects like failing 'sync_replica_with_primary', crashes of the replica or
 #       abort of the test case etc.. This means during analysis the first look
 #       points into a totally wrong area.
 #       Except table mysqltest1.t1 where ONLY DML is allowed.
@@ -112,15 +112,15 @@
 #         the results of these tests.
 #
 # ML: Some maybe banal hints:
-#     1. The fact that we have here a master - slave replication does
+#     1. The fact that we have here a primary - replica replication does
 #        not cause that many general MySQL properties do not apply.
 #        Example:
-#        The connection to the slave is just a simple session and not a however
-#        magic working "copy" of the master session or something similar.
+#        The connection to the replica is just a simple session and not a however
+#        magic working "copy" of the primary session or something similar.
 #        - TEMPORARY TABLES and @variables are session specific
-#        - the slave session cannot see these things of the master.
-#     2. The slave connection must not call sync_slave_with_master.
-#     3. SHOW STATUS SLAVE must be run within the slave connection.
+#        - the replica session cannot see these things of the primary.
+#     2. The replica connection must not call sync_replica_with_primary.
+#     3. SHOW STATUS REPLICA must be run within the replica connection.
 #     4. Testcase analysis becomes much more comfortable if 
 #        $show_binlog within include/rpl_stmt_seq.inc is set to 1.
 #
@@ -128,13 +128,13 @@
 ###############################################################
 # Some preparations
 ###############################################################
-# The sync_slave_with_master is needed to make the xids deterministic.
+# The sync_replica_with_primary is needed to make the xids deterministic.
 --source include/have_myisam.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 SET AUTOCOMMIT = 1;
 #
 # 2. CREATE all objects needed
@@ -146,18 +146,18 @@ CREATE DATABASE mysqltest2;
 eval CREATE TABLE mysqltest1.t1 (f1 BIGINT) ENGINE=$engine_type;
 # Prevent Bug#26687 rpl_ddl test fails if run with --innodb option
 # The testscript (suite/rpl/rpl_ddl.test) + the expected result need that the
-# slave uses MyISAM for the table mysqltest.t1.
+# replica uses MyISAM for the table mysqltest.t1.
 # This is not valid in case of suite/rpl_ndb/rpl_ndb_ddl.test which sources
 # also this script.
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 if (`SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES
      WHERE TABLE_SCHEMA = 'mysqltest1' AND TABLE_NAME = 't1'
            AND ENGINE <> 'MyISAM' AND '$engine_type' <> 'NDB'`)
 {
-   skip This test needs on slave side: InnoDB disabled, default engine: MyISAM;
+   skip This test needs on replica side: InnoDB disabled, default engine: MyISAM;
 }
-connection master;
+connection primary;
 INSERT INTO mysqltest1.t1 SET f1= 0;
 eval CREATE TABLE mysqltest1.t2 (f1 BIGINT) ENGINE=$engine_type;
 eval CREATE TABLE mysqltest1.t3 (f1 BIGINT) ENGINE=$engine_type;
@@ -182,20 +182,20 @@ eval CREATE TABLE mysqltest1.t19 (f1 BIGINT) ENGINE=$engine_type;
 eval CREATE TEMPORARY TABLE mysqltest1.t23 (f1 BIGINT) ENGINE=$temp_engine_type;
 
 #
-# 3. master sessions: never do AUTOCOMMIT
-#    slave  sessions: do AUTOCOMMIT
+# 3. primary sessions: never do AUTOCOMMIT
+#    replica  sessions: do AUTOCOMMIT
 #
 SET AUTOCOMMIT = 0;
 use mysqltest1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SET AUTOCOMMIT = 1;
 use mysqltest1;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 
 # We don't want to abort the whole test if one statement sent
@@ -209,13 +209,13 @@ connection master;
 ###############################################################
 
 let $my_stmt= SELECT 1;
-let $my_master_commit= false;
-let $my_slave_commit= false;
+let $my_primary_commit= false;
+let $my_replica_commit= false;
 --source include/rpl_stmt_seq.inc
 
 let $my_stmt= SELECT COUNT(*) FROM t1;
-let $my_master_commit= false;
-let $my_slave_commit= false;
+let $my_primary_commit= false;
+let $my_replica_commit= false;
 --source include/rpl_stmt_seq.inc
 
 ###############################################################
@@ -224,13 +224,13 @@ let $my_slave_commit= false;
 ###############################################################
 
 let $my_stmt= COMMIT;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 
 let $my_stmt= ROLLBACK;
-let $my_master_commit= false;
-let $my_slave_commit= false;
+let $my_primary_commit= false;
+let $my_replica_commit= false;
 --source include/rpl_stmt_seq.inc
 
 ###############################################################
@@ -238,19 +238,19 @@ let $my_slave_commit= false;
 ###############################################################
 
 let $my_stmt= SET AUTOCOMMIT=1;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SET AUTOCOMMIT=0;
 
 let $my_stmt= START TRANSACTION;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 
 let $my_stmt= BEGIN;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 
 ###############################################################
@@ -258,83 +258,83 @@ let $my_slave_commit= true;
 ###############################################################
 
 let $my_stmt= DROP TABLE mysqltest1.t2;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW TABLES LIKE 't2';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW TABLES LIKE 't2';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= DROP TEMPORARY TABLE mysqltest1.t23;
-let $my_master_commit= false;
-let $my_slave_commit= false;
+let $my_primary_commit= false;
+let $my_replica_commit= false;
 --source include/rpl_stmt_seq.inc
 SHOW TABLES LIKE 't23';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW TABLES LIKE 't23';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= RENAME TABLE mysqltest1.t3 to mysqltest1.t20;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW TABLES LIKE 't20';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW TABLES LIKE 't20';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= ALTER TABLE mysqltest1.t4 ADD column f2 BIGINT;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 describe mysqltest1.t4;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 describe mysqltest1.t4;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= CREATE TABLE mysqltest1.t21 (f1 BIGINT) ENGINE= $engine_type;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 
 let $engine='';
 let $eng_type='';
 
 let $my_stmt= CREATE TEMPORARY TABLE mysqltest1.t22 (f1 BIGINT) ENGINE=$temp_engine_type;
-let $my_master_commit= false;
-let $my_slave_commit= false;
+let $my_primary_commit= false;
+let $my_replica_commit= false;
 --source include/rpl_stmt_seq.inc
 
 let $my_stmt= TRUNCATE TABLE mysqltest1.t7;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SELECT * FROM mysqltest1.t7;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SELECT * FROM mysqltest1.t7;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 ###############################################################
 # Cases with LOCK/UNLOCK
@@ -348,15 +348,15 @@ connection master;
 #        SELECT MAX(...) FROM mysqltest1.t1 is
 #          ERROR HY000: Table 't1' was not locked with LOCK TABLES
 let $my_stmt= LOCK TABLES mysqltest1.t1 WRITE, mysqltest1.t8 READ;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 UNLOCK TABLES;
 
 # No prior locking
 let $my_stmt= UNLOCK TABLES;
-let $my_master_commit= false;
-let $my_slave_commit= false;
+let $my_primary_commit= false;
+let $my_replica_commit= false;
 --source include/rpl_stmt_seq.inc
 
 # With prior read locking
@@ -365,15 +365,15 @@ let $my_slave_commit= false;
 #    tries to insert into t1.
 LOCK TABLES mysqltest1.t1 READ;
 let $my_stmt= UNLOCK TABLES;
-let $my_master_commit= false;
-let $my_slave_commit= false;
+let $my_primary_commit= false;
+let $my_replica_commit= false;
 --source include/rpl_stmt_seq.inc
 
 # With prior write locking
 LOCK TABLES mysqltest1.t1 WRITE, mysqltest1.t8 READ;
 let $my_stmt= UNLOCK TABLES;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 
 ###############################################################
@@ -381,60 +381,60 @@ let $my_slave_commit= true;
 ###############################################################
 
 let $my_stmt= DROP INDEX my_idx6 ON mysqltest1.t6;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW INDEX FROM mysqltest1.t6;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW INDEX FROM mysqltest1.t6;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= CREATE INDEX my_idx5 ON mysqltest1.t5(f1);
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW INDEX FROM mysqltest1.t5;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW INDEX FROM mysqltest1.t5;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 ###############################################################
 # Cases with DATABASE
 ###############################################################
 
 let $my_stmt= DROP DATABASE mysqltest2;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW DATABASES LIKE "mysqltest2";
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW DATABASES LIKE "mysqltest2";
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= CREATE DATABASE mysqltest3;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW DATABASES LIKE "mysqltest3";
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW DATABASES LIKE "mysqltest3";
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 # End of 4.1 tests
 
@@ -442,164 +442,164 @@ connection master;
 # Cases with STORED PROCEDUREs
 ###############################################################
 let $my_stmt= CREATE PROCEDURE p1() READS SQL DATA SELECT "this is p1";
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 --vertical_results
 --replace_column 5 # 6 #
 SHOW PROCEDURE STATUS LIKE 'p1';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 --replace_column 5 # 6 #
 SHOW PROCEDURE STATUS LIKE 'p1';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 --horizontal_results
 
 let $my_stmt= ALTER PROCEDURE p1 COMMENT "I have been altered";
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 --vertical_results
 --replace_column 5 # 6 #
 SHOW PROCEDURE STATUS LIKE 'p1';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 --replace_column 5 # 6 #
 SHOW PROCEDURE STATUS LIKE 'p1';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 --horizontal_results
 
 let $my_stmt= DROP PROCEDURE p1;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 --vertical_results
 SHOW PROCEDURE STATUS LIKE 'p1';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW PROCEDURE STATUS LIKE 'p1';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 --horizontal_results
 
 ###############################################################
 # Cases with VIEWs
 ###############################################################
 let $my_stmt= CREATE OR REPLACE VIEW v1 as select * from t1;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW CREATE VIEW v1;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW CREATE VIEW v1;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= ALTER VIEW v1 AS select f1 from t1;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW CREATE VIEW v1;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW CREATE VIEW v1;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= DROP VIEW IF EXISTS v1;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 --error 1146
 SHOW CREATE VIEW v1;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 --error 1146
 SHOW CREATE VIEW v1;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 ###############################################################
 # Cases with TRIGGERs
 ###############################################################
 let $my_stmt= CREATE TRIGGER trg1 BEFORE INSERT ON t1 FOR EACH ROW SET @a:=1;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW TRIGGERS;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW TRIGGERS;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= DROP TRIGGER trg1;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SHOW TRIGGERS;
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SHOW TRIGGERS;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 ###############################################################
 # Cases with USERs
 ###############################################################
 let $my_stmt= CREATE USER user1@localhost;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SELECT user FROM mysql.user WHERE user = 'user1';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SELECT user FROM mysql.user WHERE user = 'user1';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= RENAME USER user1@localhost TO rename1@localhost;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SELECT user FROM mysql.user WHERE user = 'rename1';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SELECT user FROM mysql.user WHERE user = 'rename1';
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 
 let $my_stmt= DROP USER rename1@localhost;
-let $my_master_commit= true;
-let $my_slave_commit= true;
+let $my_primary_commit= true;
+let $my_replica_commit= true;
 --source include/rpl_stmt_seq.inc
 SELECT user FROM mysql.user WHERE user = 'rename1';
 --echo
---echo -------- switch to slave --------
-connection slave;
+--echo -------- switch to replica --------
+connection replica;
 SELECT user FROM mysql.user WHERE user = 'rename1';
 
 ###############################################################
@@ -607,8 +607,8 @@ SELECT user FROM mysql.user WHERE user = 'rename1';
 ###############################################################
 use test;
 --echo
---echo -------- switch to master -------
-connection master;
+--echo -------- switch to primary -------
+connection primary;
 DROP DATABASE mysqltest1;
 # mysqltest2 was alreday DROPPED some tests before.
 DROP DATABASE mysqltest3;

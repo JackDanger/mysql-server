@@ -100,7 +100,7 @@ private:
   Discrete_interval        *tail;
   /**
     When many intervals are provided at the beginning of the execution of a
-    statement (in a replication slave or SET INSERT_ID), "current" points to
+    statement (in a replication replica or SET INSERT_ID), "current" points to
     the interval being consumed by the thread now (so "current" goes from
     "head" to "tail" then to NULL).
   */

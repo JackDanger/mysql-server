@@ -362,19 +362,19 @@ TARGET_LINK_LIBRARIES(binlog binlogevents_static)
 SET (RPL_SOURCE rpl_handler.cc rpl_tblmap.cc rpl_context.cc)
 ADD_DEPENDENCIES(binlog GenError)
 ADD_LIBRARY(rpl ${RPL_SOURCE})
-SET (MASTER_SOURCE rpl_master.cc rpl_binlog_sender.cc)
+SET (PRIMARY_SOURCE rpl_primary.cc rpl_binlog_sender.cc)
 ADD_DEPENDENCIES(rpl GenError)
-ADD_LIBRARY(master ${MASTER_SOURCE})
-ADD_DEPENDENCIES(master GenError)
-SET (SLAVE_SOURCE rpl_slave.cc rpl_reporting.cc rpl_mi.cc rpl_rli.cc
+ADD_LIBRARY(primary ${PRIMARY_SOURCE})
+ADD_DEPENDENCIES(primary GenError)
+SET (REPLICA_SOURCE rpl_replica.cc rpl_reporting.cc rpl_mi.cc rpl_rli.cc
 		  rpl_info_handler.cc rpl_info_file.cc
                   rpl_info_table.cc rpl_info_values.cc rpl_info.cc
                   rpl_info_factory.cc rpl_info_table_access.cc dynamic_ids.cc
                   rpl_rli_pdb.cc rpl_info_dummy.cc rpl_mts_submode.cc
-                  rpl_slave_commit_order_manager.cc rpl_msr.cc
+                  rpl_replica_commit_order_manager.cc rpl_msr.cc
                   rpl_trx_boundary_parser.cc rpl_channel_service_interface.cc)
-ADD_LIBRARY(slave ${SLAVE_SOURCE})
-ADD_DEPENDENCIES(slave GenError)
+ADD_LIBRARY(replica ${REPLICA_SOURCE})
+ADD_DEPENDENCIES(replica GenError)
 
 ######################### GUnit Lib #################################
 
@@ -433,7 +433,7 @@ IF(NOT WITHOUT_DYNAMIC_PLUGINS)
     # incremental appears to crash from time to time,if used with /DEF option
     SET_TARGET_PROPERTIES(mysqld PROPERTIES LINK_FLAGS "${mysqld_link_flags} /DEF:mysqld.def /INCREMENTAL:NO")
 
-    FOREACH (CORELIB sql binlog slave mysys mysys_ssl dbug strings binlogevents_static)
+    FOREACH (CORELIB sql binlog replica mysys mysys_ssl dbug strings binlogevents_static)
       GET_TARGET_PROPERTY(LOC ${CORELIB} LOCATION)
       FILE(TO_NATIVE_PATH ${LOC} LOC)
       SET (LIB_LOCATIONS ${LIB_LOCATIONS} ${LOC}) 
@@ -451,7 +451,7 @@ IF(NOT WITHOUT_DYNAMIC_PLUGINS)
 ENDIF()
 
 SET_TARGET_PROPERTIES(mysqld PROPERTIES ENABLE_EXPORTS TRUE) 
-TARGET_LINK_LIBRARIES(mysqld sql binlog rpl master slave sql mysys mysys_ssl binlogevents_static)
+TARGET_LINK_LIBRARIES(mysqld sql binlog rpl primary replica sql mysys mysys_ssl binlogevents_static)
 
 # Provide plugins with minimal set of libraries
 SET(INTERFACE_LIBS ${LIBRT})

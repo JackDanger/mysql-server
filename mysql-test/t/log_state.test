@@ -108,7 +108,7 @@ show variables like 'log_output';
 
 # Can't set general_log_file to a non existing file
 --error ER_WRONG_VALUE_FOR_VAR
-set global general_log_file='/not existing path/log.master';
+set global general_log_file='/not existing path/log.primary';
 
 # Can't set general_log_file to a directory
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
@@ -123,7 +123,7 @@ set global general_log_file='';
 show variables like 'general_log_file';
 set global general_log= OFF;
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
-eval set global general_log_file='$MYSQLTEST_VARDIR/tmp/log.master';
+eval set global general_log_file='$MYSQLTEST_VARDIR/tmp/log.primary';
 set global general_log= ON;
 create table t1(f1 int);
 drop table t1;
@@ -350,4 +350,4 @@ SET global slow_query_log_file = @old_slow_query_log_file;
 
 # Remove the log file that was created in the "default location"
 # i.e var/run
---remove_file $MYSQLTEST_VARDIR/tmp/log.master
+--remove_file $MYSQLTEST_VARDIR/tmp/log.primary

@@ -1,24 +1,24 @@
---echo connect (master,127.0.0.1,root,,test,MASTER_MYPORT);
-connect (master,127.0.0.1,root,,test,$MASTER_MYPORT);
---echo connect (slave,$IPv6,root,,test,SLAVE_MYPORT);
-connect (slave,$IPv6,root,,test,$SLAVE_MYPORT);
---echo connection master;
-connection master;
-reset master;
-source include/show_master_status.inc;
-save_master_pos;
---echo connection slave;
-connection slave;
-reset slave;
-let $master_host= query_get_value(SHOW SLAVE STATUS, Master_Host, 1);
---echo Master-Host: $master_host
-eval change master to master_host='$IPv6';
-let $master_host= query_get_value(SHOW SLAVE STATUS, Master_Host, 1);
---echo Master-Host: $master_host
---echo disconnect slave;
-disconnect slave;
---echo disconnect master;
-disconnect master;
+--echo connect (primary,127.0.0.1,root,,test,PRIMARY_MYPORT);
+connect (primary,127.0.0.1,root,,test,$PRIMARY_MYPORT);
+--echo connect (replica,$IPv6,root,,test,REPLICA_MYPORT);
+connect (replica,$IPv6,root,,test,$REPLICA_MYPORT);
+--echo connection primary;
+connection primary;
+reset primary;
+source include/show_primary_status.inc;
+save_primary_pos;
+--echo connection replica;
+connection replica;
+reset replica;
+let $primary_host= query_get_value(SHOW REPLICA STATUS, Primary_Host, 1);
+--echo Primary-Host: $primary_host
+eval change primary to primary_host='$IPv6';
+let $primary_host= query_get_value(SHOW REPLICA STATUS, Primary_Host, 1);
+--echo Primary-Host: $primary_host
+--echo disconnect replica;
+disconnect replica;
+--echo disconnect primary;
+disconnect primary;
 --echo connection default;
 connection default;
 

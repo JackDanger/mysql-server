@@ -1,23 +1,23 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[connection slave]
-call mtr.add_suppression("Failed to initialize the master info structure");
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[connection replica]
+call mtr.add_suppression("Failed to initialize the primary info structure");
 call mtr.add_suppression("Error during --relay-log-recovery *");
 CREATE TABLE t1 ( n INT);
-RESET MASTER;
-include/stop_slave.inc
-include/wait_for_slave_to_stop.inc
-CHANGE MASTER TO MASTER_PORT=SLAVE_PORT;
-START SLAVE IO_THREAD;
-include/wait_for_slave_io_to_start.inc
+RESET PRIMARY;
+include/stop_replica.inc
+include/wait_for_replica_to_stop.inc
+CHANGE PRIMARY TO PRIMARY_PORT=REPLICA_PORT;
+START REPLICA IO_THREAD;
+include/wait_for_replica_io_to_start.inc
 include/rpl_stop_server.inc [server_number=2]
-include/rpl_start_server.inc [server_number=2 parameters: --skip_slave_start=FALSE --master-info-repository=TABLE --relay-log-info-repository=TABLE --relay-log-recovery=1]
+include/rpl_start_server.inc [server_number=2 parameters: --skip_replica_start=FALSE --primary-info-repository=TABLE --relay-log-info-repository=TABLE --relay-log-recovery=1]
 include/assert_grep.inc [One error should match 'Error during --relay-log-recovery']
-include/rpl_restart_server.inc [server_number=2 parameters: --master-info-repository=TABLE --relay-log-info-repository=TABLE --relay-log-recovery=0]
+include/rpl_restart_server.inc [server_number=2 parameters: --primary-info-repository=TABLE --relay-log-info-repository=TABLE --relay-log-recovery=0]
 DROP TABLE t1;
-change master to master_port=MASTER_PORT;
-include/start_slave.inc
+change primary to primary_port=PRIMARY_PORT;
+include/start_replica.inc
 include/rpl_end.inc

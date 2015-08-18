@@ -16,7 +16,7 @@
 /*
 Read and write locks for Posix threads. All tread must acquire
 all locks it needs through thr_multi_lock() to avoid dead-locks.
-A lock consists of a master lock (THR_LOCK), and lock instances
+A lock consists of a primary lock (THR_LOCK), and lock instances
 (THR_LOCK_DATA).
 Any thread can have any number of lock instances (read and write:s) on
 any lock. All lock instances must be freed.

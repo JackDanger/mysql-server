@@ -1,10 +1,10 @@
 include/rpl_init.inc [topology=1->2->3]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 include/rpl_default_connections.inc
 include/rpl_reset.inc
 ==== Case 1A: Transaction filtered out ====
@@ -28,7 +28,7 @@ INSERT INTO t_ignore_wild VALUES (1, 2);
 DROP TEMPORARY TABLE t_ignore_wild;
 include/gtid_step_assert.inc [count=8, only_count=0]
 include/rpl_sync.inc
-==== Case 1C: database filters on slave applier ====
+==== Case 1C: database filters on replica applier ====
 include/gtid_step_reset.inc
 CREATE DATABASE db_ignore;
 USE db_ignore;
@@ -37,11 +37,11 @@ INSERT INTO t1 VALUES (1);
 USE test;
 include/gtid_step_assert.inc [count=3, only_count=0]
 include/rpl_sync.inc
-include/assert.inc [db_ignore should not be created on slave]
-include/assert.inc [db_ignore should not be created on second slave]
+include/assert.inc [db_ignore should not be created on replica]
+include/assert.inc [db_ignore should not be created on second replica]
 DROP DATABASE db_ignore;
 include/rpl_sync.inc
-==== Case 1D: database filters on slave binary log ====
+==== Case 1D: database filters on replica binary log ====
 include/gtid_step_reset.inc
 CREATE DATABASE db_binlog_ignore;
 USE db_binlog_ignore;
@@ -50,15 +50,15 @@ INSERT INTO t1 VALUES (1);
 USE test;
 include/gtid_step_assert.inc [count=3, only_count=0]
 include/rpl_sync.inc
-include/assert.inc [db_binlog_ignore should not be created on slave]
-include/assert.inc [db_binlog_ignore should not be created on second slave]
+include/assert.inc [db_binlog_ignore should not be created on replica]
+include/assert.inc [db_binlog_ignore should not be created on second replica]
 DROP DATABASE db_binlog_ignore;
 include/rpl_sync.inc
 ==== Case 2A: temp table transaction not logged in row format ====
 ---- Initialize ----
 SET @save.binlog_format= @@global.binlog_format;
 SET @@global.binlog_format= row;
-include/restart_slave.inc
+include/restart_replica.inc
 ---- Test ----
 include/gtid_step_reset.inc
 CREATE TEMPORARY TABLE t2 (a INT);
@@ -74,7 +74,7 @@ SET @@global.binlog_format= @save.binlog_format;
 ---- Initialize ----
 SET @save.binlog_format= @@global.binlog_format;
 SET @@global.binlog_format= row;
-include/restart_slave.inc
+include/restart_replica.inc
 SET @@session.binlog_format= statement;
 CREATE TABLE t1(id INT) ENGINE = InnoDB;
 include/rpl_sync.inc
@@ -86,7 +86,7 @@ include/rpl_sync.inc
 DROP TABLE t1;
 include/rpl_sync.inc
 SET @@global.binlog_format= @save.binlog_format;
-==== Case 3: explicit empty transaction on master ====
+==== Case 3: explicit empty transaction on primary ====
 SET @@SESSION.binlog_format= row;
 include/gtid_step_reset.inc
 SET @@SESSION.GTID_NEXT = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:1';

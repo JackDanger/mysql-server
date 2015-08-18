@@ -27,7 +27,7 @@ top_builddir=../..
 mysql_test_dir=$top_builddir/mysql-test
 examples=$top_builddir/libmysqld/examples
 mysqltest=$examples/mysqltest_embedded
-datadir=$mysql_test_dir/var/master-data
+datadir=$mysql_test_dir/var/primary-data
 test_data_dir=test
 gdb=0
 list=0
@@ -122,8 +122,8 @@ do
         continue
     }
     args="$init_args -v --basedir=$mysql_test_dir/ -R $r -x $t --server-arg=--datadir=$datadir"
-    if test -f "$mysql_test_dir/t/$b-master.opt" ; then
-       args="$args --server-file=t/$b-master.opt"
+    if test -f "$mysql_test_dir/t/$b-primary.opt" ; then
+       args="$args --server-file=t/$b-primary.opt"
     fi
 
     args="$args $test_data_dir"		# Add database last

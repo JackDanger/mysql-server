@@ -1146,8 +1146,8 @@ enum Scenarios
 {
 //  NORMAL,  // Commented to save some time.
   DROP_TABLE,
-  RESTART_MASTER,
-  RESTART_SLAVE,
+  RESTART_PRIMARY,
+  RESTART_REPLICA,
   NUM_SCENARIOS
 };
 
@@ -1156,8 +1156,8 @@ enum Tasks
 {
   WAIT = 0,
   DROP_TABLE_REQ = 1,
-  MASTER_RESTART_REQ = 2,
-  SLAVE_RESTART_REQ = 3
+  PRIMARY_RESTART_REQ = 2,
+  REPLICA_RESTART_REQ = 3
 };
 
 int testWorker(NDBT_Context* ctx, NDBT_Step* step)
@@ -1196,54 +1196,54 @@ int testWorker(NDBT_Context* ctx, NDBT_Step* step)
         ndbout_c("Worker : table dropped.");
         break;
       }
-      case MASTER_RESTART_REQ:
+      case PRIMARY_RESTART_REQ:
       {
-        ndbout_c("Worker : restarting Master");
+        ndbout_c("Worker : restarting Primary");
         
         NdbRestarter restarter;
-        int master_nodeid = restarter.getMasterNodeId();
-        ndbout_c("Worker : Restarting Master (%d)...", master_nodeid);
-        if (restarter.restartOneDbNode2(master_nodeid, 
+        int primary_nodeid = restarter.getPrimaryNodeId();
+        ndbout_c("Worker : Restarting Primary (%d)...", primary_nodeid);
+        if (restarter.restartOneDbNode2(primary_nodeid, 
                                         NdbRestarter::NRRF_NOSTART |
                                         NdbRestarter::NRRF_FORCE |
                                         NdbRestarter::NRRF_ABORT) ||
-            restarter.waitNodesNoStart(&master_nodeid, 1) ||
+            restarter.waitNodesNoStart(&primary_nodeid, 1) ||
             restarter.startAll())
         {
-          ndbout_c("Worker : Error restarting Master.");
+          ndbout_c("Worker : Error restarting Primary.");
           return NDBT_FAILED;
         }
-        ndbout_c("Worker : Waiting for master to recover...");
-        if (restarter.waitNodesStarted(&master_nodeid, 1))
+        ndbout_c("Worker : Waiting for primary to recover...");
+        if (restarter.waitNodesStarted(&primary_nodeid, 1))
         {
-          ndbout_c("Worker : Error waiting for Master restart");
+          ndbout_c("Worker : Error waiting for Primary restart");
           return NDBT_FAILED;
         }
-        ndbout_c("Worker : Master recovered.");
+        ndbout_c("Worker : Primary recovered.");
         break;
       }
-      case SLAVE_RESTART_REQ:
+      case REPLICA_RESTART_REQ:
       {
         NdbRestarter restarter;
-        int slave_nodeid = restarter.getRandomNotMasterNodeId(rand());
-        ndbout_c("Worker : Restarting non-master (%d)...", slave_nodeid);
-        if (restarter.restartOneDbNode2(slave_nodeid, 
+        int replica_nodeid = restarter.getRandomNotPrimaryNodeId(rand());
+        ndbout_c("Worker : Restarting non-primary (%d)...", replica_nodeid);
+        if (restarter.restartOneDbNode2(replica_nodeid, 
                                         NdbRestarter::NRRF_NOSTART |
                                         NdbRestarter::NRRF_FORCE |
                                         NdbRestarter::NRRF_ABORT) ||
-            restarter.waitNodesNoStart(&slave_nodeid, 1) ||
+            restarter.waitNodesNoStart(&replica_nodeid, 1) ||
             restarter.startAll())
         {
-          ndbout_c("Worker : Error restarting Slave.");
+          ndbout_c("Worker : Error restarting Replica.");
           return NDBT_FAILED;
         }
-        ndbout_c("Worker : Waiting for slave to recover...");
-        if (restarter.waitNodesStarted(&slave_nodeid, 1))
+        ndbout_c("Worker : Waiting for replica to recover...");
+        if (restarter.waitNodesStarted(&replica_nodeid, 1))
         {
-          ndbout_c("Worker : Error waiting for Slave restart");
+          ndbout_c("Worker : Error waiting for Replica restart");
           return NDBT_FAILED;
         }
-        ndbout_c("Worker : Slave recovered.");
+        ndbout_c("Worker : Replica recovered.");
         break;
       }
       default:
@@ -1312,18 +1312,18 @@ int testSlowDihFileWrites(NDBT_Context* ctx, NDBT_Step* step)
           ctx->setProperty("DIHWritesRequest", (Uint32) 1);
           break;
         }
-        case RESTART_MASTER:
+        case RESTART_PRIMARY:
         {
-          ndbout_c("Requesting Master restart");
-          ctx->setProperty("DIHWritesRequestType", (Uint32) MASTER_RESTART_REQ);
+          ndbout_c("Requesting Primary restart");
+          ctx->setProperty("DIHWritesRequestType", (Uint32) PRIMARY_RESTART_REQ);
           ctx->setProperty("DIHWritesRequest", (Uint32) 1);
 
           break;
         }
-        case RESTART_SLAVE:
+        case RESTART_REPLICA:
         {
-          ndbout_c("Requesting Slave restart");
-          ctx->setProperty("DIHWritesRequestType", (Uint32) SLAVE_RESTART_REQ);
+          ndbout_c("Requesting Replica restart");
+          ctx->setProperty("DIHWritesRequestType", (Uint32) REPLICA_RESTART_REQ);
           ctx->setProperty("DIHWritesRequest", (Uint32) 1);
 
           break;

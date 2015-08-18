@@ -1,9 +1,9 @@
 # Use a variable to decide which cluster is 'Primary'
 if (!$SWITCH_CLUSTER_ROLES)
 {
-  --connection master
+  --connection primary
 }
 if ($SWITCH_CLUSTER_ROLES)
 {
-  --connection slave
+  --connection replica
 }

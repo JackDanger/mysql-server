@@ -44,7 +44,7 @@ DbUtil::DbUtil(const char* _dbname,
     m_default_group.assfmt("client%s", _suffix);
   }
   else {
-    m_default_group.assign("client.1.master");
+    m_default_group.assign("client.1.primary");
   }
 
   ndbout << "default_file: " << m_default_file.c_str() << endl;

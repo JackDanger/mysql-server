@@ -1,9 +1,9 @@
 # ==== Purpose ====
 #
-# This include will wait for the slave IO thread to queue a given amount of
-# events, will stop the whole slave server, will restore a master.info file
+# This include will wait for the replica IO thread to queue a given amount of
+# events, will stop the whole replica server, will restore a primary.info file
 # based on a desired point to restart queuing events and will restart the
-# slave and the slave IO thread.
+# replica and the replica IO thread.
 #
 # ==== Usage ====
 #
@@ -13,15 +13,15 @@
 #
 # Parameters:
 #   $stop_after
-#     The number of events this include will let the slave IO thread to queue
-#     before restarting the slave server.
+#     The number of events this include will let the replica IO thread to queue
+#     before restarting the replica server.
 #
 #   $restart_at
-#     The event that should be the first queued by the slave IO thread after
-#     restarting the slave server.
+#     The event that should be the first queued by the replica IO thread after
+#     restarting the replica server.
 #
-#   $master_2nd_event_pos
-#     We always start counting by the second event, skipping slave's FD, its exact position
+#   $primary_2nd_event_pos
+#     We always start counting by the second event, skipping replica's FD, its exact position
 #     is compated by this macro caller to be passed here as a parameter
 
 
@@ -37,18 +37,18 @@ if (!$restart_at)
 --let $rpl_connection_silent= 1
 
 ###
-### Cleanup and reset the slave
+### Cleanup and reset the replica
 ###
 --disable_query_log
---echo # Cleaning up and reseting the slave
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
+--echo # Cleaning up and reseting the replica
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
 --disable_warnings
 DROP TABLE IF EXISTS t1, t2;
 DROP EVENT IF EXISTS ev1;
 --enable_warnings
-RESET MASTER;
-RESET SLAVE;
+RESET PRIMARY;
+RESET REPLICA;
 --enable_query_log
 
 ###
@@ -56,7 +56,7 @@ RESET SLAVE;
 ###
 --let $_stop_after= $stop_after
 --let $_restart_at= $restart_at
-# We will restart using the master_info file saved after
+# We will restart using the primary_info file saved after
 # queuing the event preceding the one we want.
 --dec $_restart_at
 
@@ -65,12 +65,12 @@ RESET SLAVE;
 ###
 --let $debug_point= pause_on_queuing_event
 --source include/add_debug_point.inc
-# Get the master.info file path (the $MYSQLD_SLAVE_DATADIR)
---let $MYSQLD_SLAVE_DATADIR= `select @@datadir`
-# Start the IO thread to start receiving events from master
-START SLAVE IO_THREAD;
+# Get the primary.info file path (the $MYSQLD_REPLICA_DATADIR)
+--let $MYSQLD_REPLICA_DATADIR= `select @@datadir`
+# Start the IO thread to start receiving events from primary
+START REPLICA IO_THREAD;
 --let $event_counter= 2
---let $master_pos= $master_2nd_event_pos
+--let $primary_pos= $primary_2nd_event_pos
 # Disabling query log during queue event counting
 --disable_query_log
 ###
@@ -83,7 +83,7 @@ while ($event_counter <= $_stop_after)
   # position to display only the last event queued.
   if ($event_counter > 2)
   {
-    --let $master_pos= query_get_value(SHOW RELAYLOG EVENTS IN 'slave-relay-bin.000003' FROM $master_pos, Pos, 2)
+    --let $primary_pos= query_get_value(SHOW RELAYLOG EVENTS IN 'replica-relay-bin.000003' FROM $primary_pos, Pos, 2)
   }
   # If we reached the event to stop after, we can stop counting events
   if ($event_counter == $_stop_after)
@@ -100,42 +100,42 @@ while ($event_counter <= $_stop_after)
   }
   --inc $event_counter
 }
---source include/wait_for_slave_io_to_stop.inc
+--source include/wait_for_replica_io_to_stop.inc
 # Get the position of the last queued event
---let $master_pos= query_get_value(SHOW RELAYLOG EVENTS IN 'slave-relay-bin.000003' FROM $master_pos, Pos, 2)
+--let $primary_pos= query_get_value(SHOW RELAYLOG EVENTS IN 'replica-relay-bin.000003' FROM $primary_pos, Pos, 2)
 ###
 ### Display the last event queued by the IO thread
 ###
 --echo # Stopped IO thread after queuing the following event (#$stop_after):
---let $binlog_start= $master_pos
---let $binlog_file= slave-relay-bin.000003
+--let $binlog_start= $primary_pos
+--let $binlog_file= replica-relay-bin.000003
 --let $binlog_limit=
 --source include/show_relaylog_events.inc
 --enable_query_log
 
 ###
-### Restart the slave changing the master.info file
+### Restart the replica changing the primary.info file
 ###
-# Stop the slave server
+# Stop the replica server
 --let $rpl_server_number= 2
 --let $rpl_force_stop= 0
 --source include/rpl_stop_server.inc
-# Remove the current master.info
---remove_file $MYSQLD_SLAVE_DATADIR./master.info
---echo # Restoring a master.info.backup to start asking events at event #$restart_at
---copy_file $MYSQLD_SLAVE_DATADIR./master.backup.$_restart_at $MYSQLD_SLAVE_DATADIR./master.info
-# Start the slave again
+# Remove the current primary.info
+--remove_file $MYSQLD_REPLICA_DATADIR./primary.info
+--echo # Restoring a primary.info.backup to start asking events at event #$restart_at
+--copy_file $MYSQLD_REPLICA_DATADIR./primary.backup.$_restart_at $MYSQLD_REPLICA_DATADIR./primary.info
+# Start the replica again
 --source include/rpl_start_server.inc
 # Start the IO thread to receive the events from the $restart_at point
---source include/start_slave_io.inc
---source include/rpl_connection_master.inc
+--source include/start_replica_io.inc
+--source include/rpl_connection_primary.inc
 
 --let $use_gtids= 0
---source include/sync_slave_io_with_master.inc
+--source include/sync_replica_io_with_primary.inc
 --echo # Restarted queuing the following event (#$restart_at):
---replace_result $master_uuid MASTER_UUID
+--replace_result $primary_uuid PRIMARY_UUID
 --let $binlog_start=
---let $binlog_file= slave-relay-bin.000005
+--let $binlog_file= replica-relay-bin.000005
 --let $binlog_limit= 3, 1
 --source include/show_relaylog_events.inc
 

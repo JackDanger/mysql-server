@@ -20,7 +20,7 @@ CREATE TABLE t2 (
 INSERT INTO t2 VALUES (3, "row4"), (4, "row4");
 
 CREATE USER 'testuser1'@'localhost';
---connect(user1,127.0.0.1,testuser1,,test,$MASTER_MYPORT)
+--connect(user1,127.0.0.1,testuser1,,test,$PRIMARY_MYPORT)
 
 #####################################################
 # SET PASSWORD
@@ -53,7 +53,7 @@ let $chk= SELECT Authentication_string FROM mysql.user
 --source ndb_dist_priv_check.inc
 
 # Try to set password for non existing user, fails and should not be
-# replicted to slave
+# replicted to replica
 --connection server2
 let $cmd_error= ER_PASSWORD_NO_MATCH;
 let $cmd= SET PASSWORD FOR no_such_user@localhost= 'new pass';

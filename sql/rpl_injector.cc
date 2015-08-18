@@ -97,8 +97,8 @@ int injector::transaction::commit()
    int error= m_thd->binlog_flush_pending_rows_event(true);
    /*
      Cluster replication does not preserve statement or
-     transaction boundaries of the master.  Instead, a new
-     transaction on replication slave is started when a new GCI
+     transaction boundaries of the primary.  Instead, a new
+     transaction on replication replica is started when a new GCI
      (global checkpoint identifier) is issued, and is committed
      when the last event of the check point has been received and
      processed. This ensures consistency of each cluster in

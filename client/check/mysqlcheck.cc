@@ -143,7 +143,7 @@ static struct my_option my_long_options[] =
    0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0},
   {"write-binlog", OPT_WRITE_BINLOG,
    "Log ANALYZE, OPTIMIZE and REPAIR TABLE commands. Use --skip-write-binlog "
-   "when commands should not be sent to replication slaves.",
+   "when commands should not be sent to replication replicas.",
    &opt_write_binlog, &opt_write_binlog, 0, GET_BOOL, NO_ARG,
    1, 0, 0, 0, 0, 0},
   {"secure-auth", OPT_SECURE_AUTH, "Refuse client connecting to server if it"

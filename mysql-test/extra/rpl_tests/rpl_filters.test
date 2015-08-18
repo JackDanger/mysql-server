@@ -10,13 +10,13 @@ CREATE TABLE T1 (a INT) ENGINE= MYISAM;
 CREATE TABLE t2 (a INT) ENGINE= MYISAM;
 INSERT INTO T1 VALUES (1);
 INSERT INTO t2 VALUES (1);
--- echo # On master
+-- echo # On primary
 -- source include/show_binlog_events.inc
 
--- source include/sync_slave_sql_with_master.inc
--- echo # On slave
+-- source include/sync_replica_sql_with_primary.inc
+-- echo # On replica
 -- source include/show_binlog_events.inc
 
--- connection master
+-- connection primary
 DROP DATABASE mydb;
--- source include/sync_slave_sql_with_master.inc
+-- source include/sync_replica_sql_with_primary.inc

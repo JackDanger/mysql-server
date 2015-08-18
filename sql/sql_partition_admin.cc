@@ -615,7 +615,7 @@ bool Sql_cmd_alter_table_exchange_partition::
 
   /*
     Reopen tables under LOCK TABLES. Ignore the return value for now. It's
-    better to keep master/slave in consistent state. Alternative would be to
+    better to keep primary/replica in consistent state. Alternative would be to
     try to revert the exchange operation and issue error.
   */
   (void) thd->locked_tables_list.reopen_tables(thd);
@@ -624,7 +624,7 @@ bool Sql_cmd_alter_table_exchange_partition::
   {
     /*
       The error is reported in write_bin_log().
-      We try to revert to make it easier to keep the master/slave in sync.
+      We try to revert to make it easier to keep the primary/replica in sync.
     */
     (void) exchange_name_with_ddl_log(thd, part_file_name, swap_file_name,
                                       temp_file_name, table_hton);

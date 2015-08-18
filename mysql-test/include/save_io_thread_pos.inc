@@ -1,17 +1,17 @@
 # ==== Purpose ====
 #
 # Save the current position of the IO thread, just like
-# save_master_pos.inc does for the master's position.
+# save_primary_pos.inc does for the primary's position.
 #
 #
 # ==== Usage ====
 #
 # [--let $use_gtids= 1]
 # [--let $rpl_debug= 1]
-# --source include/save_master_pos.inc
+# --source include/save_primary_pos.inc
 #
 # Typically, you would use this script together with
-# include/sync_io_with_master.inc
+# include/sync_io_with_primary.inc
 #
 # Parameters:
 #
@@ -40,13 +40,13 @@ if ($rpl_multi_source)
 #
 # Always save IO thread positions, this will be useful to check missing GTIDs.
 #
---let $_saved_file= query_get_value(SHOW SLAVE STATUS, Master_Log_File, 1)
---let $_saved_pos= query_get_value(SHOW SLAVE STATUS, Read_Master_Log_Pos, 1)
+--let $_saved_file= query_get_value(SHOW REPLICA STATUS, Primary_Log_File, 1)
+--let $_saved_pos= query_get_value(SHOW REPLICA STATUS, Read_Primary_Log_Pos, 1)
 --let $_saved_channel_name= $rpl_channel_name
 if ($use_gtids)
 {
   --source include/assert_gtid_mode_on.inc
-  --let $_saved_gtids= query_get_value(SHOW SLAVE STATUS, Retrieved_Gtid_Set, 1)
+  --let $_saved_gtids= query_get_value(SHOW REPLICA STATUS, Retrieved_Gtid_Set, 1)
   if ($rpl_debug)
   {
     --echo save_io_thread_pos saved gtid='$_saved_gtids', file='$_saved_file', pos='$_saved_pos'

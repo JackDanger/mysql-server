@@ -1,6 +1,6 @@
-############## mysql-test\t\slave_exec_mode_basic.test #########################
+############## mysql-test\t\replica_exec_mode_basic.test #########################
 #                                                                              #
-# Variable Name: slave_exec_mode                                               #
+# Variable Name: replica_exec_mode                                               #
 # Scope: GLOBAL & SESSION                                                      #
 # Access Type: Dynamic                                                         #
 # Data Type: Numeric                                                           #
@@ -11,7 +11,7 @@
 # Creation Date: 2008-02-07                                                    #
 # Author:  Rizwan Maredia                                                      #
 #                                                                              #
-# Description: Test Cases of Dynamic System Variable slave_exec_mode           #
+# Description: Test Cases of Dynamic System Variable replica_exec_mode           #
 #              that checks the behavior of this variable in the following ways #
 #              * Default Value                                                 #
 #              * Valid & Invalid values                                        #
@@ -27,16 +27,16 @@
 --source include/load_sysvars.inc
 
 ######################################################################## 
-#                    START OF slave_exec_mode TESTS                    #
+#                    START OF replica_exec_mode TESTS                    #
 ######################################################################## 
 
 
 ######################################################################## 
-#     Saving initial value of slave_exec_mode in a temporary variable  #
+#     Saving initial value of replica_exec_mode in a temporary variable  #
 ######################################################################## 
-SET @start_value = @@global.slave_exec_mode;
+SET @start_value = @@global.replica_exec_mode;
 --echo 'This variable is not supported in version 5.1.22. It is introduced in 5.1.24'
 
 ######################################################################## 
-#                    END OF slave_exec_mode TESTS                      #
+#                    END OF replica_exec_mode TESTS                      #
 ######################################################################## 

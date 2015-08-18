@@ -103,20 +103,20 @@ printCONTINUEB_DBDIH(FILE * output, const Uint32 * theData,
     fprintf(output, " Init LCP: Table: %d\n", theData[1]);
     return true;
     break;
-  case DihContinueB::ZADD_TABLE_MASTER_PAGES:
-    fprintf(output, " Add Table Master Pages: Table: %d\n", theData[1]);
+  case DihContinueB::ZADD_TABLE_PRIMARY_PAGES:
+    fprintf(output, " Add Table Primary Pages: Table: %d\n", theData[1]);
     return true;
     break;
-  case DihContinueB::ZDIH_ADD_TABLE_MASTER:
-    fprintf(output, " Dih Add Table Master: Table: %d\n", theData[1]);
+  case DihContinueB::ZDIH_ADD_TABLE_PRIMARY:
+    fprintf(output, " Dih Add Table Primary: Table: %d\n", theData[1]);
     return true;
     break;
-  case DihContinueB::ZADD_TABLE_SLAVE_PAGES:
-    fprintf(output, " Add Table Slave Pages: Table: %d\n", theData[1]);
+  case DihContinueB::ZADD_TABLE_REPLICA_PAGES:
+    fprintf(output, " Add Table Replica Pages: Table: %d\n", theData[1]);
     return true;
     break;
-  case DihContinueB::ZDIH_ADD_TABLE_SLAVE:
-    fprintf(output, " Add Table Slave: Table: %d\n", theData[1]);
+  case DihContinueB::ZDIH_ADD_TABLE_REPLICA:
+    fprintf(output, " Add Table Replica: Table: %d\n", theData[1]);
     return true;
     break;
   case DihContinueB::ZSTART_GCP:

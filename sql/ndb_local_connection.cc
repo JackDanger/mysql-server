@@ -331,7 +331,7 @@ public:
 
         case 701: // System busy with other schema operation
         case 711: // System busy with node restart, no schema operations
-        case 702: // Request to non-master(should never pop up to api)
+        case 702: // Request to non-primary(should never pop up to api)
         {
           /* Different errors from NDB, that just need to be retried later */
           DBUG_RETURN(true); // Suppress

@@ -199,9 +199,9 @@ public:
     if (super::contextualize(pc))
       return true;
 
-    if (pc->select->master_unit()->is_union() && !pc->select->braces)
+    if (pc->select->primary_unit()->is_union() && !pc->select->braces)
     {
-      pc->select= pc->select->master_unit()->fake_select_lex;
+      pc->select= pc->select->primary_unit()->fake_select_lex;
       DBUG_ASSERT(pc->select != NULL);
     }
 
@@ -613,7 +613,7 @@ public:
       return true;
 
     DBUG_ASSERT(pc->select->linkage != GLOBAL_OPTIONS_TYPE);
-    SELECT_LEX *fake= pc->select->master_unit()->fake_select_lex;
+    SELECT_LEX *fake= pc->select->primary_unit()->fake_select_lex;
     if (fake)
     {
       fake->no_table_names_allowed= true;
@@ -991,7 +991,7 @@ public:
     if (table_expression->contextualize(pc))
       return true;
 
-    value= pc->select->master_unit()->first_select();
+    value= pc->select->primary_unit()->first_select();
 
     if (opt_hint_list != NULL && opt_hint_list->contextualize(pc))
       return true;
@@ -1064,7 +1064,7 @@ public:
          opt_union_order_or_limit->contextualize(pc)))
       return true;
 
-    value= pc->select->master_unit()->first_select();
+    value= pc->select->primary_unit()->first_select();
     return false;
   }
 };

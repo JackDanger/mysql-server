@@ -56,7 +56,7 @@ Cluster participant -
 1) Check sysfile (DIH_RESTART_REQ)
 2) Read nodes (from Qmgr) P = qmgr president
 
-3) Send CNTR_MASTER_REQ to cntr(P)
+3) Send CNTR_PRIMARY_REQ to cntr(P)
    including info in DIH_RESTART_REF/CONF
 
 4) Wait until -
@@ -90,8 +90,8 @@ NOTE:
 -- 
 Running NdbCntr
 
-When receiving CNTR_MASTER_REQ
-1) If I'm not master send CNTR_MASTER_REF (including master node id)
-2) If I'm master
+When receiving CNTR_PRIMARY_REQ
+1) If I'm not primary send CNTR_PRIMARY_REF (including primary node id)
+2) If I'm primary
    Coordinate parallell node restarts
-   send CNTR_MASTER_CONF (node restart)
+   send CNTR_PRIMARY_CONF (node restart)

@@ -46,15 +46,15 @@
 # Added in WL#3584 - Global Transaction Identifiers
 
 --let $rpl_gtid_utils= 1
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_gtid.inc
 --source include/have_debug.inc
 
 --echo ######## Initialize ########
 
---let $master_uuid= `SELECT @@SERVER_UUID`
+--let $primary_uuid= `SELECT @@SERVER_UUID`
 CREATE TABLE t1 (a INT) ENGINE = InnoDB;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $corruption_mode_count= 2
 --let $restart_count= 2
@@ -78,8 +78,8 @@ while ($corruption_mode <= $corruption_mode_count)
   {
     --echo ======== restart_i = $restart_i of $restart_count ========
 
-    --connection slave
-    --source include/stop_slave.inc
+    --connection replica
+    --source include/stop_replica.inc
 
     --let $rpl_server_number= 1
     --let $rpl_start_with_gtids= 1
@@ -89,8 +89,8 @@ while ($corruption_mode <= $corruption_mode_count)
     --let $rpl_server_parameters=
     --source include/rpl_restart_server.inc
 
-    --source include/start_slave.inc
-    --connection master
+    --source include/start_replica.inc
+    --connection primary
 
     # For each restart, flush the log three times
     --let $flush_i= 1
@@ -108,26 +108,26 @@ while ($corruption_mode <= $corruption_mode_count)
       }
       FLUSH LOGS;
 
-      --echo [on slave]
-      --source include/sync_slave_sql_with_master.inc
+      --echo [on replica]
+      --source include/sync_replica_sql_with_primary.inc
 
-      --let $assert_text= no gtids lost yet on slave
+      --let $assert_text= no gtids lost yet on replica
       --let $assert_cond= @@GTID_PURGED = ""
       --source include/assert.inc
 
-      --let $assert_text= committed gno $gno on slave
-      --let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1-$gno")
+      --let $assert_text= committed gno $gno on replica
+      --let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1-$gno")
       --source include/assert.inc
 
-      --echo [on master]
-      --connection master
+      --echo [on primary]
+      --connection primary
 
-      --let $assert_text= no gtids lost yet on master
+      --let $assert_text= no gtids lost yet on primary
       --let $assert_cond= @@GTID_PURGED = ""
       --source include/assert.inc
 
-      --let $assert_text= committed gno $gno on master
-      --let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1-$gno")
+      --let $assert_text= committed gno $gno on primary
+      --let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1-$gno")
       --source include/assert.inc
 
       --inc $flush_i
@@ -137,8 +137,8 @@ while ($corruption_mode <= $corruption_mode_count)
   }
   FLUSH LOGS;
 
-  --source include/sync_slave_sql_with_master.inc
-  --connection master
+  --source include/sync_replica_sql_with_primary.inc
+  --connection primary
 
   --echo ######## corruption_mode = $corruption_mode ########
   --echo Phase two: Purging logs
@@ -151,13 +151,13 @@ while ($corruption_mode <= $corruption_mode_count)
     --echo ======== restart_i = $restart_i of $restart_count ========
 
     --source include/purge_first_log.inc
-    --let $assert_text= lost gtids from 1 to $gno on master
-    --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$master_uuid:1-$gno")
+    --let $assert_text= lost gtids from 1 to $gno on primary
+    --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$primary_uuid:1-$gno")
     --source include/assert.inc
 
     --source include/purge_first_log.inc
-    --let $assert_text= lost gtids from 1 to $gno on master
-    --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$master_uuid:1-$gno")
+    --let $assert_text= lost gtids from 1 to $gno on primary
+    --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$primary_uuid:1-$gno")
     --source include/assert.inc
 
     --let $flush_i= 1
@@ -166,8 +166,8 @@ while ($corruption_mode <= $corruption_mode_count)
       # Purge one log for each FLUSH LOGS above.
       --echo -------- flush_i = $flush_i of $flush_count --------
       --source include/purge_first_log.inc
-      --let $assert_text= lost gtids from 1 to $gno on master
-      --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$master_uuid:1-$gno")
+      --let $assert_text= lost gtids from 1 to $gno on primary
+      --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$primary_uuid:1-$gno")
       --source include/assert.inc
 
       # Increase $gno in the same manner as above.
@@ -180,8 +180,8 @@ while ($corruption_mode <= $corruption_mode_count)
       }
 
       --source include/purge_first_log.inc
-      --let $assert_text= lost gtids from 1 to $gno on master
-      --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$master_uuid:1-$gno")
+      --let $assert_text= lost gtids from 1 to $gno on primary
+      --let $assert_cond= GTID_IS_EQUAL(@@GTID_PURGED, "$primary_uuid:1-$gno")
       --source include/assert.inc
 
       --inc $flush_i
@@ -194,6 +194,6 @@ while ($corruption_mode <= $corruption_mode_count)
 }
 
 --echo ######## Clean up ########
---connection master
+--connection primary
 DROP TABLE t1;
 --source include/rpl_end.inc

@@ -12,7 +12,7 @@
 ##########################################################
 
 --source include/have_ndb.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --disable_warnings
 DROP DATABASE IF EXISTS replica;
@@ -26,7 +26,7 @@ USE replica;
 CREATE TABLE replica.t1 (a INT NOT NULL KEY, b text NOT NULL)ENGINE=NDB;
 CREATE TABLE replica.t2 (a INT NOT NULL KEY, b text NOT NULL)ENGINE=NDB;
 
-# Insert data into db that should not be picked up by slave
+# Insert data into db that should not be picked up by replica
 USE test;
 INSERT INTO t1 VALUES(1, repeat('abc',10));
 INSERT INTO t2 VALUES(1, repeat('abc',10));
@@ -42,8 +42,8 @@ SHOW TABLES;
 SELECT COUNT(*) FROM t1;
 SELECT COUNT(*) FROM t2;
 
-# Check results on slave
---sync_slave_with_master
+# Check results on replica
+--sync_replica_with_primary
 SHOW TABLES;
 USE replica;
 SHOW TABLES;
@@ -53,11 +53,11 @@ USE test;
 SHOW TABLES;
 
 # Cleanup from testing
-connection master;
+connection primary;
 USE test;
 DROP TABLE t1, t2;
 DROP DATABASE IF EXISTS replica;
---sync_slave_with_master
+--sync_replica_with_primary
 
 # End 5.1 test case
 --source include/rpl_end.inc

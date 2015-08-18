@@ -9,7 +9,7 @@ connect (j2,localhost,root,,test);
 connect (j3,localhost,root,,test);
 connect (j4,localhost,root,,test);
 
-connect (ddl,localhost,root,,test,$MASTER_MYPORT1,);
+connect (ddl,localhost,root,,test,$PRIMARY_MYPORT1,);
 
 connection ddl;
 

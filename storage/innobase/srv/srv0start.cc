@@ -141,7 +141,7 @@ enum srv_start_state_t {
 						thread. */
 	SRV_START_STATE_IO = 2,			/*!< Started IO threads */
 	SRV_START_STATE_MONITOR = 4,		/*!< Started montior thread */
-	SRV_START_STATE_MASTER = 8,		/*!< Started master threadd. */
+	SRV_START_STATE_PRIMARY = 8,		/*!< Started primary threadd. */
 	SRV_START_STATE_PURGE = 16,		/*!< Started purge thread(s) */
 	SRV_START_STATE_STAT = 32		/*!< Started bufdump + dict stat
 						and FTS optimize thread. */
@@ -183,7 +183,7 @@ mysql_pfs_key_t	io_read_thread_key;
 mysql_pfs_key_t	io_write_thread_key;
 mysql_pfs_key_t	srv_error_monitor_thread_key;
 mysql_pfs_key_t	srv_lock_timeout_thread_key;
-mysql_pfs_key_t	srv_master_thread_key;
+mysql_pfs_key_t	srv_primary_thread_key;
 mysql_pfs_key_t	srv_monitor_thread_key;
 mysql_pfs_key_t	srv_purge_thread_key;
 #endif /* UNIV_PFS_THREAD */
@@ -1061,7 +1061,7 @@ void
 srv_start_wait_for_purge_to_start()
 /*===============================*/
 {
-	/* Wait for the purge coordinator and master thread to startup. */
+	/* Wait for the purge coordinator and primary thread to startup. */
 
 	purge_state_t	state = trx_purge_state();
 
@@ -1225,10 +1225,10 @@ srv_shutdown_all_bg_threads()
 			/* b. srv error monitor thread exits automatically,
 			no need to do anything here */
 
-			if (srv_start_state_is_set(SRV_START_STATE_MASTER)) {
-				/* c. We wake the master thread so that
+			if (srv_start_state_is_set(SRV_START_STATE_PRIMARY)) {
+				/* c. We wake the primary thread so that
 				it exits */
-				srv_wake_master_thread();
+				srv_wake_primary_thread();
 			}
 
 			if (srv_start_state_is_set(SRV_START_STATE_PURGE)) {
@@ -1579,7 +1579,7 @@ innobase_start_or_create_for_mysql(void)
 			    + 1 /* lock_wait_timeout_thread */
 			    + 1 /* srv_error_monitor_thread */
 			    + 1 /* srv_monitor_thread */
-			    + 1 /* srv_master_thread */
+			    + 1 /* srv_primary_thread */
 			    + 1 /* srv_purge_coordinator_thread */
 			    + 1 /* buf_dump_thread */
 			    + 1 /* dict_stats_thread */
@@ -2440,16 +2440,16 @@ files_checked:
 
 	ut_a(trx_purge_state() == PURGE_STATE_INIT);
 
-	/* Create the master thread which does purge and other utility
+	/* Create the primary thread which does purge and other utility
 	operations */
 
 	if (!srv_read_only_mode) {
 
 		os_thread_create(
-			srv_master_thread,
+			srv_primary_thread,
 			NULL, thread_ids + (1 + SRV_MAX_N_IO_THREADS));
 
-		srv_start_state_set(SRV_START_STATE_MASTER);
+		srv_start_state_set(SRV_START_STATE_PRIMARY);
 	}
 
 	if (!srv_read_only_mode

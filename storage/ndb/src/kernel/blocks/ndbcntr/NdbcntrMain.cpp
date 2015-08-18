@@ -150,7 +150,7 @@ void Ndbcntr::execCONTINUEB(Signal* signal)
       return;
     }
     
-    if(cmasterNodeId == getOwnNodeId() && c_start.m_starting.isclear()){
+    if(cprimaryNodeId == getOwnNodeId() && c_start.m_starting.isclear()){
       jam();
       trySystemRestart(signal);
       // Fall-through
@@ -757,13 +757,13 @@ STTOR phase 2 is NDBCNTR, it asks DIH for the restart type, it reads the node
 from the configuration, it initialises the partial timeout variables that
 controls for how long to wait before we perform a partial start.
 
-NDBCNTR sends the signal CNTR_START_REQ to the NDBCNTR in the current master
-node, this signal enables the master node to delay the start of this node if
+NDBCNTR sends the signal CNTR_START_REQ to the NDBCNTR in the current primary
+node, this signal enables the primary node to delay the start of this node if
 necessary due to other starting nodes or some other condition. For cluster
-starts/restarts it also gives the master node the chance to ensure we wait
+starts/restarts it also gives the primary node the chance to ensure we wait
 for enough nodes to start up before we start the nodes.
 
-The master only accepts one node at a time that has received CNTR_START_CONF,
+The primary only accepts one node at a time that has received CNTR_START_CONF,
 the next node can only receive CNTR_START_CONF after the previous starting
 node have completed copying the metadata and releasing the metadata locks and
 locks on DIH info, that happens below in STTOR phase 5.
@@ -801,14 +801,14 @@ metadata informatiom.
 
 The reason for locking is that all meta data and distribution info is fully
 replicated. So we need to lock this information while we are copying the data
-from the master node to the starting node. While we retain this lock we cannot
+from the primary node to the starting node. While we retain this lock we cannot
 change meta data through meta data transactions. Before copying the meta data
 later we also need to ensure no local checkpoint is running since this also
 updates the distribution information.
 
 After locking this we need to request permission to start the node from the
-master node. The request for permission to start the node is handled by the
-starting node sending START_PERMREQ to the master node. This could receive a
+primary node. The request for permission to start the node is handled by the
+starting node sending START_PERMREQ to the primary node. This could receive a
 negative reply if another node is already processing a node restart, it could
 fail if an initial start is required. If another node is already starting we
 will wait 3 second and try again. This is executed in DBDIH as part of
@@ -824,9 +824,9 @@ memory pool, next DBTUX sets the restart type. Finally PGMAN starts a stats
 loop and a cleanup loop that will run as long as the node is up and running.
 
 We could crash the node if our node is still involved in some processes
-ongoing in the master node. This is fairly normal and will simply trigger a
+ongoing in the primary node. This is fairly normal and will simply trigger a
 crash followed by a normal new start up by the angel process. The request
-for permission is handled by the master sending the information to all nodes.
+for permission is handled by the primary sending the information to all nodes.
 
 For initial starts the request for permission can be quite time consuming
 since we have to invalidate all local checkpoints from all tables in the
@@ -855,7 +855,7 @@ point such that all starting nodes have reached this point before
 proceeding. This is only done for cluster starts/restarts, so not for node
 restarts.
 
-The master node controls this waitpoint and will send the signal
+The primary node controls this waitpoint and will send the signal
 NDB_STARTREQ to DBDIH when all nodes of the cluster restart have reached
 this point. More on this signal later.
 
@@ -866,11 +866,11 @@ STTOR Phase 5
 -------------
 We now move onto STTOR phase 5. The first thing done here is to run NDB_STTOR
 phase 4. Only DBDIH does some work here and it only does something in node
-restarts. In this case it asks the current master node to start it up by
+restarts. In this case it asks the current primary node to start it up by
 sending the START_MEREQ signal to it.
 
-START_MEREQ works by copying distribution information from master DBDIH node
-and then also meta data information from master DBDICT. It copies one table
+START_MEREQ works by copying distribution information from primary DBDIH node
+and then also meta data information from primary DBDICT. It copies one table
 of distribution information at a time which makes the process a bit slow
 since it includes writing the table to disk in the starting node.
 
@@ -887,14 +887,14 @@ was set by DBDIH already in STTOR phase 2.
 After completing NDB_STTOR phase 4, NDBCNTR synchronises the start again in
 the following manner:
 
-If initial cluster start and master then create system tables
+If initial cluster start and primary then create system tables
 If cluster start/restart then wait for all nodes to reach this point.
 After waiting for nodes in a cluster start/restart then run NDB_STTOR
-phase 5 in master node (only sent to DBDIH).
+phase 5 in primary node (only sent to DBDIH).
 If node restart then run NDB_STTOR phase 5 (only sent to DBDIH).
 
 NDB_STTOR phase 5 in DBDIH is waiting for completion of a local checkpoint
-if it is a master and we are running a cluster start/restart. For node
+if it is a primary and we are running a cluster start/restart. For node
 restarts we send the signal START_COPYREQ to the starting node to ask for
 copying of data to our node.
 
@@ -1101,23 +1101,23 @@ could be parallelised a bit.
 
 The process to take over a fragment replica is quite involved. It starts by
 sending PREPARE_COPY_FRAGREQ/CONF to the starting DBLQH, then we send
-UPDATE_TOREQ/CONF to the master DBDIH to ensure we lock the fragment
+UPDATE_TOREQ/CONF to the primary DBDIH to ensure we lock the fragment
 information before the take over starts. After receiving confirmation of this
 fragment lock, the starting node send UPDATE_FRAG_STATEREQ/CONF to all nodes to
 include the new node into all operations on the fragment.
 
-After completing this we again send UPDATE_TOREQ/CONF to the master node to
+After completing this we again send UPDATE_TOREQ/CONF to the primary node to
 inform of the new status and unlock the lock on the fragment information. Then
 we're ready to perform the actual copying of the fragment. This is done by
 sending COPY_FRAGREQ/CONF to the node that will copy the data. When this
 copying is done we send COPY_ACTIVEREQ/CONF to the starting node to activate
 the fragment replica.
 
-Next we again send UPDATE_TOREQ/CONF to the master informing about that we're
+Next we again send UPDATE_TOREQ/CONF to the primary informing about that we're
 about to install the commit the take over of the new fragment replica. Next we
 commit the new fragment replica by sending UPDATE_FRAG_STATEREQ/CONF to all
 nodes informing them about completion of the copying of the fragment replica.
-Finally we send another update to the master node with UPDATE_TOREQ/CONF.
+Finally we send another update to the primary node with UPDATE_TOREQ/CONF.
 Now we're finally complete with copying of this fragment.
 
 The idea with this scheme is that the first UPDATE_FRAG_STATEREQ ensures that
@@ -1136,7 +1136,7 @@ ensure all nodes know that we're done with the synchronisation.
 ------------------------------------------------------------------------------
 
 Next step is to enable logging on all fragments, after completing this step
-we will send END_TOREQ to the master DBDIH. At this point we will wait until a
+we will send END_TOREQ to the primary DBDIH. At this point we will wait until a
 local checkpoint is completed where this node have been involved. Finally when
 the local checkpoint have been completed we will send END_TOCONF to the
 starting node and then we will send START_COPYCONF and that will complete
@@ -1158,7 +1158,7 @@ In this phase DBLQH, DBDICT and DBTC sets some status variables indicating
 that now the start has completed (it's not fully completed yet, but all
 services required for those modules to operate are completed. DBDIH also
 starts global checkpoint protocol for cluster start/restarts where it has
-become the master node.
+become the primary node.
 
 Yet one more waiting point for all nodes is now done in the case of a cluster
 start/restart.
@@ -1187,7 +1187,7 @@ for speed during restarts and one for normal operation, here we install the
 normal operation speed). If initial start BACKUP will also create a backup
 sequence through DBUTIL.
 
-SUMA will create a sequence if it's running in a master node and it's an
+SUMA will create a sequence if it's running in a primary node and it's an
 initial start. SUMA will also always calculate which buckets it is
 responsible to handle. Finally DBTUX will start monitoring of ordered indexes.
 
@@ -1335,13 +1335,13 @@ The first step in the next local checkpoint is to check if we're ready to
 run it yet. This is performed by sending the message TCGETOPSIZEREQ to all
 TC's in the cluster. This will report back the amount of REDO log information
 generated by checking the information received in TC for all write
-transactions. The message will be sent by the master DIH. The role of the
-master is assigned to the oldest surviving data node, this makes it easy to
-select a new master whenever a data node currently acting as master dies.
+transactions. The message will be sent by the primary DIH. The role of the
+primary is assigned to the oldest surviving data node, this makes it easy to
+select a new primary whenever a data node currently acting as primary dies.
 All nodes agree on the order of nodes entering the cluster, so the age of
 a node is consistent in all nodes in the cluster.
 
-When all messages have returned the REDO log write size to the master
+When all messages have returned the REDO log write size to the primary
 DIH we will compare it to the config variable TimeBetweenLocalCheckpoints
 (this variable is set in logarithm of size, so e.g. 25 means we wait
 2^25 words of REDO log has been created in the cluster which is 128 MByte
@@ -1376,7 +1376,7 @@ not part of the local checkpoint and obviously also not dead nodes).
 
 We send the information about the starting local checkpoint to all other DIH's
 in the system. We must keep all other DIH's up-to-date all the time to ensure
-it is easy to continue the local checkpoint also when the master DIH crashes
+it is easy to continue the local checkpoint also when the primary DIH crashes
 or is stopped in the middle of the local checkpoint process. Each DIH records
 the set of nodes participating in the local checkpoint. They also set a flag
 on each replica record indicating a local checkpoint is ongoing, on each
@@ -1385,7 +1385,7 @@ checkpoint.
 
 Now we have completed the preparations for the local checkpoint, it is now
 time to start doing the actual checkpoint writing of the actual data. The
-master DIH controls this process by sending off a LCP_FRAG_ORD for each
+primary DIH controls this process by sending off a LCP_FRAG_ORD for each
 fragment replica that should be checkpointed. DIH can currently have 2 such
 LCP_FRAG_ORD outstanding per node and 2 fragment replicas queued. Each LDM
 thread can process writing of one fragment replica at a time and it can
@@ -1410,7 +1410,7 @@ of fifty milliseconds. So this means we can currently only write about 80 such
 tables per second. In a system with many tables and little data this could
 become a bottleneck. It should however not be a difficult bottleneck.
 
-When the master DIH has sent all requests to checkpoint all fragment replicas
+When the primary DIH has sent all requests to checkpoint all fragment replicas
 it will send a special LCP_FRAG_ORD to all nodes indicating that no more
 fragment replicas will be sent out.
 */
@@ -1741,7 +1741,7 @@ void Ndbcntr::execREAD_NODESCONF(Signal* signal)
   jamEntry();
   const ReadNodesConf * readNodes = (ReadNodesConf *)&signal->theData[0];
 
-  cmasterNodeId = readNodes->masterNodeId;
+  cprimaryNodeId = readNodes->primaryNodeId;
   cdynamicNodeId = readNodes->ndynamicId;
 
   /**
@@ -1787,17 +1787,17 @@ Ndbcntr::sendCntrStartReq(Signal * signal)
 {
   jamEntry();
 
-  if (getOwnNodeId() == cmasterNodeId)
+  if (getOwnNodeId() == cprimaryNodeId)
   {
-    g_eventLogger->info("Asking master node to accept our start "
-                        "(we are master, GCI = %u)",
+    g_eventLogger->info("Asking primary node to accept our start "
+                        "(we are primary, GCI = %u)",
                         c_start.m_lastGci);
   }
   else
   {
-    g_eventLogger->info("Asking master node to accept our start "
-                        "(nodeId = %u is master), GCI = %u",
-                        cmasterNodeId,
+    g_eventLogger->info("Asking primary node to accept our start "
+                        "(nodeId = %u is primary), GCI = %u",
+                        cprimaryNodeId,
                         c_start.m_lastGci);
   }
 
@@ -1805,7 +1805,7 @@ Ndbcntr::sendCntrStartReq(Signal * signal)
   req->startType = ctypeOfStart;
   req->lastGci = c_start.m_lastGci;
   req->nodeId = getOwnNodeId();
-  sendSignal(calcNdbCntrBlockRef(cmasterNodeId), GSN_CNTR_START_REQ,
+  sendSignal(calcNdbCntrBlockRef(cprimaryNodeId), GSN_CNTR_START_REQ,
 	     signal, CntrStartReq::SignalLength, JBB);
 }
 
@@ -1815,9 +1815,9 @@ Ndbcntr::execCNTR_START_REF(Signal * signal){
   const CntrStartRef * ref = (CntrStartRef*)signal->getDataPtr();
 
   switch(ref->errorCode){
-  case CntrStartRef::NotMaster:
+  case CntrStartRef::NotPrimary:
     jam();
-    cmasterNodeId = ref->masterNodeId;
+    cprimaryNodeId = ref->primaryNodeId;
     sendCntrStartReq(signal);
     return;
   case CntrStartRef::StopInProgress:
@@ -1852,13 +1852,13 @@ Ndbcntr::execCNTR_START_CONF(Signal * signal){
   ctypeOfStart = (NodeState::StartType)conf->startType;
   cdihStartType = ctypeOfStart;
   c_start.m_lastGci = conf->startGci;
-  cmasterNodeId = conf->masterNodeId;
+  cprimaryNodeId = conf->primaryNodeId;
   NdbNodeBitmask tmp; 
   tmp.assign(NdbNodeBitmask::Size, conf->startedNodes);
   c_startedNodes.bitOR(tmp);
   c_start.m_starting.assign(NdbNodeBitmask::Size, conf->startingNodes);
   m_cntr_start_conf = true;
-  g_eventLogger->info("NDBCNTR master accepted us into cluster,"
+  g_eventLogger->info("NDBCNTR primary accepted us into cluster,"
                       " start NDB start phase 1");
   switch (ctypeOfStart)
   {
@@ -1941,7 +1941,7 @@ Ndbcntr::execSTART_PERMREP(Signal* signal)
     return;
   }
   
-  if(cmasterNodeId != getOwnNodeId()){
+  if(cprimaryNodeId != getOwnNodeId()){
     jam();
     c_start.reset();
     return;
@@ -1965,7 +1965,7 @@ Ndbcntr::execCNTR_START_REQ(Signal * signal){
   const Uint32 lastGci = req->lastGci;
   const NodeState::StartType st = (NodeState::StartType)req->startType;
 
-  if(cmasterNodeId == 0){
+  if(cprimaryNodeId == 0){
     jam();
     // Has not completed READNODES yet
     sendSignalWithDelay(reference(), GSN_CNTR_START_REQ, signal, 100, 
@@ -1973,9 +1973,9 @@ Ndbcntr::execCNTR_START_REQ(Signal * signal){
     return;
   }
   
-  if(cmasterNodeId != getOwnNodeId()){
+  if(cprimaryNodeId != getOwnNodeId()){
     jam();
-    sendCntrStartRef(signal, nodeId, CntrStartRef::NotMaster);
+    sendCntrStartRef(signal, nodeId, CntrStartRef::NotPrimary);
     return;
   }
   
@@ -2016,8 +2016,8 @@ Ndbcntr::execCNTR_START_REQ(Signal * signal){
     if(starting && lastGci > c_start.m_lastGci){
       jam();
       CntrStartRef * ref = (CntrStartRef*)signal->getDataPtrSend();
-      ref->errorCode = CntrStartRef::NotMaster;
-      ref->masterNodeId = nodeId;
+      ref->errorCode = CntrStartRef::NotPrimary;
+      ref->primaryNodeId = nodeId;
       NodeReceiverGroup rg (NDBCNTR, c_start.m_waiting);
       sendSignal(rg, GSN_CNTR_START_REF, signal,
 		 CntrStartRef::SignalLength, JBB);
@@ -2125,7 +2125,7 @@ Ndbcntr::startWaitingNodes(Signal * signal){
   conf->noStartNodes = 1;
   conf->startType = nrType;
   conf->startGci = ~0; // Not used
-  conf->masterNodeId = getOwnNodeId();
+  conf->primaryNodeId = getOwnNodeId();
   BitmaskImpl::clear(NdbNodeBitmask::Size, conf->startingNodes);
   BitmaskImpl::set(NdbNodeBitmask::Size, conf->startingNodes, nodeId);
   c_startedNodes.copyto(NdbNodeBitmask::Size, conf->startedNodes);
@@ -2133,7 +2133,7 @@ Ndbcntr::startWaitingNodes(Signal * signal){
 	     CntrStartConf::SignalLength, JBB);
 
   /**
-   * A node restart is ongoing where we are master and we just accepted this
+   * A node restart is ongoing where we are primary and we just accepted this
    * node to proceed with his node restart. Inform DBDIH about this event in
    * the node restart.
    */
@@ -2155,7 +2155,7 @@ Ndbcntr::startWaitingNodes(Signal * signal){
   CntrStartConf * conf = (CntrStartConf*)signal->getDataPtrSend();
   conf->noStartNodes = 1;
   conf->startGci = ~0; // Not used
-  conf->masterNodeId = getOwnNodeId();
+  conf->primaryNodeId = getOwnNodeId();
   c_start.m_starting.copyto(NdbNodeBitmask::Size, conf->startingNodes);
   c_startedNodes.copyto(NdbNodeBitmask::Size, conf->startedNodes);
   
@@ -2192,7 +2192,7 @@ Ndbcntr::sendCntrStartRef(Signal * signal,
 			  Uint32 nodeId, CntrStartRef::ErrorCode code){
   CntrStartRef * ref = (CntrStartRef*)signal->getDataPtrSend();
   ref->errorCode = code;
-  ref->masterNodeId = cmasterNodeId;
+  ref->primaryNodeId = cprimaryNodeId;
   sendSignal(calcNdbCntrBlockRef(nodeId), GSN_CNTR_START_REF, signal,
 	     CntrStartRef::SignalLength, JBB);
 }
@@ -2270,15 +2270,15 @@ Ndbcntr::trySystemRestart(Signal* signal){
   conf->noStartNodes = c_start.m_starting.count();
   conf->startType = srType;
   conf->startGci = c_start.m_lastGci;
-  conf->masterNodeId = c_start.m_lastGciNodeId;
+  conf->primaryNodeId = c_start.m_lastGciNodeId;
   c_start.m_starting.copyto(NdbNodeBitmask::Size, conf->startingNodes);
   c_startedNodes.copyto(NdbNodeBitmask::Size, conf->startedNodes);
   
   ndbrequire(c_start.m_lastGciNodeId == getOwnNodeId());
  
-  infoEvent("System Restart: master node: %u, num starting: %u, gci: %u",
+  infoEvent("System Restart: primary node: %u, num starting: %u, gci: %u",
             conf->noStartNodes,
-            conf->masterNodeId,
+            conf->primaryNodeId,
             conf->startGci);
   char buf[100];
   infoEvent("CNTR_START_CONF: started: %s", c_startedNodes.getText(buf));
@@ -2402,10 +2402,10 @@ void Ndbcntr::ph4BLab(Signal* signal)
 
 void Ndbcntr::waitpoint41Lab(Signal* signal) 
 {
-  if (getOwnNodeId() == cmasterNodeId) {
+  if (getOwnNodeId() == cprimaryNodeId) {
     jam();
 /*--------------------------------------*/
-/* MASTER WAITS UNTIL ALL SLAVES HAS    */
+/* PRIMARY WAITS UNTIL ALL REPLICAS HAS    */
 /* SENT THE REPORTS                     */
 /*--------------------------------------*/
     cnoWaitrep++;
@@ -2430,14 +2430,14 @@ void Ndbcntr::waitpoint41Lab(Signal* signal)
   } else {
     jam();
 /*--------------------------------------*/
-/* SLAVE NODES WILL PASS HERE ONCE AND  */
-/* SEND A WAITPOINT REPORT TO MASTER.   */
-/* SLAVES WONT DO ANYTHING UNTIL THEY   */
-/* RECEIVE A WAIT REPORT FROM THE MASTER*/
+/* REPLICA NODES WILL PASS HERE ONCE AND  */
+/* SEND A WAITPOINT REPORT TO PRIMARY.   */
+/* REPLICAS WONT DO ANYTHING UNTIL THEY   */
+/* RECEIVE A WAIT REPORT FROM THE PRIMARY*/
 /*--------------------------------------*/
     signal->theData[0] = getOwnNodeId();
     signal->theData[1] = CntrWaitRep::ZWAITPOINT_4_1;
-    sendSignal(calcNdbCntrBlockRef(cmasterNodeId), 
+    sendSignal(calcNdbCntrBlockRef(cprimaryNodeId), 
 	       GSN_CNTR_WAITREP, signal, 2, JBB);
   }//if
   return;
@@ -2463,7 +2463,7 @@ Ndbcntr::waitpoint42To(Signal* signal)
   {
     NodeStateRep* rep = (NodeStateRep*)signal->getDataPtrSend();
     rep->nodeState = getNodeState();
-    rep->nodeState.masterNodeId = cmasterNodeId;
+    rep->nodeState.primaryNodeId = cprimaryNodeId;
     rep->nodeState.setNodeGroup(c_nodeGroup);
     rep->nodeState.starting.restartType = NodeState::ST_NODE_RESTART;
 
@@ -2577,12 +2577,12 @@ void Ndbcntr::ph5ALab(Signal* signal)
 
   cstartPhase = cstartPhase + 1;
   cinternalStartphase = cstartPhase - 1;
-  if (getOwnNodeId() == cmasterNodeId) {
+  if (getOwnNodeId() == cprimaryNodeId) {
     switch(ctypeOfStart){
     case NodeState::ST_INITIAL_START:
       jam();
       /*--------------------------------------*/
-      /* MASTER CNTR IS RESPONSIBLE FOR       */
+      /* PRIMARY CNTR IS RESPONSIBLE FOR       */
       /* CREATING SYSTEM TABLES               */
       /*--------------------------------------*/
       g_eventLogger->info("Creating System Tables Starting"
@@ -2591,7 +2591,7 @@ void Ndbcntr::ph5ALab(Signal* signal)
       return;
     case NodeState::ST_SYSTEM_RESTART:
       jam();
-      g_eventLogger->info("As master we will wait for other nodes to reach"
+      g_eventLogger->info("As primary we will wait for other nodes to reach"
                           " the state waitpoint52 as well");
       waitpoint52Lab(signal);
       return;
@@ -2607,7 +2607,7 @@ void Ndbcntr::ph5ALab(Signal* signal)
   }
   
   /**
-   * Not master
+   * Not primary
    */
   NdbSttor * const req = (NdbSttor*)signal->getDataPtrSend();
   switch(ctypeOfStart){
@@ -2622,7 +2622,7 @@ void Ndbcntr::ph5ALab(Signal* signal)
     req->nodeId = getOwnNodeId();
     req->internalStartPhase = cinternalStartphase;
     req->typeOfStart = cdihStartType;
-    req->masterNodeId = cmasterNodeId;
+    req->primaryNodeId = cprimaryNodeId;
    
     g_eventLogger->info("Start NDB start phase 5 (only to DBDIH)");
     //#define TRACE_STTOR
@@ -2637,19 +2637,19 @@ void Ndbcntr::ph5ALab(Signal* signal)
     jam();
     /*--------------------------------------*/
     /* DURING SYSTEMRESTART AND INITALSTART:*/
-    /* SLAVE NODES WILL PASS HERE ONCE AND  */
-    /* SEND A WAITPOINT REPORT TO MASTER.   */
-    /* SLAVES WONT DO ANYTHING UNTIL THEY   */
-    /* RECEIVE A WAIT REPORT FROM THE MASTER*/
-    /* WHEN THE MASTER HAS FINISHED HIS WORK*/
+    /* REPLICA NODES WILL PASS HERE ONCE AND  */
+    /* SEND A WAITPOINT REPORT TO PRIMARY.   */
+    /* REPLICAS WONT DO ANYTHING UNTIL THEY   */
+    /* RECEIVE A WAIT REPORT FROM THE PRIMARY*/
+    /* WHEN THE PRIMARY HAS FINISHED HIS WORK*/
     /*--------------------------------------*/
-    g_eventLogger->info("During cluster start/restart only master runs"
+    g_eventLogger->info("During cluster start/restart only primary runs"
                         " phase 5 of NDB start phases");
-    g_eventLogger->info("Report to master node our state and wait for master");
+    g_eventLogger->info("Report to primary node our state and wait for primary");
 
     signal->theData[0] = getOwnNodeId();
     signal->theData[1] = CntrWaitRep::ZWAITPOINT_5_2;
-    sendSignal(calcNdbCntrBlockRef(cmasterNodeId), 
+    sendSignal(calcNdbCntrBlockRef(cprimaryNodeId), 
 	       GSN_CNTR_WAITREP, signal, 2, JBB);
     return;
   default:
@@ -2661,16 +2661,16 @@ void Ndbcntr::waitpoint52Lab(Signal* signal)
 {
   cnoWaitrep = cnoWaitrep + 1;
 /*---------------------------------------------------------------------------*/
-// THIS WAITING POINT IS ONLY USED BY A MASTER NODE. WE WILL EXECUTE NDB START 
+// THIS WAITING POINT IS ONLY USED BY A PRIMARY NODE. WE WILL EXECUTE NDB START 
 // PHASE 5 FOR DIH IN THE
-// MASTER. THIS WILL START UP LOCAL CHECKPOINTS AND WILL ALSO CONCLUDE ANY
+// PRIMARY. THIS WILL START UP LOCAL CHECKPOINTS AND WILL ALSO CONCLUDE ANY
 // UNFINISHED LOCAL CHECKPOINTS
 // BEFORE THE SYSTEM CRASH. THIS WILL ENSURE THAT WE ALWAYS RESTART FROM A
 // WELL KNOWN STATE.
 /*---------------------------------------------------------------------------*/
 /*--------------------------------------*/
-/* MASTER WAITS UNTIL HE RECEIVED WAIT  */
-/* REPORTS FROM ALL SLAVE CNTR          */
+/* PRIMARY WAITS UNTIL HE RECEIVED WAIT  */
+/* REPORTS FROM ALL REPLICA CNTR          */
 /*--------------------------------------*/
   if (cnoWaitrep == cnoStartNodes) {
     jam();
@@ -2682,7 +2682,7 @@ void Ndbcntr::waitpoint52Lab(Signal* signal)
     req->nodeId = getOwnNodeId();
     req->internalStartPhase = cinternalStartphase;
     req->typeOfStart = cdihStartType;
-    req->masterNodeId = cmasterNodeId;
+    req->primaryNodeId = cprimaryNodeId;
 #ifdef TRACE_STTOR
     ndbout_c("sending NDB_STTOR(%d) to DIH", cinternalStartphase);
 #endif
@@ -2754,7 +2754,7 @@ void Ndbcntr::ph6BLab(Signal* signal)
 
 void Ndbcntr::waitpoint61Lab(Signal* signal)
 {
-  if (getOwnNodeId() == cmasterNodeId) {
+  if (getOwnNodeId() == cprimaryNodeId) {
     jam();
     cnoWaitrep6++;
     if (cnoWaitrep6 == cnoStartNodes) {
@@ -2770,7 +2770,7 @@ void Ndbcntr::waitpoint61Lab(Signal* signal)
     jam();
     signal->theData[0] = getOwnNodeId();
     signal->theData[1] = CntrWaitRep::ZWAITPOINT_6_1;
-    sendSignal(calcNdbCntrBlockRef(cmasterNodeId), GSN_CNTR_WAITREP, signal, 2, JBB);
+    sendSignal(calcNdbCntrBlockRef(cprimaryNodeId), GSN_CNTR_WAITREP, signal, 2, JBB);
   }
 }
 
@@ -2804,7 +2804,7 @@ void Ndbcntr::ph7ALab(Signal* signal)
 
 void Ndbcntr::waitpoint71Lab(Signal* signal)
 {
-  if (getOwnNodeId() == cmasterNodeId) {
+  if (getOwnNodeId() == cprimaryNodeId) {
     jam();
     cnoWaitrep7++;
     if (cnoWaitrep7 == cnoStartNodes) {
@@ -2820,7 +2820,7 @@ void Ndbcntr::waitpoint71Lab(Signal* signal)
     jam();
     signal->theData[0] = getOwnNodeId();
     signal->theData[1] = CntrWaitRep::ZWAITPOINT_7_1;
-    sendSignal(calcNdbCntrBlockRef(cmasterNodeId), GSN_CNTR_WAITREP, signal, 2, JBB);
+    sendSignal(calcNdbCntrBlockRef(cprimaryNodeId), GSN_CNTR_WAITREP, signal, 2, JBB);
   }
 }
 
@@ -2856,7 +2856,7 @@ Ndbcntr::wait_sp(Signal* signal, Uint32 sp)
     return false;
   }
 
-  if (!ndb_wait_sp(getNodeInfo(cmasterNodeId).m_version))
+  if (!ndb_wait_sp(getNodeInfo(cprimaryNodeId).m_version))
     return false;
 
   CntrWaitRep* rep = (CntrWaitRep*)signal->getDataPtrSend();
@@ -2865,7 +2865,7 @@ Ndbcntr::wait_sp(Signal* signal, Uint32 sp)
   rep->request = CntrWaitRep::WaitFor;
   rep->sp = sp;
 
-  sendSignal(calcNdbCntrBlockRef(cmasterNodeId),
+  sendSignal(calcNdbCntrBlockRef(cprimaryNodeId),
              GSN_CNTR_WAITREP, signal, CntrWaitRep::SignalLength, JBB);
 
   return true; // wait
@@ -2878,7 +2878,7 @@ Ndbcntr::wait_sp_rep(Signal* signal)
   switch(rep.request){
   case CntrWaitRep::WaitFor:
     jam();
-    ndbrequire(cmasterNodeId == getOwnNodeId());
+    ndbrequire(cprimaryNodeId == getOwnNodeId());
     break;
   case CntrWaitRep::Grant:
     jam();
@@ -2967,7 +2967,7 @@ void Ndbcntr::execCNTR_WAITREP(Signal* signal)
     break;
   case CntrWaitRep::ZWAITPOINT_5_1:
     jam();
-    g_eventLogger->info("Master node %u have reached completion of NDB start"
+    g_eventLogger->info("Primary node %u have reached completion of NDB start"
                         " phase 5",
                         signal->theData[0]);
     waitpoint51Lab(signal);
@@ -3036,17 +3036,17 @@ void Ndbcntr::execNODE_FAILREP(Signal* signal)
   failedStarting.bitAND(allFailed);
   failedWaiting.bitAND(allFailed);
   
-  const bool tMasterFailed = allFailed.get(cmasterNodeId);
+  const bool tPrimaryFailed = allFailed.get(cprimaryNodeId);
   const bool tStarted = !failedStarted.isclear();
   const bool tStarting = !failedStarting.isclear();
 
-  if (tMasterFailed)
+  if (tPrimaryFailed)
   {
     jam();
     /**
-     * If master has failed choose qmgr president as master
+     * If primary has failed choose qmgr president as primary
      */
-    cmasterNodeId = nodeFail->masterNodeId;
+    cprimaryNodeId = nodeFail->primaryNodeId;
   }
   
   /**
@@ -3069,7 +3069,7 @@ void Ndbcntr::execNODE_FAILREP(Signal* signal)
     
     const bool tStartConf = (phase > 2) || (phase == 2 && cndbBlocksCount > 0);
 
-    if (tMasterFailed)
+    if (tPrimaryFailed)
     {
       progError(__LINE__, NDBD_EXIT_SR_OTHERNODEFAILED,
 		"Unhandled node failure during restart");
@@ -3103,7 +3103,7 @@ void Ndbcntr::execNODE_FAILREP(Signal* signal)
   ndbrequire(!allFailed.get(getOwnNodeId()));
 
   NodeFailRep * rep = (NodeFailRep *)&signal->theData[0];  
-  rep->masterNodeId = cmasterNodeId;
+  rep->primaryNodeId = cprimaryNodeId;
 
   sendSignal(DBTC_REF, GSN_NODE_FAILREP, signal,
              NodeFailRep::SignalLength, JBB);
@@ -3261,7 +3261,7 @@ void Ndbcntr::execREAD_NODESREQ(Signal* signal)
   c_start.m_starting.copyto(NdbNodeBitmask::Size, readNodes->startingNodes);
 
   readNodes->noOfNodes = c_allDefinedNodes.count();
-  readNodes->masterNodeId = cmasterNodeId;
+  readNodes->primaryNodeId = cprimaryNodeId;
   readNodes->ndynamicId = cdynamicNodeId;
   if (m_cntr_start_conf)
   {
@@ -3286,7 +3286,7 @@ void Ndbcntr::systemErrorLab(Signal* signal, int line)
 }//Ndbcntr::systemErrorLab()
 
 /*###########################################################################*/
-/* CNTR MASTER CREATES AND INITIALIZES A SYSTEMTABLE AT INITIALSTART         */
+/* CNTR PRIMARY CREATES AND INITIALIZES A SYSTEMTABLE AT INITIALSTART         */
 /*       |-2048| # 1 00000001    |                                           */
 /*       |  :  |   :             |                                           */
 /*       | -1  | # 1 00000001    |                                           */
@@ -3877,7 +3877,7 @@ void Ndbcntr::execTCSEIZEREF(Signal* signal)
 void Ndbcntr::initData(Signal* signal) 
 {
   c_start.reset();
-  cmasterNodeId = 0;
+  cprimaryNodeId = 0;
   cnoStartNodes = 0;
   cnoWaitrep = 0;
 }//Ndbcntr::initData()
@@ -3909,7 +3909,7 @@ void Ndbcntr::sendNdbSttor(Signal* signal)
   req->nodeId = getOwnNodeId();
   req->internalStartPhase = cinternalStartphase;
   req->typeOfStart = ctypeOfStart;
-  req->masterNodeId = cmasterNodeId;
+  req->primaryNodeId = cprimaryNodeId;
   
   for (int i = 0; i < 16; i++) {
     // Garbage
@@ -3962,7 +3962,7 @@ Ndbcntr::execDUMP_STATE_ORD(Signal* signal)
 	      cstartPhase,
               cinternalStartphase,
               cndbBlocksCount);
-    infoEvent("Cntr: cmasterNodeId = %d", cmasterNodeId);
+    infoEvent("Cntr: cprimaryNodeId = %d", cprimaryNodeId);
   }
 
   if (arg == DumpStateOrd::NdbcntrTestStopOnError){
@@ -4027,7 +4027,7 @@ void Ndbcntr::updateNodeState(Signal* signal, const NodeState& newState) const{
   }
 
   stateRep->nodeState = newState;
-  stateRep->nodeState.masterNodeId = cmasterNodeId;
+  stateRep->nodeState.primaryNodeId = cprimaryNodeId;
   stateRep->nodeState.setNodeGroup(c_nodeGroup);
   
   for(Uint32 i = 0; i<ALL_BLOCKS_SZ; i++){
@@ -4090,7 +4090,7 @@ Ndbcntr::execSTOP_REQ(Signal* signal){
   }
 
   if(c_stopRec.stopReq.senderRef != 0 ||
-     (cmasterNodeId == getOwnNodeId() && !c_start.m_starting.isclear()))
+     (cprimaryNodeId == getOwnNodeId() && !c_start.m_starting.isclear()))
   {
     /**
      * Requested a system shutdown
@@ -4111,7 +4111,7 @@ Ndbcntr::execSTOP_REQ(Signal* signal){
     else
       ref->errorCode = StopRef::NodeShutdownInProgress;
     ref->senderData = senderData;
-    ref->masterNodeId = cmasterNodeId;
+    ref->primaryNodeId = cprimaryNodeId;
     
     if (senderRef != RNIL)
       sendSignal(senderRef, GSN_STOP_REF, signal, StopRef::SignalLength, JBB);
@@ -4123,18 +4123,18 @@ Ndbcntr::execSTOP_REQ(Signal* signal){
     jam();
     ref->errorCode = StopRef::UnsupportedNodeShutdown;
     ref->senderData = senderData;
-    ref->masterNodeId = cmasterNodeId;
+    ref->primaryNodeId = cprimaryNodeId;
     if (senderRef != RNIL)
       sendSignal(senderRef, GSN_STOP_REF, signal, StopRef::SignalLength, JBB);
     return;
   }
 
-  if (stopnodes && cmasterNodeId != getOwnNodeId())
+  if (stopnodes && cprimaryNodeId != getOwnNodeId())
   {
     jam();
-    ref->errorCode = StopRef::MultiNodeShutdownNotMaster;
+    ref->errorCode = StopRef::MultiNodeShutdownNotPrimary;
     ref->senderData = senderData;
-    ref->masterNodeId = cmasterNodeId;
+    ref->primaryNodeId = cprimaryNodeId;
     if (senderRef != RNIL)
       sendSignal(senderRef, GSN_STOP_REF, signal, StopRef::SignalLength, JBB);
     return;
@@ -4304,7 +4304,7 @@ Ndbcntr::StopRecord::checkNodeFail(Signal* signal){
   
   ref->senderData = stopReq.senderData;
   ref->errorCode = StopRef::NodeShutdownWouldCauseSystemCrash;
-  ref->masterNodeId = cntr.cmasterNodeId;
+  ref->primaryNodeId = cntr.cprimaryNodeId;
   
   const BlockReference bref = stopReq.senderRef;
   if (bref != RNIL)
@@ -4452,7 +4452,7 @@ void Ndbcntr::execABORT_ALL_REF(Signal* signal){
   StopRef * const stopRef = (StopRef *)&signal->theData[0];
   stopRef->senderData = c_stopRec.stopReq.senderData;
   stopRef->errorCode = StopRef::TransactionAbortFailed;
-  stopRef->masterNodeId = cmasterNodeId;
+  stopRef->primaryNodeId = cprimaryNodeId;
   sendSignal(c_stopRec.stopReq.senderRef, GSN_STOP_REF, signal, StopRef::SignalLength, JBB);
 }
 
@@ -4629,7 +4629,7 @@ void Ndbcntr::execWAIT_GCP_CONF(Signal* signal){
      */
     NodeStateRep * rep = (NodeStateRep *)&signal->theData[0];
     rep->nodeState = newState;
-    rep->nodeState.masterNodeId = cmasterNodeId;
+    rep->nodeState.primaryNodeId = cprimaryNodeId;
     rep->nodeState.setNodeGroup(c_nodeGroup);
     EXECUTE_DIRECT(QMGR, GSN_NODE_STATE_REP, signal, 
 		   NodeStateRep::SignalLength);
@@ -4928,13 +4928,13 @@ void Ndbcntr::Missra::sendNextSTTOR(Signal* signal){
           {
             case NodeState::ST_INITIAL_START:
             case NodeState::ST_INITIAL_NODE_RESTART:
-              g_eventLogger->info("Phase 2 did more initialisations, master"
+              g_eventLogger->info("Phase 2 did more initialisations, primary"
                                   " accepted our start, we initialised the"
                                   " REDO log");
               break;
             case NodeState::ST_SYSTEM_RESTART:
             case NodeState::ST_NODE_RESTART:
-              g_eventLogger->info("Phase 2 did more initialisations, master"
+              g_eventLogger->info("Phase 2 did more initialisations, primary"
                                   " accepted our start, we started REDO log"
                                   " initialisations");
               break;

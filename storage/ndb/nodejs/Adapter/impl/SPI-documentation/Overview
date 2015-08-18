@@ -20,11 +20,11 @@ Concepts
 
 2. DBConnectionPool 
 
-   DBConnectionPool is able to open and close a "master" connection (or pool
+   DBConnectionPool is able to open and close a "primary" connection (or pool
    of connections) to the database.
    
    Most importantly, DBConnectionPool implements getDBSession().  While the 
-   DBConnectionPool itself represents a master connection for, say, a whole
+   DBConnectionPool itself represents a primary connection for, say, a whole
    web application, the DBSession represents an individual session for an 
    individual user's request.  
    

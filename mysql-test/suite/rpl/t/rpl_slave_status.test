@@ -1,89 +1,89 @@
 # ==== Purpose ====
 #
-# Verify that a slave without replication privileges has
-# Slave_IO_Running = No
+# Verify that a replica without replication privileges has
+# Replica_IO_Running = No
 #
 # ==== Method ====
 #
 # We do the following steps:
-# - Create a new replication user on master
-# - Connect to slave and start replication as this user.
-# - Verify that slave can replicate well, by creating a table and
+# - Create a new replication user on primary
+# - Connect to replica and start replication as this user.
+# - Verify that replica can replicate well, by creating a table and
 #   inserting a row into it.
-# - Delete the user from the master.
-# - Stop and start the slave (this should fail).
-# - Check the Slave_IO_Running column of SHOW SLAVE STATUS.
+# - Delete the user from the primary.
+# - Stop and start the replica (this should fail).
+# - Check the Replica_IO_Running column of SHOW REPLICA STATUS.
 #
 # ==== Related bugs and modifications ====
 #
-# BUG#10780: slave can't connect to master - IO and SQL threads running
+# BUG#10780: replica can't connect to primary - IO and SQL threads running
 #
 # Added scenario for testing WL#2284:
 #   - a) Replaced 'rpl' user name to 'rpluser_with_length_32_123456789'
 #         i.e with increased length of 32.
-#   - b) Connect to master through new user name of increased length.
+#   - b) Connect to primary through new user name of increased length.
 #
 
 --source include/not_group_replication_plugin.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo ==== Create new replication user ====
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 CREATE USER rpluser_with_length_32_123456789@127.0.0.1 IDENTIFIED BY 'rpl';
 --error 1470
 CREATE USER rpluser_with_length_32_1234567890@127.0.0.1 IDENTIFIED BY 'rpl';
-GRANT REPLICATION SLAVE ON *.* TO rpluser_with_length_32_123456789@127.0.0.1;
+GRANT REPLICATION REPLICA ON *.* TO rpluser_with_length_32_123456789@127.0.0.1;
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
-source include/stop_slave.inc;
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
+source include/stop_replica.inc;
 --replace_column 2 ####
-CHANGE MASTER TO master_user='rpluser_with_length_32_123456789', master_password='rpl';
-source include/start_slave.inc;
+CHANGE PRIMARY TO primary_user='rpluser_with_length_32_123456789', primary_password='rpl';
+source include/start_replica.inc;
 
 --echo ==== Do replication as new user ====
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 CREATE TABLE t1 (n INT);
 INSERT INTO t1 VALUES (1);
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1;
 
 --echo ==== Delete new replication user ====
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 DROP USER rpluser_with_length_32_123456789@127.0.0.1;
 FLUSH PRIVILEGES;
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 
---echo ==== Restart slave without privileges =====
-# (slave.err will contain access denied error for this START SLAVE command)
-source include/stop_slave.inc;
-START SLAVE;
-source include/wait_for_slave_sql_to_start.inc;
-source include/wait_for_slave_io_to_stop.inc;
+--echo ==== Restart replica without privileges =====
+# (replica.err will contain access denied error for this START REPLICA command)
+source include/stop_replica.inc;
+START REPLICA;
+source include/wait_for_replica_sql_to_start.inc;
+source include/wait_for_replica_io_to_stop.inc;
 
---echo ==== Verify that Slave IO thread stopped with error ====
+--echo ==== Verify that Replica IO thread stopped with error ====
 # 1045 = ER_ACCESS_DENIED_ERROR
---let $slave_io_errno= 1045
---source include/wait_for_slave_io_error.inc
+--let $replica_io_errno= 1045
+--source include/wait_for_replica_io_error.inc
 
---echo ==== Cleanup (Note that slave IO thread is not running) ====
+--echo ==== Cleanup (Note that replica IO thread is not running) ====
 
-# cleanup: slave io thread has is stopped so we reset replication
---source include/stop_slave_sql.inc
+# cleanup: replica io thread has is stopped so we reset replication
+--source include/stop_replica_sql.inc
 --replace_column 2 ####
-CHANGE MASTER TO MASTER_USER = 'root', MASTER_PASSWORD = '';
-# clear Slave_IO_Errno
+CHANGE PRIMARY TO PRIMARY_USER = 'root', PRIMARY_PASSWORD = '';
+# clear Replica_IO_Errno
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 DROP TABLE t1;
 
 --source include/rpl_end.inc

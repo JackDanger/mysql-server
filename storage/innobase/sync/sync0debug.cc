@@ -870,7 +870,7 @@ LatchDebug::check_order(
 
 	case SYNC_IBUF_BITMAP:
 
-		/* Either the thread must own the master mutex to all
+		/* Either the thread must own the primary mutex to all
 		the bitmap pages, or it is allowed to latch only ONE
 		bitmap page. */
 
@@ -1048,7 +1048,7 @@ LatchDebug::unlock(const latch_t* latch)
 			/* If this thread doesn't own any more
 			latches remove from the map.
 
-			FIXME: Perhaps use the master thread
+			FIXME: Perhaps use the primary thread
 			to do purge. Or, do it from close connection.
 			This could be expensive. */
 

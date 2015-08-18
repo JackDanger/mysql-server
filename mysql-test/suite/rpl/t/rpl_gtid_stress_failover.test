@@ -15,7 +15,7 @@
 #  - A transaction (DML)
 #  - A DDL statement
 #  - FLUSH LOGS
-#  - CHANGE MASTER to a random other server
+#  - CHANGE PRIMARY to a random other server
 #
 # After all iterations are done, change to a circular topology and
 # wait for the servers to synchronize.  Then check that all servers
@@ -56,8 +56,8 @@
 #  $n_clients_per_server
 #    The number of clients to use for each server (default 5)
 #
-#  $change_master_probability
-#    The probability to execute CHANGE MASTER in each iteration (default 0.1)
+#  $change_primary_probability
+#    The probability to execute CHANGE PRIMARY in each iteration (default 0.1)
 #
 #  $flush_logs_probability
 #    The probability to execute FLUSH LOGS in each iteration (default 0.05)
@@ -79,7 +79,7 @@
 #
 # WL#3584: Global Transaction Identifiers
 # - Created as part of this worklog
-# BUG#18385953: RPL_GTID_STRESS_FAILOVER FAILS WITH "ERROR IN SYNC_WITH_MASTER.INC"
+# BUG#18385953: RPL_GTID_STRESS_FAILOVER FAILS WITH "ERROR IN SYNC_WITH_PRIMARY.INC"
 # - fixed bug in cleanup code
 
 #Want to skip this test from daily Valgrind execution
@@ -97,7 +97,7 @@
 # This test case fails in MTS mode due to BUG#12995174
 # once that bug is fixed, the following line should be
 # removed so that the test is enabled in MTS
---source include/not_mts_slave_parallel_workers.inc
+--source include/not_mts_replica_parallel_workers.inc
 
 --echo ==== Configure ====
 
@@ -118,9 +118,9 @@ if (!$n_clients_per_server)
   --let $n_clients_per_server= 5
 }
 
-if ($change_master_probability == '')
+if ($change_primary_probability == '')
 {
-  --let $change_master_probability= 0.1
+  --let $change_primary_probability= 0.1
 }
 if ($flush_logs_probability == '')
 {
@@ -153,7 +153,7 @@ if (!$debug)
 if ($debug)
 {
   --echo debug: n_servers=$n_servers n_clients_per_server=$n_clients_per_server max_iterations=$max_iterations max_seconds=$max_seconds
-  --echo debug: change_master_probability=$change_master_probability flush_logs_probability=$flush_logs_probability dml_probability=$dml_probability ddl_probability=$ddl_probability
+  --echo debug: change_primary_probability=$change_primary_probability flush_logs_probability=$flush_logs_probability dml_probability=$dml_probability ddl_probability=$ddl_probability
 }
 
 --let $circular_topology= 1
@@ -229,9 +229,9 @@ while (!$done)
   --let $client= $rand
 
   --let $rand_type= decide
-  --let $rand_probability= $change_master_probability
+  --let $rand_probability= $change_primary_probability
   --source include/rand.inc
-  --let $do_change_master= $rand
+  --let $do_change_primary= $rand
 
   --let $rand_probability= $flush_logs_probability
   --source include/rand.inc
@@ -247,13 +247,13 @@ while (!$done)
 
   if ($debug)
   {
-    --echo debug: server=$server client=$client change_master=$do_change_master flush=$do_flush_logs dml=$do_dml ddl=$do_ddl
+    --echo debug: server=$server client=$client change_primary=$do_change_primary flush=$do_flush_logs dml=$do_dml ddl=$do_ddl
   }
 
   --let $connection= server_$server$underscore$client
   --connection $connection
 
-  if ($do_change_master)
+  if ($do_change_primary)
   {
     --reap
 
@@ -263,25 +263,25 @@ while (!$done)
     --let $rand_min= 0
     --let $rand_max= $n_servers - 1
     --source include/rand.inc
-    --let $new_master= `SELECT 1 + (($server + $rand) % $n_servers)`
+    --let $new_primary= `SELECT 1 + (($server + $rand) % $n_servers)`
     if ($debug)
     {
-      --echo change master for $server to $new_master
+      --echo change primary for $server to $new_primary
     }
 
     --let $include_silent= 1
-    --source include/stop_slave.inc
+    --source include/stop_replica.inc
 
-    --let $port= \$SERVER_MYPORT_$new_master
+    --let $port= \$SERVER_MYPORT_$new_primary
     --disable_warnings
-    eval CHANGE MASTER TO MASTER_HOST = '127.0.0.1',
-                          MASTER_PORT = $port,
-                          MASTER_USER = 'root',
-                          MASTER_CONNECT_RETRY = 1,
-                          MASTER_AUTO_POSITION = 1;
+    eval CHANGE PRIMARY TO PRIMARY_HOST = '127.0.0.1',
+                          PRIMARY_PORT = $port,
+                          PRIMARY_USER = 'root',
+                          PRIMARY_CONNECT_RETRY = 1,
+                          PRIMARY_AUTO_POSITION = 1;
     --enable_warnings
 
-    --source include/start_slave.inc
+    --source include/start_replica.inc
     --let $include_silent= 0
     # give something for the next reap
     send SELECT 1;
@@ -375,14 +375,14 @@ while ($server <= $n_servers)
 # Wait for replication to catch up
 --connection default
 
---source include/rpl_stop_slaves.inc
+--source include/rpl_stop_replicas.inc
 
 --let $rpl_topology= $circular_topology
 --let $rpl_extra_connections_per_server= 5
---let $rpl_unconditional_change_master= 1
+--let $rpl_unconditional_change_primary= 1
 --source include/rpl_change_topology.inc
 
---source include/rpl_start_slaves.inc
+--source include/rpl_start_replicas.inc
 
 --source include/rpl_sync.inc
 
@@ -434,9 +434,9 @@ while ($server <= $n_servers)
   --connection server_$server
 
   --let $include_silent=1
-  --source include/stop_slave.inc
-  CHANGE MASTER TO MASTER_AUTO_POSITION=0;
-  --source include/start_slave.inc
+  --source include/stop_replica.inc
+  CHANGE PRIMARY TO PRIMARY_AUTO_POSITION=0;
+  --source include/start_replica.inc
   --let $include_silent=0
 
   --inc $server

@@ -7,13 +7,13 @@
 #
 # In detail:
 #
-#   conid   -- connection id (eg, master)
+#   conid   -- connection id (eg, primary)
 #   value   -- binlog_row_image value to set (eg, FULL)
-#   Y_or_N  -- Issue stop and start slave (eg, Y) 
+#   Y_or_N  -- Issue stop and start replica (eg, Y) 
 # 
 # Sample usage:
 #
-#  -- let $row_img_set=master:FULL:N,slave:MINIMAL:Y
+#  -- let $row_img_set=primary:FULL:N,replica:MINIMAL:Y
 #  -- source include/rpl_row_img_set.inc
 #
 # Notes:
@@ -31,18 +31,18 @@ while (`SELECT HEX('$row_img_set') != HEX('')`)
   -- let $conn= `SELECT SUBSTRING_INDEX('$tuple', ':', 1)`
   -- let $rimg= `SELECT SUBSTRING_INDEX(LTRIM(SUBSTRING('$tuple', LENGTH('$conn') + 2)), ':', 1)`
 
-  -- let $is_slave_restart= `SELECT LTRIM(SUBSTRING('$tuple', LENGTH('$conn') + LENGTH('$rimg')+ 3))`
+  -- let $is_replica_restart= `SELECT LTRIM(SUBSTRING('$tuple', LENGTH('$conn') + LENGTH('$rimg')+ 3))`
 
-  -- echo CON: '$conn', IMG: '$rimg', RESTART SLAVE: '$is_slave_restart'
+  -- echo CON: '$conn', IMG: '$rimg', RESTART REPLICA: '$is_replica_restart'
 
   -- connection $conn
   -- eval SET SESSION binlog_row_image= '$rimg'
   -- eval SET GLOBAL binlog_row_image= '$rimg'
 
-  if ($is_slave_restart == Y)
+  if ($is_replica_restart == Y)
   {
-    -- source include/stop_slave.inc
-    -- source include/start_slave.inc
+    -- source include/stop_replica.inc
+    -- source include/start_replica.inc
   }
 
   FLUSH TABLES;

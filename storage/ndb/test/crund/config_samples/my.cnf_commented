@@ -55,7 +55,7 @@ ndb-connectstring=127.0.0.1
 # unique server identity for replication
 # - option: server-id
 # - variable: server_id (system, global, changeable)
-# - default: 0 (disables all connections to master or from slaves)
+# - default: 0 (disables all connections to primary or from replicas)
 #server-id=0
 
 # server's port specs (here or per command line)
@@ -97,13 +97,13 @@ ndb-connectstring=127.0.0.1
 # - default: 1
 
 #
-# generic replication slave options and variables
+# generic replication replica options and variables
 #
 
-# do not start the slave threads when the server starts
-# - option: --skip-slave-start
+# do not start the replica threads when the server starts
+# - option: --skip-replica-start
 # - variable: n/a
-skip-slave-start
+skip-replica-start
 
 # basename for the relay log (and relay log index file)
 # - options: --relay-log, --relay-log-index
@@ -114,28 +114,28 @@ skip-slave-start
 #relay-log=mysql-relay-bin
 #relay-log-index=mysql-relay-bin.index
 
-# log updates from master to the slave's own binary log
-# - option: --log-slave-updates (requires log-bin)
-# - variable: log_slave_updates (system, global, constant)
-#log-slave-updates
+# log updates from primary to the replica's own binary log
+# - option: --log-replica-updates (requires log-bin)
+# - variable: log_replica_updates (system, global, constant)
+#log-replica-updates
 
 # do not skip events having its own server ID (for replaying binlog)
-# - option: --replicate-same-server-id (cannot be used with log-slave-updates)
+# - option: --replicate-same-server-id (cannot be used with log-replica-updates)
 # - variable: n/a
 # - default: 0 (to prevent infinite loops caused by circular replication)
 #replicate-same-server-id
 
-# attempts to connect to the master before giving up
-# - option: --master-retry-count
+# attempts to connect to the primary before giving up
+# - option: --primary-retry-count
 # - variable: n/a
-# - default: 86400 (0 means "infinite", i.e. slave attempts to connect forever)
-#master-retry-count=1
+# - default: 86400 (0 means "infinite", i.e. replica attempts to connect forever)
+#primary-retry-count=1
 
 # relax replication type enforcements
-# - option: --slave-type-conversions
-# - variable: slave-type-conversions (system, global, constant)
+# - option: --replica-type-conversions
+# - variable: replica-type-conversions (system, global, constant)
 # - default: none of (one or more) ALL_LOSSY, ALL_NON_LOSSY
-#slave-type-conversions=ALL_NON_LOSSY
+#replica-type-conversions=ALL_NON_LOSSY
 
 #
 # mysqld cluster settings
@@ -150,11 +150,11 @@ skip-slave-start
 # java.sql.BatchUpdateException: Packet for query is too large (1062229 > 1048576). You can change this value on the server by setting the max_allowed_packet' variable.
 #max_allowed_packet=16M
 
-# enable batched operations on MySQL Cluster replication slaves
-# - option: --slave-allow-batching (or slave_allow_batching)
-# - variable: slave_allow_batching (system, global, changeable)
+# enable batched operations on MySQL Cluster replication replicas
+# - option: --replica-allow-batching (or replica_allow_batching)
+# - variable: replica_allow_batching (system, global, changeable)
 # - default: 0
-#slave-allow-batching
+#replica-allow-batching
 
 # set the size in bytes that is used for NDB transaction batches
 # - option: --ndb-batch-size (or ndb_batch_size)

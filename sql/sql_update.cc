@@ -1025,7 +1025,7 @@ bool mysql_update(THD *thd,
     preparing the record or invoking before triggers fails). See
     ha_autocommit_or_rollback(error>=0) and DBUG_RETURN(error>=0) below.
     Sometimes we want to binlog even if we updated no rows, in case user used
-    it to be sure master and slave are in same state.
+    it to be sure primary and replica are in same state.
   */
   if ((error < 0) || thd->get_transaction()->cannot_safely_rollback(
       Transaction_ctx::STMT))
@@ -2067,7 +2067,7 @@ bool Query_result_update::initialize_tables(JOIN *join)
       {
         for (sl= tmp_unit->first_select(); sl; sl= sl->next_select())
         {
-          if (sl->master_unit()->item)
+          if (sl->primary_unit()->item)
           {
             join->select_lex->uncacheable|= UNCACHEABLE_CHECKOPTION;
             goto loop_end;
@@ -2881,8 +2881,8 @@ bool Sql_cmd_update::execute_multi_table_update(THD *thd)
   res= mysql_multi_update_prepare(thd);
 
 #ifdef HAVE_REPLICATION
-  /* Check slave filtering rules */
-  if (unlikely(thd->slave_thread && !have_table_map_for_update))
+  /* Check replica filtering rules */
+  if (unlikely(thd->replica_thread && !have_table_map_for_update))
   {
     if (all_tables_not_ok(thd, all_tables))
     {
@@ -2891,8 +2891,8 @@ bool Sql_cmd_update::execute_multi_table_update(THD *thd)
         res= 0;             /* don't care of prev failure  */
         thd->clear_error(); /* filters are of highest prior */
       }
-      /* we warn the slave SQL thread */
-      my_error(ER_SLAVE_IGNORED_TABLE, MYF(0));
+      /* we warn the replica SQL thread */
+      my_error(ER_REPLICA_IGNORED_TABLE, MYF(0));
       return res;
     }
     if (res)

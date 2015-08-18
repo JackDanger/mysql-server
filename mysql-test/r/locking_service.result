@@ -909,7 +909,7 @@ disconnect holder;
 disconnect requestor;
 # Check that "requestor" and "holder" are gone.
 #
-# Bug#21286221: DEBUG SERVER CRASHES ON RESET SLAVE WITH
+# Bug#21286221: DEBUG SERVER CRASHES ON RESET REPLICA WITH
 #               LOCKED VERSION TOKEN
 #
 SELECT service_get_write_locks('holder_name_space', 'lock', 0);

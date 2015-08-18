@@ -5,15 +5,15 @@
 #
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 --source suite/ndb_rpl/t/ndb_trans_conflict_info_init.inc
 
 --echo Setup circular replication
 --disable_query_log
 --disable_result_log
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-RESET MASTER;
-STOP SLAVE;
+RESET PRIMARY;
+STOP REPLICA;
 select @secondary_server_id:=(variable_value+0)
        from information_schema.global_variables
        where variable_name like 'server_id';
@@ -24,10 +24,10 @@ select @secondary_port:=(variable_value+0)
 let $SECONDARY_PORT= query_get_value('select @secondary_port as v',v,1);
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-RESET MASTER;
-STOP SLAVE;
---eval CHANGE MASTER TO master_host="127.0.0.1",master_port=$SECONDARY_PORT,master_user="root"
-START SLAVE;
+RESET PRIMARY;
+STOP REPLICA;
+--eval CHANGE PRIMARY TO primary_host="127.0.0.1",primary_port=$SECONDARY_PORT,primary_user="root"
+START REPLICA;
 select @primary_server_id:=(variable_value+0)
        from information_schema.global_variables
        where variable_name like 'server_id';
@@ -38,8 +38,8 @@ select @primary_port:=(variable_value+0)
 let $PRIMARY_PORT= query_get_value('select @primary_port as v',v,1);
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---eval CHANGE MASTER TO master_host="127.0.0.1",master_port=$PRIMARY_PORT,master_user="root"
-START SLAVE;
+--eval CHANGE PRIMARY TO primary_host="127.0.0.1",primary_port=$PRIMARY_PORT,primary_user="root"
+START REPLICA;
 
 --enable_result_log
 --enable_query_log
@@ -109,7 +109,7 @@ insert into test.t1 values
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
@@ -134,7 +134,7 @@ select * from t1 order by a;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -149,7 +149,7 @@ select * from t1 order by a;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 update t1 set b="Primary second change 4" where a=4;
@@ -175,7 +175,7 @@ select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_trans_conflict_info_init.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -188,7 +188,7 @@ select * from test.t1 order by a;
 --echo ----------------------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 update t1 set b="Primary third change 1" where a=1;
@@ -219,7 +219,7 @@ select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_trans_conflict_info_init.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -234,7 +234,7 @@ select * from test.t1 order by a;
 --echo --------------------------------------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
@@ -269,7 +269,7 @@ select * from test.t2 order by a;
 --source suite/ndb_rpl/t/ndb_trans_conflict_info_init.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -283,7 +283,7 @@ select * from test.t2 order by a;
 # Whole epoch is rolled back when --ndb-serverid-transid-bits is 0!
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 update t1 set b="Primary is king" where a=10;
@@ -313,7 +313,7 @@ select * from t1 order by a;
 --source suite/ndb_rpl/t/ndb_trans_conflict_info_init.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -328,7 +328,7 @@ select * from t1 order by a;
 --echo ------------------------------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 update t1 set b="7 : Primary is king" where a=7;
@@ -369,7 +369,7 @@ select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_trans_conflict_info_init.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
@@ -402,14 +402,14 @@ if (!$extended_exceptions_table)
 {
 create table test.transactions$EX
  (server_id             int unsigned,
-  master_server_id      int unsigned,
-  master_epoch          bigint unsigned,
+  primary_server_id      int unsigned,
+  primary_epoch          bigint unsigned,
   count                 int unsigned,
   auto_key              int not null,
   from_name             varchar(100) not null,
   to_name               varchar(100) not null,
   detail                varchar(100) not null,
-  primary key(server_id, master_server_id, master_epoch, count))
+  primary key(server_id, primary_server_id, primary_epoch, count))
 engine=ndb;
 }
 
@@ -417,8 +417,8 @@ if ($extended_exceptions_table)
 {
 create table test.transactions$EX
  (ndb$server_id         int unsigned,
-  ndb$master_server_id  int unsigned,
-  ndb$master_epoch      bigint unsigned,
+  ndb$primary_server_id  int unsigned,
+  ndb$primary_epoch      bigint unsigned,
   ndb$count             int unsigned,
   auto_key              int not null,
   from_name             varchar(100) not null,
@@ -429,7 +429,7 @@ create table test.transactions$EX
   ndb$op_type           enum('write_row','update_row', 'delete_row') not null,
   ndb$cft_cause         enum('row_does_not_exist','row_already_exists','data_in_conflict','trans_in_conflict') not null,
   ndb$orig_transid      bigint unsigned not null,
-  primary key(ndb$server_id, ndb$master_server_id, ndb$master_epoch, ndb$count))
+  primary key(ndb$server_id, ndb$primary_server_id, ndb$primary_epoch, ndb$count))
 engine=ndb;
 }
 
@@ -451,7 +451,7 @@ insert into test.balances values
 
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-# Sync back to master, to ensure that what follows on slave,
+# Sync back to primary, to ensure that what follows on replica,
 # is in a separate epoch transaction.
 # This is needed to get stable counts, not for correctness
 #
@@ -462,7 +462,7 @@ FLUSH LOGS; # To give a position to sync
 
 --echo Bank sites are disconnected
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
 --echo Larry buys a yacht using Primary bank site
@@ -512,7 +512,7 @@ select * from test.balances order by name;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
 --echo Bank sites re-connected
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -530,20 +530,20 @@ select * from test.balances order by name;
 
 if (!$extended_exceptions_table)
 {
-select server_id, master_server_id, auto_key, from_name, to_name, detail
+select server_id, primary_server_id, auto_key, from_name, to_name, detail
   from test.transactions$EX order by auto_key, from_name, to_name, detail;
 }
 
 if ($extended_exceptions_table)
 {
-select ndb$server_id, ndb$master_server_id, auto_key, from_name, to_name, detail
+select ndb$server_id, ndb$primary_server_id, auto_key, from_name, to_name, detail
    amount$old, amount$new, ndb$op_type, ndb$cft_cause from test.transactions$EX order by ndb$orig_transid, ndb$count;
 }
 
 --echo Conflict handling activity at Primary bank site
 --echo Expect :
---echo   1 conflict from slave T1 on Larry's balance
---echo   1 conflict from slave T2 on Larry's balance
+--echo   1 conflict from replica T1 on Larry's balance
+--echo   1 conflict from replica T2 on Larry's balance
 --echo  =2 row conflicts
 --echo
 --echo 3 (user) transactions rejected
@@ -628,7 +628,7 @@ FLUSH LOGS;  # Ensure Inserts are in previous epoch trans to what follows
 
 --echo Case 1 : Transactional detection affects row - based entries in same trans
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 update test.t1 set b=100 where a=1;
 
@@ -642,7 +642,7 @@ update test.t4 set b=2100 where a=21;
 update test.t1 set b=1000 where a=1;
 commit;
 
---echo Show slave transaction effect
+--echo Show replica transaction effect
 select * from test.t1 order by a;
 select * from test.t3 order by a;
 select * from test.t4 order by a;
@@ -665,7 +665,7 @@ select * from test.t4 order by a;
 
 --echo Now restart rep to Secondary, and check realignment
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -676,12 +676,12 @@ select * from test.t4 order by a;
 
 --echo Case 2 : Row based detection does not affect other transaction entries
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 update test.t3 set b=1200 where a=12;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-# Transaction conflicts with master, on table without transactional
+# Transaction conflicts with primary, on table without transactional
 # conflict detection
 # Conflict will be detected on row, but no other transaction state
 # will be reverted
@@ -715,7 +715,7 @@ select * from test.t4 order by a;
 
 --echo Show effect of transaction on Secondary
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -729,11 +729,11 @@ flush logs;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
 --echo Case 3 : Check behaviour where table with Blob is implicated
---echo          in transactional conflict.  Should result in Slave
+--echo          in transactional conflict.  Should result in Replica
 --echo          stopping with an error.
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
+STOP REPLICA;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
@@ -759,22 +759,22 @@ commit;
 select * from test.t1 order by a;
 select left(b,1), length(b) from test.t5 order by a;
 
---echo Check that Primary Slave has stopped
+--echo Check that Primary Replica has stopped
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---let $slave_sql_errno=1296
---source include/wait_for_slave_sql_error.inc
-#SHOW SLAVE STATUS;
+--let $replica_sql_errno=1296
+--source include/wait_for_replica_sql_error.inc
+#SHOW REPLICA STATUS;
 
---echo Restart Primary Slave
-set global sql_slave_skip_counter=1;
+--echo Restart Primary Replica
+set global sql_replica_skip_counter=1;
 
-START SLAVE;
+START REPLICA;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo Restart Secondary Slave
-START SLAVE;
+--echo Restart Secondary Replica
+START REPLICA;
 
 flush logs;
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
@@ -811,7 +811,7 @@ select * from test.t1 order by a;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --echo SECONDARY:
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --echo PRIMARY:
@@ -883,7 +883,7 @@ select * from test.t1 order by a;
 --echo   NDB\$EPOCH2_TRANS will have no divergence as the Secondary insert
 --echo   is reflected after the Primary delete, and re-inserts the value.
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-start slave;
+start replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -903,11 +903,11 @@ drop table test.t2;
 flush logs;
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 
---connection master
-stop slave;
-reset slave;
+--connection primary
+stop replica;
+reset replica;
 
-#change master to master_host='';
+#change primary to primary_host='';
 --source include/rpl_end.inc
 
 # TODO

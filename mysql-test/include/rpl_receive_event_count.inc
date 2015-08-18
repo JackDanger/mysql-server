@@ -1,6 +1,6 @@
 # ==== Purpose ====
 #
-# Receive a specified number of events on the slave, possibly pausing
+# Receive a specified number of events on the replica, possibly pausing
 # in the middle of a transaction.
 #
 # This script assumes that the receiver thread is stopped when the
@@ -13,7 +13,7 @@
 # [--let $rpl_channel_name= NAME]
 # [--let $rpl_count_header_events= 1]
 # [--let $rpl_count_only_event_type= EVENT_TYPE]
-# [--let $slave_timeout= N]
+# [--let $replica_timeout= N]
 # [--let $rpl_debug= 1]
 # [--let $rpl_continue_event_count_after_hanging= 1]
 # --source include/rpl_receive_event_count.inc
@@ -22,7 +22,7 @@
 #
 # $rpl_after_received_events_action
 #   Specifies what to do after receiving the events:
-#   stop  - Issue STOP SLAVE IO_THREAD and wait for it to stop.
+#   stop  - Issue STOP REPLICA IO_THREAD and wait for it to stop.
 #   flush - Issue FLUSH RELAY LOG and then continue to replicate.
 #   hang  - Leave the receiver thread hanging on a debug sync point.
 #           The caller must later release the receiver thread using:
@@ -42,14 +42,14 @@
 #   $rpl_count_header_events).  If this variable is set, counts only
 #   this type of event.
 #
-# $slave_timeout
+# $replica_timeout
 #   Wait this number of seconds before receiving events (default 300).
 #
 # $rpl_debug
 #   Print debug info.
 #
 # $rpl_channel_name
-#   See include/wait_for_slave_param.inc
+#   See include/wait_for_replica_param.inc
 #
 # $rpl_continue_event_count_after_hanging
 #   The include should not start the I/O Thread because it is already
@@ -72,17 +72,17 @@ if ($rpl_channel_name != '')
   --let $_for_channel= FOR CHANNEL '$rpl_channel_name'
 }
 
---let $is_slave_io_running= query_get_value(SHOW SLAVE STATUS $_for_channel, Slave_IO_Running, 1)
+--let $is_replica_io_running= query_get_value(SHOW REPLICA STATUS $_for_channel, Replica_IO_Running, 1)
 if (!$rpl_continue_event_count_after_hanging)
 {
-  if ($is_slave_io_running != 'No' )
+  if ($is_replica_io_running != 'No' )
   {
     --die ERROR IN TEST: The I/O thread was expected to be stopped.
   }
 }
 if ($rpl_continue_event_count_after_hanging)
 {
-  if ($is_slave_io_running != 'Yes' )
+  if ($is_replica_io_running != 'Yes' )
   {
     --die ERROR IN TEST: The I/O thread was expected to be running.
   }
@@ -111,9 +111,9 @@ if (!$rpl_debug)
 }
 
 --let $_rrec_timeout_clause= TIMEOUT 300
-if ($slave_timeout)
+if ($replica_timeout)
 {
-  --let $_rrec_timeout_clause= TIMEOUT $slave_timeout
+  --let $_rrec_timeout_clause= TIMEOUT $replica_timeout
 }
 
 # Make it pause on the debug point and start the receiver thread.
@@ -123,7 +123,7 @@ if ($slave_timeout)
 
 if (!$rpl_continue_event_count_after_hanging)
 {
-  --eval START SLAVE IO_THREAD $_for_channel;
+  --eval START REPLICA IO_THREAD $_for_channel;
 }
 if ($rpl_continue_event_count_after_hanging)
 {
@@ -269,7 +269,7 @@ if ($rpl_after_received_events_action == 'stop')
 
   --connection _rrec_other_connection
   --send
-  eval STOP SLAVE IO_THREAD $_for_channel;
+  eval STOP REPLICA IO_THREAD $_for_channel;
   --connection $_rrec_connection
 
   SET DEBUG_SYNC= 'now SIGNAL continue_after_queue_event';
@@ -279,7 +279,7 @@ if ($rpl_after_received_events_action == 'stop')
   --connection $_rrec_connection
 
   --disconnect _rrec_other_connection
-  --source include/wait_for_slave_io_to_stop.inc
+  --source include/wait_for_replica_io_to_stop.inc
 }
 
 --let $include_filename= rpl_receive_event_count.inc

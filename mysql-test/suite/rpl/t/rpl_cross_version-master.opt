@@ -1,2 +1,2 @@
---relay-log=slave-relay-bin
+--relay-log=replica-relay-bin
 --force-restart

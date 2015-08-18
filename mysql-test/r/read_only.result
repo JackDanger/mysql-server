@@ -148,7 +148,7 @@ Warning	1287	Using GRANT for creating new user is deprecated and will be removed
 create database mysqltest_db1;
 grant all on mysqltest_db1.* to `mysqltest_u1`@`%`;
 flush privileges;
-connect (con_bug27440,127.0.0.1,mysqltest_u1,,test,MASTER_MYPORT,);
+connect (con_bug27440,127.0.0.1,mysqltest_u1,,test,PRIMARY_MYPORT,);
 connection con_bug27440;
 create database mysqltest_db2;
 ERROR HY000: The MySQL server is running with the --read-only option so it cannot execute this statement

@@ -5,7 +5,7 @@
 
 --source include/have_ucs2.inc
 --source include/have_ndb.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 #
 # MySQL Bug#15276: MySQL ignores collation-server
@@ -37,13 +37,13 @@ CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
 INSERT INTO t1 VALUES(1,"XYZ1","ABC1");
 select * from t1 order by nid;
 
-sync_slave_with_master;
-# connect to slave and ensure data it there.
-connection slave;
+sync_replica_with_primary;
+# connect to replica and ensure data it there.
+connection replica;
 select * from t1 order by nid;
 
 --echo ==== clean up ====
-connection master;
+connection primary;
 DROP TABLE t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 --source include/rpl_end.inc

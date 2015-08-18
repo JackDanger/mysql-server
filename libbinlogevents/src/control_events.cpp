@@ -48,7 +48,7 @@ Rotate_event::Rotate_event(const char* buf, unsigned int event_len,
 
   /**
     By default, an event start immediately after the magic bytes in the binary
-    log, which is at offset 4. In case if the slave has to rotate to a
+    log, which is at offset 4. In case if the replica has to rotate to a
     different event instead of the first one, the binary log offset for that
     event is specified in the post header. Else, the position is set to 4.
   */
@@ -117,7 +117,7 @@ Format_description_event::Format_description_event(uint8_t binlog_ver,
       INTVAR_HEADER_LEN,
       LOAD_HEADER_LEN,
       /*
-        Unused because the code for Slave log event was removed.
+        Unused because the code for Replica log event was removed.
         (15th Oct. 2010)
       */
       0,
@@ -178,8 +178,8 @@ Format_description_event::Format_description_event(uint8_t binlog_ver,
   case 3: /* 4.0.x x >= 2 */
   {
     /*
-      We build an artificial (i.e. not sent by the master) event, which
-      describes what those old master versions send.
+      We build an artificial (i.e. not sent by the primary) event, which
+      describes what those old primary versions send.
     */
     if (binlog_version == 1)
       strcpy(server_version, server_ver ? server_ver : "3.23");
@@ -192,7 +192,7 @@ Format_description_event::Format_description_event(uint8_t binlog_ver,
       after that does not exist in older versions. We use the events known by
       version 3, even if version 1 had only a subset of them (this is not a
       problem: it uses a few bytes for nothing but unifies code; it does not
-      make the slave detect less corruptions).
+      make the replica detect less corruptions).
     */
     number_of_event_types= FORMAT_DESCRIPTION_EVENT - 1;
      /**
@@ -208,7 +208,7 @@ Format_description_event::Format_description_event(uint8_t binlog_ver,
       INTVAR_HEADER_LEN,
       LOAD_HEADER_LEN,
       /*
-       Unused because the code for Slave log event was removed.
+       Unused because the code for Replica log event was removed.
        (15th Oct. 2010)
       */
       0,
@@ -439,7 +439,7 @@ Format_description_event(const char* buf, unsigned int event_len,
     static const uint8_t perm[EVENT_TYPE_PERMUTATION_NUM]=
       {
         UNKNOWN_EVENT, START_EVENT_V3, QUERY_EVENT, STOP_EVENT, ROTATE_EVENT,
-        INTVAR_EVENT, LOAD_EVENT, SLAVE_EVENT, CREATE_FILE_EVENT,
+        INTVAR_EVENT, LOAD_EVENT, REPLICA_EVENT, CREATE_FILE_EVENT,
         APPEND_BLOCK_EVENT, EXEC_LOAD_EVENT, DELETE_FILE_EVENT,
         NEW_LOAD_EVENT,
         RAND_EVENT, USER_VAR_EVENT,

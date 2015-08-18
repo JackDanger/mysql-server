@@ -343,7 +343,7 @@ public:
                      Uint32 transId, Uint32 transKey, Uint32 flags);
 
 private:
-  int guess_master_node(SignalSender&);
+  int guess_primary_node(SignalSender&);
 
   void status_api(int nodeId,
                   ndb_mgm_node_status& node_status,
@@ -437,7 +437,7 @@ private:
   friend class Ndb_mgmd_event_service;
   Ndb_mgmd_event_service m_event_listner;
   
-  NodeId m_master_node;
+  NodeId m_primary_node;
 
   ndb_mgm_node_type getNodeType(NodeId) const;
 

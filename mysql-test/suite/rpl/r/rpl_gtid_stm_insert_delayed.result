@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE SCHEMA IF NOT EXISTS mysqlslap;
 USE mysqlslap;
 select @@global.binlog_format;
@@ -13,7 +13,7 @@ FLUSH TABLE t1;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 5000
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 use mysqlslap;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -29,7 +29,7 @@ flush table t1;
 select * from t1;
 id	name
 10	my name
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 id	name
 10	my name
@@ -41,14 +41,14 @@ select * from t1;
 id	name
 10	my name
 20	is Bond
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 id	name
 10	my name
 20	is Bond
 USE test;
 DROP SCHEMA mysqlslap;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 use test;
 FLUSH LOGS;
 FLUSH LOGS;
@@ -65,19 +65,19 @@ use `test`; INSERT  IGNORE INTO t1 VALUES(1)
 select * from t1;
 a
 1
-include/sync_slave_sql_with_master.inc
-On slave
+include/sync_replica_sql_with_primary.inc
+On replica
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-slave-bin.000002	#	Query	#	#	use `test`; CREATE TABLE t1(a int, UNIQUE(a))
-slave-bin.000002	#	Query	#	#	BEGIN
-slave-bin.000002	#	Query	#	#	use `test`; INSERT  IGNORE INTO t1 VALUES(1)
-slave-bin.000002	#	Query	#	#	COMMIT
+replica-bin.000002	#	Query	#	#	use `test`; CREATE TABLE t1(a int, UNIQUE(a))
+replica-bin.000002	#	Query	#	#	BEGIN
+replica-bin.000002	#	Query	#	#	use `test`; INSERT  IGNORE INTO t1 VALUES(1)
+replica-bin.000002	#	Query	#	#	COMMIT
 select * from t1;
 a
 1
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 FLUSH LOGS;
 FLUSH LOGS;
 End of 5.0 tests

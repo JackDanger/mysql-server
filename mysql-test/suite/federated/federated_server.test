@@ -8,7 +8,7 @@
 # if federated can utilise the servers table
 -- source suite/federated/include/federated.inc
 
-connection slave;
+connection replica;
 create database first_db;
 create database second_db;
 
@@ -43,77 +43,77 @@ CREATE TABLE second_db.t2 (
     )
   DEFAULT CHARSET=latin1;
 
-connection master;
+connection primary;
 
 drop server if exists 'server_one';
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval create server 'server_one' foreign data wrapper 'mysql' options
   (HOST '127.0.0.1',
   DATABASE 'first_db',
   USER 'root',
   PASSWORD '',
-  PORT $SLAVE_MYPORT,
+  PORT $REPLICA_MYPORT,
   SOCKET '',
   OWNER 'root');
 
 drop server if exists 'server_two';
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval create server 'server_two' foreign data wrapper 'mysql' options
   (HOST '127.0.0.1',
   DATABASE 'second_db',
   USER 'root',
   PASSWORD '',
-  PORT $SLAVE_MYPORT,
+  PORT $REPLICA_MYPORT,
   SOCKET '',
   OWNER 'root');
 
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval select * from mysql.servers order by Server_name;
 
 DROP TABLE IF EXISTS federated.old;
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.old (
     `id` int(20) NOT NULL,
     `name` varchar(64) NOT NULL default ''
     )
   ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-  CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/first_db/t1';
+  CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/first_db/t1';
 
 INSERT INTO federated.old (id, name) values (1, 'federated.old-> first_db.t1, url format');
 
 SELECT * FROM federated.old;
 
 DROP TABLE IF EXISTS federated.old2;
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.old2 (
     `id` int(20) NOT NULL,
     `name` varchar(64) NOT NULL default ''
     )
   ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-  CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/first_db/t2';
+  CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/first_db/t2';
 
 INSERT INTO federated.old2 (id, name) values (1, 'federated.old2-> first_db.t2, url format');
 SELECT * FROM federated.old2;
 
 DROP TABLE IF EXISTS federated.urldb2t1;
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.urldb2t1 (
     `id` int(20) NOT NULL,
     `name` varchar(64) NOT NULL default ''
     )
   ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-  CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/second_db/t1';
+  CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/second_db/t1';
 INSERT INTO federated.urldb2t1 (id, name) values (1, 'federated.urldb2t1 -> second_db.t1, url format');
 SELECT * FROM federated.urldb2t1;
 
 DROP TABLE IF EXISTS federated.urldb2t2;
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.urldb2t2 (
     `id` int(20) NOT NULL,
     `name` varchar(64) NOT NULL default ''
     )
   ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-  CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/second_db/t2';
+  CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/second_db/t2';
 INSERT INTO federated.urldb2t2 (id, name) values (1, 'federated.urldb2t2 -> second_db.t2, url format');
 SELECT * FROM federated.urldb2t2;
 
@@ -155,7 +155,7 @@ drop server 'server_one';
 drop server 'server_two';
 select * from mysql.servers order by Server_name;
 
-connection slave;
+connection replica;
 drop table first_db.t1;
 drop table second_db.t1;
 drop database first_db;
@@ -185,14 +185,14 @@ CREATE TABLE db_bogus.t1 (
   ;
 INSERT INTO db_bogus.t1 VALUES ('2','this is bogus');
 
-connection master;
---replace_result $SLAVE_MYPORT SLAVE_PORT
+connection primary;
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval create server 's1' foreign data wrapper 'mysql' options
   (HOST '127.0.0.1',
   DATABASE 'db_legitimate',
   USER 'root',
   PASSWORD '',
-  PORT $SLAVE_MYPORT,
+  PORT $REPLICA_MYPORT,
   SOCKET '',
   OWNER 'root');
 
@@ -212,15 +212,15 @@ CREATE TABLE federated.t1 (
 
 select * from federated.t1;
 
-connect (conn_select,127.0.0.1,guest_select,,federated,$MASTER_MYPORT);
-connect (conn_usage,127.0.0.1,guest_usage,,,$MASTER_MYPORT);
-connect (conn_super,127.0.0.1,guest_super,,,$MASTER_MYPORT);
+connect (conn_select,127.0.0.1,guest_select,,federated,$PRIMARY_MYPORT);
+connect (conn_usage,127.0.0.1,guest_usage,,,$PRIMARY_MYPORT);
+connect (conn_super,127.0.0.1,guest_super,,,$PRIMARY_MYPORT);
 
 connection conn_select;
 --error ER_SPECIFIC_ACCESS_DENIED_ERROR
 alter server s1 options (database 'db_bogus');
 
-connection master;
+connection primary;
 flush tables;
 select * from federated.t1;
 
@@ -228,49 +228,49 @@ connection conn_usage;
 --error ER_SPECIFIC_ACCESS_DENIED_ERROR
 alter server s1 options (database 'db_bogus');
 
-connection master;
+connection primary;
 flush tables;
 select * from federated.t1;
 
 connection conn_super;
 alter server s1 options (database 'db_bogus');
 
-connection master;
+connection primary;
 flush tables;
 select * from federated.t1;
 
 connection conn_select;
 --error ER_SPECIFIC_ACCESS_DENIED_ERROR
 drop server if exists 's1';
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 --error ER_SPECIFIC_ACCESS_DENIED_ERROR
 eval create server 's1' foreign data wrapper 'mysql' options
   (HOST '127.0.0.1',
   DATABASE 'db_legitimate',
   USER 'root',
   PASSWORD '',
-  PORT $SLAVE_MYPORT,
+  PORT $REPLICA_MYPORT,
   SOCKET '',
   OWNER 'root');
 
 connection conn_super;
 drop server 's1';
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval create server 's1' foreign data wrapper 'mysql' options
   (HOST '127.0.0.1',
   DATABASE 'db_legitimate',
   USER 'root',
   PASSWORD '',
-  PORT $SLAVE_MYPORT,
+  PORT $REPLICA_MYPORT,
   SOCKET '',
   OWNER 'root');
 
-connection master;
+connection primary;
 flush tables;
 select * from federated.t1;
 
 # clean up test
-connection slave;
+connection replica;
 drop database db_legitimate;
 drop database db_bogus;
 
@@ -278,7 +278,7 @@ disconnect conn_select;
 disconnect conn_usage;
 disconnect conn_super;
 
-connection master;
+connection primary;
 drop user guest_super@localhost;
 drop user guest_usage@localhost;
 drop user guest_select@localhost;
@@ -305,7 +305,7 @@ drop server 's1';
 # Bug#25721 - deadlock with ALTER/CREATE SERVER
 #
 connect (other,localhost,root,,);
-connection master;
+connection primary;
 use test;
 create table t1(a int);
 insert into t1 values (1);
@@ -330,7 +330,7 @@ delimiter ;//
 connection other;
 use test;
 send call p1();
-connection master;
+connection primary;
 call p1();
 connection other;
 reap;
@@ -347,7 +347,7 @@ drop server if exists s;
 # Changes to SERVER declarations should require SUPER privilege.
 # Based upon test case by Giuseppe Maxia
 
-connection slave;
+connection replica;
 
 create database db_remote;
 
@@ -363,16 +363,16 @@ SET NAMES utf8;
 CREATE USER очень_очень_очень_длинный_юзер__@localhost IDENTIFIED WITH 'mysql_native_password' BY 'auth_string';
 grant all on *.* to очень_очень_очень_длинный_юзер__@localhost;
 
-connection master;
+connection primary;
 SET NAMES utf8;
 
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval create server 's1' foreign data wrapper 'mysql' options
   (HOST '127.0.0.1',
   DATABASE 'db_remote',
   USER 'очень_очень_очень_длинный_юзер__',
   PASSWORD 'auth_string',
-  PORT $SLAVE_MYPORT,
+  PORT $REPLICA_MYPORT,
   SOCKET '',
   OWNER 'очень_очень_очень_длинный_юзер__');
 
@@ -386,20 +386,20 @@ CREATE TABLE federated.t1 (
 
 select * from federated.t1;
 
-connect (conn_remote,127.0.0.1,user_name_len_32_012345678901234,,federated,$MASTER_MYPORT);
+connect (conn_remote,127.0.0.1,user_name_len_32_012345678901234,,federated,$PRIMARY_MYPORT);
 
 connection conn_remote;
 SET NAMES utf8;
 select * from federated.t1;
 
 # clean up test
-connection slave;
+connection replica;
 drop database db_remote;
 drop user очень_очень_очень_длинный_юзер__@localhost;
 disconnect conn_remote;
 SET NAMES default;
 
-connection master;
+connection primary;
 drop user user_name_len_32_012345678901234@localhost;
 drop table federated.t1;
 drop server 's1';

@@ -1,20 +1,20 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 **** Test 1 ****
 delete from mysql.ndb_replication;
 insert into mysql.ndb_replication values ("test", "t1", 0, 1, NULL);
 create table t1 (a int key, b varchar(32), c varchar(32)) engine ndb;
 create table t2 (a int key, b varchar(32), c varchar(32)) engine ndb;
-insert into t1 values (1,"t1.b from master", "t1.c from master");
-insert into t2 values (1,"t2.b from master", "t2.c from master");
+insert into t1 values (1,"t1.b from primary", "t1.c from primary");
+insert into t2 values (1,"t2.b from primary", "t2.c from primary");
 select * from t1;
 a	b	c
 select * from t2;
 a	b	c
-1	t2.b from master	t2.c from master
+1	t2.b from primary	t2.c from primary
 drop table t1;
 drop table t2;
 **** Test 2 ****
@@ -23,24 +23,24 @@ insert into mysql.ndb_replication values ("test", "t1", 0, 2, NULL);
 set global ndb_log_updated_only=0;
 create table t1 (a int key, b varchar(32), c varchar(32)) engine ndb;
 create table t2 (a int key, b varchar(32), c varchar(32)) engine ndb;
-insert into t1 values (1,"t1.b from master", "t1.c from master");
-insert into t2 values (1,"t2.b from master", "t2.c from master");
+insert into t1 values (1,"t1.b from primary", "t1.c from primary");
+insert into t2 values (1,"t2.b from primary", "t2.c from primary");
 select * from t1;
 a	b	c
-1	t1.b from master	t1.c from master
+1	t1.b from primary	t1.c from primary
 select * from t2;
 a	b	c
-1	t2.b from master	t2.c from master
-update t1 set c="t1.c from slave";
-update t2 set c="t2.c from slave";
-update t1 set b="updated t1.b from master";
-update t2 set b="updated t2.b from master";
+1	t2.b from primary	t2.c from primary
+update t1 set c="t1.c from replica";
+update t2 set c="t2.c from replica";
+update t1 set b="updated t1.b from primary";
+update t2 set b="updated t2.b from primary";
 select * from t1;
 a	b	c
-1	updated t1.b from master	t1.c from slave
+1	updated t1.b from primary	t1.c from replica
 select * from t2;
 a	b	c
-1	updated t2.b from master	t2.c from master
+1	updated t2.b from primary	t2.c from primary
 drop table t1;
 drop table t2;
 **** Test 3 ****
@@ -49,24 +49,24 @@ insert into mysql.ndb_replication values ("test", "t1", 0, 3, NULL);
 set global ndb_log_updated_only=1;
 create table t1 (a int key, b varchar(32), c varchar(32)) engine ndb;
 create table t2 (a int key, b varchar(32), c varchar(32)) engine ndb;
-insert into t1 values (1,"t1.b from master", "t1.c from master");
-insert into t2 values (1,"t2.b from master", "t2.c from master");
+insert into t1 values (1,"t1.b from primary", "t1.c from primary");
+insert into t2 values (1,"t2.b from primary", "t2.c from primary");
 select * from t1;
 a	b	c
-1	t1.b from master	t1.c from master
+1	t1.b from primary	t1.c from primary
 select * from t2;
 a	b	c
-1	t2.b from master	t2.c from master
-update t1 set c="t1.c from slave";
-update t2 set c="t2.c from slave";
-update t1 set b="updated t1.b from master";
-update t2 set b="updated t2.b from master";
+1	t2.b from primary	t2.c from primary
+update t1 set c="t1.c from replica";
+update t2 set c="t2.c from replica";
+update t1 set b="updated t1.b from primary";
+update t2 set b="updated t2.b from primary";
 select * from t1;
 a	b	c
-1	updated t1.b from master	t1.c from master
+1	updated t1.b from primary	t1.c from primary
 select * from t2;
 a	b	c
-1	updated t2.b from master	t2.c from slave
+1	updated t2.b from primary	t2.c from replica
 drop table t1;
 drop table t2;
 drop table mysql.ndb_replication;

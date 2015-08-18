@@ -2107,7 +2107,7 @@ private:
   Uint16 csignalKey;
   Uint16 csystemnodes;
   Uint16 cnodes[4];
-  NodeId cmasterNodeId;
+  NodeId cprimaryNodeId;
   UintR cnoParallelTakeOver;
   TimeOutCheckState ctimeOutCheckFragActive;
 

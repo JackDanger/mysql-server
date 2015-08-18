@@ -24,7 +24,7 @@
 #define SQL_CONST_INCLUDED
 
 #define LIBLEN FN_REFLEN-FN_LEN			/* Max l{ngd p} dev */
-/* extra 4+4 bytes for slave tmp tables */
+/* extra 4+4 bytes for replica tmp tables */
 #define MAX_DBKEY_LENGTH (NAME_LEN*2+1+1+4+4)
 #define MAX_ALIAS_NAME 256
 #define MAX_FIELD_NAME 34			/* Max colum name length +2 */

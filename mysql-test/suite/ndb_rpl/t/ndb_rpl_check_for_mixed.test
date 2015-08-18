@@ -15,7 +15,7 @@
 
 --source include/have_ndb.inc
 --source include/have_log_bin.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 disable_query_log;
 # so that both ROW and MIXED is output as MIXED

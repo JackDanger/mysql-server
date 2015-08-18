@@ -268,19 +268,19 @@ typedef Mem_root_array<ORDER*, true> Group_list_ptrs;
 
 
 /**
-  Structure to hold parameters for CHANGE MASTER, START SLAVE, and STOP SLAVE.
+  Structure to hold parameters for CHANGE PRIMARY, START REPLICA, and STOP REPLICA.
 
-  Remark: this should not be confused with Master_info (and perhaps
+  Remark: this should not be confused with Primary_info (and perhaps
   would better be renamed to st_lex_replication_info).  Some fields,
-  e.g., delay, are saved in Relay_log_info, not in Master_info.
+  e.g., delay, are saved in Relay_log_info, not in Primary_info.
 */
-typedef struct st_lex_master_info
+typedef struct st_lex_primary_info
 {
   /*
     The array of IGNORE_SERVER_IDS has a preallocation, and is not expected
     to grow to any significant size, so no instrumentation.
   */
-  st_lex_master_info()
+  st_lex_primary_info()
     : repl_ignore_server_ids(PSI_NOT_INSTRUMENTED)
   {
     initialize();
@@ -296,7 +296,7 @@ typedef struct st_lex_master_info
   const char* channel;  // identifier similar to database name
   enum {UNTIL_SQL_BEFORE_GTIDS= 0, UNTIL_SQL_AFTER_GTIDS} gtid_until_condition;
   bool until_after_gaps;
-  bool slave_until;
+  bool replica_until;
   bool for_channel;
 
   /*
@@ -318,14 +318,14 @@ typedef struct st_lex_master_info
   void set_unspecified();
 private:
   // Not copyable or assignable.
-  st_lex_master_info(const st_lex_master_info&);
-  st_lex_master_info &operator=(const st_lex_master_info&);
-} LEX_MASTER_INFO;
+  st_lex_primary_info(const st_lex_primary_info&);
+  st_lex_primary_info &operator=(const st_lex_primary_info&);
+} LEX_PRIMARY_INFO;
 
-typedef struct st_lex_reset_slave
+typedef struct st_lex_reset_replica
 {
   bool all;
-} LEX_RESET_SLAVE;
+} LEX_RESET_REPLICA;
 
 enum sub_select_type
 {
@@ -385,29 +385,29 @@ public:
   A query expression contains one or more query blocks (more than one means
   that we have a UNION query).
   These classes are connected as follows:
-   Both classes have a master, a slave, a next and a prev field.
-   For class st_select_lex, master and slave connect to objects of type
+   Both classes have a primary, a replica, a next and a prev field.
+   For class st_select_lex, primary and replica connect to objects of type
    st_select_lex_unit, whereas for class st_select_lex_unit, they connect
    to st_select_lex.
-   master is pointer to outer node.
-   slave is pointer to the first inner node
+   primary is pointer to outer node.
+   replica is pointer to the first inner node
 
    neighbors are two st_select_lex or st_select_lex_unit objects on
    the same level.
 
    The structures are linked with the following pointers:
-   - list of neighbors (next/prev) (prev of first element point to slave
+   - list of neighbors (next/prev) (prev of first element point to replica
      pointer of outer structure)
      - For st_select_lex, this is a list of query blocks.
      - For st_select_lex_unit, this is a list of subqueries.
 
-   - pointer to outer node (master), which is
+   - pointer to outer node (primary), which is
      If this is st_select_lex_unit
        - pointer to outer select_lex.
      If this is st_select_lex
        - pointer to outer st_select_lex_unit.
 
-   - pointer to inner objects (slave), which is either:
+   - pointer to inner objects (replica), which is either:
      If this is an st_select_lex_unit:
        - first query block that belong to this query expression.
      If this is an st_select_lex
@@ -453,10 +453,10 @@ public:
      fake0
      select1 select2 select3
      |^^     |^
-    s|||     ||master
+    s|||     ||primary
     l|||     |+---------------------------------+
     a|||     +---------------------------------+|
-    v|||master                         slave   ||
+    v|||primary                         replica   ||
     e||+-------------------------+             ||
      V|            neighbor      |             V|
      unit1.1<+==================>unit1.2       unit2.1
@@ -482,8 +482,8 @@ public:
          ||||+--------------------------------------------+|
          |||+------------------------------+              ||
          ||+--------------+                |              ||
-    slave||master         |                |              ||
-         V|      neighbor |       neighbor |        master|V
+    replica||primary         |                |              ||
+         V|      neighbor |       neighbor |        primary|V
          select1<========>select2<========>select3        fake0
 
     list of all select_lex will be following (as it will be constructed by
@@ -521,9 +521,9 @@ class st_select_lex_unit: public Sql_alloc
     The query block wherein this query expression is contained,
     NULL if the query block is the outer-most one.
   */
-  SELECT_LEX *master;
+  SELECT_LEX *primary;
   /// The first query block in this query expression.
-  SELECT_LEX *slave;
+  SELECT_LEX *replica;
 private:
   /**
     Marker for subqueries in WHERE, HAVING, ORDER BY, GROUP BY and
@@ -627,10 +627,10 @@ public:
   bool is_mergeable() const;
 
   /// @return the query block this query expression belongs to as subquery
-  st_select_lex* outer_select() const { return master; }
+  st_select_lex* outer_select() const { return primary; }
 
   /// @return the first query block inside this query expression
-  st_select_lex* first_select() const { return slave; }
+  st_select_lex* first_select() const { return replica; }
 
   /// @return the next query expression within same query block (next subquery)
   st_select_lex_unit* next_unit() const { return next; }
@@ -794,9 +794,9 @@ private:
   st_select_lex **prev;
 
   /// The query expression containing this query block.
-  st_select_lex_unit *master;
+  st_select_lex_unit *primary;
   /// The first query expression contained within this query block.
-  st_select_lex_unit *slave;
+  st_select_lex_unit *replica;
 
   /// Intrusive double-linked global list of query blocks.
   st_select_lex *link_next;
@@ -1105,9 +1105,9 @@ public:
                 //SQL_I_LIST<ORDER> *group_by, SQL_I_LIST<ORDER> order_by
                 );
 
-  st_select_lex_unit *master_unit() const { return master; }
-  st_select_lex_unit *first_inner_unit() const { return slave; }
-  SELECT_LEX *outer_select() const { return master->outer_select(); }
+  st_select_lex_unit *primary_unit() const { return primary; }
+  st_select_lex_unit *first_inner_unit() const { return replica; }
+  SELECT_LEX *outer_select() const { return primary->outer_select(); }
   SELECT_LEX *next_select() const { return next; }
 
   st_select_lex* last_select()
@@ -1230,7 +1230,7 @@ public:
     to LEX (LEX::unit & LEX::select, for other purposes use
     SELECT_LEX_UNIT::exclude_level()
   */
-  void cut_subtree() { slave= 0; }
+  void cut_subtree() { replica= 0; }
   bool test_limit();
   /**
     Get offset for LIMIT.
@@ -1286,7 +1286,7 @@ public:
   void alloc_index_hints (THD *thd);
 
   /// Return true if this query block is part of a UNION
-  bool is_part_of_union() const { return master_unit()->is_union(); }
+  bool is_part_of_union() const { return primary_unit()->is_union(); }
 
   /*
     For MODE_ONLY_FULL_GROUP_BY we need to know if
@@ -1761,7 +1761,7 @@ private:
 };
 
 
-typedef struct struct_slave_connection
+typedef struct struct_replica_connection
 {
   char *user;
   char *password;
@@ -1769,7 +1769,7 @@ typedef struct struct_slave_connection
   char *plugin_dir;
 
   void reset();
-} LEX_SLAVE_CONNECTION;
+} LEX_REPLICA_CONNECTION;
 
 struct st_sp_chistics
 {
@@ -1971,15 +1971,15 @@ public:
     */
     BINLOG_STMT_UNSAFE_LIMIT= 0,
     /**
-      Access to log tables is unsafe because slave and master probably
+      Access to log tables is unsafe because replica and primary probably
       log different things.
     */
     BINLOG_STMT_UNSAFE_SYSTEM_TABLE,
     /**
       Inserting into an autoincrement column in a stored routine is unsafe.
       Even with just one autoincrement column, if the routine is invoked more than 
-      once slave is not guaranteed to execute the statement graph same way as 
-      the master.
+      once replica is not guaranteed to execute the statement graph same way as 
+      the primary.
       And since it's impossible to estimate how many times a routine can be invoked at 
       the query pre-execution phase (see lock_tables), the statement is marked
       pessimistically unsafe. 
@@ -1990,8 +1990,8 @@ public:
     */
     BINLOG_STMT_UNSAFE_UDF,
     /**
-      Using most system variables is unsafe, because slave may run
-      with different options than master.
+      Using most system variables is unsafe, because replica may run
+      with different options than primary.
     */
     BINLOG_STMT_UNSAFE_SYSTEM_VARIABLE,
     /**
@@ -2021,42 +2021,42 @@ public:
     /**
       INSERT...IGNORE SELECT is unsafe because which rows are ignored depends
       on the order that rows are retrieved by SELECT. This order cannot be
-      predicted and may differ on master and the slave.
+      predicted and may differ on primary and the replica.
     */
     BINLOG_STMT_UNSAFE_INSERT_IGNORE_SELECT,
 
     /**
       INSERT...SELECT...UPDATE is unsafe because which rows are updated depends
       on the order that rows are retrieved by SELECT. This order cannot be
-      predicted and may differ on master and the slave.
+      predicted and may differ on primary and the replica.
     */
     BINLOG_STMT_UNSAFE_INSERT_SELECT_UPDATE,
 
     /**
      Query that writes to a table with auto_inc column after selecting from 
      other tables are unsafe as the order in which the rows are retrieved by
-     select may differ on master and slave.
+     select may differ on primary and replica.
     */
     BINLOG_STMT_UNSAFE_WRITE_AUTOINC_SELECT,
 
     /**
       INSERT...REPLACE SELECT is unsafe because which rows are replaced depends
       on the order that rows are retrieved by SELECT. This order cannot be
-      predicted and may differ on master and the slave.
+      predicted and may differ on primary and the replica.
     */
     BINLOG_STMT_UNSAFE_REPLACE_SELECT,
 
     /**
       CREATE TABLE... IGNORE... SELECT is unsafe because which rows are ignored
       depends on the order that rows are retrieved by SELECT. This order cannot
-      be predicted and may differ on master and the slave.
+      be predicted and may differ on primary and the replica.
     */
     BINLOG_STMT_UNSAFE_CREATE_IGNORE_SELECT,
 
     /**
       CREATE TABLE...REPLACE... SELECT is unsafe because which rows are replaced
       depends on the order that rows are retrieved from SELECT. This order
-      cannot be predicted and may differ on master and the slave
+      cannot be predicted and may differ on primary and the replica
     */
     BINLOG_STMT_UNSAFE_CREATE_REPLACE_SELECT,
 
@@ -2064,14 +2064,14 @@ public:
       CREATE TABLE...SELECT on a table with auto-increment column is unsafe
       because which rows are replaced depends on the order that rows are
       retrieved from SELECT. This order cannot be predicted and may differ on
-      master and the slave
+      primary and the replica
     */
     BINLOG_STMT_UNSAFE_CREATE_SELECT_AUTOINC,
 
     /**
       UPDATE...IGNORE is unsafe because which rows are ignored depends on the
       order that rows are updated. This order cannot be predicted and may differ
-      on master and the slave.
+      on primary and the replica.
     */
     BINLOG_STMT_UNSAFE_UPDATE_IGNORE,
 
@@ -2187,7 +2187,7 @@ public:
   /**
     Flag the statement as a row injection.  A row injection is either
     a BINLOG statement, or a row event in the relay log executed by
-    the slave SQL thread.
+    the replica SQL thread.
   */
   inline void set_stmt_row_injection() {
     DBUG_ENTER("set_stmt_row_injection");
@@ -2410,7 +2410,7 @@ private:
   enum enum_binlog_stmt_type {
     /**
       The statement is a row injection (i.e., either a BINLOG
-      statement or a row event executed by the slave SQL thread).
+      statement or a row event executed by the replica SQL thread).
     */
     BINLOG_STMT_TYPE_ROW_INJECTION = 0,
 
@@ -2976,7 +2976,7 @@ public:
   char *length,*dec,*change;
   LEX_STRING name;
   char *help_arg;
-  char* to_log;                                 /* For PURGE MASTER LOGS TO */
+  char* to_log;                                 /* For PURGE PRIMARY LOGS TO */
   char* x509_subject,*x509_issuer,*ssl_cipher;
   String *wild;
   sql_exchange *exchange;
@@ -3089,11 +3089,11 @@ public:
   HA_CHECK_OPT   check_opt;			// check/repair options
   HA_CREATE_INFO create_info;
   KEY_CREATE_INFO key_create_info;
-  LEX_MASTER_INFO mi;				// used by CHANGE MASTER
-  LEX_SLAVE_CONNECTION slave_connection;
+  LEX_PRIMARY_INFO mi;				// used by CHANGE PRIMARY
+  LEX_REPLICA_CONNECTION replica_connection;
   Server_options server_options;
   USER_RESOURCES mqh;
-  LEX_RESET_SLAVE reset_slave_info;
+  LEX_RESET_REPLICA reset_replica_info;
   ulong type;
   /*
     This variable is used in post-parse stage to declare that sum-functions,
@@ -3139,7 +3139,7 @@ public:
   enum fk_match_opt fk_match_option;
   enum fk_option fk_update_opt;
   enum fk_option fk_delete_opt;
-  uint slave_thd_opt, start_transaction_opt;
+  uint replica_thd_opt, start_transaction_opt;
   int select_number;                     ///< Number of query block (by EXPLAIN)
   uint8 describe;
   /*
@@ -3352,9 +3352,9 @@ public:
       return;
     SELECT_LEX *sl;
     SELECT_LEX_UNIT *un;
-    for (sl= curr_select, un= sl->master_unit();
+    for (sl= curr_select, un= sl->primary_unit();
 	 un != unit;
-	 sl= sl->outer_select(), un= sl->master_unit())
+	 sl= sl->outer_select(), un= sl->primary_unit())
     {
       sl->uncacheable|= cause;
       un->uncacheable|= cause;

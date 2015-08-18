@@ -1,14 +1,14 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1);
-SELECT WAIT_FOR_EXECUTED_GTID_SET('MASTER_UUID:5', 10000);
-The connection master1 should be waiting for the WAIT_FOR_EXECUTED_GTID_SET here
+SELECT WAIT_FOR_EXECUTED_GTID_SET('PRIMARY_UUID:5', 10000);
+The connection primary1 should be waiting for the WAIT_FOR_EXECUTED_GTID_SET here
 INSERT INTO t1 values(2);
-WAIT_FOR_EXECUTED_GTID_SET('MASTER_UUID:5', 10000)
+WAIT_FOR_EXECUTED_GTID_SET('PRIMARY_UUID:5', 10000)
 0
 ###############################
 Should succeed without timeout
@@ -23,8 +23,8 @@ WAIT_FOR_EXECUTED_GTID_SET('', 9999)
 SELECT WAIT_FOR_EXECUTED_GTID_SET('');
 WAIT_FOR_EXECUTED_GTID_SET('')
 0
-SELECT WAIT_FOR_EXECUTED_GTID_SET('MASTER_UUID:1-2', 9999);
-WAIT_FOR_EXECUTED_GTID_SET('MASTER_UUID:1-2', 9999)
+SELECT WAIT_FOR_EXECUTED_GTID_SET('PRIMARY_UUID:1-2', 9999);
+WAIT_FOR_EXECUTED_GTID_SET('PRIMARY_UUID:1-2', 9999)
 0
 DROP TABLE t1;
 include/rpl_end.inc

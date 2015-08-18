@@ -11,7 +11,7 @@
 # Adding big test option for this test.
 --source include/big_test.inc
 --source include/have_myisam.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --source include/have_debug.inc
 SET @max_binlog_size_save= @@GLOBAL.MAX_BINLOG_SIZE;
@@ -34,7 +34,7 @@ SET @@GLOBAL.MAX_BINLOG_SIZE= 4096;
 --let $engine = InnoDB
 --source extra/rpl_tests/rpl_stress_test.inc
 
---connection master
+--connection primary
 SET @@GLOBAL.MAX_BINLOG_SIZE= @max_binlog_size_save;
 
 --source include/rpl_end.inc

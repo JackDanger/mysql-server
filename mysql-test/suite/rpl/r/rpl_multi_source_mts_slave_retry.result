@@ -1,46 +1,46 @@
-# Create channel_1 to server_1 from server_2(slave)
+# Create channel_1 to server_1 from server_2(replica)
 include/rpl_init.inc [topology=1->2]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 #
-# Insert data on the master
+# Insert data on the primary
 #
 [connection server_1]
 CREATE TABLE t1( a int unique);
-# sync data to the slave
+# sync data to the replica
 [connection server_1]
-include/sync_slave_sql_with_master.inc
-# stop slave
-include/rpl_stop_slaves.inc
+include/sync_replica_sql_with_primary.inc
+# stop replica
+include/rpl_stop_replicas.inc
 SET @saved_innodb_lock_wait_timeout = @@GLOBAL.innodb_lock_wait_timeout;
-SET @saved_slave_transaction_retries = @@GLOBAL.slave_transaction_retries;
+SET @saved_replica_transaction_retries = @@GLOBAL.replica_transaction_retries;
 #
 # Set the variables needed for this test
 #
-SET GLOBAL slave_transaction_retries=10;
+SET GLOBAL replica_transaction_retries=10;
 SET GLOBAL innodb_lock_wait_timeout=2;
-#start slave
-include/rpl_start_slaves.inc
+#start replica
+include/rpl_start_replicas.inc
 #
 # Lock the rows of the table t1
 #
 BEGIN;
 INSERT INTO t1 VALUES(1);
 #
-# Insert the rows on the same table on master
+# Insert the rows on the same table on primary
 #
 [connection server_1]
 INSERT INTO t1 VALUES(1);
 #
-# On slave, check that this transaction from the master has been retried.
+# On replica, check that this transaction from the primary has been retried.
 #
 [connection server_2]
 # Release the lock.
 ROLLBACK;
-# Now sync with master on channel_1
+# Now sync with primary on channel_1
 [connection server_1]
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 # check that data shows the value 1
 SELECT * FROM t1;
 a
@@ -48,8 +48,8 @@ a
 #cleanup
 [connection server_1]
 DROP TABLE t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET GLOBAL innodb_lock_wait_timeout = @saved_innodb_lock_wait_timeout;
-SET GLOBAL slave_transaction_retries = @saved_slave_transaction_retries;
+SET GLOBAL replica_transaction_retries = @saved_replica_transaction_retries;
 include/rpl_end.inc
-RESET SLAVE ALL FOR CHANNEL  'channel_1';
+RESET REPLICA ALL FOR CHANNEL  'channel_1';

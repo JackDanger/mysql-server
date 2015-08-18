@@ -21,13 +21,13 @@
 --source include/install_replication_observers_example.inc
 
 --let $rpl_gtid_utils=1
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo #
 --echo # Set up test
 --echo #
 
---let $master_uuid= `SELECT @@GLOBAL.SERVER_UUID`
+--let $primary_uuid= `SELECT @@GLOBAL.SERVER_UUID`
 
 CREATE TABLE t1 (c1 INT PRIMARY KEY) Engine=InnoDB;
 
@@ -52,24 +52,24 @@ COMMIT;
 INSERT t1 VALUES(2);
 
 --let $assert_text= GTID_EXECUTED must remain the same
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1")
 --source include/assert.inc
 
 --let $assert_text= Table must remain empty
 --let $assert_cond= "[SELECT COUNT(*) FROM t1]" = "0"
 --source include/assert.inc
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $assert_text= GTID_EXECUTED must remain the same
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1")
 --source include/assert.inc
 
 --let $assert_text= Table must remain empty
 --let $assert_cond= "[SELECT COUNT(*) FROM t1]" = "0"
 --source include/assert.inc
 
---connection master
+--connection primary
 
 SET @@GLOBAL.DEBUG='';
 
@@ -94,24 +94,24 @@ COMMIT;
 INSERT t1 VALUES(2);
 
 --let $assert_text= GTID_EXECUTED must remain the same
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1")
 --source include/assert.inc
 
 --let $assert_text= Table must remain empty
 --let $assert_cond= "[SELECT COUNT(*) FROM t1]" = "0"
 --source include/assert.inc
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $assert_text= GTID_EXECUTED must remain the same
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1")
 --source include/assert.inc
 
 --let $assert_text= Table must remain empty
 --let $assert_cond= "[SELECT COUNT(*) FROM t1]" = "0"
 --source include/assert.inc
 
---connection master
+--connection primary
 
 SET @@GLOBAL.DEBUG='';
 
@@ -132,24 +132,24 @@ COMMIT;
 INSERT t1 VALUES(2);
 
 --let $assert_text= GTID_EXECUTED must remain the same
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1")
 --source include/assert.inc
 
 --let $assert_text= Table must remain empty
 --let $assert_cond= "[SELECT COUNT(*) FROM t1]" = "0"
 --source include/assert.inc
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $assert_text= GTID_EXECUTED must remain the same
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1")
 --source include/assert.inc
 
 --let $assert_text= Table must remain empty
 --let $assert_cond= "[SELECT COUNT(*) FROM t1]" = "0"
 --source include/assert.inc
 
---connection master
+--connection primary
 
 SET @@GLOBAL.DEBUG='';
 
@@ -169,16 +169,16 @@ INSERT t1 VALUES(2);
 --query_vertical SELECT * FROM t1;
 
 --let $assert_text= At this point we should have 2 successful operations
---let $assert_cond= "[SELECT @@GLOBAL.GTID_EXECUTED]" = "$master_uuid:1-3"
+--let $assert_cond= "[SELECT @@GLOBAL.GTID_EXECUTED]" = "$primary_uuid:1-3"
 --source include/assert.inc
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $assert_text= At this point we should have 2 successful operations
---let $assert_cond= "[SELECT @@GLOBAL.GTID_EXECUTED]" = "$master_uuid:1-3"
+--let $assert_cond= "[SELECT @@GLOBAL.GTID_EXECUTED]" = "$primary_uuid:1-3"
 --source include/assert.inc
 
---connection master
+--connection primary
 
 SET @@GLOBAL.DEBUG='';
 
@@ -198,20 +198,20 @@ INSERT t1 VALUES(4);
 --query_vertical SELECT * FROM t1;
 
 --let $assert_text= GTID_EXECUTED must contain all GTIDs with the server id and with the fake id
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1-3,$uuida:1-2")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1-3,$uuida:1-2")
 --source include/assert.inc
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $assert_text= GTID_EXECUTED must contain all GTIDs with the server id and with the fake id
---let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$master_uuid:1-3,$uuida:1-2")
+--let $assert_cond= GTID_IS_EQUAL(@@GLOBAL.GTID_EXECUTED, "$primary_uuid:1-3,$uuida:1-2")
 --source include/assert.inc
 
 --echo #
 --echo # Clean up
 --echo #
 
---connection master
+--connection primary
 
 SET @@GLOBAL.DEBUG= @debug_saved;
 

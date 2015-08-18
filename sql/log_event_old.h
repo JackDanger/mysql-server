@@ -178,7 +178,7 @@ protected:
   MY_BITMAP   m_cols;		/* Bitmap denoting columns available */
   ulong       m_width;          /* The width of the columns bitmap */
 
-  ulong       m_master_reclength; /* Length of record on master side */
+  ulong       m_primary_reclength; /* Length of record on primary side */
 
   /* Bit buffers in the same memory as the class */
   uint32    m_bitbuf[128/(sizeof(uint32)*8)];
@@ -206,7 +206,7 @@ protected:
     DBUG_ASSERT(m_table);
     ASSERT_OR_RETURN_ERROR(m_curr_row < m_rows_end, HA_ERR_CORRUPT_EVENT);
     return ::unpack_row(rli, m_table, m_width, m_curr_row, &m_cols,
-                                   &m_curr_row_end, &m_master_reclength, m_rows_end);
+                                   &m_curr_row_end, &m_primary_reclength, m_rows_end);
   }
 #endif
 
@@ -234,7 +234,7 @@ private:
       error code otherwise.
   */
   virtual 
-  int do_before_row_operations(const Slave_reporting_capability *const log) = 0;
+  int do_before_row_operations(const Replica_reporting_capability *const log) = 0;
 
   /*
     Primitive to clean up after a sequence of row executions.
@@ -250,7 +250,7 @@ private:
       function is successful, it should return the error code given in the argument.
   */
   virtual 
-  int do_after_row_operations(const Slave_reporting_capability *const log,
+  int do_after_row_operations(const Replica_reporting_capability *const log,
                               int error) = 0;
 
   /*
@@ -383,8 +383,8 @@ private:
 #endif
 
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
-  virtual int do_before_row_operations(const Slave_reporting_capability *const);
-  virtual int do_after_row_operations(const Slave_reporting_capability *const,int);
+  virtual int do_before_row_operations(const Replica_reporting_capability *const);
+  virtual int do_after_row_operations(const Replica_reporting_capability *const,int);
   virtual int do_exec_row(const Relay_log_info *const);
 #endif
   /********** END OF CUT & PASTE FROM Write_rows_log_event **********/
@@ -456,8 +456,8 @@ protected:
 #endif
 
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
-  virtual int do_before_row_operations(const Slave_reporting_capability *const);
-  virtual int do_after_row_operations(const Slave_reporting_capability *const,int);
+  virtual int do_before_row_operations(const Replica_reporting_capability *const);
+  virtual int do_after_row_operations(const Replica_reporting_capability *const,int);
   virtual int do_exec_row(const Relay_log_info *const);
 #endif /* !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION) */
   /********** END OF CUT & PASTE FROM Update_rows_log_event **********/
@@ -529,8 +529,8 @@ protected:
 #endif
 
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
-  virtual int do_before_row_operations(const Slave_reporting_capability *const);
-  virtual int do_after_row_operations(const Slave_reporting_capability *const,int);
+  virtual int do_before_row_operations(const Replica_reporting_capability *const);
+  virtual int do_after_row_operations(const Replica_reporting_capability *const,int);
   virtual int do_exec_row(const Relay_log_info *const);
 #endif
   /********** END CUT & PASTE FROM Delete_rows_log_event **********/

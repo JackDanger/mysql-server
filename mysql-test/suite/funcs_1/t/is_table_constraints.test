@@ -133,7 +133,7 @@ eval $my_show1;
 eval $my_show2;
 
 --echo # Establish connection testuser1 (user=testuser1)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser1, localhost, testuser1, , db_datadict);
 SHOW GRANTS FOR 'testuser1'@'localhost';
 eval $my_select;

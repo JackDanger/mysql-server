@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET @old_log_bin_trust_function_creators= @@global.log_bin_trust_function_creators;
 create table t1 (a int) engine = innodb;
 SET GLOBAL log_bin_trust_function_creators = 1;
@@ -18,7 +18,7 @@ set spv=spv+1;
 end while;
 end//
 call p1();
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY a;
 a
 1
@@ -42,7 +42,7 @@ call p2();
 SELECT * FROM t2 ORDER BY a;
 a
 4
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM t2 ORDER BY a;
 a
 4
@@ -88,39 +88,39 @@ a	f1(a)
 10	11
 11	12
 insert into t2 select f1(3);
-SELECT 'master:',a FROM t1 ORDER BY a;
-master:	a
-master:	1
-master:	1
-master:	2
-master:	2
-master:	3
-master:	3
-master:	4
-master:	5
-master:	5
-master:	6
-master:	7
-master:	8
-master:	10
-master:	11
-include/sync_slave_sql_with_master.inc
-SELECT 'slave:',a FROM t1 ORDER BY a;
-slave:	a
-slave:	1
-slave:	1
-slave:	2
-slave:	2
-slave:	3
-slave:	3
-slave:	4
-slave:	5
-slave:	5
-slave:	6
-slave:	7
-slave:	8
-slave:	10
-slave:	11
+SELECT 'primary:',a FROM t1 ORDER BY a;
+primary:	a
+primary:	1
+primary:	1
+primary:	2
+primary:	2
+primary:	3
+primary:	3
+primary:	4
+primary:	5
+primary:	5
+primary:	6
+primary:	7
+primary:	8
+primary:	10
+primary:	11
+include/sync_replica_sql_with_primary.inc
+SELECT 'replica:',a FROM t1 ORDER BY a;
+replica:	a
+replica:	1
+replica:	1
+replica:	2
+replica:	2
+replica:	3
+replica:	3
+replica:	4
+replica:	5
+replica:	5
+replica:	6
+replica:	7
+replica:	8
+replica:	10
+replica:	11
 drop procedure p1;
 delete from t1;
 delete from t2;
@@ -131,15 +131,15 @@ select * from v1 order by f;
 f
 2
 3
-SELECT 'master:',a FROM t1 ORDER BY a;
-master:	a
-master:	1
-master:	2
-include/sync_slave_sql_with_master.inc
-SELECT 'slave:',a FROM t1 ORDER BY a;
-slave:	a
-slave:	1
-slave:	2
+SELECT 'primary:',a FROM t1 ORDER BY a;
+primary:	a
+primary:	1
+primary:	2
+include/sync_replica_sql_with_primary.inc
+SELECT 'replica:',a FROM t1 ORDER BY a;
+replica:	a
+replica:	1
+replica:	2
 drop view v1;
 delete from t1;
 prepare s1 from 'select f1(?)';
@@ -147,13 +147,13 @@ set @xx=123;
 execute s1 using @xx;
 f1(?)
 124
-SELECT 'master:',a FROM t1 ORDER BY a;
-master:	a
-master:	123
-include/sync_slave_sql_with_master.inc
-SELECT 'slave:',a FROM t1 ORDER BY a;
-slave:	a
-slave:	123
+SELECT 'primary:',a FROM t1 ORDER BY a;
+primary:	a
+primary:	123
+include/sync_replica_sql_with_primary.inc
+SELECT 'replica:',a FROM t1 ORDER BY a;
+replica:	a
+replica:	123
 delete from t1;
 create procedure p1(spv int)
 begin
@@ -166,19 +166,19 @@ set spv= spv - 10;
 end while;
 end//
 call p1(15);
-SELECT 'master:',a FROM t1 ORDER BY a;
-master:	a
-master:	6
-master:	6
-master:	15
-master:	15
-include/sync_slave_sql_with_master.inc
-SELECT 'slave:',a FROM t1 ORDER BY a;
-slave:	a
-slave:	6
-slave:	6
-slave:	15
-slave:	15
+SELECT 'primary:',a FROM t1 ORDER BY a;
+primary:	a
+primary:	6
+primary:	6
+primary:	15
+primary:	15
+include/sync_replica_sql_with_primary.inc
+SELECT 'replica:',a FROM t1 ORDER BY a;
+replica:	a
+replica:	6
+replica:	6
+replica:	15
+replica:	15
 drop procedure p1;
 drop function f1;
 drop table t1,t2;
@@ -213,34 +213,34 @@ f1()
 0
 set @x=30;
 call p1();
-SELECT 'master', a FROM t1 ORDER BY a;
-master	a
-master	10
-master	11
-master	20
-master	30
-master	31
-master	100
-master	101
-master	101
-master	102
-include/sync_slave_sql_with_master.inc
-SELECT 'slave', a FROM t1 ORDER BY a;
-slave	a
-slave	10
-slave	11
-slave	20
-slave	30
-slave	31
-slave	100
-slave	101
-slave	101
-slave	102
+SELECT 'primary', a FROM t1 ORDER BY a;
+primary	a
+primary	10
+primary	11
+primary	20
+primary	30
+primary	31
+primary	100
+primary	101
+primary	101
+primary	102
+include/sync_replica_sql_with_primary.inc
+SELECT 'replica', a FROM t1 ORDER BY a;
+replica	a
+replica	10
+replica	11
+replica	20
+replica	30
+replica	31
+replica	100
+replica	101
+replica	101
+replica	102
 drop table t1;
 drop function f1;
 drop function f2;
 drop procedure p1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 create table t2 (b BIT(7));
 create procedure sp_bug26199(bitvalue BIT(7))
 begin
@@ -271,7 +271,7 @@ E
 7F
 7F
 27
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select hex(b) from t2;
 hex(b)
 E
@@ -284,6 +284,6 @@ drop procedure sp_bug26199;
 drop function sf_bug26199;
 SET @@global.log_bin_trust_function_creators= @old_log_bin_trust_function_creators;
 SET sql_mode = default;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 end of the tests
 include/rpl_end.inc

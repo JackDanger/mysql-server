@@ -256,11 +256,11 @@ struct BIGNUM {
 // openSSL session
 class SSL_SESSION {
     opaque      sessionID_[ID_LEN];
-    opaque      master_secret_[SECRET_LEN];
+    opaque      primary_secret_[SECRET_LEN];
     Cipher      suite_[SUITE_LEN];
     uint        bornOn_;                        // create time in seconds
     uint        timeout_;                       // timeout in seconds
-    RandomPool& random_;                        // will clean master secret
+    RandomPool& random_;                        // will clean primary secret
     X509*       peerX509_;
 public:
     explicit SSL_SESSION(RandomPool&);
@@ -652,8 +652,8 @@ public:
     void set_random(const opaque*, ConnectionEnd);
     void set_sessionID(const opaque*);
     void set_session(SSL_SESSION*);
-    void set_preMaster(const opaque*, uint);
-    void set_masterSecret(const opaque*);
+    void set_prePrimary(const opaque*, uint);
+    void set_primarySecret(const opaque*);
     void SetError(YasslError);
     int  SetCompression();
     void UnSetCompression();
@@ -663,8 +663,8 @@ public:
     bool isTLS() const;
     bool isTLSv1_1() const;
     void order_error();
-    void makeMasterSecret();
-    void makeTLSMasterSecret();
+    void makePrimarySecret();
+    void makeTLSPrimarySecret();
     void addData(input_buffer* data);
     void fillData(Data&);
     void PeekData(Data&);

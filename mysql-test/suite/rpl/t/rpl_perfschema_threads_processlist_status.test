@@ -32,17 +32,17 @@
 
 # Test is binlog_format-agnostic
 --source include/have_binlog_format_row.inc
---let $rpl_skip_start_slave= 1
---source include/master-slave.inc
+--let $rpl_skip_start_replica= 1
+--source include/primary-replica.inc
 
 --echo ==== Initialize ====
 
---connection slave
---let $old_slave_parallel_workers= `SELECT @@GLOBAL.SLAVE_PARALLEL_WORKERS`
---let $old_slave_transaction_retries= `SELECT @@GLOBAL.SLAVE_TRANSACTION_RETRIES`
-SET GLOBAL SLAVE_TRANSACTION_RETRIES= 0;
-SET GLOBAL SLAVE_PARALLEL_WORKERS= 1;
---source include/start_slave.inc
+--connection replica
+--let $old_replica_parallel_workers= `SELECT @@GLOBAL.REPLICA_PARALLEL_WORKERS`
+--let $old_replica_transaction_retries= `SELECT @@GLOBAL.REPLICA_TRANSACTION_RETRIES`
+SET GLOBAL REPLICA_TRANSACTION_RETRIES= 0;
+SET GLOBAL REPLICA_PARALLEL_WORKERS= 1;
+--source include/start_replica.inc
 
 --echo ==== Test ====
 
@@ -129,11 +129,11 @@ EOF
 
 --echo ==== Clean up ====
 
---source include/stop_slave.inc
---replace_result $old_slave_parallel_workers OLD_VALUE
-eval SET GLOBAL SLAVE_PARALLEL_WORKERS= $old_slave_parallel_workers;
---replace_result $old_slave_transaction_retries OLD_VALUE
-eval SET GLOBAL SLAVE_TRANSACTION_RETRIES= $old_slave_transaction_retries;
+--source include/stop_replica.inc
+--replace_result $old_replica_parallel_workers OLD_VALUE
+eval SET GLOBAL REPLICA_PARALLEL_WORKERS= $old_replica_parallel_workers;
+--replace_result $old_replica_transaction_retries OLD_VALUE
+eval SET GLOBAL REPLICA_TRANSACTION_RETRIES= $old_replica_transaction_retries;
 
 --let $rpl_only_running_threads= 1
 --source include/rpl_end.inc

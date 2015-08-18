@@ -4,7 +4,7 @@
 
 if (`SELECT HEX(@commands) = HEX('configure')`)
 {
-  connection master;
+  connection primary;
 
   #
   # Index that is used as an Id to tables that trigger errors.
@@ -182,18 +182,18 @@ if (`SELECT HEX(@commands) = HEX('configure')`)
   --let $dropped_t=
   --let $dropped_n=
 
-  let $pos_trans_command= query_get_value("SHOW MASTER STATUS", Position, 1);
+  let $pos_trans_command= query_get_value("SHOW PRIMARY STATUS", Position, 1);
 
   SET @commands= '';
 }
 
 #
-# Drops tables and synchronizes master and slave.
+# Drops tables and synchronizes primary and replica.
 #
 
 if (`SELECT HEX(@commands) = HEX('clean')`)
 {
-  connection master;
+  connection primary;
 
   DROP TABLE IF EXISTS tt_xx_1;
 
@@ -226,7 +226,7 @@ if (`SELECT HEX(@commands) = HEX('clean')`)
     --dec $n
   }
 
-  sync_slave_with_master;
+  sync_replica_with_primary;
 
   SET @commands= '';
 }
@@ -959,7 +959,7 @@ while (`SELECT HEX(@commands) != HEX('')`)
     # due to BUG#13692513.
     --connection server_1
     --source include/show_binlog_events.inc
-    --connection master
+    --connection primary
     --echo -e-e-e-e-e-e-e-e-e-e-e- >> $commands << -e-e-e-e-e-e-e-e-e-e-e-
     --echo
  
@@ -1041,7 +1041,7 @@ while (`SELECT HEX(@commands) != HEX('')`)
     }
     --enable_warnings 
 
-    let $pos_trans_command= query_get_value("SHOW MASTER STATUS", Position, 1);
+    let $pos_trans_command= query_get_value("SHOW PRIMARY STATUS", Position, 1);
     let $commands= '';
   }
   --enable_query_log

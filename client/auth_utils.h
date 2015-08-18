@@ -85,7 +85,7 @@ public:
   bool has_create_tmp_ac() { return (m_priv & CREATE_TMP_ACL) > 0; }
   bool has_lock_tables_ac() { return (m_priv & LOCK_TABLES_ACL) > 0; }
   bool has_execute_ac() { return (m_priv & EXECUTE_ACL) > 0; }
-  bool has_repl_slave_ac() { return (m_priv & REPL_SLAVE_ACL) > 0; }
+  bool has_repl_replica_ac() { return (m_priv & REPL_REPLICA_ACL) > 0; }
   bool has_repl_client_ac() { return (m_priv & REPL_CLIENT_ACL) > 0; }
   bool has_create_view_ac() { return (m_priv & CREATE_VIEW_ACL) > 0; }
   bool has_show_view_ac() { return (m_priv & SHOW_VIEW_ACL) > 0; }
@@ -114,7 +114,7 @@ public:
   inline static uint64_t create_tmp_ac() { return CREATE_TMP_ACL; }
   inline static uint64_t lock_tables_ac() { return LOCK_TABLES_ACL; }
   inline static uint64_t execute_ac() { return EXECUTE_ACL; }
-  inline static uint64_t repl_slave_ac() { return REPL_SLAVE_ACL; }
+  inline static uint64_t repl_replica_ac() { return REPL_REPLICA_ACL; }
   inline static uint64_t repl_client_ac() { return REPL_CLIENT_ACL; }
   inline static uint64_t create_view_ac() { return CREATE_VIEW_ACL; }
   inline static uint64_t show_view_ac() { return SHOW_VIEW_ACL; }

@@ -1,7 +1,7 @@
 
 # ==== Background ====
 #
-# Some statements may execute differently on master and slave when
+# Some statements may execute differently on primary and replica when
 # logged in statement format.  Such statements are called unsafe.
 # Unsafe statements include:
 #
@@ -496,7 +496,7 @@ BEGIN
   INSERT INTO t1 VALUES (@@session.insert_id);
   INSERT INTO t2 SELECT UUID();
   INSERT INTO t2 VALUES (@@session.sql_mode);
-  INSERT INTO t2 VALUES (@@global.init_slave);
+  INSERT INTO t2 VALUES (@@global.init_replica);
   RETURN 0;
 END|
 DELIMITER ;|
@@ -515,7 +515,7 @@ BEGIN
   INSERT INTO t1 VALUES (@@global.auto_increment_increment);
   INSERT INTO t2 SELECT UUID();
   INSERT INTO t2 VALUES (@@session.sql_mode);
-  INSERT INTO t2 VALUES (@@global.init_slave);
+  INSERT INTO t2 VALUES (@@global.init_replica);
   INSERT INTO t2 VALUES (@@hostname);
 END|
 DELIMITER ;|
@@ -568,7 +568,7 @@ BEGIN
 END|
 --DELIMITER ;
 
-RESET MASTER;
+RESET PRIMARY;
 SELECT func_limit();
 --let $mask_binlog_commit_events= 1
 source include/show_binlog_events.inc;
@@ -608,7 +608,7 @@ INSERT INTO t2 SET a = func_modify_t1();
 
 SET SESSION binlog_format = MIXED;
 --echo # Check if the statement is logged in row format.
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 INSERT INTO t2 SET a = func_modify_t1();
 --let $mask_binlog_commit_events= 1
 --source include/show_binlog_events.inc
@@ -641,7 +641,7 @@ INSERT INTO t1 SET a = 1;
 
 SET SESSION binlog_format = MIXED;
 --echo # Check if the statement is logged in row format.
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 INSERT INTO t1 SET a = 2;
 --let $mask_binlog_commit_events= 1
 --source include/show_binlog_events.inc
@@ -667,7 +667,7 @@ INSERT INTO t1 VALUES (GET_LOCK('tmp', 1));   #marked unsafe in BUG#47995
 INSERT INTO t1 VALUES (IS_FREE_LOCK('tmp'));  #marked unsafe in BUG#47995
 INSERT INTO t1 VALUES (IS_USED_LOCK('tmp'));  #marked unsafe in BUG#47995
 INSERT INTO t1 VALUES (LOAD_FILE('../../std_data/words2.dat')); #marked unsafe in BUG#39701
-INSERT INTO t1 VALUES (MASTER_POS_WAIT('dummy arg', 4711, 1));
+INSERT INTO t1 VALUES (PRIMARY_POS_WAIT('dummy arg', 4711, 1));
 INSERT INTO t1 VALUES (RELEASE_LOCK('tmp'));  #marked unsafe in BUG#47995
 INSERT INTO t1 VALUES (ROW_COUNT());          #marked unsafe before BUG#47995
 INSERT INTO t1 VALUES (SESSION_USER());       #marked unsafe before BUG#47995

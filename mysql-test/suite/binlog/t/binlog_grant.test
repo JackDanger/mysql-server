@@ -6,7 +6,7 @@ source include/have_log_bin.inc;
 
 connection default;
 --disable_warnings
-reset master;
+reset primary;
 --enable_warnings
 
 set @saved_binlog_format = @@global.binlog_format;
@@ -58,7 +58,7 @@ drop user mysqltest_1@localhost;
 
 
 # Testing if REPLICATION CLIENT privilege is enough to execute
-# SHOW MASTER LOGS and SHOW BINARY.
+# SHOW PRIMARY LOGS and SHOW BINARY.
 set @orig_sql_mode= @@sql_mode;
 set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 GRANT REPLICATION CLIENT ON *.* TO 'mysqltest_1'@'localhost';
@@ -69,7 +69,7 @@ set sql_mode= @orig_sql_mode;
 # We are only interested if the following commands succeed and not on
 # their output.
 --disable_result_log
-SHOW MASTER LOGS;
+SHOW PRIMARY LOGS;
 SHOW BINARY LOGS;
 --enable_result_log
 

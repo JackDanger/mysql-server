@@ -7,7 +7,7 @@
 --source include/ndb_default_cluster.inc
 --source include/not_embedded.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 #
 # Currently test only works with ndb since it retrieves "old"
@@ -15,13 +15,13 @@
 #
 
 # stop the save
---connection slave
-STOP SLAVE;
+--connection replica
+STOP REPLICA;
 CREATE DATABASE ndbsynctest;
 USE ndbsynctest;
 
-# get some data on the master
---connection master
+# get some data on the primary
+--connection primary
 CREATE DATABASE ndbsynctest;
 USE ndbsynctest;
 CREATE TABLE t1 (c1 BIT(1) NOT NULL, c2 BIT(1) NOT NULL, c3 CHAR(15), PRIMARY KEY(c3)) ENGINE = NDB ;
@@ -31,21 +31,21 @@ INSERT INTO t2 VALUES ("ABC",1,1),("BCDEF",0,1),("CD",1,0),("DEFGHIJKL",0,0);
 SELECT hex(c1),hex(c2),c3 FROM t1 ORDER BY c3;
 SELECT hex(c2),hex(c3),c1 FROM t2 ORDER BY c1;
 
-# take a backup on master
+# take a backup on primary
 --source include/ndb_backup.inc
 
 # update a row
 UPDATE t1 SET c2=0 WHERE c3="row2";
 SELECT hex(c1),hex(c2),c3 FROM t1 ORDER BY c3;
 
-# restore on slave, first check that nothing is there
---connection slave
+# restore on replica, first check that nothing is there
+--connection replica
 
 # we should have no tables
 SHOW TABLES;
 
---exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_SLAVE" -b $the_backup_id -n 1 -m -r --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
---exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_SLAVE" -b $the_backup_id -n 2 -r -e --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
+--exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_REPLICA" -b $the_backup_id -n 1 -m -r --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
+--exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_REPLICA" -b $the_backup_id -n 2 -r -e --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
 
 #
 # BUG#11960
@@ -55,8 +55,8 @@ SHOW TABLES;
 DROP DATABASE ndbsynctest;
 CREATE DATABASE ndbsynctest;
 USE ndbsynctest;
---exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_SLAVE" -b $the_backup_id -n 1 -m -r --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
---exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_SLAVE" -b $the_backup_id -n 2 -r -e --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
+--exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_REPLICA" -b $the_backup_id -n 1 -m -r --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
+--exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_REPLICA" -b $the_backup_id -n 2 -r -e --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
 
 # continue test
 SHOW TABLES;
@@ -66,16 +66,16 @@ SELECT hex(c2),hex(c3),c1 FROM t2 ORDER BY c1;
 
 #
 # now setup replication to continue from last epoch
---source include/ndb_setup_slave.inc
---connection slave
-START SLAVE;
+--source include/ndb_setup_replica.inc
+--connection replica
+START REPLICA;
 
 #
 #
 #
---connection master
---sync_slave_with_master
---source include/check_slave_is_running.inc
+--connection primary
+--sync_replica_with_primary
+--source include/check_replica_is_running.inc
 
 SELECT hex(c1),hex(c2),c3 FROM t1 ORDER BY c3;
 SELECT hex(c2),hex(c3),c1 FROM t2 ORDER BY c1;
@@ -84,21 +84,21 @@ SELECT hex(c2),hex(c3),c1 FROM t2 ORDER BY c1;
 # Cleanup
 #
 
---connection master
+--connection primary
 DROP DATABASE ndbsynctest;
---sync_slave_with_master
-STOP SLAVE;
+--sync_replica_with_primary
+STOP REPLICA;
 
 #
 # Test some replication commands
 #
---connection master
-reset master;
+--connection primary
+reset primary;
 # should now contain nothing
 select * from mysql.ndb_binlog_index;
 
---connection slave
-reset slave;
+--connection replica
+reset replica;
 # should now contain nothing
 select * from mysql.ndb_apply_status;
 

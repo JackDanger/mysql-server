@@ -685,7 +685,7 @@ not_silent:
           USE bob;                    # 'bob' is the current database
           CREATE DATABASE sisyfos;    # Not replicated since 'bob' is
                                       # current database.
-          USE sisyfos;                # Will give error on slave since
+          USE sisyfos;                # Will give error on replica since
                                       # database does not exist.
       */
       qinfo.db     = db;
@@ -870,7 +870,7 @@ bool mysql_rm_db(THD *thd,const LEX_CSTRING &db,bool if_exists, bool silent)
       We temporarily disable the binary log while dropping the objects
       in the database. Since the DROP DATABASE statement is always
       replicated as a statement, execution of it will drop all objects
-      in the database on the slave as well, so there is no need to
+      in the database on the replica as well, so there is no need to
       replicate the removal of the individual objects in the database
       as well.
 
@@ -1503,10 +1503,10 @@ cmp_db_names(const char *db1_name,
   THD::db_access).
 
   This function is not the only way to switch the database that is
-  currently employed. When the replication slave thread switches the
+  currently employed. When the replication replica thread switches the
   database before executing a query, it calls thd->set_db directly.
   However, if the query, in turn, uses a stored routine, the stored routine
-  will use this function, even if it's run on the slave.
+  will use this function, even if it's run on the replica.
 
   This function allocates the name of the database on the system heap: this
   is necessary to be able to uniformly change the database from any module
@@ -1611,7 +1611,7 @@ bool mysql_change_db(THD *thd, const LEX_CSTRING &new_db_name,
             sctx->ip().str,
             sctx->priv_user().str,
             new_db_file_name.str,
-            false) | sctx->master_access();
+            false) | sctx->primary_access();
 
   if (!force_switch &&
       !(db_access & DB_ACLS) &&

@@ -1,18 +1,18 @@
 # ==== Purpose ====
 #
-# This test calls CHANGE MASTER in order to check if replication can
+# This test calls CHANGE PRIMARY in order to check if replication can
 # restart from where SQL thread left, not from where I/O thread left.
 #
-# This file tests the case when master_info is stored in a table (see
-# the -master.opt file).
+# This file tests the case when primary_info is stored in a table (see
+# the -primary.opt file).
 #
 # ==== See also ====
 #
-# rpl_change_master.test
+# rpl_change_primary.test
 
 --source include/not_group_replication_plugin.inc
 --source include/no_valgrind_without_big.inc
 --source include/not_gtid_enabled.inc
---source include/master-slave.inc
---source extra/rpl_tests/rpl_change_master.test
+--source include/primary-replica.inc
+--source extra/rpl_tests/rpl_change_primary.test
 --source include/rpl_end.inc

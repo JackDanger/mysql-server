@@ -1,7 +1,7 @@
 # ==== Purpose ====
 #
 # This test case will verify the behavior of the SQL thread writing the relay
-# log info into the mysql.slave_relay_log_info system table.
+# log info into the mysql.replica_relay_log_info system table.
 #
 # It will run a set of sub-tests varying the storage engine used in the
 # replicated statements (transactional (InnoDB) and non-transactional (MyISAM),
@@ -25,27 +25,27 @@
 #                                    sync_relay_log_info=  0   1   0   1
 #                                         storage engine=  NT  NT  T   T
 #                                                         --- --- --- ---
-# 1 - Stop/Start the slave ----------------------------->  U   U   U   U
+# 1 - Stop/Start the replica ----------------------------->  U   U   U   U
 # 2 - Simple DDL - CREATE TABLE ------------------------>  N   U   N   U
 # 3 - Simple DML - INSERT ------------------------------>  N   U   U   U
-# 4 - Master flushed the binary log -------------------->  U   U   U   U
+# 4 - Primary flushed the binary log -------------------->  U   U   U   U
 # 5 - Simple DDL - DROP TABLE -------------------------->  N   U   N   U
-# 6 - Stop/Start the slave ----------------------------->  U   U   U   U
+# 6 - Stop/Start the replica ----------------------------->  U   U   U   U
 # 7 - The GTID of a simple DDL ------------------------->  N   N   N   N
 # 8 - Flushed the relay log in the middle of the DDL --->  N   N   N   N
 # 9 - The rest of the simple DDL ----------------------->  N   U   N   U
-# 10 - Stop/Start the slave ---------------------------->  U   U   U   U
+# 10 - Stop/Start the replica ---------------------------->  U   U   U   U
 # 11 - The GTID of a simple DML ------------------------>  N   N   N   N
 # 12 - Flushed the relay log after the GTID of the DML ->  N   N   N   N
 # 13 - The rest of the simple DML ---------------------->  N   U   U   U
-# 14 - Stop/Start the slave ---------------------------->  U   U   U   U
+# 14 - Stop/Start the replica ---------------------------->  U   U   U   U
 # 15 - The first part of a simple DML up to a User var ->  N   N   N   N
 # 16 - Flushed the relay log in the middle of the DML -->  N   N   N   N
 # 17 - The rest of the simple DML ---------------------->  N   U   U   U
 # 18 - Simple DDL -------------------------------------->  N   U   N   U
 #   Transactional tables only:
 # 19 - Simple DDL - CREATE TABLE -----------------------> N/A N/A  N   U
-# 20 - Stop/Start the slave ----------------------------> N/A N/A  U   U
+# 20 - Stop/Start the replica ----------------------------> N/A N/A  U   U
 # 21 - The first half of a multi statement DML ---------> N/A N/A  N   N
 # 22 - Flushed the relay log in the middle of the DML --> N/A N/A  N   N
 # 23 - The multi statement DML should be rolled back ---> N/A N/A  N   N
@@ -54,7 +54,7 @@
 #
 # ==== Related Bugs and Worklogs ====
 #
-# BUG#20451386 SQL THREAD CRASH: LOG-SLAVE-UPDATES OFF, RELAY LOG ENDS WITH
+# BUG#20451386 SQL THREAD CRASH: LOG-REPLICA-UPDATES OFF, RELAY LOG ENDS WITH
 #              GTID_LOG_EVENT
 
 # This test should run only on debug build
@@ -63,18 +63,18 @@
 --source include/have_debug_sync.inc
 --source include/have_myisam.inc
 --source include/have_innodb.inc
---source include/not_mts_slave_parallel_workers.inc
+--source include/not_mts_replica_parallel_workers.inc
 --source include/have_binlog_format_statement.inc
 --source include/have_gtid.inc
 --let $rpl_gtid_utils= 1
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 # Known errors that will be logged
 CALL mtr.add_suppression('Duplicate entry');
---let $master_uuid=`SELECT @@GLOBAL.server_uuid`
+--let $primary_uuid=`SELECT @@GLOBAL.server_uuid`
 
 # Save global variables that will be changed during the test
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 SET @saved_sync_relay_log_info= @@GLOBAL.sync_relay_log_info;
 
 --echo #
@@ -110,6 +110,6 @@ SET @@GLOBAL.sync_relay_log_info= 1;
 --source extra/rpl_tests/rpl_sync_relay_log_info.inc
 
 # Cleanup
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 SET @@GLOBAL.sync_relay_log_info= @saved_sync_relay_log_info;
 --source include/rpl_end.inc

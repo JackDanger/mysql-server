@@ -797,7 +797,7 @@ CREATE PROCEDURE sp11() insert into mysql.t1 values('a');
 --replace_column 13 created 14 modified
 SELECT security_type from mysql.proc where specific_name='sp11';
 
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (u_1, localhost, user_1, , db_storedproc);
 --source suite/funcs_1/include/show_connection.inc
 
@@ -811,7 +811,7 @@ alter procedure sp11 sql security invoker;
 --replace_column 13 created 14 modified
 SELECT security_type from mysql.proc where specific_name='sp11';
 
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connection u_1;
 --source suite/funcs_1/include/show_connection.inc
 USE db_storedproc;
@@ -1409,7 +1409,7 @@ CREATE PROCEDURE low_priority()
    SELECT * from t1 where f2=f1;
 
 --error ER_PARSE_ERROR
-CREATE PROCEDURE master_ssl_verify_server_cert()
+CREATE PROCEDURE primary_ssl_verify_server_cert()
    SELECT * from t1 where f2=f1;
 
 --error ER_PARSE_ERROR
@@ -4340,7 +4340,7 @@ DROP PROCEDURE IF EXISTS sp1;
 delimiter //;
 --error ER_PARSE_ERROR
 CREATE PROCEDURE sp1()
-  master_ssl_verify_server_cert:BEGIN
+  primary_ssl_verify_server_cert:BEGIN
     SELECT @x;
 END//
 delimiter ;//
@@ -9392,7 +9392,7 @@ delimiter //;
 --error ER_PARSE_ERROR
 CREATE PROCEDURE sp1()
 BEGIN
-    declare master_ssl_verify_server_cert char;
+    declare primary_ssl_verify_server_cert char;
 END//
 delimiter ;//
 
@@ -11954,7 +11954,7 @@ delimiter //;
 --error ER_PARSE_ERROR
 CREATE PROCEDURE sp1( )
 BEGIN
-    declare master_ssl_verify_server_cert condition for sqlstate '02000';
+    declare primary_ssl_verify_server_cert condition for sqlstate '02000';
     declare exit handler for int set @var2 = 1;
 END//
 delimiter ;//
@@ -14426,7 +14426,7 @@ delimiter //;
 --error ER_PARSE_ERROR
 CREATE PROCEDURE sp1( )
 BEGIN
-    declare master_ssl_verify_server_cert handler for sqlstate '02000' set @var2 = 1;
+    declare primary_ssl_verify_server_cert handler for sqlstate '02000' set @var2 = 1;
 END//
 delimiter ;//
 

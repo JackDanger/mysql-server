@@ -258,7 +258,7 @@ bool Sql_cmd_xa_commit::trans_xa_commit(THD *thd)
   XID_STATE *xid_state= thd->get_transaction()->xid_state();
   DBUG_ENTER("trans_xa_commit");
 
-  DBUG_ASSERT(!thd->slave_thread || xid_state->get_xid()->is_null() ||
+  DBUG_ASSERT(!thd->replica_thread || xid_state->get_xid()->is_null() ||
               m_xa_opt == XA_ONE_PHASE);
 
   if (!xid_state->has_same_xid(m_xid))
@@ -289,7 +289,7 @@ bool Sql_cmd_xa_commit::trans_xa_commit(THD *thd)
       DBUG_ASSERT(xs->is_in_recovery());
       /*
         Resumed transaction XA-commit.
-        The case deals with the "external" XA-commit by either a slave applier
+        The case deals with the "external" XA-commit by either a replica applier
         or a different than XA-prepared transaction session.
       */
       res= xs->xa_trans_rolled_back();
@@ -560,10 +560,10 @@ bool Sql_cmd_xa_start::execute(THD *thd)
 
   if (!st)
   {
-    if (thd->variables.pseudo_slave_mode)
+    if (thd->variables.pseudo_replica_mode)
     {
       /*
-        In case of slave thread applier or processing binlog by client,
+        In case of replica thread applier or processing binlog by client,
         detach the "native" thd's trx in favor of dynamically created.
       */
       plugin_foreach(thd, detach_native_trx,
@@ -675,7 +675,7 @@ bool Sql_cmd_xa_prepare::execute(THD *thd)
 
   if (!st)
   {
-    if (!thd->variables.pseudo_slave_mode ||
+    if (!thd->variables.pseudo_replica_mode ||
         !(st= applier_reset_xa_trans(thd)))
       my_ok(thd);
   }
@@ -1092,10 +1092,10 @@ void transaction_cache_delete(Transaction_ctx *transaction)
 
 
 /**
-  This is a specific to "slave" applier collection of standard cleanup
+  This is a specific to "replica" applier collection of standard cleanup
   actions to reset XA transaction states at the end of XA prepare rather than
   to do it at the transaction commit, see @c ha_commit_one_phase.
-  THD of the slave applier is dissociated from a transaction object in engine
+  THD of the replica applier is dissociated from a transaction object in engine
   that continues to exist there.
 
   @param  THD current thread
@@ -1108,7 +1108,7 @@ bool applier_reset_xa_trans(THD *thd)
   XID_STATE *xid_state= trn_ctx->xid_state();
   /*
     In the following the server transaction state gets reset for
-    a slave applier thread similarly to xa_commit logics
+    a replica applier thread similarly to xa_commit logics
     except commit does not run.
   */
   thd->variables.option_bits&= ~OPTION_BEGIN;

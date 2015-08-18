@@ -161,7 +161,7 @@ this.rearranger.setArgs(_32);
 this._clear();
 this._elem=new _12(this);
 this._source=new _1a(this._elem.node,{"grid":_31,"dndElem":this._elem,"dnd":this});
-this._container=_9(".dojoxGridMasterView",this.grid.domNode)[0];
+this._container=_9(".dojoxGridPrimaryView",this.grid.domNode)[0];
 this._initEvents();
 },destroy:function(){
 this.inherited(arguments);

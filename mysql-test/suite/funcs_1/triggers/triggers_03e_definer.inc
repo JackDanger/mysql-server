@@ -27,7 +27,7 @@ let $message= #########      Testcase for definer:   ########;
 
 	revoke ALL PRIVILEGES, GRANT OPTION FROM test_yesprivs@localhost;
 
-	connect (yes_privs,localhost,test_yesprivs,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+	connect (yes_privs,localhost,test_yesprivs,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 
 # create trigger with not existing definer shall deliver a warning:
 	connection default;

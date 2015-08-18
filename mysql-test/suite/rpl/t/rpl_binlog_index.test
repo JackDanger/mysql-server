@@ -6,20 +6,20 @@
 # 
 # ==== Method ====
 #
-# Start replication, and then shutdown the master, move the binary
+# Start replication, and then shutdown the primary, move the binary
 # logs and the log index file to a another directory and then restart
-# the server with option to set the new binlog directory. After master
-# restarted successfully, do the similar on slave to check the relay
-# log of slave.
+# the server with option to set the new binlog directory. After primary
+# restarted successfully, do the similar on replica to check the relay
+# log of replica.
 #
 # ==== Reference ====
 #
-# BUG#12133 master.index file keeps mysqld from starting if bin log has been moved
+# BUG#12133 primary.index file keeps mysqld from starting if bin log has been moved
 # BUG#42576 Relay logs in relay-log.info&localhost-relay-bin.index not processed after move
 
 --source include/not_group_replication_plugin.inc
 source include/not_gtid_enabled.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 # There is no need to run this test case on all binlog format
 source include/have_binlog_format_row.inc;
 
@@ -34,11 +34,11 @@ source include/have_binlog_format_row.inc;
 --source include/big_test.inc
 
 
-connection master;
---let $master_datadir= `select @@datadir`
-connection slave;
---let $slave_datadir= `select @@datadir`
-connection master;
+connection primary;
+--let $primary_datadir= `select @@datadir`
+connection replica;
+--let $replica_datadir= `select @@datadir`
+connection primary;
 --let $dirname= `select uuid()`
 --let $tmpdir= $MYSQLTEST_VARDIR/tmp/$dirname
 --mkdir $tmpdir
@@ -48,114 +48,114 @@ CREATE TABLE t1 (a INT);
 FLUSH BINARY LOGS;
 INSERT INTO t1 VALUES (1);
 
-sync_slave_with_master;
---source include/stop_slave.inc
+sync_replica_with_primary;
+--source include/stop_replica.inc
 #
-# Test on master
+# Test on primary
 #
-connection master;
---echo # Shutdown master
+connection primary;
+--echo # Shutdown primary
 --let $rpl_server_number=1
 source include/rpl_stop_server.inc;
 
---echo # Move the master binlog files and the index file to a new place
---move_file $master_datadir/master-bin.000001 $tmpdir/master-bin.000001
---move_file $master_datadir/master-bin.000002 $tmpdir/master-bin.000002
---move_file $master_datadir/master-bin.index  $tmpdir/master-bin.index
+--echo # Move the primary binlog files and the index file to a new place
+--move_file $primary_datadir/primary-bin.000001 $tmpdir/primary-bin.000001
+--move_file $primary_datadir/primary-bin.000002 $tmpdir/primary-bin.000002
+--move_file $primary_datadir/primary-bin.index  $tmpdir/primary-bin.index
 
---echo # Restart master with log-bin option set to the new path
---let $rpl_server_parameters=--log-bin=$tmpdir/master-bin
+--echo # Restart primary with log-bin option set to the new path
+--let $rpl_server_parameters=--log-bin=$tmpdir/primary-bin
 --let $include_silent=1
 source include/rpl_start_server.inc;
 --let $include_silent=0
 
---echo # Master has restarted successfully
---connection slave
---source include/start_slave.inc
---connection master
+--echo # Primary has restarted successfully
+--connection replica
+--source include/start_replica.inc
+--connection primary
 #
-# Test master can handle old format with directory path in index file
+# Test primary can handle old format with directory path in index file
 #
 --let $is_windows= `select convert(@@version_compile_os using latin1) in ('Win32', 'Win64', 'Windows')`
 
 # write_var_to_file.inc will call SELECT INTO DUMPFILE, which has to be
 # done before shutdown the server
---echo # Create the master-bin.index file with the old format
---let $write_to_file= $master_datadir/master-bin.index
+--echo # Create the primary-bin.index file with the old format
+--let $write_to_file= $primary_datadir/primary-bin.index
 if ($is_windows)
 {
-  --let $write_var= .\\\\master-bin.000001\n.\\\\master-bin.000002\n.\\\\master-bin.000003\n
+  --let $write_var= .\\\\primary-bin.000001\n.\\\\primary-bin.000002\n.\\\\primary-bin.000003\n
 }
 if (!$is_windows)
 {
-  --let $write_var= ./master-bin.000001\n./master-bin.000002\n./master-bin.000003\n
+  --let $write_var= ./primary-bin.000001\n./primary-bin.000002\n./primary-bin.000003\n
 }
 --disable_query_log
 source include/write_var_to_file.inc;
 --enable_query_log
---sync_slave_with_master
---source include/stop_slave.inc
---connection master
+--sync_replica_with_primary
+--source include/stop_replica.inc
+--connection primary
 
---echo # Shutdown master
+--echo # Shutdown primary
 --let $rpl_server_number=1
 source include/rpl_stop_server.inc;
 
---echo # Move back the master binlog files
---move_file $tmpdir/master-bin.000001 $master_datadir/master-bin.000001
---move_file $tmpdir/master-bin.000002 $master_datadir/master-bin.000002
---move_file $tmpdir/master-bin.000003 $master_datadir/master-bin.000003
+--echo # Move back the primary binlog files
+--move_file $tmpdir/primary-bin.000001 $primary_datadir/primary-bin.000001
+--move_file $tmpdir/primary-bin.000002 $primary_datadir/primary-bin.000002
+--move_file $tmpdir/primary-bin.000003 $primary_datadir/primary-bin.000003
 
---echo # Remove the unneeded master-bin.index file
---remove_file $tmpdir/master-bin.index
+--echo # Remove the unneeded primary-bin.index file
+--remove_file $tmpdir/primary-bin.index
 
---echo # Restart master with log-bin option set to default
---let $rpl_server_parameters=--log-bin=$master_datadir/master-bin
+--echo # Restart primary with log-bin option set to default
+--let $rpl_server_parameters=--log-bin=$primary_datadir/primary-bin
 --let $include_silent=1
 source include/rpl_start_server.inc;
 --let $include_silent=0
 
---echo # Master has restarted successfully
+--echo # Primary has restarted successfully
 
---connection slave
---source include/start_slave.inc
---sync_with_master
---connection master
+--connection replica
+--source include/start_replica.inc
+--sync_with_primary
+--connection primary
 --let $rpl_server_number= 2
 --source include/rpl_stop_server.inc
 
-# switch to master because the slave has been shutdown
+# switch to primary because the replica has been shutdown
 # and relocate_binlogs requires a running server to do
 # SQL operations
---connection master
+--connection primary
 
 --let $relocate_disable_query_log= 1
 --let $relocate_is_windows= $is_windows
---let $relocate_from=$slave_datadir
+--let $relocate_from=$replica_datadir
 --let $relocate_into=$tmpdir
 
 --echo # relocate  binlogs
---let $relocate_index_file=$slave_datadir/slave-bin.index
+--let $relocate_index_file=$replica_datadir/replica-bin.index
 --source include/relocate_binlogs.inc
 
 --echo # relocate  relay logs
---let $relocate_index_file=$slave_datadir/slave-relay-bin.index
+--let $relocate_index_file=$replica_datadir/replica-relay-bin.index
 --source include/relocate_binlogs.inc
 
---echo # Restart slave with options log-bin, relay-log set to the new paths
---let $rpl_server_parameters=--log-bin=$tmpdir/slave-bin --relay-log=$tmpdir/slave-relay-bin
+--echo # Restart replica with options log-bin, relay-log set to the new paths
+--let $rpl_server_parameters=--log-bin=$tmpdir/replica-bin --relay-log=$tmpdir/replica-relay-bin
 --let $include_silent=1
 --let $rpl_server_number= 2
 source include/rpl_start_server.inc;
 --let $include_silent=0
 
---connection slave
+--connection replica
 
---echo # Slave server has restarted successfully
---source include/start_slave.inc
---source include/stop_slave.inc
+--echo # Replica server has restarted successfully
+--source include/start_replica.inc
+--source include/stop_replica.inc
 
-connection master;
+connection primary;
 FLUSH LOGS;
 INSERT INTO t1 VALUES (2);
 INSERT INTO t1 VALUES (2);
@@ -164,63 +164,63 @@ INSERT INTO t1 VALUES (2);
 
 FLUSH LOGS;
 
-connection slave;
+connection replica;
 FLUSH LOGS;
---source include/start_slave.inc
-connection master;
-sync_slave_with_master;
---let $diff_tables= master:t1,slave:t1
+--source include/start_replica.inc
+connection primary;
+sync_replica_with_primary;
+--let $diff_tables= primary:t1,replica:t1
 source include/diff_tables.inc;
 
-connection master;
+connection primary;
 DROP TABLE t1;
---sync_slave_with_master
---source include/stop_slave.inc
+--sync_replica_with_primary
+--source include/stop_replica.inc
 --let $rpl_server_number= 2
 --source include/rpl_stop_server.inc
 
---connection master
+--connection primary
 
 --let $relocate_from=$tmpdir
---let $relocate_into=$slave_datadir
+--let $relocate_into=$replica_datadir
 --let $relocate_recreate_index= 1
 
 # binlogs
---let $relocate_index_file=$tmpdir/slave-bin.index
+--let $relocate_index_file=$tmpdir/replica-bin.index
 --source include/relocate_binlogs.inc
 
 # relay logs
 
 # since the complete fix for the relocation of logs is
 # done in BUG#13428851 it does not help here to try 
-# to start the slave as it would fail (relay-log.info is
+# to start the replica as it would fail (relay-log.info is
 # tainted with the full path in the RELAY_LOG_FILE position).
-# Instead, we reset the slave and let the test clean up.
+# Instead, we reset the replica and let the test clean up.
 
 if (!`SELECT @@GLOBAL.relay_log_info_repository = 'TABLE'`)
 {
-  --let $relocate_fix_relay_log_info= $slave_datadir/relay-log.info
+  --let $relocate_fix_relay_log_info= $replica_datadir/relay-log.info
 }
 if (`SELECT @@GLOBAL.relay_log_info_repository = 'TABLE'`)
 {
   --let $relocate_fix_relay_log_info=
 }
 
---let $relocate_index_file=$tmpdir/slave-relay-bin.index
+--let $relocate_index_file=$tmpdir/replica-relay-bin.index
 --source include/relocate_binlogs.inc
 
 --echo # remove tmpdir
 --remove_files_wildcard $tmpdir *
 --rmdir $tmpdir
 
---echo # restarted with previous slave settings
---let $rpl_server_parameters=--log-bin=$slave_datadir/slave-bin --relay-log=$slave_datadir/slave-relay-bin
+--echo # restarted with previous replica settings
+--let $rpl_server_parameters=--log-bin=$replica_datadir/replica-bin --relay-log=$replica_datadir/replica-relay-bin
 --let $include_silent=1
 --let $rpl_server_number= 2
 --source include/rpl_start_server.inc
 --let $include_silent=0
 
---connection slave
+--connection replica
 
 # Fix the relay log info name if the server was using tables instead of files
 # as this was not fixed in the relocate_binlogs.inc file
@@ -229,14 +229,14 @@ if (`SELECT @@GLOBAL.relay_log_info_repository = 'TABLE'`)
   --disable_query_log
   SET SQL_LOG_BIN=0;
 
-  # On server startup, the slave info tables are initialized,
+  # On server startup, the replica info tables are initialized,
   # and also a verification of the relay log files is done.
   # Since the tables still have the old value for the relay_log_name
   # field, the server will complain. We need to suppress these 
   # warnings so that the test does not fail.
   call mtr.add_suppression("Failed to open the relay log");
   call mtr.add_suppression("Could not find target log file mentioned in relay log info in the index file");
-  call mtr.add_suppression("Failed to initialize the master info structure");
+  call mtr.add_suppression("Failed to initialize the primary info structure");
   call mtr.add_suppression("Failed to create or recover replication info repositories.");
 
   --let $path_separator=/
@@ -244,9 +244,9 @@ if (`SELECT @@GLOBAL.relay_log_info_repository = 'TABLE'`)
   {
     --let $path_separator=\
   }
-  --let $relay_log_name= `SELECT Relay_log_name FROM mysql.slave_relay_log_info LIMIT 1`
+  --let $relay_log_name= `SELECT Relay_log_name FROM mysql.replica_relay_log_info LIMIT 1`
   --let $new_relay_log_name= `SELECT RIGHT(RTRIM("$relay_log_name"), LOCATE("$path_separator",REVERSE(RTRIM("$relay_log_name"))) -1)`
-  --eval UPDATE mysql.slave_relay_log_info SET Relay_log_name='$slave_datadir$path_separator$new_relay_log_name'
+  --eval UPDATE mysql.replica_relay_log_info SET Relay_log_name='$replica_datadir$path_separator$new_relay_log_name'
   SET SQL_LOG_BIN=1;
 
   --let $path_separator=
@@ -256,8 +256,8 @@ if (`SELECT @@GLOBAL.relay_log_info_repository = 'TABLE'`)
 
   --enable_query_log
 
-  # Due to changes on slave start procedure (relay log initialization
-  # error requires RESET SLAVE or server restart) we need to restart
+  # Due to changes on replica start procedure (relay log initialization
+  # error requires RESET REPLICA or server restart) we need to restart
   # server to relay log file change be considered.
   --let $include_silent= 1
   --let $rpl_server_number= 2
@@ -265,9 +265,9 @@ if (`SELECT @@GLOBAL.relay_log_info_repository = 'TABLE'`)
   --let $include_silent= 0
 }
 
-# The slave will restart if we have fixed the relay-log.info
+# The replica will restart if we have fixed the relay-log.info
 # correctly
---source include/start_slave.inc
+--source include/start_replica.inc
 
---connection master
+--connection primary
 --source include/rpl_end.inc

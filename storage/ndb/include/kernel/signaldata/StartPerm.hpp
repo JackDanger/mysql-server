@@ -22,7 +22,7 @@
 
 
 /**
- * This signal is sent by starting DIH to master DIH
+ * This signal is sent by starting DIH to primary DIH
  *
  * Used when starting in an already started cluster
  *

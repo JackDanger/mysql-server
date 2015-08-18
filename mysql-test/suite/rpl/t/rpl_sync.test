@@ -1,24 +1,24 @@
 ########################################################################################
 # This test verifies the options --sync-relay-log-info and --relay-log-recovery by 
-# crashing the slave in two different situations:
+# crashing the replica in two different situations:
 #  (case-1) - Corrupt the relay log with changes which were not processed by
 #  the SQL Thread and crashes it.
-#  (case-2) - Corrupt the master.info with wrong coordinates and crashes it.
+#  (case-2) - Corrupt the primary.info with wrong coordinates and crashes it.
 #
 #  Case 1:
 #    1 - Stops the SQL Thread
-#    2 - Inserts new records into the master.
+#    2 - Inserts new records into the primary.
 #    3 - Corrupts the relay-log.bin* which most likely has such changes.
-#    4 - Crashes the slave
-#    5 - Verifies if the slave is sync with the master which means that the information
+#    4 - Crashes the replica
+#    5 - Verifies if the replica is sync with the primary which means that the information
 #    loss was circumvented by the recovery process.
 #
 #  Case 2:
 #    1 - Stops the SQL/IO Threads
-#    2 - Inserts new records into the master.
-#    3 - Corrupts the master.info with wrong coordinates.
-#    4 - Crashes the slave
-#    5 - Verifies if the slave is sync with the master which means that the information
+#    2 - Inserts new records into the primary.
+#    3 - Corrupts the primary.info with wrong coordinates.
+#    4 - Crashes the replica
+#    5 - Verifies if the replica is sync with the primary which means that the information
 #    loss was circumvented by the recovery process.
 ########################################################################################
 ########################################################################################
@@ -26,16 +26,16 @@
 ########################################################################################
 --echo =====Configuring the enviroment=======;
 --source include/not_group_replication_plugin.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/not_embedded.inc
 --source include/not_valgrind.inc
 --source include/have_debug.inc
 --source include/have_innodb.inc
---source include/not_master_info_table.inc
+--source include/not_primary_info_table.inc
 --source include/not_crashrep.inc
 
 call mtr.add_suppression('Attempting backtrace');
-call mtr.add_suppression("Recovery from master pos .* and file master-bin.000001");
+call mtr.add_suppression("Recovery from primary pos .* and file primary-bin.000001");
 call mtr.add_suppression("Binlog has bad magic number;  It's not a binary log file that can be used by this version of MySQL");
 CREATE TABLE t1(a INT, PRIMARY KEY(a)) engine=innodb;
 
@@ -46,27 +46,27 @@ insert into t1(a) values(3);
 ########################################################################################
 #                             Case 1: Corrupt a relay-log.bin*
 ########################################################################################
---echo =====Inserting data on the master but without the SQL Thread being running=======;
---source include/sync_slave_sql_with_master.inc
+--echo =====Inserting data on the primary but without the SQL Thread being running=======;
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
-let $MYSQLD_SLAVE_DATADIR= `select @@datadir`;
---replace_result $MYSQLD_SLAVE_DATADIR MYSQLD_SLAVE_DATADIR
---copy_file $MYSQLD_SLAVE_DATADIR/master.info $MYSQLD_SLAVE_DATADIR/master.backup
---source include/stop_slave_sql.inc
+connection replica;
+let $MYSQLD_REPLICA_DATADIR= `select @@datadir`;
+--replace_result $MYSQLD_REPLICA_DATADIR MYSQLD_REPLICA_DATADIR
+--copy_file $MYSQLD_REPLICA_DATADIR/primary.info $MYSQLD_REPLICA_DATADIR/primary.backup
+--source include/stop_replica_sql.inc
 
-connection master;
+connection primary;
 insert into t1(a) values(4);
 insert into t1(a) values(5);
 insert into t1(a) values(6);
 
---echo =====Removing relay log files and crashing/recoverying the slave=======;
-connection slave;
---source include/stop_slave_io.inc
+--echo =====Removing relay log files and crashing/recoverying the replica=======;
+connection replica;
+--source include/stop_replica_io.inc
 
-let $file= query_get_value("SHOW SLAVE STATUS", Relay_Log_File, 1);
+let $file= query_get_value("SHOW REPLICA STATUS", Relay_Log_File, 1);
 
---let FILE_TO_CORRUPT= $MYSQLD_SLAVE_DATADIR/$file
+--let FILE_TO_CORRUPT= $MYSQLD_REPLICA_DATADIR/$file
 perl;
 $file= $ENV{'FILE_TO_CORRUPT'};
 open(FILE, ">$file") || die "Unable to open $file.";
@@ -84,36 +84,36 @@ FLUSH LOGS;
 --source include/rpl_reconnect.inc
 
 --echo =====Dumping and comparing tables=======;
---source include/start_slave.inc
+--source include/start_replica.inc
 
-connection master;
---source include/sync_slave_sql_with_master.inc
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
 
-let $diff_tables=master:t1,slave:t1;
+let $diff_tables=primary:t1,replica:t1;
 source include/diff_tables.inc;
 
 ########################################################################################
-#                             Case 2: Corrupt a master.info
+#                             Case 2: Corrupt a primary.info
 ########################################################################################
---echo =====Corrupting the master.info=======;
-connection slave;
---source include/stop_slave.inc
+--echo =====Corrupting the primary.info=======;
+connection replica;
+--source include/stop_replica.inc
 
-connection master;
+connection primary;
 FLUSH LOGS;
 
 insert into t1(a) values(7);
 insert into t1(a) values(8);
 insert into t1(a) values(9);
 
-connection slave;
-let MYSQLD_SLAVE_DATADIR=`select @@datadir`;
+connection replica;
+let MYSQLD_REPLICA_DATADIR=`select @@datadir`;
 
 --perl
 use strict;
 use warnings;
-my $src= "$ENV{'MYSQLD_SLAVE_DATADIR'}/master.backup";
-my $dst= "$ENV{'MYSQLD_SLAVE_DATADIR'}/master.info";
+my $src= "$ENV{'MYSQLD_REPLICA_DATADIR'}/primary.backup";
+my $dst= "$ENV{'MYSQLD_REPLICA_DATADIR'}/primary.info";
 open(FILE, "<", $src) or die;
 my @content= <FILE>;
 close FILE;
@@ -132,21 +132,21 @@ FLUSH LOGS;
 --source include/rpl_reconnect.inc
 
 --echo =====Dumping and comparing tables=======;
---source include/start_slave.inc
+--source include/start_replica.inc
 
-connection master;
---source include/sync_slave_sql_with_master.inc
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
 
-let $diff_tables=master:t1,slave:t1;
+let $diff_tables=primary:t1,replica:t1;
 source include/diff_tables.inc;
 
 ########################################################################################
 #                                      Clean up
 ########################################################################################
 --echo =====Clean up=======;
-connection master;
+connection primary;
 drop table t1;
 
---remove_file $MYSQLD_SLAVE_DATADIR/master.backup
+--remove_file $MYSQLD_REPLICA_DATADIR/primary.backup
 --source include/rpl_end.inc
 

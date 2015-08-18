@@ -22,9 +22,9 @@
 
 
 /**
-   Maximum size of an error message from a slave thread.
+   Maximum size of an error message from a replica thread.
  */
-#define MAX_SLAVE_ERRMSG      1024
+#define MAX_REPLICA_ERRMSG      1024
 
 // todo: consider to remove rpl_reporting.cc,h from building embedded
 #if !defined(EMBEDDED_LIBRARY)
@@ -33,26 +33,26 @@ class THD;
 
 /**
    Mix-in to handle the message logging and reporting for relay log
-   info and master log info structures.
+   info and primary log info structures.
 
    By inheriting from this class, the class is imbued with
-   capabilities to do slave reporting.
+   capabilities to do replica reporting.
  */
-class Slave_reporting_capability
+class Replica_reporting_capability
 {
 public:
-  /** lock used to synchronize m_last_error on 'SHOW SLAVE STATUS' **/
+  /** lock used to synchronize m_last_error on 'SHOW REPLICA STATUS' **/
   mutable mysql_mutex_t err_lock;
   /**
      Constructor.
 
-     @param thread_name Printable name of the slave thread that is reporting.
+     @param thread_name Printable name of the replica thread that is reporting.
    */
-  Slave_reporting_capability(char const *thread_name);
+  Replica_reporting_capability(char const *thread_name);
 
   /**
      Writes a message and, if it's an error message, to Last_Error
-     (which will be displayed by SHOW SLAVE STATUS).
+     (which will be displayed by SHOW REPLICA STATUS).
 
      @param level       The severity level
      @param err_code    The error code
@@ -66,7 +66,7 @@ public:
                  const char *msg, va_list v_args) const;
 
   /**
-     Clear errors. They will not show up under <code>SHOW SLAVE
+     Clear errors. They will not show up under <code>SHOW REPLICA
      STATUS</code>.
    */
   void clear_error() {
@@ -86,7 +86,7 @@ public:
      Error information structure.
    */
   class Error {
-    friend class Slave_reporting_capability;
+    friend class Replica_reporting_capability;
   public:
     Error()
     {
@@ -123,7 +123,7 @@ public:
     /** Error code */
     uint32 number;
     /** Error message */
-    char message[MAX_SLAVE_ERRMSG];
+    char message[MAX_REPLICA_ERRMSG];
     /** Error timestamp as string */
     char timestamp[16];
     /** Error timestamp as time_t variable. Used in performance_schema */
@@ -145,7 +145,7 @@ public:
  */
   virtual const char* get_for_channel_str(bool upper_case) const = 0;
 
-  virtual ~Slave_reporting_capability()= 0;
+  virtual ~Replica_reporting_capability()= 0;
 
 protected:
 
@@ -167,8 +167,8 @@ private:
   char channel_str[100]; // FOR CHANNEL="max_64_size"
 
   // not implemented
-  Slave_reporting_capability(const Slave_reporting_capability& rhs);
-  Slave_reporting_capability& operator=(const Slave_reporting_capability& rhs);
+  Replica_reporting_capability(const Replica_reporting_capability& rhs);
+  Replica_reporting_capability& operator=(const Replica_reporting_capability& rhs);
 };
 
 #endif // RPL_REPORTING_H

@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP TABLE IF EXISTS t1;
 CREATE TABLE t1(id INT AUTO_INCREMENT PRIMARY KEY,
 msg_prefix VARCHAR(255),
@@ -15,13 +15,13 @@ ROW_FORMAT=COMPRESSED
 KEY_BLOCK_SIZE=1;
 call mtr.add_suppression(".*");
 Wait for reconnect
-Checksum master
-stop slave;
-start slave;
-Checksum slave
+Checksum primary
+stop replica;
+start replica;
+Checksum replica
 DROP TABLE t1;
-stop slave;
-start slave;
-include/stop_slave.inc
-include/start_slave.inc
-include/stop_slave.inc
+stop replica;
+start replica;
+include/stop_replica.inc
+include/start_replica.inc
+include/stop_replica.inc

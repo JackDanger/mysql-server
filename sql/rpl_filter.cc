@@ -17,10 +17,10 @@
 
 #include "auth_common.h"                // SUPER_ACL
 #include "item.h"                       // Item
-#include "rpl_mi.h"                     // Master_info
+#include "rpl_mi.h"                     // Primary_info
 #include "rpl_msr.h"                    // msr_map
 #include "rpl_rli.h"                    // Relay_log_info
-#include "rpl_slave.h"                  // SLAVE_SQL
+#include "rpl_replica.h"                  // REPLICA_SQL
 #include "table.h"                      // TABLE_LIST
 #include "template_utils.h"             // my_free_container_pointers
 
@@ -80,7 +80,7 @@ Rpl_filter::~Rpl_filter()
 
     If no table in the list is marked "updating", then we always
     return 0, because there is no reason to execute this statement on
-    slave if it updates nothing.  (Currently, this can only happen if
+    replica if it updates nothing.  (Currently, this can only happen if
     statement is a multi-delete (SQLCOM_DELETE_MULTI) and "tables" are
     the tables in the FROM):
 
@@ -138,7 +138,7 @@ Rpl_filter::tables_ok(const char* db, TABLE_LIST* tables)
 
   /*
     If no table was to be updated, ignore statement (no reason we play it on
-    slave, slave is supposed to replicate _changes_ only).
+    replica, replica is supposed to replicate _changes_ only).
     If no explicit rule found and there was a do list, do not replicate.
     If there was no do list, go ahead
   */
@@ -1004,7 +1004,7 @@ void Sql_cmd_change_repl_filter::set_filter_value(List<Item>* item_list,
 
   @param thd A pointer to the thread handler object.
 
-  @param mi Pointer to Master_info object belonging to the slave's IO
+  @param mi Pointer to Primary_info object belonging to the replica's IO
   thread.
 
   @retval FALSE success
@@ -1016,7 +1016,7 @@ bool Sql_cmd_change_repl_filter::change_rpl_filter(THD* thd)
   bool ret= false;
 #ifdef HAVE_REPLICATION
   int thread_mask;
-  Master_info *mi= NULL;
+  Primary_info *mi= NULL;
 
   if (check_global_access(thd, SUPER_ACL))
     DBUG_RETURN(ret= true);
@@ -1039,7 +1039,7 @@ bool Sql_cmd_change_repl_filter::change_rpl_filter(THD* thd)
 
   if (!mi)
   {
-    my_message(ER_SLAVE_CONFIGURATION, ER(ER_SLAVE_CONFIGURATION),
+    my_message(ER_REPLICA_CONFIGURATION, ER(ER_REPLICA_CONFIGURATION),
                MYF(0));
     ret= true;
     goto err;
@@ -1049,7 +1049,7 @@ bool Sql_cmd_change_repl_filter::change_rpl_filter(THD* thd)
   {
     mi= it->second;
     if (mi)
-      mysql_mutex_lock(&mi->rli->run_lock); /* lock slave_sql_thread */
+      mysql_mutex_lock(&mi->rli->run_lock); /* lock replica_sql_thread */
   }
 
   /* check the running status of all SQL threads */
@@ -1059,9 +1059,9 @@ bool Sql_cmd_change_repl_filter::change_rpl_filter(THD* thd)
     mi= it->second;
     if (mi)
       init_thread_mask(&thread_mask, mi, 0 /*not inverse*/);
-    if (thread_mask & SLAVE_SQL) /* We refuse if any slave thread is running */
+    if (thread_mask & REPLICA_SQL) /* We refuse if any replica thread is running */
     {
-      my_message(ER_SLAVE_SQL_THREAD_MUST_STOP, ER(ER_SLAVE_SQL_THREAD_MUST_STOP), MYF(0));
+      my_message(ER_REPLICA_SQL_THREAD_MUST_STOP, ER(ER_REPLICA_SQL_THREAD_MUST_STOP), MYF(0));
       ret= true;
       break;
     }

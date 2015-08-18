@@ -5354,7 +5354,7 @@ define(["./kernel", "../has", "require", "module", "./json", "./lang", "./array"
 				throw "unmatched paren around character " + parenRe.lastIndex + " in: " + text;
 			}
 
-			//Put the master matching string in the results.
+			//Put the primary matching string in the results.
 			return [dojo.trim(text.substring(startApplication, parenRe.lastIndex))+";\n", parenRe.lastIndex];
 		},
 
@@ -10399,8 +10399,8 @@ define("dojo/dom-construct", ["exports", "./_base/kernel", "./_base/sniff", "./_
 			li: ["ul"]
 		},
 		reTag = /<\s*([\w\:]+)/,
-		masterNode = {}, masterNum = 0,
-		masterName = "__" + dojo._scopeName + "ToDomId";
+		primaryNode = {}, primaryNum = 0,
+		primaryName = "__" + dojo._scopeName + "ToDomId";
 
 	// generate start/end tag strings to use
 	// for the injection for each special tag wrap case.
@@ -10442,10 +10442,10 @@ define("dojo/dom-construct", ["exports", "./_base/kernel", "./_base/sniff", "./_
 	
 	exports.toDom = function toDom(frag, doc){
 		doc = doc || win.doc;
-		var masterId = doc[masterName];
-		if(!masterId){
-			doc[masterName] = masterId = ++masterNum + "";
-			masterNode[masterId] = doc.createElement("div");
+		var primaryId = doc[primaryName];
+		if(!primaryId){
+			doc[primaryName] = primaryId = ++primaryNum + "";
+			primaryNode[primaryId] = doc.createElement("div");
 		}
 
 		// make sure the frag is a string.
@@ -10454,26 +10454,26 @@ define("dojo/dom-construct", ["exports", "./_base/kernel", "./_base/sniff", "./_
 		// find the starting tag, and get node wrapper
 		var match = frag.match(reTag),
 			tag = match ? match[1].toLowerCase() : "",
-			master = masterNode[masterId],
+			primary = primaryNode[primaryId],
 			wrap, i, fc, df;
 		if(match && tagWrap[tag]){
 			wrap = tagWrap[tag];
-			master.innerHTML = wrap.pre + frag + wrap.post;
+			primary.innerHTML = wrap.pre + frag + wrap.post;
 			for(i = wrap.length; i; --i){
-				master = master.firstChild;
+				primary = primary.firstChild;
 			}
 		}else{
-			master.innerHTML = frag;
+			primary.innerHTML = frag;
 		}
 
 		// one node shortcut => return the node itself
-		if(master.childNodes.length == 1){
-			return master.removeChild(master.firstChild); // DOMNode
+		if(primary.childNodes.length == 1){
+			return primary.removeChild(primary.firstChild); // DOMNode
 		}
 
 		// return multiple nodes as a document fragment
 		df = doc.createDocumentFragment();
-		while(fc = master.firstChild){ // intentional assignment
+		while(fc = primary.firstChild){ // intentional assignment
 			df.appendChild(fc);
 		}
 		return df; // DOMNode

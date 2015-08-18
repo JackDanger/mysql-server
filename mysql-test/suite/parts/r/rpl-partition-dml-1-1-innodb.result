@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 set @old_global_binlog_format=  @@global.binlog_format;
 set @old_session_binlog_format=  @@session.binlog_format;
 SET GLOBAL binlog_format = 'ROW';
@@ -10,7 +10,7 @@ SET SESSION binlog_format = 'ROW';
 select @@global.binlog_format, @@session.binlog_format;
 @@global.binlog_format	@@session.binlog_format
 ROW	ROW
-[on slave]
+[on replica]
 set @old_global_binlog_format=  @@global.binlog_format;
 set @old_session_binlog_format=  @@session.binlog_format;
 SET GLOBAL binlog_format = 'ROW';
@@ -18,8 +18,8 @@ SET SESSION binlog_format = 'ROW';
 select @@global.binlog_format, @@session.binlog_format;
 @@global.binlog_format	@@session.binlog_format
 ROW	ROW
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 # Additional tests for WL#5217 by QA, testplan 1.1
 CREATE TABLE t1 
 (a INT NOT NULL,
@@ -102,11 +102,11 @@ a	b
 24	(p0-29-)subp5
 3	p0-29-upd-1
 4	p0-29-upd-1
-connection slave;
-include/check_slave_is_running.inc
-connection slave;
-connection slave;
-connection slave;
+connection replica;
+include/check_replica_is_running.inc
+connection replica;
+connection replica;
+connection replica;
 SELECT * FROM t1 PARTITION (`p0-29`);
 a	b
 1	p0-29-upd-1
@@ -117,7 +117,7 @@ a	b
 24	(p0-29-)subp5
 3	p0-29-upd-1
 4	p0-29-upd-1
-connection master;
+connection primary;
 UPDATE t1 PARTITION (`p30-299`) SET b='p30-299-upd' WHERE a BETWEEN 30 AND 39;
 SELECT * FROM t1 PARTITION (`p30-299`);
 a	b
@@ -129,11 +129,11 @@ a	b
 32	p30-299-upd
 33	p30-299-upd
 34	p30-299-upd
-connection slave;
-include/check_slave_is_running.inc
-connection slave;
-connection slave;
-connection slave;
+connection replica;
+include/check_replica_is_running.inc
+connection replica;
+connection replica;
+connection replica;
 SELECT * FROM t1 PARTITION (`p30-299`);
 a	b
 231	(p30-299-)subp8
@@ -144,7 +144,7 @@ a	b
 32	p30-299-upd
 33	p30-299-upd
 34	p30-299-upd
-connection master;
+connection primary;
 UPDATE t1 PARTITION (`p300-2999`) SET b='p300-2999-upd' WHERE a BETWEEN 300 AND 309;
 SELECT * FROM t1 PARTITION (`p300-2999`);
 a	b
@@ -152,18 +152,18 @@ a	b
 302	p300-2999-upd
 303	p300-2999-upd
 304	p300-2999-upd
-connection slave;
-include/check_slave_is_running.inc
-connection slave;
-connection slave;
-connection slave;
+connection replica;
+include/check_replica_is_running.inc
+connection replica;
+connection replica;
+connection replica;
 SELECT * FROM t1 PARTITION (`p300-2999`);
 a	b
 301	p300-2999-upd
 302	p300-2999-upd
 303	p300-2999-upd
 304	p300-2999-upd
-connection master;
+connection primary;
 UPDATE t1 PARTITION (subp3) SET b='subp3-upd';
 UPDATE t1 PARTITION (subp4) SET b='subp4-upd';
 UPDATE t1 PARTITION (subp5) SET b='subp5-upd';
@@ -177,11 +177,11 @@ a	b
 24	subp3-upd
 3	subp3-upd
 4	subp4-upd
-connection slave;
-include/check_slave_is_running.inc
-connection slave;
-connection slave;
-connection slave;
+connection replica;
+include/check_replica_is_running.inc
+connection replica;
+connection replica;
+connection replica;
 SELECT * FROM t1 PARTITION (subp4,subp5,subp3) order by b,a;
 a	b
 1	subp4-upd
@@ -194,7 +194,7 @@ a	b
 4	subp4-upd
 set @@global.binlog_format=  @old_global_binlog_format;
 set @@session.binlog_format=  @old_session_binlog_format;
-connection master;
+connection primary;
 set @@global.binlog_format=  @old_global_binlog_format;
 set @@session.binlog_format=  @old_session_binlog_format;
 DROP TABLE t1;

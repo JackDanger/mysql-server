@@ -117,7 +117,7 @@ See the [Complete documentation for Session](API-documentation/Session)
 
 SessionFactory
 --------------
-A [SessionFactory](API-documentaiton/SessionFactory) is a heavyweight master 
+A [SessionFactory](API-documentaiton/SessionFactory) is a heavyweight primary 
 connection to a database, *i.e.* for a whole process or application.  
 
 A SessionFactory generally makes use of network resources such as TCP connections.

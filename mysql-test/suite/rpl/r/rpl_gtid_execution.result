@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 #### Initialize ####
 CREATE table t (a INT PRIMARY KEY) ENGINE = InnoDB;
 INSERT INTO t VALUES (1);
@@ -177,12 +177,12 @@ include/rpl_reset.inc
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1000 @@GLOBAL.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1000 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1000 @@SESSION.GTID_OWNED: '' + '1:1' = '1:1']
 include/assert.inc [#1000 @@GLOBAL.GTID_OWNED: '' + '1:1' = '1:1']
-include/assert.inc [#1000 slave:@@GLOBAL.GTID_EXECUTED: '' + '' = '']
+include/assert.inc [#1000 replica:@@GLOBAL.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1001 ====
@@ -191,12 +191,12 @@ AUTOCOMMIT=1
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1001 @@GLOBAL.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1001 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1001 @@SESSION.GTID_OWNED: '1:1' + '' = '1:1']
 include/assert.inc [#1001 @@GLOBAL.GTID_OWNED: '1:1' + '' = '1:1']
-include/assert.inc [#1001 slave:@@GLOBAL.GTID_EXECUTED: '' + '' = '']
+include/assert.inc [#1001 replica:@@GLOBAL.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1002 ====
@@ -205,12 +205,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1002 @@GLOBAL.GTID_EXECUTED: '' + '1:1' = '1:1']
 include/assert.inc [#1002 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1002 @@SESSION.GTID_OWNED: '1:1' + '~1:1' = '']
 include/assert.inc [#1002 @@GLOBAL.GTID_OWNED: '1:1' + '~1:1' = '']
-include/assert.inc [#1002 slave:@@GLOBAL.GTID_EXECUTED: '' + '1:1' = '1:1']
+include/assert.inc [#1002 replica:@@GLOBAL.GTID_EXECUTED: '' + '1:1' = '1:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1003 ====
@@ -219,12 +219,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1003 @@GLOBAL.GTID_EXECUTED: '1:1' + '' = '1:1']
 include/assert.inc [#1003 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1003 @@SESSION.GTID_OWNED: '' + '1:3' = '1:3']
 include/assert.inc [#1003 @@GLOBAL.GTID_OWNED: '' + '1:3' = '1:3']
-include/assert.inc [#1003 slave:@@GLOBAL.GTID_EXECUTED: '1:1' + '' = '1:1']
+include/assert.inc [#1003 replica:@@GLOBAL.GTID_EXECUTED: '1:1' + '' = '1:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1004 ====
@@ -233,12 +233,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1004 @@GLOBAL.GTID_EXECUTED: '1:1' + '1:3' = '1:1:3']
 include/assert.inc [#1004 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1004 @@SESSION.GTID_OWNED: '1:3' + '~1:3' = '']
 include/assert.inc [#1004 @@GLOBAL.GTID_OWNED: '1:3' + '~1:3' = '']
-include/assert.inc [#1004 slave:@@GLOBAL.GTID_EXECUTED: '1:1' + '1:3' = '1:1:3']
+include/assert.inc [#1004 replica:@@GLOBAL.GTID_EXECUTED: '1:1' + '1:3' = '1:1:3']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1010 ====
@@ -247,12 +247,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1010 @@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [#1010 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1010 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1010 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1010 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
+include/assert.inc [#1010 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1011 ====
@@ -261,12 +261,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1011 @@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [#1011 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1011 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1011 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1011 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
+include/assert.inc [#1011 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1012 ====
@@ -275,12 +275,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1012 @@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [#1012 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1012 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1012 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1012 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
+include/assert.inc [#1012 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1013 ====
@@ -289,12 +289,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1013 @@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [#1013 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1013 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1013 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1013 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
+include/assert.inc [#1013 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1020 ====
@@ -303,12 +303,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1020 @@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [#1020 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1020 @@SESSION.GTID_OWNED: '' + '2:3' = '2:3']
 include/assert.inc [#1020 @@GLOBAL.GTID_OWNED: '' + '2:3' = '2:3']
-include/assert.inc [#1020 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
+include/assert.inc [#1020 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '' = '1:1:3']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1021 ====
@@ -317,12 +317,12 @@ CREATE
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1021 @@GLOBAL.GTID_EXECUTED: '1:1:3' + '2:3' = '1:1:3,2:3']
 include/assert.inc [#1021 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1021 @@SESSION.GTID_OWNED: '2:3' + '~2:3' = '']
 include/assert.inc [#1021 @@GLOBAL.GTID_OWNED: '2:3' + '~2:3' = '']
-include/assert.inc [#1021 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '2:3' = '1:1:3,2:3']
+include/assert.inc [#1021 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3' + '2:3' = '1:1:3,2:3']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1022 ====
@@ -331,12 +331,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1022 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3' + '' = '1:1:3,2:3']
 include/assert.inc [#1022 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1022 @@SESSION.GTID_OWNED: '' + '2:4' = '2:4']
 include/assert.inc [#1022 @@GLOBAL.GTID_OWNED: '' + '2:4' = '2:4']
-include/assert.inc [#1022 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3' + '' = '1:1:3,2:3']
+include/assert.inc [#1022 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3' + '' = '1:1:3,2:3']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1023 ====
@@ -345,12 +345,12 @@ CREATE
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1023 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3' + '2:4' = '1:1:3,2:3-4']
 include/assert.inc [#1023 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1023 @@SESSION.GTID_OWNED: '2:4' + '~2:4' = '']
 include/assert.inc [#1023 @@GLOBAL.GTID_OWNED: '2:4' + '~2:4' = '']
-include/assert.inc [#1023 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3' + '2:4' = '1:1:3,2:3-4']
+include/assert.inc [#1023 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3' + '2:4' = '1:1:3,2:3-4']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1030 ====
@@ -359,12 +359,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1030 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1030 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1030 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1030 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1030 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1030 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1031 ====
@@ -373,12 +373,12 @@ CREATE-NODROP
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1031 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1031 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1031 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1031 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1031 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1031 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1032 ====
@@ -387,12 +387,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1032 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1032 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1032 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1032 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1032 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1032 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1033 ====
@@ -401,12 +401,12 @@ CREATE-NODROP
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1033 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1033 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1033 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1033 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1033 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1033 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1040 ====
@@ -415,12 +415,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1040 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1040 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1040 @@SESSION.GTID_OWNED: '' + '4:1' = '4:1']
 include/assert.inc [#1040 @@GLOBAL.GTID_OWNED: '' + '4:1' = '4:1']
-include/assert.inc [#1040 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1040 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1041 ====
@@ -429,12 +429,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1041 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1041 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1041 @@SESSION.GTID_OWNED: '4:1' + '' = '4:1']
 include/assert.inc [#1041 @@GLOBAL.GTID_OWNED: '4:1' + '' = '4:1']
-include/assert.inc [#1041 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1041 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1042 ====
@@ -443,12 +443,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1042 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1042 @@SESSION.GTID_EXECUTED: '' + '4:1' = '4:1']
 include/assert.inc [#1042 @@SESSION.GTID_OWNED: '4:1' + '' = '4:1']
 include/assert.inc [#1042 @@GLOBAL.GTID_OWNED: '4:1' + '' = '4:1']
-include/assert.inc [#1042 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1042 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1043 ====
@@ -457,12 +457,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1043 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [#1043 @@SESSION.GTID_EXECUTED: '4:1' + '' = '4:1']
 include/assert.inc [#1043 @@SESSION.GTID_OWNED: '4:1' + '' = '4:1']
 include/assert.inc [#1043 @@GLOBAL.GTID_OWNED: '4:1' + '' = '4:1']
-include/assert.inc [#1043 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
+include/assert.inc [#1043 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '' = '1:1:3,2:3-4']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1044 ====
@@ -471,12 +471,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1044 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '4:1' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1044 @@SESSION.GTID_EXECUTED: '4:1' + '~4:1' = '']
 include/assert.inc [#1044 @@SESSION.GTID_OWNED: '4:1' + '~4:1' = '']
 include/assert.inc [#1044 @@GLOBAL.GTID_OWNED: '4:1' + '~4:1' = '']
-include/assert.inc [#1044 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '4:1' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1044 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4' + '4:1' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1050 ====
@@ -485,12 +485,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1050 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1050 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1050 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1050 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1050 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1050 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1051 ====
@@ -499,12 +499,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1051 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1051 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1051 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1051 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1051 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1051 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1052 ====
@@ -513,12 +513,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1052 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1052 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1052 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1052 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1052 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1052 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1053 ====
@@ -527,12 +527,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1053 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1053 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1053 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1053 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1053 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1053 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1054 ====
@@ -541,12 +541,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1054 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1054 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1054 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1054 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1054 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1054 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1060 ====
@@ -555,12 +555,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1060 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1060 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1060 @@SESSION.GTID_OWNED: '' + '6:1' = '6:1']
 include/assert.inc [#1060 @@GLOBAL.GTID_OWNED: '' + '6:1' = '6:1']
-include/assert.inc [#1060 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1060 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1061 ====
@@ -569,12 +569,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1061 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1061 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1061 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1061 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1061 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1061 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1062 ====
@@ -583,12 +583,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1062 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1062 @@SESSION.GTID_EXECUTED: '' + '6:1' = '6:1']
 include/assert.inc [#1062 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1062 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1062 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1062 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1063 ====
@@ -597,12 +597,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1063 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1063 @@SESSION.GTID_EXECUTED: '6:1' + '' = '6:1']
 include/assert.inc [#1063 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1063 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1063 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1063 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1064 ====
@@ -611,12 +611,12 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1064 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1064 @@SESSION.GTID_EXECUTED: '6:1' + '~6:1' = '']
 include/assert.inc [#1064 @@SESSION.GTID_OWNED: '6:1' + '~6:1' = '']
 include/assert.inc [#1064 @@GLOBAL.GTID_OWNED: '6:1' + '~6:1' = '']
-include/assert.inc [#1064 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1064 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1070 ====
@@ -625,12 +625,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1070 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1070 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1070 @@SESSION.GTID_OWNED: '' + '6:1' = '6:1']
 include/assert.inc [#1070 @@GLOBAL.GTID_OWNED: '' + '6:1' = '6:1']
-include/assert.inc [#1070 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1070 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1071 ====
@@ -639,12 +639,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1071 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1071 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1071 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1071 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1071 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1071 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1072 ====
@@ -653,12 +653,12 @@ SAVEPOINT 1
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1072 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1072 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1072 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1072 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1072 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1072 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1073 ====
@@ -667,12 +667,12 @@ SAVEPOINT 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1073 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1073 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1073 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1073 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1073 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1073 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1074 ====
@@ -681,12 +681,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1074 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1074 @@SESSION.GTID_EXECUTED: '' + '6:1' = '6:1']
 include/assert.inc [#1074 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1074 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1074 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1074 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1075 ====
@@ -695,12 +695,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1075 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1075 @@SESSION.GTID_EXECUTED: '6:1' + '' = '6:1']
 include/assert.inc [#1075 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1075 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1075 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1075 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1076 ====
@@ -709,12 +709,12 @@ ROLLBACK 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1076 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1076 @@SESSION.GTID_EXECUTED: '6:1' + '~6:1' = '']
 include/assert.inc [#1076 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1076 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1076 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1076 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1077 ====
@@ -723,12 +723,12 @@ SAVEPOINT 3
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1077 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1077 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1077 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1077 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1077 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1077 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1078 ====
@@ -737,12 +737,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1078 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1078 @@SESSION.GTID_EXECUTED: '' + '6:1' = '6:1']
 include/assert.inc [#1078 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1078 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1078 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1078 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1079 ====
@@ -751,12 +751,12 @@ SAVEPOINT 4
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1079 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1079 @@SESSION.GTID_EXECUTED: '6:1' + '' = '6:1']
 include/assert.inc [#1079 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1079 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1079 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1079 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1080 ====
@@ -765,12 +765,12 @@ ROLLBACK 3
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1080 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1080 @@SESSION.GTID_EXECUTED: '6:1' + '~6:1' = '']
 include/assert.inc [#1080 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1080 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1080 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1080 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1081 ====
@@ -779,12 +779,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1081 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1081 @@SESSION.GTID_EXECUTED: '' + '6:1' = '6:1']
 include/assert.inc [#1081 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1081 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1081 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1081 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1082 ====
@@ -793,12 +793,12 @@ SAVEPOINT 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1082 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1082 @@SESSION.GTID_EXECUTED: '6:1' + '' = '6:1']
 include/assert.inc [#1082 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1082 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1082 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1082 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1083 ====
@@ -807,12 +807,12 @@ ROLLBACK 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1083 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1083 @@SESSION.GTID_EXECUTED: '6:1' + '' = '6:1']
 include/assert.inc [#1083 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1083 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1083 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1083 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1084 ====
@@ -821,12 +821,12 @@ ROLLBACK 1
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1084 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1084 @@SESSION.GTID_EXECUTED: '6:1' + '~6:1' = '']
 include/assert.inc [#1084 @@SESSION.GTID_OWNED: '6:1' + '' = '6:1']
 include/assert.inc [#1084 @@GLOBAL.GTID_OWNED: '6:1' + '' = '6:1']
-include/assert.inc [#1084 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1084 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1085 ====
@@ -835,12 +835,12 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1085 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1085 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1085 @@SESSION.GTID_OWNED: '6:1' + '~6:1' = '']
 include/assert.inc [#1085 @@GLOBAL.GTID_OWNED: '6:1' + '~6:1' = '']
-include/assert.inc [#1085 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1085 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1090 ====
@@ -849,12 +849,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1090 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [#1090 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1090 @@SESSION.GTID_OWNED: '' + '9:1' = '9:1']
 include/assert.inc [#1090 @@GLOBAL.GTID_OWNED: '' + '9:1' = '9:1']
-include/assert.inc [#1090 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
+include/assert.inc [#1090 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '' = '1:1:3,2:3-4,4:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1091 ====
@@ -863,12 +863,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1091 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '9:1' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1091 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1091 @@SESSION.GTID_OWNED: '9:1' + '~9:1' = '']
 include/assert.inc [#1091 @@GLOBAL.GTID_OWNED: '9:1' + '~9:1' = '']
-include/assert.inc [#1091 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '9:1' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1091 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1' + '9:1' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1100 ====
@@ -877,12 +877,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1100 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1100 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1100 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1100 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1100 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1100 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1101 ====
@@ -891,12 +891,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1101 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1101 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1101 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1101 @@GLOBAL.GTID_OWNED: '' + '' = '']
-include/assert.inc [#1101 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1101 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1110 ====
@@ -905,12 +905,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1110 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1110 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1110 @@SESSION.GTID_OWNED: '' + '11:1' = '11:1']
 include/assert.inc [#1110 @@GLOBAL.GTID_OWNED: '' + '11:1' = '11:1']
-include/assert.inc [#1110 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1110 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1111 ====
@@ -919,12 +919,12 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1111 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1111 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1111 @@SESSION.GTID_OWNED: '11:1' + '~11:1' = '']
 include/assert.inc [#1111 @@GLOBAL.GTID_OWNED: '11:1' + '~11:1' = '']
-include/assert.inc [#1111 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1111 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1120 ====
@@ -933,12 +933,12 @@ include/assert.inc [Binlog position was not updated]
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1120 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1120 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1120 @@SESSION.GTID_OWNED: '' + '12:1' = '12:1']
 include/assert.inc [#1120 @@GLOBAL.GTID_OWNED: '' + '12:1' = '12:1']
-include/assert.inc [#1120 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1120 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1121 ====
@@ -953,12 +953,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1122 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1122 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1122 @@SESSION.GTID_OWNED: '12:1' + '' = '12:1']
 include/assert.inc [#1122 @@GLOBAL.GTID_OWNED: '12:1' + '' = '12:1']
-include/assert.inc [#1122 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1122 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1123 ====
@@ -967,12 +967,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1123 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [#1123 @@SESSION.GTID_EXECUTED: '' + '12:1' = '12:1']
 include/assert.inc [#1123 @@SESSION.GTID_OWNED: '12:1' + '' = '12:1']
 include/assert.inc [#1123 @@GLOBAL.GTID_OWNED: '12:1' + '' = '12:1']
-include/assert.inc [#1123 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
+include/assert.inc [#1123 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '' = '1:1:3,2:3-4,4:1,9:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1124 ====
@@ -985,23 +985,23 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1125 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '12:1' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1125 @@SESSION.GTID_EXECUTED: '12:1' + '~12:1' = '']
 include/assert.inc [#1125 @@SESSION.GTID_OWNED: '12:1' + '~12:1' = '']
 include/assert.inc [#1125 @@GLOBAL.GTID_OWNED: '12:1' + '~12:1' = '']
-include/assert.inc [#1125 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '12:1' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1125 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '12:1' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1126 ====
 [connection server_1_2]
 reap
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1126 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '12:1' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1126 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1126 @@SESSION.GTID_OWNED: '' + '' = '']
 include/assert.inc [#1126 @@GLOBAL.GTID_OWNED: '12:1' + '~12:1' = '']
-include/assert.inc [#1126 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '12:1' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1126 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1' + '12:1' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1130 ====
@@ -1010,12 +1010,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1130 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1130 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1130 @@SESSION.GTID_OWNED: '' + '13:1' = '13:1']
 include/assert.inc [#1130 @@GLOBAL.GTID_OWNED: '' + '13:1' = '13:1']
-include/assert.inc [#1130 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1130 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1131 ====
@@ -1030,12 +1030,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1132 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1132 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1132 @@SESSION.GTID_OWNED: '13:1' + '' = '13:1']
 include/assert.inc [#1132 @@GLOBAL.GTID_OWNED: '13:1' + '' = '13:1']
-include/assert.inc [#1132 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1132 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1133 ====
@@ -1044,12 +1044,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1133 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1133 @@SESSION.GTID_EXECUTED: '' + '13:1' = '13:1']
 include/assert.inc [#1133 @@SESSION.GTID_OWNED: '13:1' + '' = '13:1']
 include/assert.inc [#1133 @@GLOBAL.GTID_OWNED: '13:1' + '' = '13:1']
-include/assert.inc [#1133 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1133 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1134 ====
@@ -1062,23 +1062,23 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1135 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1135 @@SESSION.GTID_EXECUTED: '13:1' + '~13:1' = '']
 include/assert.inc [#1135 @@SESSION.GTID_OWNED: '13:1' + '~13:1' = '']
 include/assert.inc [#1135 @@GLOBAL.GTID_OWNED: '13:1' + '' = '13:1']
-include/assert.inc [#1135 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1135 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1136 ====
 [connection server_1_2]
 reap
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1136 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1136 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1136 @@SESSION.GTID_OWNED: '' + '13:1' = '13:1']
 include/assert.inc [#1136 @@GLOBAL.GTID_OWNED: '13:1' + '' = '13:1']
-include/assert.inc [#1136 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1136 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1137 ====
@@ -1087,12 +1087,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1137 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1137 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1137 @@SESSION.GTID_OWNED: '13:1' + '' = '13:1']
 include/assert.inc [#1137 @@GLOBAL.GTID_OWNED: '13:1' + '' = '13:1']
-include/assert.inc [#1137 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1137 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1138 ====
@@ -1101,12 +1101,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1138 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [#1138 @@SESSION.GTID_EXECUTED: '' + '13:1' = '13:1']
 include/assert.inc [#1138 @@SESSION.GTID_OWNED: '13:1' + '' = '13:1']
 include/assert.inc [#1138 @@GLOBAL.GTID_OWNED: '13:1' + '' = '13:1']
-include/assert.inc [#1138 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
+include/assert.inc [#1138 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1139 ====
@@ -1115,12 +1115,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1139 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '13:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1139 @@SESSION.GTID_EXECUTED: '13:1' + '~13:1' = '']
 include/assert.inc [#1139 @@SESSION.GTID_OWNED: '13:1' + '~13:1' = '']
 include/assert.inc [#1139 @@GLOBAL.GTID_OWNED: '13:1' + '~13:1' = '']
-include/assert.inc [#1139 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '13:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1139 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1' + '13:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1140 ====
@@ -1129,12 +1129,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1140 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1140 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1140 @@SESSION.GTID_OWNED: '' + '14:1' = '14:1']
 include/assert.inc [#1140 @@GLOBAL.GTID_OWNED: '' + '14:1' = '14:1']
-include/assert.inc [#1140 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1140 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1141 ====
@@ -1149,12 +1149,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1142 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1142 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1142 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1142 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1142 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1142 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1143 ====
@@ -1163,12 +1163,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1143 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1143 @@SESSION.GTID_EXECUTED: '' + '14:1' = '14:1']
 include/assert.inc [#1143 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1143 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1143 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1143 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1144 ====
@@ -1181,23 +1181,23 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1145 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1145 @@SESSION.GTID_EXECUTED: '14:1' + '~14:1' = '']
 include/assert.inc [#1145 @@SESSION.GTID_OWNED: '14:1' + '~14:1' = '']
 include/assert.inc [#1145 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1145 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1145 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1146 ====
 [connection server_1_2]
 reap
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1146 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1146 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1146 @@SESSION.GTID_OWNED: '' + '14:1' = '14:1']
 include/assert.inc [#1146 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1146 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1146 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1147 ====
@@ -1206,12 +1206,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1147 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1147 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1147 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1147 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1147 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1147 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1148 ====
@@ -1220,12 +1220,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1148 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1148 @@SESSION.GTID_EXECUTED: '' + '14:1' = '14:1']
 include/assert.inc [#1148 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1148 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1148 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1148 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1149 ====
@@ -1244,23 +1244,23 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1151 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1151 @@SESSION.GTID_EXECUTED: '14:1' + '~14:1' = '']
 include/assert.inc [#1151 @@SESSION.GTID_OWNED: '14:1' + '~14:1' = '']
 include/assert.inc [#1151 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1151 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1151 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1152 ====
 [connection server_1_3]
 reap
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1152 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1152 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1152 @@SESSION.GTID_OWNED: '' + '14:1' = '14:1']
 include/assert.inc [#1152 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1152 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1152 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1153 ====
@@ -1275,12 +1275,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1154 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1154 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1154 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1154 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1154 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1154 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1155 ====
@@ -1289,12 +1289,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1155 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1155 @@SESSION.GTID_EXECUTED: '' + '14:1' = '14:1']
 include/assert.inc [#1155 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1155 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1155 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1155 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1156 ====
@@ -1307,23 +1307,23 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1157 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1157 @@SESSION.GTID_EXECUTED: '14:1' + '~14:1' = '']
 include/assert.inc [#1157 @@SESSION.GTID_OWNED: '14:1' + '~14:1' = '']
 include/assert.inc [#1157 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1157 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1157 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1158 ====
 [connection server_1_1]
 reap
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1158 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1158 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1158 @@SESSION.GTID_OWNED: '' + '14:1' = '14:1']
 include/assert.inc [#1158 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1158 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1158 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1159 ====
@@ -1332,12 +1332,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1159 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1159 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1159 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1159 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1159 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1159 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1160 ====
@@ -1346,12 +1346,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1160 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [#1160 @@SESSION.GTID_EXECUTED: '' + '14:1' = '14:1']
 include/assert.inc [#1160 @@SESSION.GTID_OWNED: '14:1' + '' = '14:1']
 include/assert.inc [#1160 @@GLOBAL.GTID_OWNED: '14:1' + '' = '14:1']
-include/assert.inc [#1160 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
+include/assert.inc [#1160 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1161 ====
@@ -1360,12 +1360,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1161 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '14:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1161 @@SESSION.GTID_EXECUTED: '14:1' + '~14:1' = '']
 include/assert.inc [#1161 @@SESSION.GTID_OWNED: '14:1' + '~14:1' = '']
 include/assert.inc [#1161 @@GLOBAL.GTID_OWNED: '14:1' + '~14:1' = '']
-include/assert.inc [#1161 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '14:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1161 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1' + '14:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1170 ====
@@ -1374,12 +1374,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1170 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1170 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1170 @@SESSION.GTID_OWNED: '' + '17:1' = '17:1']
 include/assert.inc [#1170 @@GLOBAL.GTID_OWNED: '' + '17:1' = '17:1']
-include/assert.inc [#1170 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1170 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1171 ====
@@ -1394,12 +1394,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1172 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1172 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1172 @@SESSION.GTID_OWNED: '17:1' + '' = '17:1']
 include/assert.inc [#1172 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1172 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1172 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1173 ====
@@ -1408,12 +1408,12 @@ SAVEPOINT 1
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1173 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1173 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1173 @@SESSION.GTID_OWNED: '17:1' + '' = '17:1']
 include/assert.inc [#1173 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1173 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1173 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1174 ====
@@ -1422,12 +1422,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1174 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1174 @@SESSION.GTID_EXECUTED: '' + '17:1' = '17:1']
 include/assert.inc [#1174 @@SESSION.GTID_OWNED: '17:1' + '' = '17:1']
 include/assert.inc [#1174 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1174 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1174 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1175 ====
@@ -1436,12 +1436,12 @@ ROLLBACK 1
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1175 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1175 @@SESSION.GTID_EXECUTED: '17:1' + '~17:1' = '']
 include/assert.inc [#1175 @@SESSION.GTID_OWNED: '17:1' + '' = '17:1']
 include/assert.inc [#1175 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1175 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1175 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1176 ====
@@ -1450,12 +1450,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1176 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1176 @@SESSION.GTID_EXECUTED: '' + '17:1' = '17:1']
 include/assert.inc [#1176 @@SESSION.GTID_OWNED: '17:1' + '' = '17:1']
 include/assert.inc [#1176 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1176 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1176 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1177 ====
@@ -1468,23 +1468,23 @@ ROLLBACK
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1178 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1178 @@SESSION.GTID_EXECUTED: '17:1' + '~17:1' = '']
 include/assert.inc [#1178 @@SESSION.GTID_OWNED: '17:1' + '~17:1' = '']
 include/assert.inc [#1178 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1178 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1178 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1179 ====
 [connection server_1_2]
 reap
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1179 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1179 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1179 @@SESSION.GTID_OWNED: '' + '17:1' = '17:1']
 include/assert.inc [#1179 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1179 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1179 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1180 ====
@@ -1493,12 +1493,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1180 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1180 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1180 @@SESSION.GTID_OWNED: '17:1' + '' = '17:1']
 include/assert.inc [#1180 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1180 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1180 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1181 ====
@@ -1507,12 +1507,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1181 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [#1181 @@SESSION.GTID_EXECUTED: '' + '17:1' = '17:1']
 include/assert.inc [#1181 @@SESSION.GTID_OWNED: '17:1' + '' = '17:1']
 include/assert.inc [#1181 @@GLOBAL.GTID_OWNED: '17:1' + '' = '17:1']
-include/assert.inc [#1181 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
+include/assert.inc [#1181 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1182 ====
@@ -1521,12 +1521,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1182 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '17:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1182 @@SESSION.GTID_EXECUTED: '17:1' + '~17:1' = '']
 include/assert.inc [#1182 @@SESSION.GTID_OWNED: '17:1' + '~17:1' = '']
 include/assert.inc [#1182 @@GLOBAL.GTID_OWNED: '17:1' + '~17:1' = '']
-include/assert.inc [#1182 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '17:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1182 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1' + '17:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 ==== row-id = 1190 ====
@@ -1535,12 +1535,12 @@ include/assert.inc [The first added event in the binlog should be a Gtid_log_eve
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1190 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1190 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1190 @@SESSION.GTID_OWNED: '' + '19:1' = '19:1']
 include/assert.inc [#1190 @@GLOBAL.GTID_OWNED: '' + '19:1' = '19:1']
-include/assert.inc [#1190 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1190 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1191 ====
@@ -1549,12 +1549,12 @@ BEGIN
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1191 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1191 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1191 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1191 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1191 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1191 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1192 ====
@@ -1563,12 +1563,12 @@ SAVEPOINT 1
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1192 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1192 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1192 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1192 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1192 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1192 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1193 ====
@@ -1577,12 +1577,12 @@ SAVEPOINT 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1193 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1193 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1193 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1193 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1193 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1193 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1194 ====
@@ -1591,12 +1591,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1194 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1194 @@SESSION.GTID_EXECUTED: '' + '19:1' = '19:1']
 include/assert.inc [#1194 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1194 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1194 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1194 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1195 ====
@@ -1605,12 +1605,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1195 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1195 @@SESSION.GTID_EXECUTED: '19:1' + '' = '19:1']
 include/assert.inc [#1195 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1195 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1195 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1195 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1196 ====
@@ -1619,12 +1619,12 @@ ROLLBACK 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1196 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1196 @@SESSION.GTID_EXECUTED: '19:1' + '~19:1' = '']
 include/assert.inc [#1196 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1196 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1196 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1196 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1197 ====
@@ -1633,12 +1633,12 @@ SAVEPOINT 3
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1197 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1197 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1197 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1197 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1197 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1197 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1198 ====
@@ -1647,12 +1647,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1198 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1198 @@SESSION.GTID_EXECUTED: '' + '19:1' = '19:1']
 include/assert.inc [#1198 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1198 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1198 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1198 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1199 ====
@@ -1661,12 +1661,12 @@ SAVEPOINT 4
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1199 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1199 @@SESSION.GTID_EXECUTED: '19:1' + '' = '19:1']
 include/assert.inc [#1199 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1199 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1199 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1199 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1200 ====
@@ -1675,12 +1675,12 @@ ROLLBACK 3
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1200 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1200 @@SESSION.GTID_EXECUTED: '19:1' + '~19:1' = '']
 include/assert.inc [#1200 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1200 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1200 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1200 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1201 ====
@@ -1689,12 +1689,12 @@ INSERT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1201 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1201 @@SESSION.GTID_EXECUTED: '' + '19:1' = '19:1']
 include/assert.inc [#1201 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1201 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1201 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1201 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1202 ====
@@ -1703,12 +1703,12 @@ SAVEPOINT 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1202 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1202 @@SESSION.GTID_EXECUTED: '19:1' + '' = '19:1']
 include/assert.inc [#1202 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1202 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1202 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1202 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1203 ====
@@ -1717,12 +1717,12 @@ ROLLBACK 2
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1203 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1203 @@SESSION.GTID_EXECUTED: '19:1' + '' = '19:1']
 include/assert.inc [#1203 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1203 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1203 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1203 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1204 ====
@@ -1731,12 +1731,12 @@ ROLLBACK 1
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1204 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [#1204 @@SESSION.GTID_EXECUTED: '19:1' + '~19:1' = '']
 include/assert.inc [#1204 @@SESSION.GTID_OWNED: '19:1' + '' = '19:1']
 include/assert.inc [#1204 @@GLOBAL.GTID_OWNED: '19:1' + '' = '19:1']
-include/assert.inc [#1204 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
+include/assert.inc [#1204 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1']
 include/assert.inc [Binlog was not rotated]
 include/assert.inc [Binlog position was not updated]
 ==== row-id = 1205 ====
@@ -1745,12 +1745,12 @@ COMMIT
 Warnings:
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
 Warning	1681	'@@SESSION.GTID_EXECUTED' is deprecated and will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [#1205 @@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '19:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1,19:1']
 include/assert.inc [#1205 @@SESSION.GTID_EXECUTED: '' + '' = '']
 include/assert.inc [#1205 @@SESSION.GTID_OWNED: '19:1' + '~19:1' = '']
 include/assert.inc [#1205 @@GLOBAL.GTID_OWNED: '19:1' + '~19:1' = '']
-include/assert.inc [#1205 slave:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '19:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1,19:1']
+include/assert.inc [#1205 replica:@@GLOBAL.GTID_EXECUTED: '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1' + '19:1' = '1:1:3,2:3-4,4:1,9:1,12:1,13:1,14:1,17:1,19:1']
 include/assert.inc [Something was written to the binlog]
 include/assert.inc [The first added event in the binlog should be a Gtid_log_event]
 SET GTID_NEXT = 'AUTOMATIC';

@@ -6,7 +6,7 @@
 # rpl_change_topology.inc (invoked from rpl_init.inc) is correct. This
 # is done in two ways:
 #  (1) Print the sync chain.
-#  (2) Execute a statement and verify that it replicates to all slaves.
+#  (2) Execute a statement and verify that it replicates to all replicas.
 #
 #
 # ==== Implementation ====
@@ -14,7 +14,7 @@
 # Does this:
 # (1) Set up a given replication topology (rpl_init.inc)
 # (2) Print $rpl_sync_chain
-# (3) Execute "DELETE FROM t1" and then "INSERT INTO t1" on the master
+# (3) Execute "DELETE FROM t1" and then "INSERT INTO t1" on the primary
 # (4) Sync and compare all servers.
 # (5) Clean up the replication topology (rpl_end.inc)
 #
@@ -22,14 +22,14 @@
 # some servers may have rows left in t1 from a previous invocation of
 # rpl_test_framework.inc.  Therefore, this file will only work in
 # statement mode where "DELETE FROM t1" removes rows that exist on
-# slave but not on master.)
+# replica but not on primary.)
 #
 #
 # ==== Usage ====
 #
 # --let $rpl_server_count= <number>
 # --let $rpl_topology= <topology specification>
-# --let $masters= <list of masters>
+# --let $primarys= <list of primarys>
 # [--let $rpl_diff_servers= <list of servers>]
 # --source extra/rpl_tests/rpl_test_framework.inc
 #
@@ -41,7 +41,7 @@
 #   $rpl_server_count, $rpl_topology:
 #     See include/rpl_init.inc
 #
-#   $masters
+#   $primarys
 #     This should be a list of numbers, each identifying a server.
 #     The DELETE and INSERT statements will be executed on all servers
 #     in the list.
@@ -55,14 +55,14 @@
 
 --inc $next_number
 
-# Iterate over masters
-while ($masters)
+# Iterate over primarys
+while ($primarys)
 {
-  --let $master_i= `SELECT SUBSTRING_INDEX('$masters', ',', 1)`
-  --let $masters= `SELECT SUBSTRING('$masters', LENGTH('$master_i') + 2)`
+  --let $primary_i= `SELECT SUBSTRING_INDEX('$primarys', ',', 1)`
+  --let $primarys= `SELECT SUBSTRING('$primarys', LENGTH('$primary_i') + 2)`
 
-  # Connect to master and execute statement
-  --let $rpl_connection_name= server_$master_i
+  # Connect to primary and execute statement
+  --let $rpl_connection_name= server_$primary_i
   --source include/rpl_connection.inc
   DELETE FROM t1;
   --eval INSERT INTO t1 VALUES ($next_number)
@@ -82,5 +82,5 @@ while ($server_i)
 --source include/diff_tables.inc
 
 --let $diff_servers=
---let $masters=
+--let $primarys=
 --source include/rpl_end.inc

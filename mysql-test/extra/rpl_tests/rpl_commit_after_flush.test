@@ -6,7 +6,7 @@ flush tables with read lock;
 commit;
 --source include/rpl_sync.inc
 # cleanup
-connection master;
+connection primary;
 unlock tables;
 drop table t1;
 --source include/rpl_sync.inc

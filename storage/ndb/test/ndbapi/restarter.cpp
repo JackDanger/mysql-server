@@ -38,7 +38,7 @@ int main(int argc, const char** argv){
   int _help = 0;
   int _error_insert = 0;
   int _initial = 0;
-  int _master = 0;
+  int _primary = 0;
   int _maxwait = 120;
   int _multiple = 0;
 
@@ -52,8 +52,8 @@ int main(int argc, const char** argv){
       "Number of loops(0=forever)", "loops"},
     { "initial", 'i', arg_flag, &_initial, "Initial node restart"},
     { "error-insert", 'e', arg_flag, &_error_insert, "Use error insert"},
-    { "master", 'm', arg_flag, &_master, 
-      "Restart the master"},
+    { "primary", 'm', arg_flag, &_primary, 
+      "Restart the primary"},
     { "multiple", 'x', arg_flag, &_multiple,
       "Multiple random node restarts. OBS! Even and odd node Ids must be separated into each node group"},
     { "usage", '?', arg_flag, &_help, "Print help", "" }
@@ -80,16 +80,16 @@ int main(int argc, const char** argv){
   
   const char* restartName = "";
   if (_multiple){
-    if (_master){
-      restartName = "TwoMasterNodeFailure";
+    if (_primary){
+      restartName = "TwoPrimaryNodeFailure";
     }
     else {
       // Restart 50 percent of nodes
       restartName = "FiftyPercentFail";
     }
   }
-  else if (_master){
-    restartName = "RestartMasterNodeError";
+  else if (_primary){
+    restartName = "RestartPrimaryNodeError";
   }else { 
     if (_error_insert)
       restartName = "RestartRandomNodeError";

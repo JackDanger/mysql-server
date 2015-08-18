@@ -33,80 +33,80 @@ class Rpl_info_factory;
 /*****************************************************************************
   Replication IO Thread
 
-  Master_info contains:
-    - information about how to connect to a master
-    - current master log name
-    - current master log offset
+  Primary_info contains:
+    - information about how to connect to a primary
+    - current primary log name
+    - current primary log offset
     - misc control variables
 
-  Master_info is initialized once from the master.info repository if such
-  exists. Otherwise, data members corresponding to master.info fields
-  are initialized with defaults specified by master-* options. The
+  Primary_info is initialized once from the primary.info repository if such
+  exists. Otherwise, data members corresponding to primary.info fields
+  are initialized with defaults specified by primary-* options. The
   initialization is done through mi_init_info() call.
 
-  Logically, the format of master.info repository is presented as follows:
+  Logically, the format of primary.info repository is presented as follows:
 
   log_name
   log_pos
-  master_host
-  master_user
-  master_pass
-  master_port
-  master_connect_retry
+  primary_host
+  primary_user
+  primary_pass
+  primary_port
+  primary_connect_retry
 
-  To write out the contents of master.info to disk a call to flush_info()
+  To write out the contents of primary.info to disk a call to flush_info()
   is required. Currently, it is needed every time we read and queue data
-  from the master.
+  from the primary.
 
   To clean up, call end_info()
 
 *****************************************************************************/
 
-class Master_info : public Rpl_info
+class Primary_info : public Rpl_info
 {
 friend class Rpl_info_factory;
 
 public:
   /**
-    Host name or ip address stored in the master.info.
+    Host name or ip address stored in the primary.info.
   */
   char host[HOSTNAME_LENGTH + 1];
 
 private:
   /**
-    If true, USER/PASSWORD was specified when running START SLAVE.
+    If true, USER/PASSWORD was specified when running START REPLICA.
   */
   bool start_user_configured;
   /**
-    User's name stored in the master.info.
+    User's name stored in the primary.info.
   */
   char user[USERNAME_LENGTH + 1];
   /**
-    User's password stored in the master.info.
+    User's password stored in the primary.info.
   */
   char password[MAX_PASSWORD_LENGTH + 1]; 
   /**
-    User specified when running START SLAVE.
+    User specified when running START REPLICA.
   */
   char start_user[USERNAME_LENGTH + 1];
   /**
-    Password specified when running START SLAVE.
+    Password specified when running START REPLICA.
   */
   char start_password[MAX_PASSWORD_LENGTH + 1]; 
   /**
-    Stores the autentication plugin specified when running START SLAVE.
+    Stores the autentication plugin specified when running START REPLICA.
   */
   char start_plugin_auth[FN_REFLEN + 1];
   /**
     Stores the autentication plugin directory specified when running
-    START SLAVE.
+    START REPLICA.
   */
   char start_plugin_dir[FN_REFLEN + 1];
 
 public:
   /**
     Returns if USER/PASSWORD was specified when running
-    START SLAVE.
+    START REPLICA.
 
     @return true or false.
   */
@@ -115,7 +115,7 @@ public:
     return start_user_configured;
   }
   /**
-    Returns if DEFAULT_AUTH was specified when running START SLAVE.
+    Returns if DEFAULT_AUTH was specified when running START REPLICA.
 
     @return true or false.
   */
@@ -124,7 +124,7 @@ public:
     return (start_plugin_auth[0] != 0);
   }
   /**
-    Returns if PLUGIN_DIR was specified when running START SLAVE.
+    Returns if PLUGIN_DIR was specified when running START REPLICA.
 
     @return true or false.
   */
@@ -134,7 +134,7 @@ public:
   }
   /**
     Defines that USER/PASSWORD was specified or not when running
-    START SLAVE.
+    START REPLICA.
 
     @param config is true or false.
   */
@@ -143,8 +143,8 @@ public:
     start_user_configured= config;
   }
   /**
-    Sets either user's name in the master.info repository when CHANGE
-    MASTER is executed or user's name used in START SLAVE if USER is
+    Sets either user's name in the primary.info repository when CHANGE
+    PRIMARY is executed or user's name used in START REPLICA if USER is
     specified.
 
     @param user_arg is user's name.
@@ -170,8 +170,8 @@ public:
     return (start_user_configured ? sizeof(start_user) : sizeof(user));
   }
   /**
-    If an user was specified when running START SLAVE, this function returns
-    such user. Otherwise, it returns the user stored in master.info.
+    If an user was specified when running START REPLICA, this function returns
+    such user. Otherwise, it returns the user stored in primary.info.
 
     @return user's name.
   */
@@ -180,8 +180,8 @@ public:
     return start_user_configured ? start_user : user;
   } 
   /**
-    Stores either user's password in the master.info repository when CHANGE
-    MASTER is executed or user's password used in START SLAVE if PASSWORD
+    Stores either user's password in the primary.info repository when CHANGE
+    PRIMARY is executed or user's password used in START REPLICA if PASSWORD
     is specified.
 
     @param password_arg is user's password.
@@ -189,8 +189,8 @@ public:
   */
   void set_password(const char* password_arg);
   /**
-    Returns either user's password in the master.info repository or
-    user's password used in START SLAVE.
+    Returns either user's password in the primary.info repository or
+    user's password used in START REPLICA.
 
     @param password_arg is user's password.
 
@@ -198,11 +198,11 @@ public:
   */
   bool get_password(char *password_arg, size_t *password_arg_size);
   /**
-    Cleans in-memory password defined by START SLAVE.
+    Cleans in-memory password defined by START REPLICA.
   */
   void reset_start_info();
   /**
-    Returns the DEFAULT_AUTH defined by START SLAVE.
+    Returns the DEFAULT_AUTH defined by START REPLICA.
 
     @return DEFAULT_AUTH.
   */
@@ -211,7 +211,7 @@ public:
     return start_plugin_auth;
   }
   /**
-    Returns the PLUGIN_DIR defined by START SLAVE.
+    Returns the PLUGIN_DIR defined by START REPLICA.
 
     @return PLUGIN_DIR.
   */
@@ -220,7 +220,7 @@ public:
     return start_plugin_dir;
   }
   /**
-    Stores the DEFAULT_AUTH defined by START SLAVE.
+    Stores the DEFAULT_AUTH defined by START REPLICA.
 
     @param DEFAULT_AUTH.
   */
@@ -230,7 +230,7 @@ public:
       strmake(start_plugin_auth, src, sizeof(start_plugin_auth) - 1);
   }
   /**
-    Stores the DEFAULT_AUTH defined by START SLAVE.
+    Stores the DEFAULT_AUTH defined by START REPLICA.
 
     @param DEFAULT_AUTH.
   */
@@ -252,31 +252,31 @@ public:
   uint port;
   uint connect_retry;
   /*
-     The difference in seconds between the clock of the master and the clock of
-     the slave (second - first). It must be signed as it may be <0 or >0.
-     clock_diff_with_master is computed when the I/O thread starts; for this the
-     I/O thread does a SELECT UNIX_TIMESTAMP() on the master.
-     "how late the slave is compared to the master" is computed like this:
-     clock_of_slave - last_timestamp_executed_by_SQL_thread - clock_diff_with_master
+     The difference in seconds between the clock of the primary and the clock of
+     the replica (second - first). It must be signed as it may be <0 or >0.
+     clock_diff_with_primary is computed when the I/O thread starts; for this the
+     I/O thread does a SELECT UNIX_TIMESTAMP() on the primary.
+     "how late the replica is compared to the primary" is computed like this:
+     clock_of_replica - last_timestamp_executed_by_SQL_thread - clock_diff_with_primary
 
   */
-  long clock_diff_with_master;
-  float heartbeat_period;         // interface with CHANGE MASTER or master.info
+  long clock_diff_with_primary;
+  float heartbeat_period;         // interface with CHANGE PRIMARY or primary.info
   ulonglong received_heartbeats;  // counter of received heartbeat events
 
   time_t last_heartbeat;
 
   Server_ids *ignore_server_ids;
 
-  ulong master_id;
+  ulong primary_id;
   /*
     to hold checksum alg in use until IO thread has received FD.
-    Initialized to novalue, then set to the queried from master
+    Initialized to novalue, then set to the queried from primary
     @@global.binlog_checksum and deactivated once FD has been received.
   */
   binary_log::enum_binlog_checksum_alg checksum_alg_before_fd;
   ulong retry_count;
-  char master_uuid[UUID_LENGTH+1];
+  char primary_uuid[UUID_LENGTH+1];
   char bind_addr[HOSTNAME_LENGTH+1];
 
   int mi_init_info();
@@ -293,33 +293,33 @@ public:
   char for_channel_str[CHANNEL_NAME_LENGTH+15];
   char for_channel_uppercase_str[CHANNEL_NAME_LENGTH+15];
 
-  virtual ~Master_info();
+  virtual ~Primary_info();
 
 protected:
-  char master_log_name[FN_REFLEN];
-  my_off_t master_log_pos;
+  char primary_log_name[FN_REFLEN];
+  my_off_t primary_log_pos;
 
 public:
-  inline const char* get_master_log_name() { return master_log_name; }
-  inline ulonglong get_master_log_pos() { return master_log_pos; }
-  inline void set_master_log_name(const char *log_file_name)
+  inline const char* get_primary_log_name() { return primary_log_name; }
+  inline ulonglong get_primary_log_pos() { return primary_log_pos; }
+  inline void set_primary_log_name(const char *log_file_name)
   {
-     strmake(master_log_name, log_file_name, sizeof(master_log_name) - 1);
+     strmake(primary_log_name, log_file_name, sizeof(primary_log_name) - 1);
   }
-  inline void set_master_log_pos(ulonglong log_pos)
+  inline void set_primary_log_pos(ulonglong log_pos)
   {
-    master_log_pos= log_pos;
+    primary_log_pos= log_pos;
   }
   inline const char* get_io_rpl_log_name()
   {
-    return (master_log_name[0] ? master_log_name : "FIRST");
+    return (primary_log_name[0] ? primary_log_name : "FIRST");
   }
   static size_t get_number_info_mi_fields();
 
   /**
      returns the column number of a channel in the TABLE repository.
      Mainly used during server startup to load the information required
-     from the slave repostiory tables. See rpl_info_factory.cc
+     from the replica repostiory tables. See rpl_info_factory.cc
   */
   static uint get_channel_field_num();
 
@@ -335,7 +335,7 @@ public:
 
 private:
   /**
-    Format_description_log_event for events received from the master
+    Format_description_log_event for events received from the primary
     by the IO thread and written to the tail of the relay log.
 
     Use patterns:
@@ -350,7 +350,7 @@ private:
        log on every rotation.
 
     Locks:
-    All access is protected by Master_info::data_lock.
+    All access is protected by Primary_info::data_lock.
   */
   Format_description_log_event *mi_description_event;
 public:
@@ -375,7 +375,7 @@ public:
                                           : for_channel_str);
   }
 
-  void init_master_log_pos();
+  void init_primary_log_pos();
 private:
 
   bool read_info(Rpl_info_handler *from);
@@ -383,7 +383,7 @@ private:
 
   bool auto_position;
 
-  Master_info(
+  Primary_info(
 #ifdef HAVE_PSI_INTERFACE
               PSI_mutex_key *param_key_info_run_lock,
               PSI_mutex_key *param_key_info_data_lock,
@@ -397,8 +397,8 @@ private:
               uint param_id, const char* param_channel
              );
 
-  Master_info(const Master_info& info);
-  Master_info& operator=(const Master_info& info);
+  Primary_info(const Primary_info& info);
+  Primary_info& operator=(const Primary_info& info);
 
   /*
     Last GTID queued by IO thread. This may contain a GTID of non-fully
@@ -417,14 +417,14 @@ public:
 
   /*
     This will be used to verify transactions boundaries of events sent by the
-    master server.
+    primary server.
     It will also be used to verify transactions boundaries on the relay log
     while collecting the Retrieved_Gtid_Set to make sure of only adding GTIDs
     of fully retrieved transactions.
   */
   Transaction_boundary_parser transaction_parser;
 };
-int change_master_server_id_cmp(ulong *id1, ulong *id2);
+int change_primary_server_id_cmp(ulong *id1, ulong *id2);
 
 #endif /* HAVE_REPLICATION */
 #endif /* RPL_MI_H */

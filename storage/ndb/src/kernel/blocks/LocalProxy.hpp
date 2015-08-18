@@ -310,7 +310,7 @@ protected:
   // system info
 
   Uint32 c_typeOfStart;
-  Uint32 c_masterNodeId;
+  Uint32 c_primaryNodeId;
 
   // GSN_READ_CONFIG_REQ
   struct Ss_READ_CONFIG_REQ : SsSequential {

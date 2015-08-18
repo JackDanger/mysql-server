@@ -1,9 +1,9 @@
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS federated.t1;
 DROP DATABASE federated;
 
-connection slave;
+connection replica;
 DROP TABLE IF EXISTS federated.t1;
 DROP DATABASE federated;
 --enable_warnings

@@ -54,7 +54,7 @@ struct AlterIndxImplRef {
     InvalidIndexVersion = 241,
     Busy = 701,
     BusyWithNR = 711,
-    NotMaster = 702,
+    NotPrimary = 702,
     IndexNotFound = 4243,
     BadRequestType = 4247,
     InvalidName = 4248,
@@ -69,7 +69,7 @@ struct AlterIndxImplRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 

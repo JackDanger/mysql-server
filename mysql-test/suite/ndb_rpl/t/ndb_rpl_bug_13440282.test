@@ -5,7 +5,7 @@
 
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 CREATE TABLE `loadreptable` (
  `nid` int(11) NOT NULL,
@@ -34,25 +34,25 @@ END ;
 //
 delimiter ;//
 
---sync_slave_with_master
+--sync_replica_with_primary
 
 let $i=10;
 while ($i)
 {
-  --connection master
+  --connection primary
   call MAJ();
-  --echo "master"
+  --echo "primary"
   select count(*) from loadreptable;
-  --sync_slave_with_master
-  --connection slave
-  --echo "slave"
+  --sync_replica_with_primary
+  --connection replica
+  --echo "replica"
   select count(*) from loadreptable;
   dec $i;
 }
 
---connection master
+--connection primary
 drop table loadreptable;
 drop procedure MAJ;
 
---sync_slave_with_master
+--sync_replica_with_primary
 --source include/rpl_end.inc

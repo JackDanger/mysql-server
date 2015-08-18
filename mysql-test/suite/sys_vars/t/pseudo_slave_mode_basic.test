@@ -1,6 +1,6 @@
-####################### mysql-test\t\pseudo_slave_mode_basic.test ###################
+####################### mysql-test\t\pseudo_replica_mode_basic.test ###################
 #                                                                             #
-# Variable Name: pseudo_slave_mode                                            #
+# Variable Name: pseudo_replica_mode                                            #
 # Scope: SESSION                                                              #
 # Access Type: Dynamic                                                        #
 # Data Type: boolean                                                          #
@@ -10,7 +10,7 @@
 #                                                                             #
 # Creation Date: 2012-11-16                                                   #
 #                                                                             #
-# Description: Test Cases of Dynamic System Variable pseudo_slave_mode        #
+# Description: Test Cases of Dynamic System Variable pseudo_replica_mode        #
 #              that checks the behavior of this variable in the following ways#
 #              * Default Value                                                #
 #              * Valid & Invalid values                                       #
@@ -25,96 +25,96 @@
 --source include/load_sysvars.inc
 
 ######################################################################## 
-#                    START OF pseudo_slave_mode TESTS                        #
+#                    START OF pseudo_replica_mode TESTS                        #
 ######################################################################## 
 
 
 ############################################################################## 
-#      Saving initial value of pseudo_slave_mode in a temporary variable           #
+#      Saving initial value of pseudo_replica_mode in a temporary variable           #
 ##############################################################################
 
-SET @session_start_value = @@session.pseudo_slave_mode;
+SET @session_start_value = @@session.pseudo_replica_mode;
 SELECT @session_start_value;
 
 --echo '#--------------------FN_DYNVARS_156_01------------------------#'
 ######################################################################## 
-#           Display the DEFAULT value of pseudo_slave_mode                   #
+#           Display the DEFAULT value of pseudo_replica_mode                   #
 ######################################################################## 
 
-SET @@session.pseudo_slave_mode = 0;
-SET @@session.pseudo_slave_mode = DEFAULT;
-SELECT @@session.pseudo_slave_mode;
+SET @@session.pseudo_replica_mode = 0;
+SET @@session.pseudo_replica_mode = DEFAULT;
+SELECT @@session.pseudo_replica_mode;
 
-SET @@session.pseudo_slave_mode = 1;
-SET @@session.pseudo_slave_mode = DEFAULT;
-SELECT @@session.pseudo_slave_mode;
+SET @@session.pseudo_replica_mode = 1;
+SET @@session.pseudo_replica_mode = DEFAULT;
+SELECT @@session.pseudo_replica_mode;
 
 
 --echo '#---------------------FN_DYNVARS_156_02-------------------------#'
 ############################################################################# 
-#   Check if pseudo_slave_mode can be accessed with and without @@ sign           #
+#   Check if pseudo_replica_mode can be accessed with and without @@ sign           #
 ############################################################################# 
 
-SET pseudo_slave_mode = 1;
-SELECT @@pseudo_slave_mode;
+SET pseudo_replica_mode = 1;
+SELECT @@pseudo_replica_mode;
 
 --Error ER_UNKNOWN_TABLE
-SELECT session.pseudo_slave_mode;
+SELECT session.pseudo_replica_mode;
 
 --Error ER_UNKNOWN_TABLE
-SELECT local.pseudo_slave_mode;
+SELECT local.pseudo_replica_mode;
 
-SET session pseudo_slave_mode = 0;
-SELECT @@session.pseudo_slave_mode;
+SET session pseudo_replica_mode = 0;
+SELECT @@session.pseudo_replica_mode;
 
 
 --echo '#--------------------FN_DYNVARS_156_03------------------------#'
 ######################################################################## 
-#      change the value of pseudo_slave_mode to a valid value                #
+#      change the value of pseudo_replica_mode to a valid value                #
 ######################################################################## 
 
-SET @@session.pseudo_slave_mode = 0;
-SELECT @@session.pseudo_slave_mode;
-SET @@session.pseudo_slave_mode = 1;
-SELECT @@session.pseudo_slave_mode;
+SET @@session.pseudo_replica_mode = 0;
+SELECT @@session.pseudo_replica_mode;
+SET @@session.pseudo_replica_mode = 1;
+SELECT @@session.pseudo_replica_mode;
 
 
 --echo '#--------------------FN_DYNVARS_156_04-------------------------#'
 ########################################################################### 
-#       Change the value of pseudo_slave_mode to invalid value                  #
+#       Change the value of pseudo_replica_mode to invalid value                  #
 ########################################################################### 
 
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = -1;
+SET @@session.pseudo_replica_mode = -1;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = 2;
+SET @@session.pseudo_replica_mode = 2;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = "T";
+SET @@session.pseudo_replica_mode = "T";
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = "Y";
+SET @@session.pseudo_replica_mode = "Y";
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = TRÜE;
+SET @@session.pseudo_replica_mode = TRÜE;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = ÕN;
+SET @@session.pseudo_replica_mode = ÕN;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = OF;
+SET @@session.pseudo_replica_mode = OF;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = ÓFF;
+SET @@session.pseudo_replica_mode = ÓFF;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = '¹';
+SET @@session.pseudo_replica_mode = '¹';
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@session.pseudo_slave_mode = NO;
+SET @@session.pseudo_replica_mode = NO;
 
 
 --echo '#-------------------FN_DYNVARS_156_05----------------------------#'
 ########################################################################### 
-#       Test if accessing global pseudo_slave_mode gives error                  #
+#       Test if accessing global pseudo_replica_mode gives error                  #
 ########################################################################### 
 
 --error ER_LOCAL_VARIABLE
-SET @@global.pseudo_slave_mode = 0;
+SET @@global.pseudo_replica_mode = 0;
 --error ER_INCORRECT_GLOBAL_LOCAL_VAR
-SELECT @@global.pseudo_slave_mode;
+SELECT @@global.pseudo_replica_mode;
 
 --echo '#----------------------FN_DYNVARS_156_06------------------------#'
 ######################################################################### 
@@ -122,7 +122,7 @@ SELECT @@global.pseudo_slave_mode;
 #########################################################################
 
 --disable_warnings
-SELECT count(VARIABLE_VALUE) FROM INFORMATION_SCHEMA.SESSION_VARIABLES WHERE VARIABLE_NAME='pseudo_slave_mode';
+SELECT count(VARIABLE_VALUE) FROM INFORMATION_SCHEMA.SESSION_VARIABLES WHERE VARIABLE_NAME='pseudo_replica_mode';
 --enable_warnings
 
 --echo '#----------------------FN_DYNVARS_156_07------------------------#'
@@ -131,15 +131,15 @@ SELECT count(VARIABLE_VALUE) FROM INFORMATION_SCHEMA.SESSION_VARIABLES WHERE VAR
 #########################################################################
 
 --disable_warnings
-SELECT IF(@@session.pseudo_slave_mode, "ON", "OFF") = VARIABLE_VALUE 
+SELECT IF(@@session.pseudo_replica_mode, "ON", "OFF") = VARIABLE_VALUE 
 FROM INFORMATION_SCHEMA.SESSION_VARIABLES 
-WHERE VARIABLE_NAME='pseudo_slave_mode';
+WHERE VARIABLE_NAME='pseudo_replica_mode';
 --enable_warnings
-SELECT @@session.pseudo_slave_mode;
+SELECT @@session.pseudo_replica_mode;
 --disable_warnings
 SELECT VARIABLE_VALUE 
 FROM INFORMATION_SCHEMA.SESSION_VARIABLES 
-WHERE VARIABLE_NAME='pseudo_slave_mode';
+WHERE VARIABLE_NAME='pseudo_replica_mode';
 --enable_warnings
 
 --echo '#---------------------FN_DYNVARS_156_08-------------------------#'
@@ -147,28 +147,28 @@ WHERE VARIABLE_NAME='pseudo_slave_mode';
 #        Check if ON and OFF values can be used on variable       #
 ################################################################### 
 
-SET @@session.pseudo_slave_mode = OFF;
-SELECT @@session.pseudo_slave_mode;
-SET @@session.pseudo_slave_mode = ON;
-SELECT @@session.pseudo_slave_mode;
+SET @@session.pseudo_replica_mode = OFF;
+SELECT @@session.pseudo_replica_mode;
+SET @@session.pseudo_replica_mode = ON;
+SELECT @@session.pseudo_replica_mode;
 
 --echo '#---------------------FN_DYNVARS_156_09----------------------#'
 ################################################################### 
 #      Check if TRUE and FALSE values can be used on variable     #
 ################################################################### 
 
-SET @@session.pseudo_slave_mode = TRUE;
-SELECT @@session.pseudo_slave_mode;
-SET @@session.pseudo_slave_mode = FALSE;
-SELECT @@session.pseudo_slave_mode;
+SET @@session.pseudo_replica_mode = TRUE;
+SELECT @@session.pseudo_replica_mode;
+SET @@session.pseudo_replica_mode = FALSE;
+SELECT @@session.pseudo_replica_mode;
 
 ##############################  
 #   Restore initial value    #
 ##############################
 
-SET @@session.pseudo_slave_mode = @session_start_value;
-SELECT @@session.pseudo_slave_mode;
+SET @@session.pseudo_replica_mode = @session_start_value;
+SELECT @@session.pseudo_replica_mode;
 
 ###############################################################
-#                    END OF pseudo_slave_mode TESTS                 #
+#                    END OF pseudo_replica_mode TESTS                 #
 ############################################################### 

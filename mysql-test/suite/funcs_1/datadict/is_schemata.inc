@@ -104,7 +104,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser1 (user=testuser1)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser1, localhost, testuser1, , db_datadict_1);
 # Shows db_datadict_1
 eval $my_select;
@@ -112,7 +112,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser2 (user=testuser2)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser2, localhost, testuser2, , db_datadict_2);
 # Shows db_datadict_1 and db_datadict_2
 eval $my_select;
@@ -120,7 +120,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser3 (user=testuser3)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser3, localhost, testuser3, , test);
 # Shows neither db_datadict_1 nor db_datadict_2
 eval $my_select;

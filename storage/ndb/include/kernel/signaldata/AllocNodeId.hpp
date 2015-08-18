@@ -62,7 +62,7 @@ public:
     Undefined = 1,
     NF_FakeErrorREF = 11,
     Busy  = 701,
-    NotMaster  = 702,
+    NotPrimary  = 702,
     NodeReserved = 1701,
     NodeConnected = 1702,
     NodeFailureHandlingNotCompleted = 1703,
@@ -73,7 +73,7 @@ public:
   Uint32 senderData;
   Uint32 nodeId;
   Uint32 errorCode;
-  Uint32 masterRef;
+  Uint32 primaryRef;
 };
 
 class AllocNodeIdRep

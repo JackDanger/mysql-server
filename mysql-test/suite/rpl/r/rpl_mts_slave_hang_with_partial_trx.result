@@ -1,12 +1,12 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[connection slave]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[connection replica]
 SET @save_debug=@@global.debug;
 SET GLOBAL DEBUG= "d,stop_io_after_reading_write_rows_log_event";
-[connection master]
+[connection primary]
 CREATE TABLE t1 (c1 INT) ENGINE=InnoDB;
 BEGIN;
 INSERT INTO t1 (c1) VALUES (1);
@@ -14,15 +14,15 @@ COMMIT;
 BEGIN;
 INSERT INTO t1 (c1) VALUES (2);
 COMMIT;
-[connection slave]
-include/wait_for_slave_io_to_stop.inc
+[connection replica]
+include/wait_for_replica_io_to_stop.inc
 SET GLOBAL DEBUG= @save_debug;
-include/start_slave_io.inc
-[connection master]
-include/sync_slave_sql_with_master.inc
-[connection master]
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
-[connection master]
+include/start_replica_io.inc
+[connection primary]
+include/sync_replica_sql_with_primary.inc
+[connection primary]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
+[connection primary]
 DROP TABLE t1;
 include/rpl_end.inc

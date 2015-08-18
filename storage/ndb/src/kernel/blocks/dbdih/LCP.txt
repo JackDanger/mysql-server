@@ -1,5 +1,5 @@
 
-Master DIH                                      LQH
+Primary DIH                                      LQH
 ==========                                      ==========
 
 1) TCGETOPSIZEREQ -> all TC
@@ -32,4 +32,4 @@ All DIHs
    If all fragments & replicas done in table
      1) Save Table descriptor
      2) If all tables done + LCP_COMPLETE_REP(from lqh) has arrived
-        LCP_COMPLETE_REP -> master DIH 
+        LCP_COMPLETE_REP -> primary DIH 

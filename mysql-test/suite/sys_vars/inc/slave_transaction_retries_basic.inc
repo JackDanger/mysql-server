@@ -1,6 +1,6 @@
-############# mysql-test\t\slave_transaction_retries_basic.test ###############
+############# mysql-test\t\replica_transaction_retries_basic.test ###############
 #                                                                             #
-# Variable Name: slave_transaction_retries                                    #
+# Variable Name: replica_transaction_retries                                    #
 # Scope: GLOBAL                                                               #
 # Access Type: Dynamic                                                        #
 # Data Type: numeric                                                          #
@@ -11,7 +11,7 @@
 # Creation Date: 2008-02-07                                                   #
 # Author:  Rizwan                                                             #
 #                                                                             #
-# Description: Test Cases of Dynamic System Variable slave_transaction_retries#
+# Description: Test Cases of Dynamic System Variable replica_transaction_retries#
 #              that checks the behavior of this variable in the following ways#
 #              * Default Value                                                #
 #              * Valid & Invalid values                                       #
@@ -27,7 +27,7 @@
 --source include/load_sysvars.inc
 
 ###################################################################
-#           START OF slave_transaction_retries TESTS              #
+#           START OF replica_transaction_retries TESTS              #
 ###################################################################
 
 
@@ -35,47 +35,47 @@
 #                 Save initial value                        #
 #############################################################
 
-SET @start_global_value = @@global.slave_transaction_retries;
+SET @start_global_value = @@global.replica_transaction_retries;
 
 --echo '#--------------------FN_DYNVARS_149_01-------------------------#'
 ###################################################################
-#     Display the DEFAULT value of slave_transaction_retries      #
+#     Display the DEFAULT value of replica_transaction_retries      #
 ###################################################################
 
-SET @@global.slave_transaction_retries = 50;
-SET @@global.slave_transaction_retries = DEFAULT;
-SELECT @@global.slave_transaction_retries;
+SET @@global.replica_transaction_retries = 50;
+SET @@global.replica_transaction_retries = DEFAULT;
+SELECT @@global.replica_transaction_retries;
 
 --echo '#--------------------FN_DYNVARS_149_02-------------------------#'
 ###################################################################
-#     Check the DEFAULT value of slave_transaction_retries         #
+#     Check the DEFAULT value of replica_transaction_retries         #
 ###################################################################
 
-SET @@global.slave_transaction_retries = DEFAULT;
-SELECT @@global.slave_transaction_retries = 10;
+SET @@global.replica_transaction_retries = DEFAULT;
+SELECT @@global.replica_transaction_retries = 10;
 
 --echo '#--------------------FN_DYNVARS_149_03-------------------------#'
 ################################################################################
-# Change the value of slave_transaction_retries to a valid value for
+# Change the value of replica_transaction_retries to a valid value for
 # GLOBAL Scope 
 ################################################################################
 
-SET @@global.slave_transaction_retries = 0;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = 1;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = 15;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = 1024;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = 2147483648;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = 2147483648*2-1;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = 2147483649*2;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = 4294967295;
-SELECT @@global.slave_transaction_retries;
+SET @@global.replica_transaction_retries = 0;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = 1;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = 15;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = 1024;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = 2147483648;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = 2147483648*2-1;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = 2147483649*2;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = 4294967295;
+SELECT @@global.replica_transaction_retries;
 
 --echo '#--------------------FN_DYNVARS_149_04-------------------------#'
 ###############################################################################
@@ -83,48 +83,48 @@ SELECT @@global.slave_transaction_retries;
 ###############################################################################
 
 --Error ER_GLOBAL_VARIABLE
-SET @@slave_transaction_retries = 2;
+SET @@replica_transaction_retries = 2;
 
 --Error ER_GLOBAL_VARIABLE
-SET @@session.slave_transaction_retries = 3;
+SET @@session.replica_transaction_retries = 3;
 
 --Error ER_GLOBAL_VARIABLE
-SET @@local.slave_transaction_retries = 4;
+SET @@local.replica_transaction_retries = 4;
 
 
 
 --echo '#------------------FN_DYNVARS_149_05-----------------------#'
 ####################################################################
-# Change the value of slave_transaction_retries to an invalid value#
+# Change the value of replica_transaction_retries to an invalid value#
 ####################################################################
 
-SET @@global.slave_transaction_retries = -1;
-SELECT @@global.slave_transaction_retries;
+SET @@global.replica_transaction_retries = -1;
+SELECT @@global.replica_transaction_retries;
 
-SET @@global.slave_transaction_retries = 2147483649*2147483649;
-SELECT @@global.slave_transaction_retries;
+SET @@global.replica_transaction_retries = 2147483649*2147483649;
+SELECT @@global.replica_transaction_retries;
 
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_transaction_retries = 65530.34;
+SET @@global.replica_transaction_retries = 65530.34;
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_transaction_retries = '100';
+SET @@global.replica_transaction_retries = '100';
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_transaction_retries = 7483649.56;
+SET @@global.replica_transaction_retries = 7483649.56;
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_transaction_retries = ON;
+SET @@global.replica_transaction_retries = ON;
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_transaction_retries = OFF;
+SET @@global.replica_transaction_retries = OFF;
 
 --echo '#------------------FN_DYNVARS_149_06-----------------------#'
 ####################################################################
 #   Check if the value in GLOBAL Table matches value in variable   #
 ####################################################################
 
-SET @@global.slave_transaction_retries = 3000;
+SET @@global.replica_transaction_retries = 3000;
 --disable_warnings
-SELECT @@global.slave_transaction_retries = VARIABLE_VALUE 
+SELECT @@global.replica_transaction_retries = VARIABLE_VALUE 
 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES 
-WHERE VARIABLE_NAME='slave_transaction_retries';
+WHERE VARIABLE_NAME='replica_transaction_retries';
 --enable_warnings
 
 
@@ -136,7 +136,7 @@ WHERE VARIABLE_NAME='slave_transaction_retries';
 --disable_warnings
 SELECT count(VARIABLE_VALUE) 
 FROM INFORMATION_SCHEMA.SESSION_VARIABLES 
-WHERE VARIABLE_NAME='slave_transaction_retries';
+WHERE VARIABLE_NAME='replica_transaction_retries';
 --enable_warnings
 
 
@@ -145,10 +145,10 @@ WHERE VARIABLE_NAME='slave_transaction_retries';
 #     Check if TRUE and FALSE values can be used on variable       #
 ####################################################################
 
-SET @@global.slave_transaction_retries = TRUE;
-SELECT @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries = FALSE;
-SELECT @@global.slave_transaction_retries;
+SET @@global.replica_transaction_retries = TRUE;
+SELECT @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries = FALSE;
+SELECT @@global.replica_transaction_retries;
 
 
 --echo '#---------------------FN_DYNVARS_149_09----------------------#'
@@ -157,33 +157,33 @@ SELECT @@global.slave_transaction_retries;
 ###############################################################################
 
 
-SET @@global.slave_transaction_retries = 60*60;
-SELECT @@slave_transaction_retries = @@global.slave_transaction_retries;
+SET @@global.replica_transaction_retries = 60*60;
+SELECT @@replica_transaction_retries = @@global.replica_transaction_retries;
 
 
 --echo '#---------------------FN_DYNVARS_149_10----------------------#'
 ###############################################################################
-#   Check if slave_transaction_retries can be accessed without @@ sign
+#   Check if replica_transaction_retries can be accessed without @@ sign
 #   and scope 
 ###############################################################################
 
 --Error ER_GLOBAL_VARIABLE
-SET slave_transaction_retries = 2048;
+SET replica_transaction_retries = 2048;
 --Error ER_BAD_FIELD_ERROR
-SELECT slave_transaction_retries;
+SELECT replica_transaction_retries;
 
-SELECT @@slave_transaction_retries;
+SELECT @@replica_transaction_retries;
 
 #verifying another another syntax for setting value
-SET global slave_transaction_retries = 99;
+SET global replica_transaction_retries = 99;
 
 ####################################
 #     Restore initial value        #
 ####################################
 
-SET @@global.slave_transaction_retries = @start_global_value;
+SET @@global.replica_transaction_retries = @start_global_value;
 
 ########################################################
-#              END OF slave_transaction_retries TESTS  #
+#              END OF replica_transaction_retries TESTS  #
 ########################################################
 

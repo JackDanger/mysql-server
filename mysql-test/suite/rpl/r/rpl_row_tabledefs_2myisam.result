@@ -1,10 +1,10 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-STOP SLAVE;
-START SLAVE;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+STOP REPLICA;
+START REPLICA;
 CREATE TABLE t1_int (a INT PRIMARY KEY, b INT) ENGINE='MyISAM';
 CREATE TABLE t1_bit (a INT PRIMARY KEY, b INT) ENGINE='MyISAM';
 CREATE TABLE t1_char (a INT PRIMARY KEY, b INT) ENGINE='MyISAM';
@@ -34,11 +34,11 @@ ALTER TABLE t8 ADD e1 INT NOT NULL DEFAULT 0, ADD e2 INT NOT NULL DEFAULT 0,
 ADD e3 INT NOT NULL DEFAULT 0, ADD e4 INT NOT NULL DEFAULT 0,
 ADD e5 INT NOT NULL DEFAULT 0, ADD e6 INT NOT NULL DEFAULT 0,
 ADD e7 INT NOT NULL DEFAULT 0, ADD e8 INT NOT NULL DEFAULT 0;
-set @@global.slave_exec_mode= 'IDEMPOTENT';
+set @@global.replica_exec_mode= 'IDEMPOTENT';
 INSERT INTO t1_int  VALUES (2, 4, 4711);
 INSERT INTO t1_char VALUES (2, 4, 'Foo is a bar');
 INSERT INTO t1_bit  VALUES (2, 4, b'101', b'11100', b'01');
-**** On Master ****
+**** On Primary ****
 INSERT INTO t1_int VALUES (1,2);
 INSERT INTO t1_int VALUES (2,5);
 INSERT INTO t1_bit VALUES (1,2);
@@ -57,8 +57,8 @@ SELECT * FROM t1_char ORDER BY a;
 a	b
 1	2
 2	5
-**** On Slave ****
-set @@global.slave_exec_mode= default;
+**** On Replica ****
+set @@global.replica_exec_mode= default;
 SELECT a,b,x FROM t1_int ORDER BY a;
 a	b	x
 1	2	42
@@ -71,7 +71,7 @@ SELECT a,b,x FROM t1_char ORDER BY a;
 a	b	x
 1	2	Just a test
 2	5	Foo is a bar
-**** On Master ****
+**** On Primary ****
 UPDATE t1_int  SET b=2*b WHERE a=2;
 UPDATE t1_char SET b=2*b WHERE a=2;
 UPDATE t1_bit  SET b=2*b WHERE a=2;
@@ -87,7 +87,7 @@ SELECT * FROM t1_char ORDER BY a;
 a	b
 1	2
 2	10
-**** On Slave ****
+**** On Replica ****
 SELECT a,b,x FROM t1_int ORDER BY a;
 a	b	x
 1	2	42
@@ -106,30 +106,30 @@ select count(*) from t1_nodef;
 count(*)
 1
 INSERT INTO t9 VALUES (2);
-**** On Master ****
+**** On Primary ****
 INSERT INTO t2 VALUES (2,4);
 SELECT * FROM t2;
 a	b
 2	4
-**** On Slave ****
+**** On Replica ****
 SELECT * FROM t2;
 a
 2
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 INSERT INTO t9 VALUES (4);
 INSERT INTO t4 VALUES (4);
-call mtr.add_suppression("Slave SQL.*Table definition on master and slave does not match: Column [012] type mismatch.* Error_code: 1535");
-call mtr.add_suppression("Slave SQL.*Column [0-9] of table .test.t[0-9]. cannot be converted from type.* Error_code: 1677");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
-include/wait_for_slave_sql_error_and_skip.inc [errno=1677]
+call mtr.add_suppression("Replica SQL.*Table definition on primary and replica does not match: Column [012] type mismatch.* Error_code: 1535");
+call mtr.add_suppression("Replica SQL.*Column [0-9] of table .test.t[0-9]. cannot be converted from type.* Error_code: 1677");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+include/wait_for_replica_sql_error_and_skip.inc [errno=1677]
 INSERT INTO t9 VALUES (5);
 INSERT INTO t5 VALUES (5,10,25);
-include/wait_for_slave_sql_error_and_skip.inc [errno=1677]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1677]
 INSERT INTO t9 VALUES (6);
 INSERT INTO t6 VALUES (6,12,36);
-include/wait_for_slave_sql_error_and_skip.inc [errno=1677]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1677]
 INSERT INTO t9 VALUES (6);
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 INSERT INTO t7 VALUES (1),(2),(3);
 INSERT INTO t8 VALUES (1),(2),(3);
 SELECT * FROM t7 ORDER BY a;
@@ -152,32 +152,32 @@ a	e1	e2	e3	e4	e5	e6	e7	e8
 1	0	0	0	0	0	0	0	0
 2	0	0	0	0	0	0	0	0
 3	0	0	0	0	0	0	0	0
-**** On Master ****
+**** On Primary ****
 TRUNCATE t1_nodef;
 SET SQL_LOG_BIN=0;
 INSERT INTO t1_nodef VALUES (1,2);
 INSERT INTO t1_nodef VALUES (2,4);
 SET SQL_LOG_BIN=1;
-**** On Slave ****
+**** On Replica ****
 INSERT INTO t1_nodef VALUES (1,2,3,4,5);
 INSERT INTO t1_nodef VALUES (2,4,6,8,10);
-**** On Master ****
+**** On Primary ****
 UPDATE t1_nodef SET b=2*b WHERE a=1;
 SELECT * FROM t1_nodef ORDER BY a;
 a	b
 1	4
 2	4
-**** On Slave ****
+**** On Replica ****
 SELECT * FROM t1_nodef ORDER BY a;
 a	b	x	y	z
 1	4	3	4	5
 2	4	6	8	10
-**** On Master ****
+**** On Primary ****
 DELETE FROM t1_nodef WHERE a=2;
 SELECT * FROM t1_nodef ORDER BY a;
 a	b
 1	4
-**** On Slave ****
+**** On Replica ****
 SELECT * FROM t1_nodef ORDER BY a;
 a	b	x	y	z
 1	4	3	4	5

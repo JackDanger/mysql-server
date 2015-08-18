@@ -1,5 +1,5 @@
 # Every statement in this test is either executing under ROW or
-# STATEMENT format, which requires the slave thread to be able to apply
+# STATEMENT format, which requires the replica thread to be able to apply
 # both statement and row events. Hence, we only need to execute this
 # test for MIXED mode.
 # Skip in valgrind because of bug#20952953
@@ -7,54 +7,54 @@
 source include/have_binlog_format_mixed.inc;
 -- source include/not_gtid_enabled.inc
 # UNTIL is not supported yet (TODO: support and remove the guard)
--- source include/not_mts_slave_parallel_workers.inc
+-- source include/not_mts_replica_parallel_workers.inc
 
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/have_innodb.inc;
 source include/have_myisam.inc;
 
---echo **** On Slave ****
-connection slave;
+--echo **** On Replica ****
+connection replica;
 source include/have_innodb.inc;
 
-STOP SLAVE;
---source include/wait_for_slave_to_stop.inc
+STOP REPLICA;
+--source include/wait_for_replica_to_stop.inc
 
---echo **** On Master ****
-connection master;
+--echo **** On Primary ****
+connection primary;
 SET SESSION BINLOG_FORMAT=ROW;
 
 CREATE TABLE t1 (a INT, b INT) ENGINE=MyISAM;
 CREATE TABLE t2 (c INT, d INT) ENGINE=MyISAM;
 INSERT INTO t1 VALUES (1,1),(2,4),(3,9);
 INSERT INTO t2 VALUES (1,1),(2,8),(3,27);
-let $master_log_pos= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $primary_log_pos= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 UPDATE t1,t2 SET b = d, d = b * 2 WHERE a = c;
 source include/show_binlog_events.inc;
 
 # These tables should be changed
 SELECT * FROM t1;
 SELECT * FROM t2;
-save_master_pos;
---echo **** On Slave ****
-connection slave;
+save_primary_pos;
+--echo **** On Replica ****
+connection replica;
 
 # Stop when reaching the the first table map event.
---replace_result $master_log_pos MASTER_LOG_POS
-eval START SLAVE UNTIL MASTER_LOG_FILE='master-bin.000001', MASTER_LOG_POS=$master_log_pos;
-source include/wait_for_slave_sql_to_stop.inc;
-let $slave_param= Exec_Master_Log_Pos;
-let $slave_param_value= $master_log_pos;
-source include/check_slave_param.inc;
-source include/check_slave_no_error.inc;
+--replace_result $primary_log_pos PRIMARY_LOG_POS
+eval START REPLICA UNTIL PRIMARY_LOG_FILE='primary-bin.000001', PRIMARY_LOG_POS=$primary_log_pos;
+source include/wait_for_replica_sql_to_stop.inc;
+let $replica_param= Exec_Primary_Log_Pos;
+let $replica_param_value= $primary_log_pos;
+source include/check_replica_param.inc;
+source include/check_replica_no_error.inc;
 
 # Now we skip *one* table map event. If the execution starts right
 # after that table map event, *one* of the involved tables will be
 # changed.
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=2;
-START SLAVE;
---source include/wait_for_slave_to_start.inc
-sync_with_master;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER=2;
+START REPLICA;
+--source include/wait_for_replica_to_start.inc
+sync_with_primary;
 
 # These values should be what was inserted, not what was
 # updated. Since we are skipping the first table map of the group
@@ -63,32 +63,32 @@ sync_with_master;
 SELECT * FROM t1;
 SELECT * FROM t2;
 
-STOP SLAVE;
---source include/wait_for_slave_to_stop.inc
-RESET SLAVE;
-connection master;
-RESET MASTER;
+STOP REPLICA;
+--source include/wait_for_replica_to_stop.inc
+RESET REPLICA;
+connection primary;
+RESET PRIMARY;
 
 SET SESSION BINLOG_FORMAT=STATEMENT;
 SET @foo = 12;
-let $master_log_pos= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $primary_log_pos= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 INSERT INTO t1 VALUES(@foo, 2*@foo);
-save_master_pos;
+save_primary_pos;
 source include/show_binlog_events.inc;
 
-connection slave;
---replace_result $master_log_pos MASTER_LOG_POS
-eval START SLAVE UNTIL MASTER_LOG_FILE='master-bin.000001', MASTER_LOG_POS=$master_log_pos;
-source include/wait_for_slave_sql_to_stop.inc;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=2;
-START SLAVE;
---source include/wait_for_slave_to_start.inc
-sync_with_master;
+connection replica;
+--replace_result $primary_log_pos PRIMARY_LOG_POS
+eval START REPLICA UNTIL PRIMARY_LOG_FILE='primary-bin.000001', PRIMARY_LOG_POS=$primary_log_pos;
+source include/wait_for_replica_sql_to_stop.inc;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER=2;
+START REPLICA;
+--source include/wait_for_replica_to_start.inc
+sync_with_primary;
 
---echo **** On Master ****
-connection master;
+--echo **** On Primary ****
+connection primary;
 DROP TABLE t1, t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # More tests for BUG#28618
@@ -99,7 +99,7 @@ DROP TABLE t1, t2;
 # some items of that group.
 #  
 
-connection master;
+connection primary;
 SET SESSION BINLOG_FORMAT=ROW;
 SET AUTOCOMMIT=0;
 
@@ -107,9 +107,9 @@ CREATE TABLE t1 (a INT, b VARCHAR(20)) ENGINE=myisam;
 CREATE TABLE t2 (a INT, b VARCHAR(20)) ENGINE=myisam;
 CREATE TABLE t3 (a INT, b VARCHAR(20)) ENGINE=myisam;
 
-INSERT INTO t1 VALUES (1,'master/slave');
-INSERT INTO t2 VALUES (1,'master/slave');
-INSERT INTO t3 VALUES (1,'master/slave');
+INSERT INTO t1 VALUES (1,'primary/replica');
+INSERT INTO t2 VALUES (1,'primary/replica');
+INSERT INTO t3 VALUES (1,'primary/replica');
 
 DELIMITER |;
 
@@ -121,85 +121,85 @@ END|
 
 CREATE TRIGGER tr2 AFTER INSERT on t2 FOR EACH ROW
 BEGIN
-  UPDATE t3 SET a =2, b = 'master only';
+  UPDATE t3 SET a =2, b = 'primary only';
 END|
 
 DELIMITER ;|
 
---echo **** On Slave ****
---source include/sync_slave_sql_with_master.inc
-source include/stop_slave.inc;
+--echo **** On Replica ****
+--source include/sync_replica_sql_with_primary.inc
+source include/stop_replica.inc;
 
---echo **** On Master ****
-connection master;
-UPDATE t1 SET a = 2, b = 'master only' WHERE a = 1;
+--echo **** On Primary ****
+connection primary;
+UPDATE t1 SET a = 2, b = 'primary only' WHERE a = 1;
 DROP TRIGGER tr1;
 DROP TRIGGER tr2;
-INSERT INTO t1 VALUES (3,'master/slave');
-INSERT INTO t2 VALUES (3,'master/slave');
-INSERT INTO t3 VALUES (3,'master/slave');
+INSERT INTO t1 VALUES (3,'primary/replica');
+INSERT INTO t2 VALUES (3,'primary/replica');
+INSERT INTO t3 VALUES (3,'primary/replica');
 COMMIT;
 
 SELECT * FROM t1 ORDER BY a;
 SELECT * FROM t2 ORDER BY a;
 SELECT * FROM t3 ORDER BY a;
 
-save_master_pos;
+save_primary_pos;
 
---echo *** On Slave ***
-connection slave;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=2;
-source include/start_slave.inc;
-sync_with_master;
+--echo *** On Replica ***
+connection replica;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER=2;
+source include/start_replica.inc;
+sync_with_primary;
 
 SELECT * FROM t1 ORDER BY a;
 SELECT * FROM t2 ORDER BY a;
 SELECT * FROM t3 ORDER BY a;
 
-connection master;
+connection primary;
 DROP TABLE t1, t2, t3;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo **** Case 2: Row binlog format and transactional tables ****
 
 # Create the transaction and try to skip some
 # queries from one.
 
---echo *** On Master ***
-connection master;
+--echo *** On Primary ***
+connection primary;
 CREATE TABLE t4 (a INT, b VARCHAR(20)) ENGINE=innodb;
 CREATE TABLE t5 (a INT, b VARCHAR(20)) ENGINE=innodb;
 CREATE TABLE t6 (a INT, b VARCHAR(20)) ENGINE=innodb;
 
---echo **** On Slave ****
---source include/sync_slave_sql_with_master.inc
-source include/stop_slave.inc;
+--echo **** On Replica ****
+--source include/sync_replica_sql_with_primary.inc
+source include/stop_replica.inc;
 
---echo *** On Master ***
-connection master;
+--echo *** On Primary ***
+connection primary;
 BEGIN;
-INSERT INTO t4 VALUES (2, 'master only');
-INSERT INTO t5 VALUES (2, 'master only');
-INSERT INTO t6 VALUES (2, 'master only');
+INSERT INTO t4 VALUES (2, 'primary only');
+INSERT INTO t5 VALUES (2, 'primary only');
+INSERT INTO t6 VALUES (2, 'primary only');
 COMMIT;
 
 BEGIN;
-INSERT INTO t4 VALUES (3, 'master/slave');
-INSERT INTO t5 VALUES (3, 'master/slave');
-INSERT INTO t6 VALUES (3, 'master/slave');
+INSERT INTO t4 VALUES (3, 'primary/replica');
+INSERT INTO t5 VALUES (3, 'primary/replica');
+INSERT INTO t6 VALUES (3, 'primary/replica');
 COMMIT;
 
 SELECT * FROM t4 ORDER BY a;
 SELECT * FROM t5 ORDER BY a;
 SELECT * FROM t6 ORDER BY a;
 
-save_master_pos;
+save_primary_pos;
 
---echo *** On Slave ***
-connection slave;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=2;
-source include/start_slave.inc;
-sync_with_master;
+--echo *** On Replica ***
+connection replica;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER=2;
+source include/start_replica.inc;
+sync_with_primary;
 
 SELECT * FROM t4 ORDER BY a;
 SELECT * FROM t5 ORDER BY a;
@@ -207,35 +207,35 @@ SELECT * FROM t6 ORDER BY a;
 
 # Test skipping two groups
 
---echo **** On Slave ****
-connection slave;
-source include/stop_slave.inc;
+--echo **** On Replica ****
+connection replica;
+source include/stop_replica.inc;
 
---echo *** On Master ***
-connection master;
+--echo *** On Primary ***
+connection primary;
 BEGIN;
-INSERT INTO t4 VALUES (6, 'master only');
-INSERT INTO t5 VALUES (6, 'master only');
-INSERT INTO t6 VALUES (6, 'master only');
+INSERT INTO t4 VALUES (6, 'primary only');
+INSERT INTO t5 VALUES (6, 'primary only');
+INSERT INTO t6 VALUES (6, 'primary only');
 COMMIT;
 
 BEGIN;
-INSERT INTO t4 VALUES (7, 'master only');
-INSERT INTO t5 VALUES (7, 'master only');
-INSERT INTO t6 VALUES (7, 'master only');
+INSERT INTO t4 VALUES (7, 'primary only');
+INSERT INTO t5 VALUES (7, 'primary only');
+INSERT INTO t6 VALUES (7, 'primary only');
 COMMIT;
 
 SELECT * FROM t4 ORDER BY a;
 SELECT * FROM t5 ORDER BY a;
 SELECT * FROM t6 ORDER BY a;
 
-save_master_pos;
+save_primary_pos;
 
---echo *** On Slave ***
-connection slave;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=11;
-source include/start_slave.inc;
-sync_with_master;
+--echo *** On Replica ***
+connection replica;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER=11;
+source include/start_replica.inc;
+sync_with_primary;
 
 SELECT * FROM t4 ORDER BY a;
 SELECT * FROM t5 ORDER BY a;
@@ -244,57 +244,57 @@ SELECT * FROM t6 ORDER BY a;
 #
 # And the same, but with autocommit = 0
 #
-connection slave;
-source include/stop_slave.inc;
+connection replica;
+source include/stop_replica.inc;
 
-connection master;
+connection primary;
 SET AUTOCOMMIT=0;
 
-INSERT INTO t4 VALUES (4, 'master only');
-INSERT INTO t5 VALUES (4, 'master only');
-INSERT INTO t6 VALUES (4, 'master only');
+INSERT INTO t4 VALUES (4, 'primary only');
+INSERT INTO t5 VALUES (4, 'primary only');
+INSERT INTO t6 VALUES (4, 'primary only');
 COMMIT;
 
-INSERT INTO t4 VALUES (5, 'master/slave');
-INSERT INTO t5 VALUES (5, 'master/slave');
-INSERT INTO t6 VALUES (5, 'master/slave');
+INSERT INTO t4 VALUES (5, 'primary/replica');
+INSERT INTO t5 VALUES (5, 'primary/replica');
+INSERT INTO t6 VALUES (5, 'primary/replica');
 COMMIT;
 
 SELECT * FROM t4 ORDER BY a;
 SELECT * FROM t5 ORDER BY a;
 SELECT * FROM t6 ORDER BY a;
 
-save_master_pos;
+save_primary_pos;
 
---echo *** On Slave ***
-connection slave;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=2;
-source include/start_slave.inc;
-sync_with_master;
+--echo *** On Replica ***
+connection replica;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER=2;
+source include/start_replica.inc;
+sync_with_primary;
 
 SELECT * FROM t4 ORDER BY a;
 SELECT * FROM t5 ORDER BY a;
 SELECT * FROM t6 ORDER BY a;
 
-connection master;
+connection primary;
 DROP TABLE t4, t5, t6;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo **** Case 3: Statement logging format and LOAD DATA with non-transactional table ****
 
 # LOAD DATA creates two events in binary log for statement binlog format.
 # Try to skip the first.
 
---echo *** On Master ***
-connection master;
+--echo *** On Primary ***
+connection primary;
 CREATE TABLE t10 (a INT, b VARCHAR(20)) ENGINE=myisam;
 
---echo *** On Slave ***
---source include/sync_slave_sql_with_master.inc
-source include/stop_slave.inc;
+--echo *** On Replica ***
+--source include/sync_replica_sql_with_primary.inc
+source include/stop_replica.inc;
 
---echo *** On Master ***
-connection master;
+--echo *** On Primary ***
+connection primary;
 SET SESSION BINLOG_FORMAT=STATEMENT;
 
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
@@ -302,18 +302,18 @@ eval LOAD DATA INFILE '$MYSQLTEST_VARDIR/std_data/rpl_bug28618.dat' INTO TABLE t
 
 SELECT * FROM t10 ORDER BY a;
 
-save_master_pos;
+save_primary_pos;
 
---echo *** On Slave ***
-connection slave;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=2;
-source include/start_slave.inc;
-sync_with_master;
+--echo *** On Replica ***
+connection replica;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER=2;
+source include/start_replica.inc;
+sync_with_primary;
 
 SELECT * FROM t10 ORDER BY a;
 
-connection master;
+connection primary;
 DROP TABLE t10;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

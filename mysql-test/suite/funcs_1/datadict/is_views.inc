@@ -106,17 +106,17 @@ WHERE table_schema = 'db_datadict' ORDER BY table_name;
 eval $select;
 
 --echo # Establish connection testuser1 (user=testuser1)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser1, localhost, testuser1, , test);
 eval $select;
 
 --echo # Establish connection testuser2 (user=testuser2)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser2, localhost, testuser2, , test);
 eval $select;
 
 --echo # Establish connection test_no_views (user=test_no_views)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (test_no_views, localhost, test_no_views, , test);
 eval $select;
 

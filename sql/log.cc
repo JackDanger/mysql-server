@@ -1230,7 +1230,7 @@ bool Query_logger::slow_log_write(THD *thd, const char *query,
     return false;
 
   /* do not log slow queries from replication threads */
-  if (thd->slave_thread && !opt_log_slow_slave_statements)
+  if (thd->replica_thread && !opt_log_slow_replica_statements)
     return false;
 
   mysql_rwlock_rdlock(&LOCK_logger);

@@ -1,18 +1,18 @@
 #
 # only global
 #
---replace_result $MASTER_MYPORT MASTER_MYPORT
+--replace_result $PRIMARY_MYPORT PRIMARY_MYPORT
 select @@global.port;
 --error ER_INCORRECT_GLOBAL_LOCAL_VAR
 select @@session.port;
---replace_result $MASTER_MYPORT MASTER_MYPORT
+--replace_result $PRIMARY_MYPORT PRIMARY_MYPORT
 show global variables like 'port';
---replace_result $MASTER_MYPORT MASTER_MYPORT
+--replace_result $PRIMARY_MYPORT PRIMARY_MYPORT
 show session variables like 'port';
 --disable_warnings
---replace_result $MASTER_MYPORT MASTER_MYPORT
+--replace_result $PRIMARY_MYPORT PRIMARY_MYPORT
 select * from information_schema.global_variables where variable_name='port';
---replace_result $MASTER_MYPORT MASTER_MYPORT
+--replace_result $PRIMARY_MYPORT PRIMARY_MYPORT
 select * from information_schema.session_variables where variable_name='port';
 --enable_warnings
 

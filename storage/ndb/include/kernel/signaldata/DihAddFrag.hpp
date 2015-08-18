@@ -51,7 +51,7 @@ class DihAddFragReq {
 public:
   STATIC_CONST( SignalLength = 10 + MAX_REPLICAS );
 private:
-  Uint32 masterRef;
+  Uint32 primaryRef;
   Uint32 tableId;
   Uint32 fragId;
   Uint32 kValue;

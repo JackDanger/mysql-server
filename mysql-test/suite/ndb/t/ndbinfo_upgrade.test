@@ -16,7 +16,7 @@ USE ndbinfo;
 # tries to create the performance_schema database although
 # it already exists(since the DROP DATABASE was not allowed
 # due to local tables)
-connect (mysqld2,127.0.0.1,root,,test,$MASTER_MYPORT1,);
+connect (mysqld2,127.0.0.1,root,,test,$PRIMARY_MYPORT1,);
 connection mysqld2;
 call mtr.add_suppression("Can\'t create database \'performance_schema\'; database exists");
 connection default;

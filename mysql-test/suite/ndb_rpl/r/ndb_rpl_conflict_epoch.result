@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 Setup circular replication
 The circle is setup between Primary and Secondary
 Setup ndb_replication and t1 exceptions table
@@ -10,12 +10,12 @@ Populate ndb_replication table as necessary
 -- 0 extra gci bits
 create table `test`.`t1$EX`
   (server_id int unsigned,
-master_server_id int unsigned,
-master_epoch bigint unsigned,
+primary_server_id int unsigned,
+primary_epoch bigint unsigned,
 count int unsigned,
 a int not null,
 d int,
-primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 Create table
 create table test.t1(a int primary key, b varchar(255)) engine = ndb;
 Create other table
@@ -27,7 +27,7 @@ insert into test.t1 values (1, "Metropole");
 FLUSH LOGS;
 -- Verify that Max rep epoch has been updated
 -- Primary Cluster Max Rep Epoch now beyond the original update epoch
--- Now update data on slave
+-- Now update data on replica
 update test.t1 set b="Favorit" where a=1;
 -- Now check data on Primary
 select * from test.t1 order by a;
@@ -35,11 +35,11 @@ a	b
 1	Favorit
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Now perform multiple consecutive updates on the Secondary
 update test.t1 set b="Elephant house" where a=1;
@@ -53,14 +53,14 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 --------------------------------------------
-Test 2 : Normal Insert from Secondary Master
+Test 2 : Normal Insert from Secondary Primary
 --------------------------------------------
 -- Insert a new row on the Secondary
 insert into test.t1 values (2, "Forrest");
@@ -81,46 +81,46 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -------------------------------
 Test 3 : Insert-Insert conflict
 -------------------------------
-stop slave;
--- Insert a row on the Primary Master
+stop replica;
+-- Insert a row on the Primary Primary
 insert into test.t1 values (2, "Loopy Lornas");
--- Insert a row on the secondary Master
+-- Insert a row on the secondary Primary
 insert into test.t1 values (2, "Cloisters");
--- Examine data on Primary Master (should be unaffected)
+-- Examine data on Primary Primary (should be unaffected)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Loopy Lornas
--- Examine conflict indicators on Primary Master
+-- Examine conflict indicators on Primary Primary
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on isolated secondary Master (should be as-set)
+-- Examine data on isolated secondary Primary (should be as-set)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Cloisters
--- Restart secondary Masters slave
-start slave;
--- Reexamine secondary Master's data (should be same as Primary Masters)
+-- Restart secondary Primarys replica
+start replica;
+-- Reexamine secondary Primary's data (should be same as Primary Primarys)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -128,11 +128,11 @@ a	b
 -------------------------------
 Test 4 : Update-Update conflict
 -------------------------------
--- Stop replication to secondary master
-stop slave;
--- Update row on Primary Master
+-- Stop replication to secondary primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Peters Yard" where a=2;
--- Show data on Primary Master
+-- Show data on Primary Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -141,17 +141,17 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Toast" where a=2;
--- Examine data on Primary Master - should be unaffected
+-- Examine data on Primary Primary - should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -160,23 +160,23 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Check data on secondary - should be as set
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Toast
--- Now restart slave, will re-align row
-start slave;
+-- Now restart replica, will re-align row
+start replica;
 -- Check that Secondary is re-aligned
 select * from test.t1 order by a;
 a	b
@@ -185,13 +185,13 @@ a	b
 -------------------------------
 Test 5 : Update-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Update on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Update on Primary Primary
 update test.t1 set b="Pear tree" where a = 2;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a = 2;
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -200,25 +200,25 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 3
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, still missing
+-- Examine data on Secondary Primary before replica restart, still missing
 select * from test.t1 order by a;
 a	b
 1	Beach house
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -226,13 +226,13 @@ a	b
 -------------------------------
 Test 6 : Delete-Update conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=2;
--- Update on Secondary Master
+-- Update on Secondary Primary
 update test.t1 set b="Black pig" where a=2;
--- Examine data on Primary Master, should be unaffected (no row)
+-- Examine data on Primary Primary, should be unaffected (no row)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -240,41 +240,41 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 4
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, should be as inserted
+-- Examine data on Secondary Primary before replica restart, should be as inserted
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Black pig
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master (deleted)
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary (deleted)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 -------------------------------
 Test 7 : Delete-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=1;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a=1;
--- Examine data on Primary Master, no row
+-- Examine data on Primary Primary, no row
 select * from test.t1 order by a;
 a	b
 Conflict algorithm counter diff :
@@ -283,57 +283,57 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 1	3	#	5	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, no row
+-- Examine data on Secondary Primary before replica restart, no row
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, no row
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, no row
 select * from test.t1 order by a;
 a	b
 ------------------------------------------------
 Test 8 : Delete-Delete, Insert conflict exposure
 ------------------------------------------------
--- Insert a row on Secondary Master
+-- Insert a row on Secondary Primary
 insert into test.t1 values (3, "Espy");
--- Check it's present on Primary Master
+-- Check it's present on Primary Primary
 select * from test.t1 order by a;
 a	b
 3	Espy
 -- Stop replication in both directions
-stop slave;
-stop slave;
+stop replica;
+stop replica;
 -- Delete row from both clusters
 delete from test.t1 where a=3;
 delete from test.t1 where a=3;
--- Follow up with Insert from Secondary master
+-- Follow up with Insert from Secondary primary
 insert into test.t1 values (3, "Dalriada");
 -- Restart replication in both directions
-start slave;
-start slave;
+start replica;
+start replica;
 -- Check data on both sites
 --   diverged with NDB$EPOCH
 --   consistent with NDB$EPOCH2 
--- Secondary master :
+-- Secondary primary :
 select * from test.t1 order by a;
 a	b
--- Primary master :
+-- Primary primary :
 select * from test.t1 order by a;
 a	b
 3	Dalriada
@@ -346,8 +346,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -355,32 +355,32 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	5	#	#
 1	3	#	6	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	3	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 ------------------------------------------------
 Test 9 : Insert, Insert-Update-Delete conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Insert row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Insert row on Primary Primary
 insert into test.t1 values (4, "Haymarket");
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Outhouse");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Mathers" where a = 4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Examine data (none) on Secondary Master
+-- Examine data (none) on Secondary Primary
 select * from test.t1 order by a;
 a	b
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Haymarket
@@ -390,8 +390,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -402,7 +402,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	8	#	#
 1	3	#	9	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -412,31 +412,31 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master (none)
+-- Examine data on Secondary Primary (none)
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master's slave
-start slave;
--- Check data on Secondary Master, should be same as Primary Master
+-- Restart Secondary Primary's replica
+start replica;
+-- Check data on Secondary Primary, should be same as Primary Primary
 select * from test.t1;
 a	b
 4	Haymarket
 ------------------------------------------------
 Test 10 : Update, Delete-Insert-Update conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Update row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Blind poet" where a=4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Drouthy Neebors");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="The Tankard" where a=4;
--- Check data on Primary Master, should be unaffected
+-- Check data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -446,8 +446,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -461,7 +461,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -474,15 +474,15 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Check data on Secondary Master, as set
+-- Check data on Secondary Primary, as set
 select * from test.t1 order by a;
 a	b
 4	The Tankard
--- Restart Secondary Master slave
-start slave;
--- Check data on Secondary Master - should be as Primary
+-- Restart Secondary Primary replica
+start replica;
+-- Check data on Secondary Primary - should be as Primary
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -505,8 +505,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -520,7 +520,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -533,7 +533,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
@@ -541,8 +541,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -556,7 +556,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -569,7 +569,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 drop table test.t1;
 drop table test.t2;
@@ -578,12 +578,12 @@ Populate ndb_replication table as necessary
 -- 1 extra gci bits
 create table `test`.`t1$EX`
   (server_id int unsigned,
-master_server_id int unsigned,
-master_epoch bigint unsigned,
+primary_server_id int unsigned,
+primary_epoch bigint unsigned,
 count int unsigned,
 a int not null,
 d int,
-primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 Create table
 create table test.t1(a int primary key, b varchar(255)) engine = ndb;
 Create other table
@@ -595,7 +595,7 @@ insert into test.t1 values (1, "Metropole");
 FLUSH LOGS;
 -- Verify that Max rep epoch has been updated
 -- Primary Cluster Max Rep Epoch now beyond the original update epoch
--- Now update data on slave
+-- Now update data on replica
 update test.t1 set b="Favorit" where a=1;
 -- Now check data on Primary
 select * from test.t1 order by a;
@@ -603,11 +603,11 @@ a	b
 1	Favorit
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Now perform multiple consecutive updates on the Secondary
 update test.t1 set b="Elephant house" where a=1;
@@ -621,14 +621,14 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 --------------------------------------------
-Test 2 : Normal Insert from Secondary Master
+Test 2 : Normal Insert from Secondary Primary
 --------------------------------------------
 -- Insert a new row on the Secondary
 insert into test.t1 values (2, "Forrest");
@@ -649,46 +649,46 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -------------------------------
 Test 3 : Insert-Insert conflict
 -------------------------------
-stop slave;
--- Insert a row on the Primary Master
+stop replica;
+-- Insert a row on the Primary Primary
 insert into test.t1 values (2, "Loopy Lornas");
--- Insert a row on the secondary Master
+-- Insert a row on the secondary Primary
 insert into test.t1 values (2, "Cloisters");
--- Examine data on Primary Master (should be unaffected)
+-- Examine data on Primary Primary (should be unaffected)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Loopy Lornas
--- Examine conflict indicators on Primary Master
+-- Examine conflict indicators on Primary Primary
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on isolated secondary Master (should be as-set)
+-- Examine data on isolated secondary Primary (should be as-set)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Cloisters
--- Restart secondary Masters slave
-start slave;
--- Reexamine secondary Master's data (should be same as Primary Masters)
+-- Restart secondary Primarys replica
+start replica;
+-- Reexamine secondary Primary's data (should be same as Primary Primarys)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -696,11 +696,11 @@ a	b
 -------------------------------
 Test 4 : Update-Update conflict
 -------------------------------
--- Stop replication to secondary master
-stop slave;
--- Update row on Primary Master
+-- Stop replication to secondary primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Peters Yard" where a=2;
--- Show data on Primary Master
+-- Show data on Primary Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -709,17 +709,17 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Toast" where a=2;
--- Examine data on Primary Master - should be unaffected
+-- Examine data on Primary Primary - should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -728,23 +728,23 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Check data on secondary - should be as set
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Toast
--- Now restart slave, will re-align row
-start slave;
+-- Now restart replica, will re-align row
+start replica;
 -- Check that Secondary is re-aligned
 select * from test.t1 order by a;
 a	b
@@ -753,13 +753,13 @@ a	b
 -------------------------------
 Test 5 : Update-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Update on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Update on Primary Primary
 update test.t1 set b="Pear tree" where a = 2;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a = 2;
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -768,25 +768,25 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 3
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, still missing
+-- Examine data on Secondary Primary before replica restart, still missing
 select * from test.t1 order by a;
 a	b
 1	Beach house
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -794,13 +794,13 @@ a	b
 -------------------------------
 Test 6 : Delete-Update conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=2;
--- Update on Secondary Master
+-- Update on Secondary Primary
 update test.t1 set b="Black pig" where a=2;
--- Examine data on Primary Master, should be unaffected (no row)
+-- Examine data on Primary Primary, should be unaffected (no row)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -808,41 +808,41 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 4
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, should be as inserted
+-- Examine data on Secondary Primary before replica restart, should be as inserted
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Black pig
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master (deleted)
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary (deleted)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 -------------------------------
 Test 7 : Delete-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=1;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a=1;
--- Examine data on Primary Master, no row
+-- Examine data on Primary Primary, no row
 select * from test.t1 order by a;
 a	b
 Conflict algorithm counter diff :
@@ -851,57 +851,57 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 1	3	#	5	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, no row
+-- Examine data on Secondary Primary before replica restart, no row
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, no row
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, no row
 select * from test.t1 order by a;
 a	b
 ------------------------------------------------
 Test 8 : Delete-Delete, Insert conflict exposure
 ------------------------------------------------
--- Insert a row on Secondary Master
+-- Insert a row on Secondary Primary
 insert into test.t1 values (3, "Espy");
--- Check it's present on Primary Master
+-- Check it's present on Primary Primary
 select * from test.t1 order by a;
 a	b
 3	Espy
 -- Stop replication in both directions
-stop slave;
-stop slave;
+stop replica;
+stop replica;
 -- Delete row from both clusters
 delete from test.t1 where a=3;
 delete from test.t1 where a=3;
--- Follow up with Insert from Secondary master
+-- Follow up with Insert from Secondary primary
 insert into test.t1 values (3, "Dalriada");
 -- Restart replication in both directions
-start slave;
-start slave;
+start replica;
+start replica;
 -- Check data on both sites
 --   diverged with NDB$EPOCH
 --   consistent with NDB$EPOCH2 
--- Secondary master :
+-- Secondary primary :
 select * from test.t1 order by a;
 a	b
--- Primary master :
+-- Primary primary :
 select * from test.t1 order by a;
 a	b
 3	Dalriada
@@ -914,8 +914,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -923,32 +923,32 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	5	#	#
 1	3	#	6	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	3	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 ------------------------------------------------
 Test 9 : Insert, Insert-Update-Delete conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Insert row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Insert row on Primary Primary
 insert into test.t1 values (4, "Haymarket");
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Outhouse");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Mathers" where a = 4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Examine data (none) on Secondary Master
+-- Examine data (none) on Secondary Primary
 select * from test.t1 order by a;
 a	b
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Haymarket
@@ -958,8 +958,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -970,7 +970,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	8	#	#
 1	3	#	9	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -980,31 +980,31 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master (none)
+-- Examine data on Secondary Primary (none)
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master's slave
-start slave;
--- Check data on Secondary Master, should be same as Primary Master
+-- Restart Secondary Primary's replica
+start replica;
+-- Check data on Secondary Primary, should be same as Primary Primary
 select * from test.t1;
 a	b
 4	Haymarket
 ------------------------------------------------
 Test 10 : Update, Delete-Insert-Update conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Update row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Blind poet" where a=4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Drouthy Neebors");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="The Tankard" where a=4;
--- Check data on Primary Master, should be unaffected
+-- Check data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -1014,8 +1014,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1029,7 +1029,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -1042,15 +1042,15 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Check data on Secondary Master, as set
+-- Check data on Secondary Primary, as set
 select * from test.t1 order by a;
 a	b
 4	The Tankard
--- Restart Secondary Master slave
-start slave;
--- Check data on Secondary Master - should be as Primary
+-- Restart Secondary Primary replica
+start replica;
+-- Check data on Secondary Primary - should be as Primary
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -1073,8 +1073,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1088,7 +1088,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -1101,7 +1101,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
@@ -1109,8 +1109,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1124,7 +1124,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -1137,7 +1137,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 drop table test.t1;
 drop table test.t2;
@@ -1146,12 +1146,12 @@ Populate ndb_replication table as necessary
 -- 31 extra gci bits
 create table `test`.`t1$EX`
   (server_id int unsigned,
-master_server_id int unsigned,
-master_epoch bigint unsigned,
+primary_server_id int unsigned,
+primary_epoch bigint unsigned,
 count int unsigned,
 a int not null,
 d int,
-primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 Create table
 create table test.t1(a int primary key, b varchar(255)) engine = ndb;
 Create other table
@@ -1163,7 +1163,7 @@ insert into test.t1 values (1, "Metropole");
 FLUSH LOGS;
 -- Verify that Max rep epoch has been updated
 -- Primary Cluster Max Rep Epoch now beyond the original update epoch
--- Now update data on slave
+-- Now update data on replica
 update test.t1 set b="Favorit" where a=1;
 -- Now check data on Primary
 select * from test.t1 order by a;
@@ -1171,11 +1171,11 @@ a	b
 1	Favorit
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Now perform multiple consecutive updates on the Secondary
 update test.t1 set b="Elephant house" where a=1;
@@ -1189,14 +1189,14 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 --------------------------------------------
-Test 2 : Normal Insert from Secondary Master
+Test 2 : Normal Insert from Secondary Primary
 --------------------------------------------
 -- Insert a new row on the Secondary
 insert into test.t1 values (2, "Forrest");
@@ -1217,46 +1217,46 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -------------------------------
 Test 3 : Insert-Insert conflict
 -------------------------------
-stop slave;
--- Insert a row on the Primary Master
+stop replica;
+-- Insert a row on the Primary Primary
 insert into test.t1 values (2, "Loopy Lornas");
--- Insert a row on the secondary Master
+-- Insert a row on the secondary Primary
 insert into test.t1 values (2, "Cloisters");
--- Examine data on Primary Master (should be unaffected)
+-- Examine data on Primary Primary (should be unaffected)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Loopy Lornas
--- Examine conflict indicators on Primary Master
+-- Examine conflict indicators on Primary Primary
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on isolated secondary Master (should be as-set)
+-- Examine data on isolated secondary Primary (should be as-set)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Cloisters
--- Restart secondary Masters slave
-start slave;
--- Reexamine secondary Master's data (should be same as Primary Masters)
+-- Restart secondary Primarys replica
+start replica;
+-- Reexamine secondary Primary's data (should be same as Primary Primarys)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1264,11 +1264,11 @@ a	b
 -------------------------------
 Test 4 : Update-Update conflict
 -------------------------------
--- Stop replication to secondary master
-stop slave;
--- Update row on Primary Master
+-- Stop replication to secondary primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Peters Yard" where a=2;
--- Show data on Primary Master
+-- Show data on Primary Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1277,17 +1277,17 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Toast" where a=2;
--- Examine data on Primary Master - should be unaffected
+-- Examine data on Primary Primary - should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1296,23 +1296,23 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Check data on secondary - should be as set
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Toast
--- Now restart slave, will re-align row
-start slave;
+-- Now restart replica, will re-align row
+start replica;
 -- Check that Secondary is re-aligned
 select * from test.t1 order by a;
 a	b
@@ -1321,13 +1321,13 @@ a	b
 -------------------------------
 Test 5 : Update-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Update on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Update on Primary Primary
 update test.t1 set b="Pear tree" where a = 2;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a = 2;
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1336,25 +1336,25 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 3
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, still missing
+-- Examine data on Secondary Primary before replica restart, still missing
 select * from test.t1 order by a;
 a	b
 1	Beach house
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1362,13 +1362,13 @@ a	b
 -------------------------------
 Test 6 : Delete-Update conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=2;
--- Update on Secondary Master
+-- Update on Secondary Primary
 update test.t1 set b="Black pig" where a=2;
--- Examine data on Primary Master, should be unaffected (no row)
+-- Examine data on Primary Primary, should be unaffected (no row)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1376,41 +1376,41 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 4
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, should be as inserted
+-- Examine data on Secondary Primary before replica restart, should be as inserted
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Black pig
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master (deleted)
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary (deleted)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 -------------------------------
 Test 7 : Delete-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=1;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a=1;
--- Examine data on Primary Master, no row
+-- Examine data on Primary Primary, no row
 select * from test.t1 order by a;
 a	b
 Conflict algorithm counter diff :
@@ -1419,57 +1419,57 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 1	3	#	5	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, no row
+-- Examine data on Secondary Primary before replica restart, no row
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, no row
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, no row
 select * from test.t1 order by a;
 a	b
 ------------------------------------------------
 Test 8 : Delete-Delete, Insert conflict exposure
 ------------------------------------------------
--- Insert a row on Secondary Master
+-- Insert a row on Secondary Primary
 insert into test.t1 values (3, "Espy");
--- Check it's present on Primary Master
+-- Check it's present on Primary Primary
 select * from test.t1 order by a;
 a	b
 3	Espy
 -- Stop replication in both directions
-stop slave;
-stop slave;
+stop replica;
+stop replica;
 -- Delete row from both clusters
 delete from test.t1 where a=3;
 delete from test.t1 where a=3;
--- Follow up with Insert from Secondary master
+-- Follow up with Insert from Secondary primary
 insert into test.t1 values (3, "Dalriada");
 -- Restart replication in both directions
-start slave;
-start slave;
+start replica;
+start replica;
 -- Check data on both sites
 --   diverged with NDB$EPOCH
 --   consistent with NDB$EPOCH2 
--- Secondary master :
+-- Secondary primary :
 select * from test.t1 order by a;
 a	b
--- Primary master :
+-- Primary primary :
 select * from test.t1 order by a;
 a	b
 3	Dalriada
@@ -1482,8 +1482,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1491,32 +1491,32 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	5	#	#
 1	3	#	6	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	3	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 ------------------------------------------------
 Test 9 : Insert, Insert-Update-Delete conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Insert row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Insert row on Primary Primary
 insert into test.t1 values (4, "Haymarket");
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Outhouse");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Mathers" where a = 4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Examine data (none) on Secondary Master
+-- Examine data (none) on Secondary Primary
 select * from test.t1 order by a;
 a	b
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Haymarket
@@ -1526,8 +1526,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1538,7 +1538,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	8	#	#
 1	3	#	9	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -1548,31 +1548,31 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master (none)
+-- Examine data on Secondary Primary (none)
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master's slave
-start slave;
--- Check data on Secondary Master, should be same as Primary Master
+-- Restart Secondary Primary's replica
+start replica;
+-- Check data on Secondary Primary, should be same as Primary Primary
 select * from test.t1;
 a	b
 4	Haymarket
 ------------------------------------------------
 Test 10 : Update, Delete-Insert-Update conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Update row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Blind poet" where a=4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Drouthy Neebors");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="The Tankard" where a=4;
--- Check data on Primary Master, should be unaffected
+-- Check data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -1582,8 +1582,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1597,7 +1597,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -1610,15 +1610,15 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Check data on Secondary Master, as set
+-- Check data on Secondary Primary, as set
 select * from test.t1 order by a;
 a	b
 4	The Tankard
--- Restart Secondary Master slave
-start slave;
--- Check data on Secondary Master - should be as Primary
+-- Restart Secondary Primary replica
+start replica;
+-- Check data on Secondary Primary - should be as Primary
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -1641,8 +1641,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1656,7 +1656,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -1669,7 +1669,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
@@ -1677,8 +1677,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -1692,7 +1692,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -1705,7 +1705,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 drop table test.t1;
 drop table test.t2;
@@ -1714,12 +1714,12 @@ Populate ndb_replication table as necessary
 -- Default extra Gci bits
 create table `test`.`t1$EX`
   (server_id int unsigned,
-master_server_id int unsigned,
-master_epoch bigint unsigned,
+primary_server_id int unsigned,
+primary_epoch bigint unsigned,
 count int unsigned,
 a int not null,
 d int,
-primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 Create table
 create table test.t1(a int primary key, b varchar(255)) engine = ndb;
 Create other table
@@ -1731,7 +1731,7 @@ insert into test.t1 values (1, "Metropole");
 FLUSH LOGS;
 -- Verify that Max rep epoch has been updated
 -- Primary Cluster Max Rep Epoch now beyond the original update epoch
--- Now update data on slave
+-- Now update data on replica
 update test.t1 set b="Favorit" where a=1;
 -- Now check data on Primary
 select * from test.t1 order by a;
@@ -1739,11 +1739,11 @@ a	b
 1	Favorit
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Now perform multiple consecutive updates on the Secondary
 update test.t1 set b="Elephant house" where a=1;
@@ -1757,14 +1757,14 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 --------------------------------------------
-Test 2 : Normal Insert from Secondary Master
+Test 2 : Normal Insert from Secondary Primary
 --------------------------------------------
 -- Insert a new row on the Secondary
 insert into test.t1 values (2, "Forrest");
@@ -1785,46 +1785,46 @@ a	b
 1	Beach house
 Conflict algorithm counter diff :
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -------------------------------
 Test 3 : Insert-Insert conflict
 -------------------------------
-stop slave;
--- Insert a row on the Primary Master
+stop replica;
+-- Insert a row on the Primary Primary
 insert into test.t1 values (2, "Loopy Lornas");
--- Insert a row on the secondary Master
+-- Insert a row on the secondary Primary
 insert into test.t1 values (2, "Cloisters");
--- Examine data on Primary Master (should be unaffected)
+-- Examine data on Primary Primary (should be unaffected)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Loopy Lornas
--- Examine conflict indicators on Primary Master
+-- Examine conflict indicators on Primary Primary
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on isolated secondary Master (should be as-set)
+-- Examine data on isolated secondary Primary (should be as-set)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Cloisters
--- Restart secondary Masters slave
-start slave;
--- Reexamine secondary Master's data (should be same as Primary Masters)
+-- Restart secondary Primarys replica
+start replica;
+-- Reexamine secondary Primary's data (should be same as Primary Primarys)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1832,11 +1832,11 @@ a	b
 -------------------------------
 Test 4 : Update-Update conflict
 -------------------------------
--- Stop replication to secondary master
-stop slave;
--- Update row on Primary Master
+-- Stop replication to secondary primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Peters Yard" where a=2;
--- Show data on Primary Master
+-- Show data on Primary Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1845,17 +1845,17 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Toast" where a=2;
--- Examine data on Primary Master - should be unaffected
+-- Examine data on Primary Primary - should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1864,23 +1864,23 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 -- Check data on secondary - should be as set
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Toast
--- Now restart slave, will re-align row
-start slave;
+-- Now restart replica, will re-align row
+start replica;
 -- Check that Secondary is re-aligned
 select * from test.t1 order by a;
 a	b
@@ -1889,13 +1889,13 @@ a	b
 -------------------------------
 Test 5 : Update-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Update on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Update on Primary Primary
 update test.t1 set b="Pear tree" where a = 2;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a = 2;
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1904,25 +1904,25 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 3
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, still missing
+-- Examine data on Secondary Primary before replica restart, still missing
 select * from test.t1 order by a;
 a	b
 1	Beach house
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1930,13 +1930,13 @@ a	b
 -------------------------------
 Test 6 : Delete-Update conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=2;
--- Update on Secondary Master
+-- Update on Secondary Primary
 update test.t1 set b="Black pig" where a=2;
--- Examine data on Primary Master, should be unaffected (no row)
+-- Examine data on Primary Primary, should be unaffected (no row)
 select * from test.t1 order by a;
 a	b
 1	Beach house
@@ -1944,41 +1944,41 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 4
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, should be as inserted
+-- Examine data on Secondary Primary before replica restart, should be as inserted
 select * from test.t1 order by a;
 a	b
 1	Beach house
 2	Black pig
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, aligned with Master (deleted)
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, aligned with Primary (deleted)
 select * from test.t1 order by a;
 a	b
 1	Beach house
 -------------------------------
 Test 7 : Delete-Delete conflict
 -------------------------------
--- Stop Secondary slave
-stop slave;
--- Delete on Primary Master
+-- Stop Secondary replica
+stop replica;
+-- Delete on Primary Primary
 delete from test.t1 where a=1;
--- Delete on Secondary Master
+-- Delete on Secondary Primary
 delete from test.t1 where a=1;
--- Examine data on Primary Master, no row
+-- Examine data on Primary Primary, no row
 select * from test.t1 order by a;
 a	b
 Conflict algorithm counter diff :
@@ -1987,57 +1987,57 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 1
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
 1	3	#	4	#	#
 1	3	#	5	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master before slave restart, no row
+-- Examine data on Secondary Primary before replica restart, no row
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master slave
-start slave;
--- Examine data on Secondary Master after slave restart, no row
+-- Restart Secondary Primary replica
+start replica;
+-- Examine data on Secondary Primary after replica restart, no row
 select * from test.t1 order by a;
 a	b
 ------------------------------------------------
 Test 8 : Delete-Delete, Insert conflict exposure
 ------------------------------------------------
--- Insert a row on Secondary Master
+-- Insert a row on Secondary Primary
 insert into test.t1 values (3, "Espy");
--- Check it's present on Primary Master
+-- Check it's present on Primary Primary
 select * from test.t1 order by a;
 a	b
 3	Espy
 -- Stop replication in both directions
-stop slave;
-stop slave;
+stop replica;
+stop replica;
 -- Delete row from both clusters
 delete from test.t1 where a=3;
 delete from test.t1 where a=3;
--- Follow up with Insert from Secondary master
+-- Follow up with Insert from Secondary primary
 insert into test.t1 values (3, "Dalriada");
 -- Restart replication in both directions
-start slave;
-start slave;
+start replica;
+start replica;
 -- Check data on both sites
 --   diverged with NDB$EPOCH
 --   consistent with NDB$EPOCH2 
--- Secondary master :
+-- Secondary primary :
 select * from test.t1 order by a;
 a	b
--- Primary master :
+-- Primary primary :
 select * from test.t1 order by a;
 a	b
 3	Dalriada
@@ -2050,8 +2050,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -2059,32 +2059,32 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	5	#	#
 1	3	#	6	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
 1	3	#	#	3	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 ------------------------------------------------
 Test 9 : Insert, Insert-Update-Delete conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Insert row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Insert row on Primary Primary
 insert into test.t1 values (4, "Haymarket");
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Outhouse");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="Mathers" where a = 4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Examine data (none) on Secondary Master
+-- Examine data (none) on Secondary Primary
 select * from test.t1 order by a;
 a	b
--- Examine data on Primary Master, should be unaffected
+-- Examine data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Haymarket
@@ -2094,8 +2094,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -2106,7 +2106,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	8	#	#
 1	3	#	9	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -2116,31 +2116,31 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Examine data on Secondary Master (none)
+-- Examine data on Secondary Primary (none)
 select * from test.t1 order by a;
 a	b
--- Restart Secondary Master's slave
-start slave;
--- Check data on Secondary Master, should be same as Primary Master
+-- Restart Secondary Primary's replica
+start replica;
+-- Check data on Secondary Primary, should be same as Primary Primary
 select * from test.t1;
 a	b
 4	Haymarket
 ------------------------------------------------
 Test 10 : Update, Delete-Insert-Update conflict
 ------------------------------------------------
--- Stop replication on Secondary Master
-stop slave;
--- Update row on Primary Master
+-- Stop replication on Secondary Primary
+stop replica;
+-- Update row on Primary Primary
 update test.t1 set b="Blind poet" where a=4;
--- Delete row on Secondary Master
+-- Delete row on Secondary Primary
 delete from test.t1 where a=4;
--- Insert row on Secondary Master
+-- Insert row on Secondary Primary
 insert into test.t1 values (4, "Drouthy Neebors");
--- Update row on Secondary Master
+-- Update row on Secondary Primary
 update test.t1 set b="The Tankard" where a=4;
--- Check data on Primary Master, should be unaffected
+-- Check data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -2150,8 +2150,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -2165,7 +2165,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -2178,15 +2178,15 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
--- Check data on Secondary Master, as set
+-- Check data on Secondary Primary, as set
 select * from test.t1 order by a;
 a	b
 4	The Tankard
--- Restart Secondary Master slave
-start slave;
--- Check data on Secondary Master - should be as Primary
+-- Restart Secondary Primary replica
+start replica;
+-- Check data on Secondary Primary - should be as Primary
 select * from test.t1 order by a;
 a	b
 4	Blind poet
@@ -2209,8 +2209,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -2224,7 +2224,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -2237,7 +2237,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
@@ -2245,8 +2245,8 @@ ndb_conflict_fn_epoch
 ndb_epoch_delete_delete
 2
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
-server_id	master_server_id	master_epoch	count	a	d
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	1	#	#
 1	3	#	2	#	#
 1	3	#	3	#	#
@@ -2260,7 +2260,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	11	#	#
 1	3	#	12	#	#
 SELECT * FROM `t1$EX` ORDER BY a, d;
-server_id	master_server_id	master_epoch	count	a	d
+server_id	primary_server_id	primary_epoch	count	a	d
 1	3	#	#	1	NULL
 1	3	#	#	2	NULL
 1	3	#	#	2	NULL
@@ -2273,7 +2273,7 @@ server_id	master_server_id	master_epoch	count	a	d
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
 1	3	#	#	4	NULL
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
 drop table test.t1;
 drop table test.t2;
@@ -2284,7 +2284,7 @@ a int primary key,
 b int,
 c varchar(2000)) engine=ndb;
 -- Stop replication from Primary -> Secondary
-stop slave;
+stop replica;
 -- Insert a row on Primary
 insert into test.t1 values (1,1,repeat('B', 2000));
 -- Generate a large batch of inserts with early + late conflicts
@@ -2315,11 +2315,11 @@ Conflict algorithm counter diff :
 ndb_conflict_fn_epoch
 4
 Exception table contents
-SELECT server_id, master_server_id, master_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT server_id, primary_server_id, primary_epoch, count, a, d FROM `t1$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t1$EX` ORDER BY a, d;
-SELECT * FROM `t2$EX` ORDER BY server_id, master_server_id, master_epoch, count;
+SELECT * FROM `t2$EX` ORDER BY server_id, primary_server_id, primary_epoch, count;
 SELECT * FROM `t2$EX` ORDER BY a, d;
-start slave;
+start replica;
 -- Look at Seconday row
 select a,b,sha1(c) from test.t1 where a=1;
 a	b	sha1(c)
@@ -2331,9 +2331,9 @@ a	b	sha1(c)
 Test batching of DELETE vs DELETE with following INSERT
 delete from test.t1;
 insert into test.t1 values (1, 1, "Ma Brows");
--- Stop Slave in both directions
-stop slave;
-stop slave;
+-- Stop Replica in both directions
+stop replica;
+stop replica;
 -- Delete row on Primary Cluster
 delete from test.t1 where a=1;
 -- Delete row on Secondary Cluster, followed by Insert in later 'batch'
@@ -2353,8 +2353,8 @@ insert into test.t1 values (1, 1, 'Malleny arms');
 COMMIT;
 end%
 call test.doit(200);
--- Restart slave on Primary Cluster
-start slave;
+-- Restart replica on Primary Cluster
+start replica;
 -- Show data on Primary Cluster (should have row inserted on Secondary)
 select * from test.t1 where a=1;
 a	b	c
@@ -2363,9 +2363,9 @@ a	b	c
 select * from test.t1 where a=1;
 a	b	c
 1	1	Malleny arms
---Restart slave on Secondary Cluster
-start slave;
--- Show data on Clusters after slaves restarted+synced
+--Restart replica on Secondary Cluster
+start replica;
+-- Show data on Clusters after replicas restarted+synced
 For NDB$EPOCH, the data will be missing
 as expected with delete vs delete conflict
 followed closely by Insert
@@ -2378,7 +2378,7 @@ a	b	c
 SECONDARY
 select * from test.t1 where a=1;
 a	b	c
--- Force wait for master to be in-sync with slave
+-- Force wait for primary to be in-sync with replica
 To avoid race between DML and table drop
 flush logs;
 drop procedure test.doit;
@@ -2404,6 +2404,6 @@ flush logs;
 flush logs;
 drop table mysql.ndb_replication;
 -- Attempt to get system back in pre-test state
-stop slave;
-reset slave;
+stop replica;
+reset replica;
 include/rpl_end.inc

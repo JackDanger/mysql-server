@@ -19,7 +19,7 @@ validate._cardInfo = {
 	//
 	//		A hash of valid CC abbreviations and regular expressions
 	//
-	//		mc: Mastercard
+	//		mc: Primarycard
 	//		ec: Eurocard
 	//		vi: Visa
 	//		ax: American Express

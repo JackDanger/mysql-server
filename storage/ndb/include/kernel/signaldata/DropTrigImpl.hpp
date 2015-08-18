@@ -66,7 +66,7 @@ struct DropTrigImplRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 

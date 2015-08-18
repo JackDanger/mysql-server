@@ -4,7 +4,7 @@
 --source include/force_myisam_default.inc
 
 -- source include/have_ndb.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 -- source include/have_binlog_format_mixed_or_row.inc
 -- source include/have_multi_ndb.inc
 
@@ -40,9 +40,9 @@ CREATE TABLE t1 (pk INT PRIMARY KEY, a INT) engine = ndb;
 # showing CREATE/DROP USER and GRANTs are written as statements
 # in binlog
 connection server1;
-let $binlog_start_server1= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_start_server1= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 connection server2;
-let $binlog_start_server2= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_start_server2= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 connection server1;
 
 CREATE USER 'user'@'localhost' IDENTIFIED by 'mypass';
@@ -69,8 +69,8 @@ CREATE USER 'user3'@'localhost' IDENTIFIED by 'mypass';
 select distinct User,Authentication_string from mysql.user order by User;
 select User,Table_priv from mysql.tables_priv ORDER BY User;
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
 select distinct User,Authentication_string from mysql.user order by User;
 select User,Table_priv from mysql.tables_priv ORDER BY User;
@@ -89,8 +89,8 @@ select distinct User,Authentication_string from mysql.user order by User;
 select User,Table_priv from mysql.tables_priv ORDER BY User;
 select User, Table_name, Column_name from mysql.columns_priv ORDER BY User;
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
 select distinct User,Authentication_string from mysql.user order by User;
 select User,Table_priv from mysql.tables_priv ORDER BY User;
@@ -115,8 +115,8 @@ connection server1;
 select distinct User,Authentication_string from mysql.user order by User;
 select User,Table_priv from mysql.tables_priv ORDER BY User;
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
 select distinct User,Authentication_string from mysql.user order by User;
 select User,Table_priv from mysql.tables_priv ORDER BY User;
@@ -159,22 +159,22 @@ DROP USER 'user3'@'localhost';
 
 DROP TABLE t1;
 
-sync_slave_with_master;
+sync_replica_with_primary;
 
-STOP SLAVE;
+STOP REPLICA;
 
 # Restore local privileges
 connection server1;
 call mysql.mysql_cluster_backup_privileges();
 connection server2;
 call mysql.mysql_cluster_backup_privileges();
-connection slave;
+connection replica;
 call mysql.mysql_cluster_backup_privileges();
 connection server1;
 call mysql.mysql_cluster_restore_local_privileges();
 connection server2;
 call mysql.mysql_cluster_restore_local_privileges();
-connection slave;
+connection replica;
 call mysql.mysql_cluster_restore_local_privileges();
 
 
@@ -228,7 +228,7 @@ drop procedure mysql.mysql_cluster_restore_privileges;
 drop procedure mysql.mysql_cluster_restore_privileges_from_local;
 drop procedure mysql.mysql_cluster_move_privileges;
 
-connection slave;
+connection replica;
 
 # Drop the local backup tables
 drop table mysql.user_backup;
@@ -237,7 +237,7 @@ drop table mysql.tables_priv_backup;
 drop table mysql.columns_priv_backup;
 drop table mysql.procs_priv_backup;
 
-# Drop the distributed backup tables(slave is stopped they
+# Drop the distributed backup tables(replica is stopped they
 # should still be there)
 drop table mysql.ndb_user_backup;
 drop table mysql.ndb_db_backup;

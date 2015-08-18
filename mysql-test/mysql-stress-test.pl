@@ -510,8 +510,8 @@ unshift @mysqltest_args, "--database=$opt_server_database";
 
 #Export variables that could be used in tests
 $ENV{MYSQL_TEST_DIR}=$test_dataset_dir;
-$ENV{MASTER_MYPORT}=$opt_server_port;
-$ENV{MASTER_MYSOCK}=$opt_server_socket;
+$ENV{PRIMARY_MYPORT}=$opt_server_port;
+$ENV{PRIMARY_MYSOCK}=$opt_server_socket;
 
 print <<EOF;
 TEST-SUITE-BASEDIR: $opt_stress_suite_basedir

@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 #
 # Coverage for the user-level lock related functions
 # GET_LOCK, RELEASE_LOCK, RELEASE_ALL_LOCKS, IS_USED_LOCK and IS_FREE_LOCK
@@ -40,9 +40,9 @@ SIGNAL SQLSTATE '45000'
 END IF;
 END;|
 INSERT INTO t1 VALUES (6,6), (7,7), (8,8);
-include/sync_slave_sql_with_master.inc
-# FT_RPL-3: Check that there is no diff in table content between master
-#           and slave in case binlog_format != 'statement'.
+include/sync_replica_sql_with_primary.inc
+# FT_RPL-3: Check that there is no diff in table content between primary
+#           and replica in case binlog_format != 'statement'.
 DROP TRIGGER trig_t1_ins;
 DROP TABLE t1;
 #

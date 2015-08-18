@@ -423,19 +423,19 @@ source include/implicit_commit_helper.inc;
 drop temporary table t4;
 
 --echo #
---echo # SQLCOM_SHOW_MASTER_STAT
+--echo # SQLCOM_SHOW_PRIMARY_STAT
 --echo #
 
 let $statement=
-  show master status;
+  show primary status;
 source include/implicit_commit_helper.inc;
 
 --echo #
---echo # SQLCOM_SHOW_SLAVE_STAT
+--echo # SQLCOM_SHOW_REPLICA_STAT
 --echo #
 
 let $statement=
-  show slave status;
+  show replica status;
 source include/implicit_commit_helper.inc;
 
 --echo #
@@ -666,11 +666,11 @@ source include/implicit_commit_helper.inc;
 --echo #
 
 --echo #
---echo # SQLCOM_SLAVE_START
+--echo # SQLCOM_REPLICA_START
 --echo #
 
 --echo #
---echo # SQLCOM_SLAVE_STOP
+--echo # SQLCOM_REPLICA_STOP
 --echo #
 
 --echo #
@@ -682,7 +682,7 @@ let $statement=
 source include/implicit_commit_helper.inc;
 
 --echo #
---echo # SQLCOM_CHANGE_MASTER
+--echo # SQLCOM_CHANGE_PRIMARY
 --echo #
 
 --echo #
@@ -742,11 +742,11 @@ let $statement=
 source include/implicit_commit_helper.inc;
 
 --echo #
---echo # SQLCOM_SHOW_SLAVE_HOSTS
+--echo # SQLCOM_SHOW_REPLICA_HOSTS
 --echo #
 
 let $statement=
-  show slave hosts;
+  show replica hosts;
 source include/implicit_commit_helper.inc;
 
 --echo #
@@ -758,7 +758,7 @@ let $statement=
 source include/implicit_commit_helper.inc;
 
 --echo #
---echo # SQLCOM_SHOW_NEW_MASTER
+--echo # SQLCOM_SHOW_NEW_PRIMARY
 --echo #
 
 --echo #
@@ -1128,7 +1128,7 @@ source include/implicit_commit_helper.inc;
 #  restore from 'backup_db1.ba';
 #source include/implicit_commit_helper.inc;
 
-#--remove_file $MYSQLTEST_VARDIR/master-data/backup_db1.ba
+#--remove_file $MYSQLTEST_VARDIR/primary-data/backup_db1.ba
 #
 #drop database backup_db;
 

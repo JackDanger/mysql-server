@@ -1,10 +1,10 @@
 ==== Initialization ====
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
----- setup master ----
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+---- setup primary ----
 CREATE TABLE myisam_innodb (a INT) ENGINE=MYISAM;
 CREATE TABLE innodb_myisam (a INT) ENGINE=INNODB;
 CREATE TABLE myisam_ndb    (a INT) ENGINE=MYISAM;
@@ -41,7 +41,7 @@ Table	Create Table
 ndb_innodb	CREATE TABLE `ndb_innodb` (
   `a` int(11) DEFAULT NULL
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1
----- setup slave with different engines ----
+---- setup replica with different engines ----
 DROP TABLE myisam_innodb, innodb_myisam;
 DROP TABLE myisam_ndb, ndb_myisam;
 DROP TABLE innodb_ndb, ndb_innodb;
@@ -206,7 +206,7 @@ INSERT INTO ndb_innodb VALUES (57);
 INSERT INTO ndb_innodb VALUES (58);
 INSERT INTO innodb_ndb VALUES (59);
 INSERT INTO innodb_ndb VALUES (60);
-==== AUTOCOMMIT=0, single statements, myisam on master ====
+==== AUTOCOMMIT=0, single statements, myisam on primary ====
 SET AUTOCOMMIT = 0;
 INSERT INTO myisam_innodb VALUES (61);
 INSERT INTO myisam_innodb VALUES (62);
@@ -273,12 +273,12 @@ a
 34
 57
 58
-include/diff_tables.inc [master:myisam_innodb, slave:myisam_innodb]
-include/diff_tables.inc [master:innodb_myisam, slave:innodb_myisam]
-include/diff_tables.inc [master:myisam_ndb, slave:myisam_ndb]
-include/diff_tables.inc [master:ndb_myisam, slave:ndb_myisam]
-include/diff_tables.inc [master:innodb_ndb, slave:innodb_ndb]
-include/diff_tables.inc [master:ndb_innodb, slave:ndb_innodb]
+include/diff_tables.inc [primary:myisam_innodb, replica:myisam_innodb]
+include/diff_tables.inc [primary:innodb_myisam, replica:innodb_myisam]
+include/diff_tables.inc [primary:myisam_ndb, replica:myisam_ndb]
+include/diff_tables.inc [primary:ndb_myisam, replica:ndb_myisam]
+include/diff_tables.inc [primary:innodb_ndb, replica:innodb_ndb]
+include/diff_tables.inc [primary:ndb_innodb, replica:ndb_innodb]
 ==== Clean up ====
 drop table myisam_innodb, innodb_myisam;
 drop table myisam_ndb, ndb_myisam;

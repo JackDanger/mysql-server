@@ -12,11 +12,11 @@
 --source include/have_ndb.inc
 --source include/have_ndb_extra.inc
 --source include/have_binlog_format_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --disable_warnings
-# reset master
-connection master;
+# reset primary
+connection primary;
 DROP DATABASE IF EXISTS TEST_DB;
 CREATE DATABASE TEST_DB;
 --enable_warnings
@@ -25,7 +25,7 @@ CREATE DATABASE TEST_DB;
 # These tables should correspond to the table definitions in
 # storage/ndb/test/ndbapi/bench/
 #
-connection master;
+connection primary;
 USE TEST_DB;
 CREATE TABLE SUBSCRIBER
                 ( NUMBER       CHAR(12) BINARY NOT NULL,

@@ -361,9 +361,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -431,7 +431,7 @@ Super_priv,
 Create_tmp_table_priv, 
 Lock_tables_priv,  
 Execute_priv,
-Repl_slave_priv, 
+Repl_replica_priv, 
 Repl_client_priv, 
 /*!50001 
 Create_view_priv, 
@@ -497,9 +497,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK

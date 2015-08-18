@@ -20,10 +20,10 @@
 
 [mysqld.1]
 
-# Run the master.sh script before starting this process
-#!run-master-sh
+# Run the primary.sh script before starting this process
+#!run-primary-sh
 
-log-bin=                 master-bin
+log-bin=                 primary-bin
 
 # Run tests with the performance schema instrumentation
 loose-enable-performance-schema
@@ -32,5 +32,5 @@ loose-enable-performance-schema
 disable-force-if-open
 
 [ENV]
-MASTER_MYPORT=           @mysqld.1.port
-MASTER_MYSOCK=           @mysqld.1.socket
+PRIMARY_MYPORT=           @mysqld.1.port
+PRIMARY_MYSOCK=           @mysqld.1.socket

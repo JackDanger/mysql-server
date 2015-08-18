@@ -25,7 +25,7 @@
 #include "table_replication_applier_status.h"
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_info.h"
 #include  "rpl_rli.h"
 #include "rpl_mi.h"
@@ -109,7 +109,7 @@ ha_rows table_replication_applier_status::get_row_count()
 
 int table_replication_applier_status::rnd_next(void)
 {
-  Master_info *mi;
+  Primary_info *mi;
 
   mysql_mutex_lock(&LOCK_msr_map);
 
@@ -136,7 +136,7 @@ int table_replication_applier_status::rnd_next(void)
 
 int table_replication_applier_status::rnd_pos(const void *pos)
 {
-  Master_info *mi=NULL;
+  Primary_info *mi=NULL;
   set_position(pos);
 
   mysql_mutex_lock(&LOCK_msr_map);
@@ -154,9 +154,9 @@ int table_replication_applier_status::rnd_pos(const void *pos)
 
 }
 
-void table_replication_applier_status::make_row(Master_info *mi)
+void table_replication_applier_status::make_row(Primary_info *mi)
 {
-  char *slave_sql_running_state= NULL;
+  char *replica_sql_running_state= NULL;
 
   m_row_exists= false;
 
@@ -168,7 +168,7 @@ void table_replication_applier_status::make_row(Master_info *mi)
 
   mysql_mutex_lock(&mi->rli->info_thd_lock);
 
-  slave_sql_running_state= const_cast<char *>
+  replica_sql_running_state= const_cast<char *>
                            (mi->rli->info_thd ?
                             mi->rli->info_thd->get_proc_info() : "");
   mysql_mutex_unlock(&mi->rli->info_thd_lock);
@@ -177,13 +177,13 @@ void table_replication_applier_status::make_row(Master_info *mi)
   mysql_mutex_lock(&mi->data_lock);
   mysql_mutex_lock(&mi->rli->data_lock);
 
-  if (mi->rli->slave_running)
+  if (mi->rli->replica_running)
     m_row.service_state= PS_RPL_YES;
   else
     m_row.service_state= PS_RPL_NO;
 
   m_row.remaining_delay= 0;
-  if (slave_sql_running_state == stage_sql_thd_waiting_until_delay.m_name)
+  if (replica_sql_running_state == stage_sql_thd_waiting_until_delay.m_name)
   {
     time_t t= my_time(0), sql_delay_end= mi->rli->get_sql_delay_end();
     m_row.remaining_delay= (uint)(t < sql_delay_end ?

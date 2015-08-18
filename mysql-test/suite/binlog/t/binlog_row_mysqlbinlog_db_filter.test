@@ -27,7 +27,7 @@
 -- source include/have_binlog_format_row.inc
 -- source include/have_innodb.inc
 
-RESET MASTER;
+RESET PRIMARY;
 -- let $MYSQLD_DATADIR= `select @@datadir`
 
 CREATE TABLE t1 (id int);
@@ -72,8 +72,8 @@ COMMIT;
 
 FLUSH LOGS;
 
--- let $log_file1= $MYSQLD_DATADIR/master-bin.000001
--- let $log_file2= $MYSQLD_DATADIR/master-bin.000002
+-- let $log_file1= $MYSQLD_DATADIR/primary-bin.000001
+-- let $log_file2= $MYSQLD_DATADIR/primary-bin.000002
 -- let $outfile= $MYSQLTEST_VARDIR/tmp/b42941-mysqlbinlog
 -- let $cmd= $MYSQL_BINLOG
 
@@ -98,7 +98,7 @@ while($i)
     # do nothing $flags is already set as it should be
 #  }
 
-  # execute mysqlbinlog on the two available master binlog files
+  # execute mysqlbinlog on the two available primary binlog files
   -- exec $cmd $flags $log_file1 > $outfile.1
   -- exec $cmd $flags $log_file2 > $outfile.2
 

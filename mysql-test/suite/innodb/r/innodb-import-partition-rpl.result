@@ -1,28 +1,28 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP TABLE IF EXISTS t1;
-# On slave
+# On replica
 set global innodb_file_per_table = 1;
-# On master
+# On primary
 set global innodb_file_per_table = 1;
-# Create partitioned table on master
+# Create partitioned table on primary
 CREATE TABLE t1 ( i INT ) ENGINE = InnoDB  PARTITION BY HASH(i) PARTITIONS 3;
 CREATE TABLE t2 ( i INT ) ENGINE = InnoDB  PARTITION BY KEY(i) PARTITIONS 3;
 INSERT INTO t1 VALUES (1),(111),(321);
 INSERT INTO t2 VALUES (0),(1),(2);
 FLUSH TABLES t1,t2 FOR EXPORT;
-include/sync_slave_sql_with_master.inc
-# set MYSQLD_DATADIR with master datadir to copy idb and cfg files
+include/sync_replica_sql_with_primary.inc
+# set MYSQLD_DATADIR with primary datadir to copy idb and cfg files
 backup: t1#P#p0
 backup: t1#P#p1
 backup: t1#P#p2
 backup: t2#P#p0
 backup: t2#P#p1
-# On slave
-# check table created on slave
+# On replica
+# check table created on replica
 SELECT * FROM t1;
 i
 111
@@ -33,25 +33,25 @@ i
 0
 1
 2
-# On master
-# DISCARD TABLESPACE on master.It will be also discarded from slave.
+# On primary
+# DISCARD TABLESPACE on primary.It will be also discarded from replica.
 UNLOCK TABLES;
 ALTER TABLE t1 DISCARD TABLESPACE;
 ALTER TABLE t2 DISCARD PARTITION p0,p1 TABLESPACE;
-include/sync_slave_sql_with_master.inc
-# Copy back ibd and cfg files on master
+include/sync_replica_sql_with_primary.inc
+# Copy back ibd and cfg files on primary
 restore: t1#P#p0 .ibd and .cfg files
 restore: t1#P#p1 .ibd and .cfg files
 restore: t1#P#p2 .ibd and .cfg files
 restore: t2#P#p0 .ibd and .cfg files
 restore: t2#P#p1 .ibd and .cfg files
-# Copy back ibd and cfg files on slave
+# Copy back ibd and cfg files on replica
 restore: t1#P#p0 .ibd and .cfg files
 restore: t1#P#p1 .ibd and .cfg files
 restore: t1#P#p2 .ibd and .cfg files
 restore: t2#P#p0 .ibd and .cfg files
 restore: t2#P#p1 .ibd and .cfg files
-# IMPORT TABLESPACE on master.It will be also imported on slave.
+# IMPORT TABLESPACE on primary.It will be also imported on replica.
 ALTER TABLE t1 IMPORT TABLESPACE;
 SELECT * FROM t1;
 i
@@ -64,9 +64,9 @@ i
 0
 1
 2
-include/sync_slave_sql_with_master.inc
-# On slave
-# Verify table data on slave
+include/sync_replica_sql_with_primary.inc
+# On replica
+# Verify table data on replica
 SELECT * FROM t1;
 i
 111

@@ -1,10 +1,10 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 **** Test case for BUG#16487 ****
-**** Master ****
+**** Primary ****
 set @orig_sql_mode= @@sql_mode;
 set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 Warnings:
@@ -12,13 +12,13 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 CREATE TABLE test.t4 (a int);
 CREATE TABLE test.t1 (a int);
 UPDATE test.t4 NATURAL JOIN test.t1 SET t1.a=5;
-**** Slave ****
+**** Replica ****
 SELECT * FROM t4;
 a
 DROP TABLE t1;
 DROP TABLE t4;
 **** Test case for BUG#25482 ****
-**** Adding GRANTS on master ****
+**** Adding GRANTS on primary ****
 create table test.t1(a int);
 create table test.t4(a int);
 GRANT SELECT ON test.t1 TO mysqltest1@localhost;
@@ -78,7 +78,7 @@ flush privileges;
 show grants for mysqltest5@somehost;
 Grants for mysqltest5@somehost
 GRANT USAGE ON *.* TO 'mysqltest5'@'somehost'
-**** Checking grants on slave ****
+**** Checking grants on replica ****
 show grants for mysqltest2@localhost;
 Grants for mysqltest2@localhost
 GRANT USAGE ON *.* TO 'mysqltest2'@'localhost'
@@ -101,7 +101,7 @@ GRANT SELECT, INSERT ON *.* TO 'mysqltest6'@'localhost'
 GRANT INSERT ON `test`.* TO 'mysqltest6'@'localhost'
 show grants for mysqltest1@localhost;
 ERROR 42000: There is no such grant defined for user 'mysqltest1' on host 'localhost'
-**** Revoking grants on master ****
+**** Revoking grants on primary ****
 REVOKE SELECT ON test.t1 FROM mysqltest1@localhost;
 REVOKE SELECT ON mysqltest2.t2 FROM mysqltest4@localhost;
 REVOKE select(a) on t4
@@ -117,7 +117,7 @@ GRANT INSERT, INSERT (a), UPDATE (a), REFERENCES (a) ON `test`.`t4` TO 'mysqltes
 show grants for mysqltest4@localhost;
 Grants for mysqltest4@localhost
 GRANT USAGE ON *.* TO 'mysqltest4'@'localhost'
-**** Checking grants on slave ****
+**** Checking grants on replica ****
 show grants for mysqltest1@localhost;
 ERROR 42000: There is no such grant defined for user 'mysqltest1' on host 'localhost'
 show grants for mysqltest3@localhost;
@@ -128,8 +128,8 @@ GRANT INSERT, INSERT (a), UPDATE (a), REFERENCES (a) ON `test`.`t4` TO 'mysqltes
 show grants for mysqltest4@localhost;
 Grants for mysqltest4@localhost
 GRANT USAGE ON *.* TO 'mysqltest4'@'localhost'
-set global slave_exec_mode='IDEMPOTENT';
-call mtr.add_suppression("Slave SQL.*Could not execute Delete_rows event on table mysql.* Error_code: 1032");
+set global replica_exec_mode='IDEMPOTENT';
+call mtr.add_suppression("Replica SQL.*Could not execute Delete_rows event on table mysql.* Error_code: 1032");
 drop table t1, mysqltest2.t2;
 drop table t4;
 drop database mysqltest2;
@@ -148,7 +148,7 @@ INSERT INTO t5 (word)  VALUES ('TEST’');
 SELECT HEX(word) FROM t5;
 HEX(word)
 54455354E28099
-set @@global.slave_exec_mode= default;
+set @@global.replica_exec_mode= default;
 SELECT HEX(word) FROM t5;
 HEX(word)
 54455354E28099

@@ -28,9 +28,9 @@
 #include "rpl_injector.h"
 #include "rpl_filter.h"
 #if MYSQL_VERSION_ID > 50600
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #else
-#include "slave.h"
+#include "replica.h"
 #include "log_event.h"
 #endif
 #include "binlog.h"
@@ -46,7 +46,7 @@ extern my_bool opt_ndb_log_updated_only;
 extern my_bool opt_ndb_log_binlog_index;
 extern my_bool opt_ndb_log_apply_status;
 extern ulong opt_ndb_extra_logging;
-extern st_ndb_slave_state g_ndb_slave_state;
+extern st_ndb_replica_state g_ndb_replica_state;
 extern my_bool opt_ndb_log_transaction_id;
 extern my_bool log_bin_use_v1_row_events;
 extern my_bool opt_ndb_log_empty_update;
@@ -161,8 +161,8 @@ NDB_SHARE *ndb_apply_status_share= 0;
 NDB_SHARE *ndb_schema_share= 0;
 static native_mutex_t ndb_schema_share_mutex;
 
-extern my_bool opt_log_slave_updates;
-static my_bool g_ndb_log_slave_updates;
+extern my_bool opt_log_replica_updates;
+static my_bool g_ndb_log_replica_updates;
 
 static bool g_injector_v1_warning_emitted = false;
 
@@ -460,7 +460,7 @@ get_ndb_blobs_value(TABLE* table, NdbValue* value_array,
 
 
 /*****************************************************************
-  functions called from master sql client threads
+  functions called from primary sql client threads
 ****************************************************************/
 
 /*
@@ -558,9 +558,9 @@ static int ndbcluster_reset_logs(THD *thd)
   if (!ndb_binlog_running)
     return 0;
 
-  /* only reset master should reset logs */
+  /* only reset primary should reset logs */
   if (!((thd->lex->sql_command == SQLCOM_RESET) &&
-        (thd->lex->type & REFRESH_MASTER)))
+        (thd->lex->type & REFRESH_PRIMARY)))
     return 0;
 
   DBUG_ENTER("ndbcluster_reset_logs");
@@ -642,7 +642,7 @@ ndbcluster_binlog_index_purge_file(THD *passed_thd, const char *file)
   DBUG_ENTER("ndbcluster_binlog_index_purge_file");
   DBUG_PRINT("enter", ("file: %s", file));
 
-  if (!ndb_binlog_running || (passed_thd && passed_thd->slave_thread))
+  if (!ndb_binlog_running || (passed_thd && passed_thd->replica_thread))
     DBUG_RETURN(0);
 
   /**
@@ -837,15 +837,15 @@ int ndbcluster_binlog_end(THD *thd)
 }
 
 /*****************************************************************
-  functions called from slave sql client threads
+  functions called from replica sql client threads
 ****************************************************************/
-static void ndbcluster_reset_slave(THD *thd)
+static void ndbcluster_reset_replica(THD *thd)
 {
   int error = 0;
   if (!ndb_binlog_running)
     return;
 
-  DBUG_ENTER("ndbcluster_reset_slave");
+  DBUG_ENTER("ndbcluster_reset_replica");
 
   /*
     delete all rows from mysql.ndb_apply_status table
@@ -863,7 +863,7 @@ static void ndbcluster_reset_slave(THD *thd)
     error = 1;
   }
 
-  g_ndb_slave_state.atResetSlave();
+  g_ndb_replica_state.atResetReplica();
 
   // pending fix for bug#59844 will make this function return int
   DBUG_VOID_RETURN;
@@ -884,8 +884,8 @@ static int ndbcluster_binlog_func(handlerton *hton, THD *thd,
   case BFN_RESET_LOGS:
     res= ndbcluster_reset_logs(thd);
     break;
-  case BFN_RESET_SLAVE:
-    ndbcluster_reset_slave(thd);
+  case BFN_RESET_REPLICA:
+    ndbcluster_reset_replica(thd);
     break;
   case BFN_BINLOG_WAIT:
     ndbcluster_binlog_wait(thd);
@@ -1628,7 +1628,7 @@ static void ndb_report_waiting(const char *key,
 }
 
 
-extern void update_slave_api_stats(Ndb*);
+extern void update_replica_api_stats(Ndb*);
 
 int ndbcluster_log_schema_op(THD *thd,
                              const char *query, int query_length,
@@ -1655,8 +1655,8 @@ int ndbcluster_log_schema_op(THD *thd,
               query, db, table_name, thd_ndb->options));
   if (!ndb_schema_share || thd_ndb->options & TNO_NO_LOG_SCHEMA_OP)
   {
-    if (thd->slave_thread)
-      update_slave_api_stats(thd_ndb->ndb);
+    if (thd->replica_thread)
+      update_replica_api_stats(thd_ndb->ndb);
 
     DBUG_RETURN(0);
   }
@@ -1893,7 +1893,7 @@ int ndbcluster_log_schema_op(THD *thd,
       DBUG_ASSERT(r == 0);
       /* any value */
       Uint32 anyValue = 0;
-      if (! thd->slave_thread)
+      if (! thd->replica_thread)
       {
         /* Schema change originating from this MySQLD, check SQL_LOG_BIN
          * variable and pass 'setting' to all logging MySQLDs via AnyValue  
@@ -1912,7 +1912,7 @@ int ndbcluster_log_schema_op(THD *thd,
       else
       {
         /* 
-           Slave propagating replicated schema event in ndb_schema
+           Replica propagating replicated schema event in ndb_schema
            In case replicated serverId is composite 
            (server-id-bits < 31) we copy it into the 
            AnyValue as-is
@@ -2074,8 +2074,8 @@ end:
                           query);
   }
 
-  if (thd->slave_thread)
-    update_slave_api_stats(ndb);
+  if (thd->replica_thread)
+    update_replica_api_stats(ndb);
 
   DBUG_RETURN(0);
 }
@@ -2520,13 +2520,13 @@ class Ndb_schema_event_handler {
     if (queryServerId)
     {
       /*
-         AnyValue has non-zero serverId, must be a query applied by a slave
+         AnyValue has non-zero serverId, must be a query applied by a replica
          mysqld.
          TODO : Assert that we are running in the Binlog injector thread?
       */
-      if (! g_ndb_log_slave_updates)
+      if (! g_ndb_log_replica_updates)
       {
-        /* This MySQLD does not log slave updates */
+        /* This MySQLD does not log replica updates */
         return;
       }
     }
@@ -3889,8 +3889,8 @@ public:
 */
 struct ndb_binlog_index_row {
   ulonglong epoch;
-  const char *start_master_log_file;
-  ulonglong start_master_log_pos;
+  const char *start_primary_log_file;
+  ulonglong start_primary_log_pos;
   ulong n_inserts;
   ulong n_updates;
   ulong n_deletes;
@@ -3901,8 +3901,8 @@ struct ndb_binlog_index_row {
 
   ulong gci;
 
-  const char *next_master_log_file;
-  ulonglong next_master_log_pos;
+  const char *next_primary_log_file;
+  ulonglong next_primary_log_pos;
 
   struct ndb_binlog_index_row *next;
 };
@@ -3992,10 +3992,10 @@ ndb_binlog_index_table__write_rows(THD *thd,
     empty_record(ndb_binlog_index);
 
     ndb_binlog_index->field[NBICOL_START_POS]
-      ->store(first->start_master_log_pos, true);
+      ->store(first->start_primary_log_pos, true);
     ndb_binlog_index->field[NBICOL_START_FILE]
-      ->store(first->start_master_log_file,
-              (uint)strlen(first->start_master_log_file),
+      ->store(first->start_primary_log_file,
+              (uint)strlen(first->start_primary_log_file),
               &my_charset_bin);
     ndb_binlog_index->field[NBICOL_EPOCH]
       ->store(epoch= first->epoch, true);
@@ -4024,10 +4024,10 @@ ndb_binlog_index_table__write_rows(THD *thd,
       {
         /* Table has next log pos fields, fill them in */
         ndb_binlog_index->field[NBICOL_NEXT_POS]
-          ->store(first->next_master_log_pos, true);
+          ->store(first->next_primary_log_pos, true);
         ndb_binlog_index->field[NBICOL_NEXT_FILE]
-          ->store(first->next_master_log_file,
-                  (uint)strlen(first->next_master_log_file),
+          ->store(first->next_primary_log_file,
+                  (uint)strlen(first->next_primary_log_file),
                   &my_charset_bin);
       }
       row= row->next;
@@ -4144,7 +4144,7 @@ int ndbcluster_binlog_start()
   {
     sql_print_warning("NDB: server id set to zero - changes logged to "
                       "bin log with server id zero will be logged with "
-                      "another server id by slave mysqlds");
+                      "another server id by replica mysqlds");
   }
 
   /* 
@@ -4373,7 +4373,7 @@ ndbcluster_get_binlog_replication_info(THD *thd, Ndb *ndb,
       */
       if (opt_ndb_extra_logging)
       {
-        sql_print_warning("NDB Slave: Table %s.%s : Parse error on conflict fn : %s",
+        sql_print_warning("NDB Replica: Table %s.%s : Parse error on conflict fn : %s",
                           db, table_name,
                           msgbuf);
       }
@@ -4437,7 +4437,7 @@ ndbcluster_apply_binlog_replication_info(THD *thd,
         for cases where thd warning stack is
         ignored
       */
-      sql_print_warning("NDB Slave: Table %s.%s : %s",
+      sql_print_warning("NDB Replica: Table %s.%s : %s",
                         share->db,
                         share->table_name,
                         tmp_buf);
@@ -4453,7 +4453,7 @@ ndbcluster_apply_binlog_replication_info(THD *thd,
   else
   {
     /* No conflict function specified */
-    slave_reset_conflict_fn(share->m_cfn_share);
+    replica_reset_conflict_fn(share->m_cfn_share);
   }
 
   DBUG_RETURN(0);
@@ -5171,7 +5171,7 @@ ndbcluster_handle_drop_table(THD *thd, Ndb *ndb, NDB_SHARE *share,
   The penalty for this is that the drop table becomes slow.
 
   This wait is however not strictly neccessary to produce a binlog
-  that is usable.  However the slave does not currently handle
+  that is usable.  However the replica does not currently handle
   these out of order, thus we are keeping the SYNC_DROP_ defined
   for now.
 */
@@ -5532,7 +5532,7 @@ handle_data_event(THD* thd, Ndb *ndb, NdbEventOperation *pOp,
                   ndb_binlog_index_row **rows,
                   injector::transaction &trans,
                   unsigned &trans_row_count,
-                  unsigned &trans_slave_row_count)
+                  unsigned &trans_replica_row_count)
 {
   Ndb_event_data *event_data= (Ndb_event_data *) pOp->getCustomData();
   TABLE *table= event_data->shadow_table;
@@ -5580,7 +5580,7 @@ handle_data_event(THD* thd, Ndb *ndb, NdbEventOperation *pOp,
   }
 
   uint32 originating_server_id= ndbcluster_anyvalue_get_serverid(anyValue);
-  bool log_this_slave_update = g_ndb_log_slave_updates;
+  bool log_this_replica_update = g_ndb_log_replica_updates;
   bool count_this_event = true;
 
   if (share == ndb_apply_status_share)
@@ -5626,21 +5626,21 @@ handle_data_event(THD* thd, Ndb *ndb, NdbEventOperation *pOp,
         if (opt_ndb_log_apply_status)
         {
           /* 
-             Determine if event came from our immediate Master server
+             Determine if event came from our immediate Primary server
              Ignore locally manually sourced and reserved events 
           */
           if ((ndb_apply_status_logging_server_id != 0) &&
               (! ndbcluster_anyvalue_is_reserved(ndb_apply_status_logging_server_id)))
           {
-            bool isFromImmediateMaster = (ndb_apply_status_server_id ==
+            bool isFromImmediatePrimary = (ndb_apply_status_server_id ==
                                           ndb_apply_status_logging_server_id);
             
-            if (isFromImmediateMaster)
+            if (isFromImmediatePrimary)
             {
               /* 
                  We log this event with our server-id so that it 
-                 propagates back to the originating Master (our
-                 immediate Master)
+                 propagates back to the originating Primary (our
+                 immediate Primary)
               */
               assert(ndb_apply_status_logging_server_id != ::server_id);
               
@@ -5666,7 +5666,7 @@ handle_data_event(THD* thd, Ndb *ndb, NdbEventOperation *pOp,
        * Log this event in the Binlog
        */
       count_this_event = false;
-      log_this_slave_update = true;
+      log_this_replica_update = true;
     }
     else
     {
@@ -5682,13 +5682,13 @@ handle_data_event(THD* thd, Ndb *ndb, NdbEventOperation *pOp,
     assert(!reflected_op && !refresh_op);
     /* Track that we received a replicated row event */
     if (likely( count_this_event ))
-      trans_slave_row_count++;
+      trans_replica_row_count++;
     
-    if (!log_this_slave_update)
+    if (!log_this_replica_update)
     {
       /*
-        This event comes from a slave applier since it has an originating
-        server id set. Since option to log slave updates is not set, skip it.
+        This event comes from a replica applier since it has an originating
+        server id set. Since option to log replica updates is not set, skip it.
       */
       return 0;
     }
@@ -6021,7 +6021,7 @@ void updateInjectorStats(Ndb* schemaNdb, Ndb* dataNdb)
    Inject a WRITE_ROW event on the ndb_apply_status table into
    the Binlog.
    This contains our server_id and the supplied epoch number.
-   When applied on the Slave it gives a transactional position
+   When applied on the Replica it gives a transactional position
    marker
 */
 static
@@ -6442,7 +6442,7 @@ restart_cluster_failure:
       {
         sql_print_error("NDB Binlog: cluster has been restarted --initial or with older filesystem. "
                         "ndb_latest_handled_binlog_epoch: %u/%u, while current epoch: %u/%u. "
-                        "RESET MASTER should be issued. Resetting ndb_latest_handled_binlog_epoch.",
+                        "RESET PRIMARY should be issued. Resetting ndb_latest_handled_binlog_epoch.",
                         (uint)(ndb_latest_handled_binlog_epoch >> 32),
                         (uint)(ndb_latest_handled_binlog_epoch),
                         (uint)(schema_gci >> 32),
@@ -6591,7 +6591,7 @@ restart_cluster_failure:
     if (unlikely(schema_res > 0))
     {
       thd->proc_info= "Processing events from schema table";
-      g_ndb_log_slave_updates= opt_log_slave_updates;
+      g_ndb_log_replica_updates= opt_log_replica_updates;
       s_ndb->
         setReportThreshEventGCISlip(opt_ndb_report_thresh_binlog_epoch_slip);
       s_ndb->
@@ -6676,7 +6676,7 @@ restart_cluster_failure:
       ndb_binlog_index_row *rows= &_row;
       injector::transaction trans;
       unsigned trans_row_count= 0;
-      unsigned trans_slave_row_count= 0;
+      unsigned trans_replica_row_count= 0;
       if (!pOp)
       {
         /*
@@ -6721,7 +6721,7 @@ restart_cluster_failure:
         /* initialize some variables for this epoch */
 
         i_ndb->set_eventbuf_max_alloc(opt_ndb_eventbuffer_max_alloc);
-        g_ndb_log_slave_updates= opt_log_slave_updates;
+        g_ndb_log_replica_updates= opt_log_replica_updates;
         i_ndb->
           setReportThreshEventGCISlip(opt_ndb_report_thresh_binlog_epoch_slip);
         i_ndb->setReportThreshEventFreeMem(opt_ndb_report_thresh_binlog_mem_usage);
@@ -6731,7 +6731,7 @@ restart_cluster_failure:
         DBUG_PRINT("info", ("Initializing transaction"));
         inj->new_trans(thd, &trans);
         trans_row_count= 0;
-        trans_slave_row_count= 0;
+        trans_replica_row_count= 0;
         // pass table map before epoch
         {
           Uint32 iter= 0;
@@ -6860,7 +6860,7 @@ restart_cluster_failure:
           if ((unsigned) pOp->getEventType() <
               (unsigned) NDBEVENT::TE_FIRST_NON_DATA_EVENT)
             handle_data_event(thd, i_ndb, pOp, &rows, trans,
-                              trans_row_count, trans_slave_row_count);
+                              trans_row_count, trans_replica_row_count);
           else
           {
             handle_non_data_event(thd, pOp, *rows);
@@ -6907,7 +6907,7 @@ restart_cluster_failure:
             /*
               If 
                 - We did not add any 'real' rows to the Binlog AND
-                - We did not apply any slave row updates, only
+                - We did not apply any replica row updates, only
                   ndb_apply_status updates
               THEN
                 Don't write the Binlog transaction which just
@@ -6918,7 +6918,7 @@ restart_cluster_failure:
             */
             if ((trans_row_count == 0) &&
                 (! (opt_ndb_log_apply_status &&
-                    trans_slave_row_count) ))
+                    trans_replica_row_count) ))
             {
               /* nothing to commit, rollback instead */
               if (int r= trans.rollback())
@@ -6943,21 +6943,21 @@ restart_cluster_failure:
           injector::transaction::binlog_pos next = trans.next_pos();
           rows->gci= (Uint32)(gci >> 32); // Expose gci hi/lo
           rows->epoch= gci;
-          rows->start_master_log_file= start.file_name();
-          rows->start_master_log_pos= start.file_pos();
+          rows->start_primary_log_file= start.file_name();
+          rows->start_primary_log_pos= start.file_pos();
           if ((next.file_pos() == 0) &&
               ndb_log_empty_epochs())
           {
             /* Empty transaction 'committed' due to log_empty_epochs
              * therefore no next position
              */
-            rows->next_master_log_file= start.file_name();
-            rows->next_master_log_pos= start.file_pos();
+            rows->next_primary_log_file= start.file_name();
+            rows->next_primary_log_pos= start.file_pos();
           }
           else
           {
-            rows->next_master_log_file= next.file_name();
-            rows->next_master_log_pos= next.file_pos();
+            rows->next_primary_log_file= next.file_name();
+            rows->next_primary_log_pos= next.file_pos();
           }
 
           DBUG_PRINT("info", ("COMMIT gci: %lu", (ulong) gci));

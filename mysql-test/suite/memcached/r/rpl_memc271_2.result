@@ -5,24 +5,24 @@ INSERT INTO cache_policies VALUES("cache_policy", "innodb_only",
 INSERT INTO config_options VALUES("separator", "|");
 INSERT INTO containers VALUES ("desc_t1", "test", "t1",
 "c1", "c2,c21", "c3", "c4", "c5", "PRIMARY");
-include/master-slave.inc
+include/primary-replica.inc
 connection default;
 connect  $rpl_connection_name,127.0.0.1,root,,test,$_rpl_port,;
-connection master;
+connection primary;
 connection server_1;
 connect  $rpl_connection_name,127.0.0.1,root,,test,$_rpl_port,;
-connection master1;
+connection primary1;
 connection server_1;
 connect  $rpl_connection_name,127.0.0.1,root,,test,$_rpl_port,;
-connection slave;
+connection replica;
 connection server_1;
 connect  $rpl_connection_name,127.0.0.1,root,,test,$_rpl_port,;
-connection slave1;
+connection replica1;
 connection server_1;
 connection server_1;
 connection default;
-[connection master]
-connection master;
+[connection primary]
+connection primary;
 USE test;
 DROP TABLE IF EXISTS t1;
 CREATE TABLE t1        (c1 VARCHAR(32),
@@ -55,9 +55,9 @@ B	Berlin	Mitte
 C	Cottbus	West
 D	Darmstadt	City
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -75,7 +75,7 @@ B	Berlin	Mitte
 C	Cottbus	West
 D	Darmstadt	City
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after set:
 Essen|Ost
 SELECT c1,c2,c21 FROM t1;
@@ -85,9 +85,9 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -95,7 +95,7 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after add:
 Frankfurt|Sachsenhause
 SELECT c1,c2,c21 FROM t1;
@@ -106,9 +106,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	Sachsenhause
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -117,7 +117,7 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	Sachsenhause
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after replace:
 Frankfurt a. M.|Sachsenhausen
 SELECT c1,c2,c21 FROM t1;
@@ -128,9 +128,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt a. M.	Sachsenhausen
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -139,7 +139,7 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt a. M.	Sachsenhausen
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after delete:
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
@@ -148,9 +148,9 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -158,7 +158,7 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after add Frankfurt|:
 Frankfurt|
 Here the memcached results after add |Airport:
@@ -171,9 +171,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	NULL
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -182,7 +182,7 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	NULL
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after replace Frankfurt a.M.:
 Frankfurt a. M.|
 Here the memcached results after replace Sachsenhausen:
@@ -195,9 +195,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	NULL	Sachsenhausen
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -206,9 +206,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	NULL	Sachsenhausen
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 DROP TABLE t1;
-connection slave;
+connection replica;
 include/rpl_end.inc
 connection server_2;
 connection server_2;

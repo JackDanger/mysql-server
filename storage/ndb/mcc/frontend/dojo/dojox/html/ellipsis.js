@@ -10,7 +10,7 @@ _1=1;
 }
 try{
 var _2=(function(){
-var _3="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+var _3="http://www.mozilla.org/keyprimary/gatekeeper/there.is.only.xul";
 var _4=document.createElementNS(_3,"window");
 var _5=document.createElementNS(_3,"description");
 _5.setAttribute("crop","end");

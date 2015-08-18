@@ -1,5 +1,5 @@
-include/master-slave.inc
-[connection master]
+include/primary-replica.inc
+[connection primary]
 SET @tx_isolation= @@global.tx_isolation;
 SET GLOBAL TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 INSERT INTO cache_policies VALUES("cache_policy", "innodb_only",
@@ -39,16 +39,16 @@ B	Berlin	Mitte
 C	Cottbus	West
 D	Darmstadt	City
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
 C	Cottbus	West
 D	Darmstadt	City
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after set:
 Essen|Ost
 SELECT c1,c2,c21 FROM t1;
@@ -58,9 +58,9 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -68,7 +68,7 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after add:
 Frankfurt|Sachsenhause
 SELECT c1,c2,c21 FROM t1;
@@ -79,9 +79,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	Sachsenhause
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -90,7 +90,7 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	Sachsenhause
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after replace:
 Frankfurt a. M.|Sachsenhausen
 SELECT c1,c2,c21 FROM t1;
@@ -101,9 +101,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt a. M.	Sachsenhausen
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -112,7 +112,7 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt a. M.	Sachsenhausen
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after delete:
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
@@ -121,9 +121,9 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -131,7 +131,7 @@ C	Cottbus	West
 D	Darmstadt	City
 E	Essen	Ost
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after add Frankfurt|:
 Frankfurt|
 Here the memcached results after add |Airport:
@@ -144,9 +144,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	NULL
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -155,7 +155,7 @@ D	Darmstadt	City
 E	Essen	Ost
 F	Frankfurt	NULL
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 Here the memcached results after replace Frankfurt a.M.:
 Frankfurt a. M.|
 Here the memcached results after replace Sachsenhausen:
@@ -168,9 +168,9 @@ D	Darmstadt	City
 E	Essen	Ost
 F	NULL	Sachsenhausen
 H	Hamburg	Norderstedt
-sync_slave_with_master;
-connection slave;
-connection slave;
+sync_replica_with_primary;
+connection replica;
+connection replica;
 SELECT c1,c2,c21 FROM t1;
 c1	c2	c21
 B	Berlin	Mitte
@@ -179,12 +179,12 @@ D	Darmstadt	City
 E	Essen	Ost
 F	NULL	Sachsenhausen
 H	Hamburg	Norderstedt
-connection master;
+connection primary;
 DROP TABLE t1;
 UNINSTALL PLUGIN daemon_memcached;
 DROP DATABASE innodb_memcache;
 SET @@global.tx_isolation= @tx_isolation;
-connection slave;
+connection replica;
 include/rpl_end.inc
 connection server_2;
 connection server_2;

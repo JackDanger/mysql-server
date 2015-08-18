@@ -17,13 +17,13 @@ DROP VIEW IF EXISTS test.nstats_diff;
 DROP VIEW IF EXISTS test.nstats_current;
 DROP TABLE IF EXISTS test.nstats_baseline;
 
--- ndbapi slave stats in both, global_status and session_status
+-- ndbapi replica stats in both, global_status and session_status
 CREATE OR REPLACE VIEW test.nstats_current AS
         SELECT variable_name AS name, variable_value AS value
         FROM information_schema.global_status
 --        WHERE variable_name LIKE 'ndb_api%';
         WHERE variable_name LIKE 'ndb_api%count';
---        WHERE variable_name LIKE 'ndb_api%slave';
+--        WHERE variable_name LIKE 'ndb_api%replica';
 -- SELECT * FROM test.nstats_current;
 
 CREATE TABLE IF NOT EXISTS test.nstats_baseline(

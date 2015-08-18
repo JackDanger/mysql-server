@@ -1,39 +1,39 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 # Preparing the relaylog
-[connection slave]
-include/stop_slave.inc
-CHANGE MASTER TO MASTER_AUTO_POSITION=0;
-include/start_slave_io.inc
+[connection replica]
+include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION=0;
+include/start_replica_io.inc
 SET @save_debug=@@global.debug;
 SET GLOBAL DEBUG='d,stop_io_after_reading_gtid_log_event';
-# Create a transaction on the master
+# Create a transaction on the primary
 # that will have it's GTID and other events in separated relay log files
-[connection master]
+[connection primary]
 CREATE TABLE t1 (c1 INT) ENGINE=InnoDB;
-[connection slave]
-include/wait_for_slave_io_to_stop.inc
+[connection replica]
+include/wait_for_replica_io_to_stop.inc
 SET GLOBAL DEBUG=@save_debug;
-include/start_slave_io.inc
-# Create other transaction on the master
-[connection master]
+include/start_replica_io.inc
+# Create other transaction on the primary
+[connection primary]
 CREATE TABLE t2 (c1 INT) ENGINE=InnoDB;
-include/sync_slave_io_with_master.inc
+include/sync_replica_io_with_primary.inc
 # Restart the SQL thread until the beginning of the last relay log file
-[connection slave]
-START SLAVE SQL_THREAD UNTIL
-RELAY_LOG_FILE= 'slave-relay-bin.000003',
+[connection replica]
+START REPLICA SQL_THREAD UNTIL
+RELAY_LOG_FILE= 'replica-relay-bin.000003',
 RELAY_LOG_POS= 4;
-include/wait_for_slave_sql_to_stop.inc
+include/wait_for_replica_sql_to_stop.inc
 # Restart the SQL thread
-include/start_slave_sql.inc
-[connection master]
-include/sync_slave_sql_with_master.inc
+include/start_replica_sql.inc
+[connection primary]
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [t1 should be replicated]
 # Cleanup
-[connection master]
+[connection primary]
 DROP TABLE t1, t2;
 include/rpl_end.inc

@@ -9,18 +9,18 @@ NDB_STTORY -> DICT (sp=1)
 				Read schema file
 
 ******************************************************************************
-* Elect master
+* Elect primary
 ******************************************************************************
 
--- Master DIH --
+-- Primary DIH --
 
 Read sysfile
 
 COPY_GCIREQ -> all DIHs
 				
-DICTSTARTREQ -> local DICT (master)
+DICTSTARTREQ -> local DICT (primary)
 
-				master
+				primary
                                 ======
 		                For each table (that should be started)
 				  1) ReadTableFile

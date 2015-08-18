@@ -35,26 +35,26 @@ SET @@session.default_storage_engine = 'InnoDB';
 
 #------------------------------------------------------------------------------#
 # Execute the tests to be applied to all storage engines
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-connection master;
+connection primary;
 create table t1 (a int, b int generated always as (a+1) virtual);
 show create table t1;
 insert into t1 values (1,default);
 insert into t1 values (2,default);
 select * from t1;
-save_master_pos;
+save_primary_pos;
 
-connection slave;
-sync_with_master;
+connection replica;
+sync_with_primary;
 select * from t1;
 
-connection master;
+connection primary;
 drop table t1;
-save_master_pos;
+save_primary_pos;
 
-connection slave;
-sync_with_master;
+connection replica;
+sync_with_primary;
 
 #------------------------------------------------------------------------------#
 # Execute storage engine specific tests

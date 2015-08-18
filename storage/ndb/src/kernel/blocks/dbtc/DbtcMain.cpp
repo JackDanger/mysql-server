@@ -941,7 +941,7 @@ void Dbtc::execREAD_NODESCONF(Signal* signal)
   ReadNodesConf * const readNodes = (ReadNodesConf *)&signal->theData[0];
 
   csystemnodes  = readNodes->noOfNodes;
-  cmasterNodeId = readNodes->masterNodeId;
+  cprimaryNodeId = readNodes->primaryNodeId;
 
   con_lineNodes = 0;
   arrGuard(csystemnodes, MAX_NDB_NODES);
@@ -3309,7 +3309,7 @@ void Dbtc::execTCKEYREQ(Signal* signal)
       if (regApiPtr->m_flags & ApiConnectRecord::TF_DEFERRED_CONSTRAINTS)
       {
         /**
-         * Allow slave applier to ignore m_max_writes_per_trans
+         * Allow replica applier to ignore m_max_writes_per_trans
          */
         break;
       }
@@ -9059,7 +9059,7 @@ void Dbtc::execNODE_FAILREP(Signal* signal)
 
   cfailure_nr = nodeFail->failNo;
   const Uint32 tnoOfNodes  = nodeFail->noOfNodes;
-  const Uint32 tnewMasterId = nodeFail->masterNodeId;
+  const Uint32 tnewPrimaryId = nodeFail->primaryNodeId;
   Uint32 cdata[MAX_NDB_NODES];
 
   arrGuard(tnoOfNodes, MAX_NDB_NODES);
@@ -9074,7 +9074,7 @@ void Dbtc::execNODE_FAILREP(Signal* signal)
     }//if
   }//for
 
-  cmasterNodeId = tnewMasterId;
+  cprimaryNodeId = tnewPrimaryId;
 
   if (ERROR_INSERTED(8098))
     SET_ERROR_INSERT_VALUE(8099);  /* Disable 8098 on node failure */
@@ -9418,7 +9418,7 @@ void Dbtc::execTAKE_OVERTCREQ(Signal* signal)
   tcNodeFailptr.i = 0;
   ptrAss(tcNodeFailptr, tcFailRecord);
   if (tcNodeFailptr.p->failStatus != FS_IDLE ||
-      cmasterNodeId != getOwnNodeId() ||
+      cprimaryNodeId != getOwnNodeId() ||
       (! (instance() == 0 /* single TC */ ||
           instance() == TAKE_OVER_INSTANCE))) /* in mt-TC case let 1 instance
                                                  do take-over */
@@ -9478,10 +9478,10 @@ void Dbtc::execTAKE_OVERTCREQ(Signal* signal)
 
   The protocol works as follows:
 
-  Master TC (take over TC instance, starting at instance 0):
+  Primary TC (take over TC instance, starting at instance 0):
   Sends:
   LQH_TRANSREQ (Take over data reference,
-                Master TC block reference,
+                Primary TC block reference,
                 TC Take over node id,
                 TC Take over instance id)
 
@@ -9500,7 +9500,7 @@ void Dbtc::execTAKE_OVERTCREQ(Signal* signal)
   all LQH instances have completed their scans. We will only send one
   LQH_TRANSCONF signal from each node.
 
-  The Master TC that performs the take over builds the state of each
+  The Primary TC that performs the take over builds the state of each
   transaction such that it can decide whether the transaction was
   committed or not, if it wasn't committed we will abort it.
 
@@ -9873,7 +9873,7 @@ void Dbtc::execLQH_TRANSCONF(Signal* signal)
        * a second step of the TC take over of this instance and possibly
        * even more than two steps will be performed.
        *
-       * This could happen if the master node has less transaction records
+       * This could happen if the primary node has less transaction records
        * than the failed node which is possible but not recommended.
        */
       Uint32 apiConnect = capiConnectFilesize / 3;
@@ -9961,7 +9961,7 @@ void Dbtc::execLQH_TRANSCONF(Signal* signal)
          * available number of TC records we should make progress at each
          * step and the algorithm should eventually complete.
          *
-         * This could happen if the master node have fewer operation records
+         * This could happen if the primary node have fewer operation records
          * than the failed node had. This could happen but isn't
          * recommended.
          */
@@ -13630,7 +13630,7 @@ void Dbtc::gcpTcfinished(Signal* signal, Uint64 gci)
 #ifdef ERROR_INSERT
   if (ERROR_INSERTED(8098))
   {
-    if (cmasterNodeId == getOwnNodeId())
+    if (cprimaryNodeId == getOwnNodeId())
     {
       bool multi = ((gci&1) == 1);
       bool kill_me = ((gci&3) == 1);

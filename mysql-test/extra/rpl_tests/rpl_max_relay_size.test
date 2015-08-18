@@ -4,14 +4,14 @@
 # Test of manual relay log rotation with FLUSH LOGS.
 
 # Requires statement logging
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
-connection slave;
-stop slave;
-connection master;
+connection replica;
+stop replica;
+connection primary;
 
 --echo #
---echo # Generate a big enough master's binlog to cause relay log rotations
+--echo # Generate a big enough primary's binlog to cause relay log rotations
 --echo #
 
 create table t1 (a int);
@@ -26,9 +26,9 @@ while ($1)
 }
 enable_query_log;
 drop table t1;
-save_master_pos;
-connection slave;
-reset slave;
+save_primary_pos;
+connection replica;
+reset replica;
 
 --echo #
 --echo # Test 1
@@ -38,41 +38,41 @@ set @my_max_binlog_size= @@global.max_binlog_size;
 set global max_binlog_size=8192;
 set global max_relay_log_size=8192-1; # mapped to 4096
 select @@global.max_relay_log_size;
-start slave;
-sync_with_master;
---source include/check_slave_is_running.inc
+start replica;
+sync_with_primary;
+--source include/check_replica_is_running.inc
 
 --echo #
 --echo # Test 2
 --echo #
 
-stop slave;
-reset slave;
+stop replica;
+reset replica;
 set global max_relay_log_size=(5*4096);
 query_vertical select @@global.max_relay_log_size;
-start slave;
-sync_with_master;
---source include/check_slave_is_running.inc
+start replica;
+sync_with_primary;
+--source include/check_replica_is_running.inc
 
 --echo #
 --echo # Test 3: max_relay_log_size = 0
 --echo #
 
-stop slave;
-reset slave;
+stop replica;
+reset replica;
 set global max_relay_log_size=0;
 query_vertical select @@global.max_relay_log_size;
-start slave;
-sync_with_master;
---source include/check_slave_is_running.inc
+start replica;
+sync_with_primary;
+--source include/check_replica_is_running.inc
 
 --echo #
 --echo # Test 4: Tests below are mainly to ensure that we have not coded with wrong assumptions
 --echo #
 
-stop slave;
-reset slave;
-# test of relay log rotation when the slave is stopped
+stop replica;
+reset replica;
+# test of relay log rotation when the replica is stopped
 # (to make sure it does not crash).
 flush logs;
 
@@ -80,35 +80,35 @@ flush logs;
 --echo # Test 5
 --echo #
 
-reset slave;
-start slave;
-sync_with_master;
-# test of relay log rotation when the slave is started
+reset replica;
+start replica;
+sync_with_primary;
+# test of relay log rotation when the replica is started
 flush logs;
 # We have now easy way to be sure that the SQL thread has now deleted the
-# log we just closed. But a trick to achieve this is do an update on the master.
-connection master;
+# log we just closed. But a trick to achieve this is do an update on the primary.
+connection primary;
 create table t1 (a int);
---source include/sync_slave_sql_with_master.inc
---source include/check_slave_is_running.inc
+--source include/sync_replica_sql_with_primary.inc
+--source include/check_replica_is_running.inc
 
 --echo #
 --echo # Test 6: one more rotation, to be sure Relay_Log_Space is correctly updated
 --echo #
 
 flush logs;
-connection master;
+connection primary;
 drop table t1;
---source include/sync_slave_sql_with_master.inc
---source include/check_slave_is_running.inc
+--source include/sync_replica_sql_with_primary.inc
+--source include/check_replica_is_running.inc
 
-connection master;
-# test that the absence of relay logs does not make a master crash
+connection primary;
+# test that the absence of relay logs does not make a primary crash
 flush logs;
-source include/show_master_status.inc;
+source include/show_primary_status.inc;
 
 # Restore max_binlog_size
-connection slave;
+connection replica;
 set global max_binlog_size= @my_max_binlog_size;
 
 --echo #

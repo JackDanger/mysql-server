@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SHOW GLOBAL VARIABLES LIKE 'log_backward_compatible_user_definitions';
 Variable_name	Value
 log_backward_compatible_user_definitions	OFF
@@ -16,15 +16,15 @@ Note	3163	User 'u1'@'localhost' already exists.
 ALTER USER IF EXISTS u1@localhost ACCOUNT LOCK;
 DROP USER u1@localhost;
 DROP USER IF EXISTS u2@localhost;
-include/sync_slave_sql_with_master.inc
-[On Slave]
+include/sync_replica_sql_with_primary.inc
+[On Replica]
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-slave-bin.000001	#	Query	#	#	use `test`; CREATE USER 'u1'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
-slave-bin.000001	#	Query	#	#	use `test`; CREATE USER IF NOT EXISTS 'u1'@'localhost' IDENTIFIED WITH 'mysql_native_password','u2'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
-slave-bin.000001	#	Query	#	#	use `test`; ALTER USER IF EXISTS 'u1'@'localhost' PASSWORD EXPIRE DEFAULT ACCOUNT LOCK
-slave-bin.000001	#	Query	#	#	use `test`; DROP USER u1@localhost
-slave-bin.000001	#	Query	#	#	use `test`; DROP USER IF EXISTS u2@localhost
+replica-bin.000001	#	Query	#	#	use `test`; CREATE USER 'u1'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
+replica-bin.000001	#	Query	#	#	use `test`; CREATE USER IF NOT EXISTS 'u1'@'localhost' IDENTIFIED WITH 'mysql_native_password','u2'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
+replica-bin.000001	#	Query	#	#	use `test`; ALTER USER IF EXISTS 'u1'@'localhost' PASSWORD EXPIRE DEFAULT ACCOUNT LOCK
+replica-bin.000001	#	Query	#	#	use `test`; DROP USER u1@localhost
+replica-bin.000001	#	Query	#	#	use `test`; DROP USER IF EXISTS u2@localhost
 include/rpl_end.inc
 
 End of 5.7 tests!

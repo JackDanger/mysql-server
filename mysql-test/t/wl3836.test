@@ -93,28 +93,28 @@ DROP DATABASE wl3836;
 DROP USER 'user1'@'localhost';
 DROP USER 'user2'@'localhost';
 
---echo # Test for replication slave threads
+--echo # Test for replication replica threads
 
---source include/master-slave.inc
-connection slave;
-connection master;
+--source include/primary-replica.inc
+connection replica;
+connection primary;
 --echo # Should report 7 root processes
 SELECT COUNT(USER) FROM INFORMATION_SCHEMA.PROCESSLIST;
 SET GLOBAL offline_mode=ON;
 # Connection count should remain same as Binlog dump thread should not be killed
 --echo # Should report 7 root processes
 SELECT COUNT(USER) FROM INFORMATION_SCHEMA.PROCESSLIST;
---connection slave
-SET @slave_saved_tmp = @@global.offline_mode;
+--connection replica
+SET @replica_saved_tmp = @@global.offline_mode;
 --echo # Should report 6 root processes
 SELECT COUNT(USER) FROM INFORMATION_SCHEMA.PROCESSLIST;
 SET GLOBAL offline_mode=ON;
-# Connection count should remain same as slave threads should not be killed
+# Connection count should remain same as replica threads should not be killed
 --echo # Should report 6 root processes
 SELECT COUNT(USER) FROM INFORMATION_SCHEMA.PROCESSLIST;
 
 #Restore back original value
-SET GLOBAL offline_mode = @slave_saved_tmp;
+SET GLOBAL offline_mode = @replica_saved_tmp;
 --source include/rpl_end.inc
 
 --connection default

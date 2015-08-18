@@ -1,80 +1,80 @@
 #
-# Test CHANGE MASTER MASTER_BIND=xxx
+# Test CHANGE PRIMARY PRIMARY_BIND=xxx
 #
 # Parameters:
-#  $master_bind - the address to use for MASTER_BIND
-#  $master_bind_error_expected - expect an error when using the specified
-#                                master_bind address
+#  $primary_bind - the address to use for PRIMARY_BIND
+#  $primary_bind_error_expected - expect an error when using the specified
+#                                primary_bind address
 #
 #
 
-# Stop the slave
-connection slave;
-source include/stop_slave.inc;
+# Stop the replica
+connection replica;
+source include/stop_replica.inc;
 
-# Create table and insert one record with the bind address on master
-connection master;
+# Create table and insert one record with the bind address on primary
+connection primary;
 create table t1(n int, b varchar(256));
---replace_result $master_bind <master_bind>
-eval insert into t1 values(1, $master_bind);
+--replace_result $primary_bind <primary_bind>
+eval insert into t1 values(1, $primary_bind);
 
-# Configure slave to connect to master with the give bind address
-# for master_bind and master_host unless it's an invalid address
-connection slave;
-let $_master_host=;
-if (!$master_bind_error_expected)
+# Configure replica to connect to primary with the give bind address
+# for primary_bind and primary_host unless it's an invalid address
+connection replica;
+let $_primary_host=;
+if (!$primary_bind_error_expected)
 {
-  if ($master_bind != "''")
+  if ($primary_bind != "''")
   {
-    let $_master_host=master_host=$master_bind,;
+    let $_primary_host=primary_host=$primary_bind,;
   }
 }
 
---replace_result $master_bind <master_bind>
-eval change master to $_master_host master_bind=$master_bind;
-start slave;
+--replace_result $primary_bind <primary_bind>
+eval change primary to $_primary_host primary_bind=$primary_bind;
+start replica;
 
-# Check that SHOW SLAVE STATUS has Master_bind column set to $master_bind
-let $master_bind_value= query_get_value(SHOW SLAVE STATUS, Master_Bind, 1);
-if (`select '$master_bind_value' != $master_bind`)
+# Check that SHOW REPLICA STATUS has Primary_bind column set to $primary_bind
+let $primary_bind_value= query_get_value(SHOW REPLICA STATUS, Primary_Bind, 1);
+if (`select '$primary_bind_value' != $primary_bind`)
 {
   source include/show_rpl_debug_info.inc;
-  echo 'master_bind_value: $master_bind_value' != 'master_bind: $master_bind';
-  die Master_bind in SHOW SLAVE STAUS not showing configured value;
+  echo 'primary_bind_value: $primary_bind_value' != 'primary_bind: $primary_bind';
+  die Primary_bind in SHOW REPLICA STAUS not showing configured value;
 }
 
-if ($master_bind_error_expected)
+if ($primary_bind_error_expected)
 {
-  # The given master bind address is not valid
+  # The given primary bind address is not valid
   # and replication should fail
-  let $slave_io_errno= $master_bind_error_expected;
-  let $slave_io_error_is_nonfatal= 1;
-  source include/wait_for_slave_io_error.inc;
-  echo got expected error $master_bind_error_expected;
-  source include/stop_slave.inc;
+  let $replica_io_errno= $primary_bind_error_expected;
+  let $replica_io_error_is_nonfatal= 1;
+  source include/wait_for_replica_io_error.inc;
+  echo got expected error $primary_bind_error_expected;
+  source include/stop_replica.inc;
 
-  # Reset the master_bind so that cleanup can run
-  eval change master to master_bind='';
-  start slave;
+  # Reset the primary_bind so that cleanup can run
+  eval change primary to primary_bind='';
+  start replica;
 
 }
 
-source include/wait_for_slave_to_start.inc;
+source include/wait_for_replica_to_start.inc;
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
-connection slave;
-let $master_bind_repl= query_get_value(select b from t1, b, 1);
-if (`select '$master_bind_repl' != $master_bind`)
+connection replica;
+let $primary_bind_repl= query_get_value(select b from t1, b, 1);
+if (`select '$primary_bind_repl' != $primary_bind`)
 {
   select * from t1;
   source include/show_rpl_debug_info.inc;
-  echo 'master_bind_repl: $master_bind_repl' != 'master_bind: $master_bind';
+  echo 'primary_bind_repl: $primary_bind_repl' != 'primary_bind: $primary_bind';
   die The replicated value to show replication working was not correct;
 }
 
 # Clean up
-connection master;
+connection primary;
 drop table t1;
-sync_slave_with_master;
+sync_replica_with_primary;

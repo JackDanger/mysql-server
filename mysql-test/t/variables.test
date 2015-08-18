@@ -1612,7 +1612,7 @@ set session collation_database=2048;
 SET @@sql_mode= 4294967296;
 
 --echo #
---echo # Bug #59860: log-slow-admin-statements and log-slow-slave-statements not displayed
+--echo # Bug #59860: log-slow-admin-statements and log-slow-replica-statements not displayed
 --echo #
 
 # Basic testing to check that each variable shows up and can be
@@ -1622,8 +1622,8 @@ SET @@sql_mode= 4294967296;
 # suites/sys_vars/t/log_slow_admin_statements_basic.test
 # suites/sys_vars/t/log_slow_admin_statements_func.test
 #
-# Functional testing of log_slow_slave_statements is within
-# suites/sys_vars/t/log_slow_slave_statements_basic.test
+# Functional testing of log_slow_replica_statements is within
+# suites/sys_vars/t/log_slow_replica_statements_basic.test
 # suites/rpl/t/rpl_slow_query_log.test
 
 show variables like 'log_slow%';
@@ -1632,13 +1632,13 @@ show global variables like 'log_slow_admin_statements';
 --disable_warnings
 select * from information_schema.global_variables where variable_name like 'log_slow_admin_statements';
 --enable_warnings
-set global log_slow_slave_statements = on;
-show global variables like 'log_slow_slave_statements';
+set global log_slow_replica_statements = on;
+show global variables like 'log_slow_replica_statements';
 --disable_warnings
-select * from information_schema.global_variables where variable_name like 'log_slow_slave_statements';
+select * from information_schema.global_variables where variable_name like 'log_slow_replica_statements';
 --enable_warnings
 set global log_slow_admin_statements = default;
-set global log_slow_slave_statements = default;
+set global log_slow_replica_statements = default;
 
 --echo #
 --echo # WL#7764 - Make STRICT mode for transactional SEs default in 5.7

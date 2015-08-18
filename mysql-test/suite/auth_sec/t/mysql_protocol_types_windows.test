@@ -50,7 +50,7 @@ connection default;
 disconnect pipe_con1;
 --echo
 
-connect(pipe_con2,localhost,root,,,$MASTER_MYPORT,,PIPE);
+connect(pipe_con2,localhost,root,,,$PRIMARY_MYPORT,,PIPE);
 SELECT connection_type FROM performance_schema.threads WHERE processlist_command='Query';
 connection default;
 disconnect pipe_con2;

@@ -12,7 +12,7 @@
 #                    Note, the query may depend on tables created by caller
 #
 
---connect (conn$index$type, 127.0.0.1,root,,test,$MASTER_MYPORT,)
+--connect (conn$index$type, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
 if ($sql_init1)
 {
   --eval $sql_init1

@@ -5,7 +5,7 @@
 
 -- source include/have_ndb.inc
 -- source include/have_binlog_format_mixed_or_row.inc
-reset master;
+reset primary;
 
 #
 # None of the below statements should be binlogged
@@ -25,7 +25,7 @@ insert into mysqltest.t1 values(2,2);
 drop database mysqltest;
 
 --echo --bug58698 Epoch not in ndb_apply_status 
-reset master;
+reset primary;
 use mysql;
 
 --echo -- MyISAM table in mysql db

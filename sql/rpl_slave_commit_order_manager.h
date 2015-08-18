@@ -13,8 +13,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-#ifndef RPL_SLAVE_COMMIT_ORDER_MANAGER
-#define RPL_SLAVE_COMMIT_ORDER_MANAGER
+#ifndef RPL_REPLICA_COMMIT_ORDER_MANAGER
+#define RPL_REPLICA_COMMIT_ORDER_MANAGER
 #ifdef HAVE_REPLICATION
 
 #include "my_global.h"
@@ -33,7 +33,7 @@ public:
     transaction to the worker.
     @param[in] worker The worker which the transaction will be dispatched to.
   */
-  void register_trx(Slave_worker *worker);
+  void register_trx(Replica_worker *worker);
 
   /**
     Wait for its turn to commit or unregister.
@@ -47,7 +47,7 @@ public:
       @retval true   One or more previous transactions rollback, so this
                      transaction should rollback.
   */
-  bool wait_for_its_turn(Slave_worker *worker, bool all);
+  bool wait_for_its_turn(Replica_worker *worker, bool all);
 
   /**
     Unregister the transaction from the commit order queue and signal the next
@@ -55,13 +55,13 @@ public:
 
     @param[in] worker The worker which is executing the transaction.
   */
-  void unregister_trx(Slave_worker *worker);
+  void unregister_trx(Replica_worker *worker);
   /**
     Wait its turn to rollback and report the rollback.
 
     @param[in] worker The worker which is executing the transaction.
   */
-  void report_rollback(Slave_worker *worker);
+  void report_rollback(Replica_worker *worker);
 
   /**
     Wait its turn to unregister and unregister the transaction. It is called for
@@ -69,13 +69,13 @@ public:
 
     @param[in] worker The worker which is executing the transaction.
   */
-  void report_commit(Slave_worker *worker)
+  void report_commit(Replica_worker *worker)
   {
     wait_for_its_turn(worker, true);
     unregister_trx(worker);
   }
 
-  void report_deadlock(Slave_worker *worker);
+  void report_deadlock(Replica_worker *worker);
 private:
   enum order_commit_status
   {
@@ -129,7 +129,7 @@ private:
 inline bool has_commit_order_manager(THD *thd)
 {
   return is_mts_worker(thd) &&
-    thd->rli_slave->get_commit_order_manager() != NULL;
+    thd->rli_replica->get_commit_order_manager() != NULL;
 }
 
 /**
@@ -157,7 +157,7 @@ inline bool has_commit_order_manager(THD *thd)
      INSERT INTO t2 SELECT * FROM mysql.innodb_table_stats
 
    Since this is not a real lock deadlock, it could not be handled by engine.
-   slave need to handle it separately.
+   replica need to handle it separately.
    Worker1(trx1)                     Worker2(trx2)
    =============                     =============
    ...                               ...
@@ -195,19 +195,19 @@ inline void commit_order_manager_check_deadlock(THD* thd_self,
 {
   DBUG_ENTER("commit_order_manager_check_deadlock");
 
-  Slave_worker *self_w= get_thd_worker(thd_self);
-  Slave_worker *wait_for_w= get_thd_worker(thd_wait_for);
+  Replica_worker *self_w= get_thd_worker(thd_self);
+  Replica_worker *wait_for_w= get_thd_worker(thd_wait_for);
   Commit_order_manager *mngr= self_w->get_commit_order_manager();
 
   /* Check if both workers are working for the same channel */
   if (mngr != NULL && self_w->c_rli == wait_for_w->c_rli &&
       wait_for_w->sequence_number() > self_w->sequence_number())
   {
-    DBUG_PRINT("info", ("Found slave order commit deadlock"));
+    DBUG_PRINT("info", ("Found replica order commit deadlock"));
     mngr->report_deadlock(wait_for_w);
   }
   DBUG_VOID_RETURN;
 }
 
 #endif //HAVE_REPLICATION
-#endif /*RPL_SLAVE_COMMIT_ORDER_MANAGER*/
+#endif /*RPL_REPLICA_COMMIT_ORDER_MANAGER*/

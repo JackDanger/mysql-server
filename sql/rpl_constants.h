@@ -21,7 +21,7 @@
 
 
 /*
-  Constants used to parse the stream of bytes sent by a slave
+  Constants used to parse the stream of bytes sent by a replica
   when commands COM_BINLOG_DUMP or COM_BINLOG_DUMP_GTID are
   sent.
 */

@@ -250,7 +250,7 @@ disconnect con0;
 disconnect con1;
 
 drop trigger trg1;
-# Set init connect back to the value provided in init_connect-master.opt
+# Set init connect back to the value provided in init_connect-primary.opt
 # doesn't matter as server will be restarted
 set global init_connect="set @a='a\\0c'";
 

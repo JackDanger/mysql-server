@@ -2,7 +2,7 @@ source include/have_archive.inc;
 source suite/federated/include/federated.inc;
 
 
-connection slave;
+connection replica;
 --disable_warnings
 DROP TABLE IF EXISTS federated.archive_table;
 --enable_warnings
@@ -13,19 +13,19 @@ CREATE TABLE federated.archive_table (
   ) ENGINE=ARCHIVE DEFAULT CHARSET=latin1;
 
 
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS federated.t1;
 --enable_warnings
 
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.t1 (
     `id` int(4) NOT NULL,
     `name` varchar(54) default NULL,
     PRIMARY KEY (`id`)
     )
   ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-  CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/federated/archive_table';
+  CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/federated/archive_table';
 
 INSERT INTO federated.t1 (id, name) VALUES (1, 'foo');
 INSERT INTO federated.t1 (id, name) VALUES (2, 'bar');
@@ -50,7 +50,7 @@ SELECT * FROM federated.t1;
 # SELECT * from federated.t1;
 
 DROP TABLE federated.t1;
-connection slave;
+connection replica;
 DROP TABLE federated.archive_table;
 
 

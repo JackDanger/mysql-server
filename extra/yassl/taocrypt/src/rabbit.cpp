@@ -70,8 +70,8 @@ void Rabbit::NextState(RabbitCtx which)
 
     Ctx* ctx;
 
-    if (which == Master)
-        ctx = &masterCtx_;
+    if (which == Primary)
+        ctx = &primaryCtx_;
     else
         ctx = &workCtx_;
 
@@ -119,19 +119,19 @@ void Rabbit::SetIV(const byte* iv)
     i3 = (i2<<16) | (i0&0x0000FFFF);
 
     /* Modify counter values */
-    workCtx_.c[0] = masterCtx_.c[0] ^ i0;
-    workCtx_.c[1] = masterCtx_.c[1] ^ i1;
-    workCtx_.c[2] = masterCtx_.c[2] ^ i2;
-    workCtx_.c[3] = masterCtx_.c[3] ^ i3;
-    workCtx_.c[4] = masterCtx_.c[4] ^ i0;
-    workCtx_.c[5] = masterCtx_.c[5] ^ i1;
-    workCtx_.c[6] = masterCtx_.c[6] ^ i2;
-    workCtx_.c[7] = masterCtx_.c[7] ^ i3;
+    workCtx_.c[0] = primaryCtx_.c[0] ^ i0;
+    workCtx_.c[1] = primaryCtx_.c[1] ^ i1;
+    workCtx_.c[2] = primaryCtx_.c[2] ^ i2;
+    workCtx_.c[3] = primaryCtx_.c[3] ^ i3;
+    workCtx_.c[4] = primaryCtx_.c[4] ^ i0;
+    workCtx_.c[5] = primaryCtx_.c[5] ^ i1;
+    workCtx_.c[6] = primaryCtx_.c[6] ^ i2;
+    workCtx_.c[7] = primaryCtx_.c[7] ^ i3;
 
     /* Copy state variables */
     for (i=0; i<8; i++)
-        workCtx_.x[i] = masterCtx_.x[i];
-    workCtx_.carry = masterCtx_.carry;
+        workCtx_.x[i] = primaryCtx_.x[i];
+    workCtx_.carry = primaryCtx_.carry;
 
     /* Iterate the system four times */
     for (i=0; i<4; i++)
@@ -152,42 +152,42 @@ void Rabbit::SetKey(const byte* key, const byte* iv)
     k3 = LITTLE32(*(word32*)(key+12));
 
     /* Generate initial state variables */
-    masterCtx_.x[0] = k0;
-    masterCtx_.x[2] = k1;
-    masterCtx_.x[4] = k2;
-    masterCtx_.x[6] = k3;
-    masterCtx_.x[1] = U32V(k3<<16) | (k2>>16);
-    masterCtx_.x[3] = U32V(k0<<16) | (k3>>16);
-    masterCtx_.x[5] = U32V(k1<<16) | (k0>>16);
-    masterCtx_.x[7] = U32V(k2<<16) | (k1>>16);
+    primaryCtx_.x[0] = k0;
+    primaryCtx_.x[2] = k1;
+    primaryCtx_.x[4] = k2;
+    primaryCtx_.x[6] = k3;
+    primaryCtx_.x[1] = U32V(k3<<16) | (k2>>16);
+    primaryCtx_.x[3] = U32V(k0<<16) | (k3>>16);
+    primaryCtx_.x[5] = U32V(k1<<16) | (k0>>16);
+    primaryCtx_.x[7] = U32V(k2<<16) | (k1>>16);
 
     /* Generate initial counter values */
-    masterCtx_.c[0] = rotlFixed(k2, 16);
-    masterCtx_.c[2] = rotlFixed(k3, 16);
-    masterCtx_.c[4] = rotlFixed(k0, 16);
-    masterCtx_.c[6] = rotlFixed(k1, 16);
-    masterCtx_.c[1] = (k0&0xFFFF0000) | (k1&0xFFFF);
-    masterCtx_.c[3] = (k1&0xFFFF0000) | (k2&0xFFFF);
-    masterCtx_.c[5] = (k2&0xFFFF0000) | (k3&0xFFFF);
-    masterCtx_.c[7] = (k3&0xFFFF0000) | (k0&0xFFFF);
+    primaryCtx_.c[0] = rotlFixed(k2, 16);
+    primaryCtx_.c[2] = rotlFixed(k3, 16);
+    primaryCtx_.c[4] = rotlFixed(k0, 16);
+    primaryCtx_.c[6] = rotlFixed(k1, 16);
+    primaryCtx_.c[1] = (k0&0xFFFF0000) | (k1&0xFFFF);
+    primaryCtx_.c[3] = (k1&0xFFFF0000) | (k2&0xFFFF);
+    primaryCtx_.c[5] = (k2&0xFFFF0000) | (k3&0xFFFF);
+    primaryCtx_.c[7] = (k3&0xFFFF0000) | (k0&0xFFFF);
 
     /* Clear carry bit */
-    masterCtx_.carry = 0;
+    primaryCtx_.carry = 0;
 
     /* Iterate the system four times */
     for (i=0; i<4; i++)
-        NextState(Master);
+        NextState(Primary);
 
     /* Modify the counters */
     for (i=0; i<8; i++)
-        masterCtx_.c[i] ^= masterCtx_.x[(i+4)&0x7];
+        primaryCtx_.c[i] ^= primaryCtx_.x[(i+4)&0x7];
 
-    /* Copy master instance to work instance */
+    /* Copy primary instance to work instance */
     for (i=0; i<8; i++) {
-        workCtx_.x[i] = masterCtx_.x[i];
-        workCtx_.c[i] = masterCtx_.c[i];
+        workCtx_.x[i] = primaryCtx_.x[i];
+        workCtx_.c[i] = primaryCtx_.c[i];
     }
-    workCtx_.carry = masterCtx_.carry;
+    workCtx_.carry = primaryCtx_.carry;
 
     if (iv) SetIV(iv);    
 }

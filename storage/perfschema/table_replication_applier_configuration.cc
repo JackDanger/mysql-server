@@ -25,7 +25,7 @@
 #include "table_replication_applier_configuration.h"
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_info.h"
 #include "rpl_rli.h"
 #include "rpl_mi.h"
@@ -102,7 +102,7 @@ ha_rows table_replication_applier_configuration::get_row_count()
 
 int table_replication_applier_configuration::rnd_next(void)
 {
-  Master_info *mi;
+  Primary_info *mi;
 
   mysql_mutex_lock(&LOCK_msr_map);
 
@@ -128,7 +128,7 @@ int table_replication_applier_configuration::rnd_next(void)
 
 int table_replication_applier_configuration::rnd_pos(const void *pos)
 {
-  Master_info *mi;
+  Primary_info *mi;
 
   set_position(pos);
 
@@ -142,7 +142,7 @@ int table_replication_applier_configuration::rnd_pos(const void *pos)
 
 }
 
-void table_replication_applier_configuration::make_row(Master_info *mi)
+void table_replication_applier_configuration::make_row(Primary_info *mi)
 {
   m_row_exists= false;
 

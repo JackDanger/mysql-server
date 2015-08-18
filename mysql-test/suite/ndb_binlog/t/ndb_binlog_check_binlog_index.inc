@@ -9,10 +9,10 @@
 #   - for any epoch A
 #     - The mysql.ndb_binlog_index next pos for A is the first binlog location
 #       after the COMMIT event of epoch A
-#   - Therefore the presence of a committed epoch number in a slave cluster's
+#   - Therefore the presence of a committed epoch number in a replica cluster's
 #     ndb_apply_status table is taken to mean only that the transaction which
 #     wrote it committed.
-#   - The Slave should resume immediately after the committed transaction
+#   - The Replica should resume immediately after the committed transaction
 # Note that :
 #   - The start position (Position, File) is vaguely defined and can refer
 #     to any position after the previously committed epoch's COMMIT event

@@ -1,7 +1,7 @@
 # ==== Purpose ====
 #
 # Tests that transactions containing multiple table types are
-# replicated correctly to the slave.
+# replicated correctly to the replica.
 #
 # This test was previously part of rpl_ndb_transactions.
 #
@@ -19,11 +19,11 @@
 #
 # ==== Related bugs ====
 #
-# BUG#26395: if crash during autocommit update to transactional table on master, slave fails
+# BUG#26395: if crash during autocommit update to transactional table on primary, replica fails
 
 
 source include/have_ndb.inc;
-source suite/ndb_rpl/ndb_master-slave.inc;
+source suite/ndb_rpl/ndb_primary-replica.inc;
 source include/have_innodb.inc;
 
 CREATE TABLE tmyisam (a int) ENGINE = MYISAM;
@@ -35,7 +35,7 @@ SHOW CREATE TABLE tinnodb;
 SHOW CREATE TABLE tndb;
 
 
---echo [on master]
+--echo [on primary]
 
 
 --echo ==== Single-engine transactions ====
@@ -445,26 +445,26 @@ SELECT * FROM tmyisam ORDER BY a;
 SELECT * FROM tinnodb ORDER BY a;
 SELECT * FROM tndb ORDER BY a;
 
---echo [on slave]
---sync_slave_with_master
+--echo [on replica]
+--sync_replica_with_primary
 
-let $diff_tables= master:tmyisam, slave:tmyisam;
+let $diff_tables= primary:tmyisam, replica:tmyisam;
 source include/diff_tables.inc;
 
-let $diff_tables= master:tinnodb, slave:tinnodb;
+let $diff_tables= primary:tinnodb, replica:tinnodb;
 source include/diff_tables.inc;
 
-let $diff_tables= master:tndb, slave:tndb;
+let $diff_tables= primary:tndb, replica:tndb;
 source include/diff_tables.inc;
 
 
 --echo ==== Clean up ====
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 DROP TABLE tmyisam, tinnodb, tndb;
 
---echo [on slave]
-sync_slave_with_master;
+--echo [on replica]
+sync_replica_with_primary;
 
 --source include/rpl_end.inc

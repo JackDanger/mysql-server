@@ -1,9 +1,9 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-STOP SLAVE;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+STOP REPLICA;
 CREATE DATABASE ndbsynctest;
 USE ndbsynctest;
 CREATE DATABASE ndbsynctest;
@@ -56,12 +56,12 @@ SELECT @the_epoch:=MAX(epoch) FROM mysql.ndb_apply_status;
 @the_epoch:=MAX(epoch)
 <the_epoch>
 @the_pos:=Position	@the_file:=SUBSTRING_INDEX(REPLACE(FILE,'\\','/'), '/', -1)
-<the_pos>	master-bin.000001
-CHANGE MASTER TO
-master_log_file = 'master-bin.000001',
-master_log_pos = <the_pos> ;
-START SLAVE;
-include/check_slave_is_running.inc
+<the_pos>	primary-bin.000001
+CHANGE PRIMARY TO
+primary_log_file = 'primary-bin.000001',
+primary_log_pos = <the_pos> ;
+START REPLICA;
+include/check_replica_is_running.inc
 SELECT hex(c1),hex(c2),c3 FROM t1 ORDER BY c3;
 hex(c1)	hex(c2)	c3
 1	1	row1
@@ -75,11 +75,11 @@ hex(c2)	hex(c3)	c1
 1	0	CD
 0	0	DEFGHIJKL
 DROP DATABASE ndbsynctest;
-STOP SLAVE;
-reset master;
+STOP REPLICA;
+reset primary;
 select * from mysql.ndb_binlog_index;
 Position	File	epoch	inserts	updates	deletes	schemaops	orig_server_id	orig_epoch	gci	next_position	next_file
-reset slave;
+reset replica;
 select * from mysql.ndb_apply_status;
 server_id	epoch	log_name	start_pos	end_pos
 include/rpl_end.inc

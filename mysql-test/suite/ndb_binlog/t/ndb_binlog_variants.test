@@ -27,10 +27,10 @@
 -- source include/have_binlog_format_row.inc
 
 # Setup connections
-connect(mysqld1,127.0.0.1,root,,test,$MASTER_MYPORT);
-connect(mysqld2,127.0.0.1,root,,test,$MASTER_MYPORT1);
-connect(mysqld3,127.0.0.1,root,,test,$MASTER_MYPORT2);
-connect(mysqld4,127.0.0.1,root,,test,$MASTER_MYPORT3);
+connect(mysqld1,127.0.0.1,root,,test,$PRIMARY_MYPORT);
+connect(mysqld2,127.0.0.1,root,,test,$PRIMARY_MYPORT1);
+connect(mysqld3,127.0.0.1,root,,test,$PRIMARY_MYPORT2);
+connect(mysqld4,127.0.0.1,root,,test,$PRIMARY_MYPORT3);
 
 connection mysqld1;
 
@@ -52,13 +52,13 @@ source suite/ndb_rpl/t/wait_schema_logging.inc;
 
 --disable_query_log
 connection mysqld1;
-reset master;
+reset primary;
 connection mysqld2;
-reset master;
+reset primary;
 connection mysqld3;
-reset master;
+reset primary;
 connection mysqld4;
-reset master;
+reset primary;
 --enable_query_log
 
 connection mysqld1;
@@ -163,13 +163,13 @@ flush logs;
 
 # Bug#46662
 # Replicating changes to tables with unique indexes
-# The fix to bug#27378 results in the slave using NdbApi's write()
+# The fix to bug#27378 results in the replica using NdbApi's write()
 # mechanism when applying WRITE_ROW events to tables with unique
 # indices.
 # 
-# If this is not done then the slave attempts to partially use SQL 
+# If this is not done then the replica attempts to partially use SQL 
 # REPLACE semantics when applying WRITE_ROW events to tables with 
-# unique indexes, which is not good and the slave fails with a 
+# unique indexes, which is not good and the replica fails with a 
 # duplicate key error on the primary key.
 #
 # The fix to Bug#46662 aims to correct this, so that replicated
@@ -179,7 +179,7 @@ flush logs;
 # 
 
 connection mysqld1;
-reset master;
+reset primary;
 show variables like 'ndb_log_update%';
 
 create table bah (tst int primary key, cvy int, sqs int, unique(sqs)) engine=ndb;
@@ -225,7 +225,7 @@ drop table bah;
 # any errors should be ignored
 
 connection mysqld1;
-reset master;
+reset primary;
 show variables like '%log_update%';
 
 CREATE TABLE `t1` (
@@ -297,7 +297,7 @@ drop table t1;
 # of non-existing row
 
 connection mysqld1;
-reset master;
+reset primary;
 show variables like '%log_update%';
 
 create table t1 (pk int not null primary key, name varchar(256)) engine = ndb;

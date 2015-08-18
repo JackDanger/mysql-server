@@ -1,6 +1,6 @@
-############## mysql-test\t\master_info_repository_basic.test #################
+############## mysql-test\t\primary_info_repository_basic.test #################
 #                                                                             #
-# Variable Name: master_info_repository                                       #
+# Variable Name: primary_info_repository                                       #
 # Scope: Global                                                               #
 # Access Type: Static                                                         #
 # Data Type: enumeration                                                      #
@@ -10,7 +10,7 @@
 # Author : Alfranio Correia                                                   #
 #                                                                             #
 #                                                                             #
-# Description:Test Cases of System Variable master_info_repository            #
+# Description:Test Cases of System Variable primary_info_repository            #
 #             that checks the behavior of this variable in the following ways #
 #              * Value Check                                                  #
 #              * Scope Check                                                  #
@@ -19,7 +19,7 @@
 #    http://dev.mysql.com/doc/refman/5.1/en/server-system-variables.html      #
 #                                                                             #
 ###############################################################################
---source include/not_master_info_table.inc
+--source include/not_primary_info_table.inc
 
 CALL mtr.add_suppression("The repository is not configured properly. Please, fix this before using replication.");
 
@@ -27,21 +27,21 @@ CALL mtr.add_suppression("The repository is not configured properly. Please, fix
 ####################################################################
 #   Displaying default value                                       #
 ####################################################################
-SELECT @@GLOBAL.master_info_repository;
+SELECT @@GLOBAL.primary_info_repository;
 
-SELECT COUNT(@@GLOBAL.master_info_repository);
+SELECT COUNT(@@GLOBAL.primary_info_repository);
 --echo 1 Expected
 
 --error ER_INCORRECT_GLOBAL_LOCAL_VAR
-SELECT COUNT(@@SESSION.master_info_repository);
+SELECT COUNT(@@SESSION.primary_info_repository);
 
 --echo '#---------------------BS_STVARS_002_02----------------------#'
 ####################################################################
 #   Check if Value can set                                         #
 ####################################################################
-SET @@GLOBAL.master_info_repository= "TABLE";
+SET @@GLOBAL.primary_info_repository= "TABLE";
 
-SELECT @@GLOBAL.master_info_repository;
+SELECT @@GLOBAL.primary_info_repository;
 
 
 --echo '#---------------------BS_STVARS_002_03----------------------#'
@@ -49,35 +49,35 @@ SELECT @@GLOBAL.master_info_repository;
 # Check if the value in GLOBAL Table matches value in variable  #
 #################################################################
 --disable_warnings
-SELECT @@GLOBAL.master_info_repository = VARIABLE_VALUE
+SELECT @@GLOBAL.primary_info_repository = VARIABLE_VALUE
 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES
-WHERE VARIABLE_NAME='master_info_repository';
+WHERE VARIABLE_NAME='primary_info_repository';
 --enable_warnings
 --echo 1 Expected
 
-SELECT COUNT(@@GLOBAL.master_info_repository);
+SELECT COUNT(@@GLOBAL.primary_info_repository);
 --echo 1 Expected
 
 --disable_warnings
 SELECT COUNT(VARIABLE_VALUE)
 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES
-WHERE VARIABLE_NAME='master_info_repository';
+WHERE VARIABLE_NAME='primary_info_repository';
 --enable_warnings
 --echo 1 Expected
 
 
 --echo '#---------------------BS_STVARS_002_05----------------------#'
 ################################################################################
-#   Check if master_info_repository can be accessed with and without @@ sign   #
+#   Check if primary_info_repository can be accessed with and without @@ sign   #
 ################################################################################
 
-SELECT COUNT(@@master_info_repository);
+SELECT COUNT(@@primary_info_repository);
 --echo 1 Expected
 
 --error ER_INCORRECT_GLOBAL_LOCAL_VAR
-SELECT COUNT(@@local.master_info_repository);
+SELECT COUNT(@@local.primary_info_repository);
 
-SELECT COUNT(@@GLOBAL.master_info_repository);
+SELECT COUNT(@@GLOBAL.primary_info_repository);
 --echo 1 Expected
 
 
@@ -85,4 +85,4 @@ SELECT COUNT(@@GLOBAL.master_info_repository);
 ################################################################################
 #                                     Clean up                                 #
 ################################################################################
-SET @@GLOBAL.master_info_repository= "FILE";
+SET @@GLOBAL.primary_info_repository= "FILE";

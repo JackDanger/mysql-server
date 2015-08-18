@@ -1,8 +1,8 @@
 # ==== Purpose ====
 #
-# Create the default connections master, master1, slave, slave1.
+# Create the default connections primary, primary1, replica, replica1.
 #
-# The slave connections are only created if $rpl_server_count >= 2.
+# The replica connections are only created if $rpl_server_count >= 2.
 #
 # ==== Usage ====
 #
@@ -25,21 +25,21 @@
 
 --let $_have_default_connections= 1
 
---let $rpl_connection_name= master
+--let $rpl_connection_name= primary
 --let $rpl_server_number= 1
 --source include/rpl_connect.inc
 
---let $rpl_connection_name= master1
+--let $rpl_connection_name= primary1
 --let $rpl_server_number= 1
 --source include/rpl_connect.inc
 
 if ($rpl_server_count >= 2)
 {
-  --let $rpl_connection_name= slave
+  --let $rpl_connection_name= replica
   --let $rpl_server_number= 2
   --source include/rpl_connect.inc
 
-  --let $rpl_connection_name= slave1
+  --let $rpl_connection_name= replica1
   --let $rpl_server_number= 2
   --source include/rpl_connect.inc
 }

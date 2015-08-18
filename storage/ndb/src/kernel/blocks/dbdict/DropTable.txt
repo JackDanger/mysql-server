@@ -48,7 +48,7 @@ Sequence of Drop Table:
 --- DIH::PREP_DROP_TAB_REQ
 
 1) Mark the table so that no new LCP will start on the table
-2) If master (unlink any queued LCP_FRAG_ORD)
+2) If primary (unlink any queued LCP_FRAG_ORD)
 3) Send WAIT_DROP_TAB_REQ -> all connected LQH's
 4) Wait for CONF (including NF-handling) from LQH:s
 5) Reply PREP_DROP_TAB_CONF
@@ -79,7 +79,7 @@ Sequence of Drop table in node/system restart
 ---------------------------------------------
 
 In both node and system restart the node receives the schema information from
-the master. If the table is in a state where it needs to complete the drop
+the primary. If the table is in a state where it needs to complete the drop
 table activity then DBACC, DBTUP, DBDIH, DBDICT is contacted to drop all files
 related to the table. After this the schema information is updated with the new
 state. Since all nodes receive the same schema information there is no risk of

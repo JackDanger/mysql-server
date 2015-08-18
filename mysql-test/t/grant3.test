@@ -19,8 +19,8 @@ set @orig_sql_mode_global= @@GLOBAL.sql_mode;
 set GLOBAL sql_mode= (select replace(@@GLOBAL.sql_mode,'NO_AUTO_CREATE_USER',''));
 set SESSION sql_mode= (select replace(@@SESSION.sql_mode,'NO_AUTO_CREATE_USER',''));
 
-connect (master,localhost,root,,);
-connection master;
+connect (primary,localhost,root,,);
+connection primary;
 
 # Cleanup
 --disable_warnings
@@ -42,7 +42,7 @@ connection user_a;
 grant select on `my\_1`.* to mysqltest_2@localhost;
 create user mysqltest_2@localhost;
 disconnect user_a;
-disconnect master;
+disconnect primary;
 connection default;
 
 delete from mysql.user where user like 'mysqltest\_%';

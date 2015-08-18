@@ -6,15 +6,15 @@ if (!$MYSQL_BUG25714)
 
 source suite/federated/include/federated.inc;
 
-connection master;
+connection primary;
 # Disable concurrent inserts to avoid test failures when reading
 # data from concurrent connections (insert might return before
 # the data is actually in the table).
-SET @OLD_MASTER_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
+SET @OLD_PRIMARY_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
 SET @@GLOBAL.CONCURRENT_INSERT= 0;
 
-connection slave;
-SET @OLD_SLAVE_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
+connection replica;
+SET @OLD_REPLICA_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
 SET @@GLOBAL.CONCURRENT_INSERT= 0;
 --disable_warnings
 DROP TABLE IF EXISTS federated.bug_13118_table;
@@ -28,17 +28,17 @@ INSERT INTO federated.t1 SET value=1;
 INSERT INTO federated.t1 SET value=2;
 INSERT INTO federated.t1 SET value=2;
 
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS federated.t1;
 --enable_warnings
 
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.t1 (
     `id` int auto_increment primary key, 
 	`value` int
     ) ENGINE=FEDERATED
-    CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/federated/t1';
+    CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/federated/t1';
 
 SELECT * from federated.t1;
 
@@ -46,16 +46,16 @@ INSERT INTO federated.t1 SET value=4;
 
 SELECT LAST_INSERT_ID();
 
---exec $MYSQL_BUG25714 $SLAVE_MYPORT
---exec $MYSQL_BUG25714 $MASTER_MYPORT
+--exec $MYSQL_BUG25714 $REPLICA_MYPORT
+--exec $MYSQL_BUG25714 $PRIMARY_MYPORT
 
 SELECT * from federated.t1;
 
 DROP TABLE federated.t1;
-SET @@GLOBAL.CONCURRENT_INSERT= @OLD_MASTER_CONCURRENT_INSERT;
-connection slave;
+SET @@GLOBAL.CONCURRENT_INSERT= @OLD_PRIMARY_CONCURRENT_INSERT;
+connection replica;
 DROP TABLE federated.t1;
-SET @@GLOBAL.CONCURRENT_INSERT= @OLD_SLAVE_CONCURRENT_INSERT;
+SET @@GLOBAL.CONCURRENT_INSERT= @OLD_REPLICA_CONCURRENT_INSERT;
 
 
 

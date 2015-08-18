@@ -79,7 +79,7 @@ ks	st	lp
 3	3	3
 4	4	40
 drop table ba;
-reset master;
+reset primary;
 show variables like 'ndb_log_update%';
 Variable_name	Value
 ndb_log_update_as_write	ON
@@ -96,7 +96,7 @@ select * from bah order by tst;
 tst	cvy	sqs
 1	2	1
 drop table bah;
-reset master;
+reset primary;
 show variables like '%log_update%';
 Variable_name	Value
 ndb_log_update_as_write	ON
@@ -118,7 +118,7 @@ Manually applying captured binlog
 select * from t1;
 charId	enumId	val	version
 drop table t1;
-reset master;
+reset primary;
 show variables like '%log_update%';
 Variable_name	Value
 ndb_log_update_as_write	ON

@@ -27,7 +27,7 @@ define("dojox/html/ellipsis",["dojo/_base/kernel", "dojo/_base/lang", "dojo/_bas
 				// Create our stub XUL elements for cloning later
 				// NOTE: this no longer works as of FF 4.0:
 				// https://developer.mozilla.org/En/Firefox_4_for_developers#Remote_XUL_support_removed
-				var sNS = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
+				var sNS = 'http://www.mozilla.org/keyprimary/gatekeeper/there.is.only.xul';
 				var xml = document.createElementNS(sNS, 'window');
 				var label = document.createElementNS(sNS, 'description');
 				label.setAttribute('crop', 'end');

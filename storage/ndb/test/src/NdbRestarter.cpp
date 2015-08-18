@@ -146,7 +146,7 @@ NdbRestarter::restartNodes(int * nodes, int cnt,
 }
 
 int
-NdbRestarter::getMasterNodeId(){
+NdbRestarter::getPrimaryNodeId(){
   if (!isConnected())
     return -1;
   
@@ -185,7 +185,7 @@ NdbRestarter::getNodeGroup(int nodeId){
 }
 
 int
-NdbRestarter::getNextMasterNodeId(int nodeId){
+NdbRestarter::getNextPrimaryNodeId(int nodeId){
   if (!isConnected())
     return -1;
   
@@ -224,21 +224,21 @@ NdbRestarter::getNextMasterNodeId(int nodeId){
 	return ndbNodes[i].node_id;
   }
   
-  return getMasterNodeId();
+  return getPrimaryNodeId();
 }
 
 int
-NdbRestarter::getRandomNotMasterNodeId(int rand){
-  int master = getMasterNodeId();
-  if(master == -1)
+NdbRestarter::getRandomNotPrimaryNodeId(int rand){
+  int primary = getPrimaryNodeId();
+  if(primary == -1)
     return -1;
 
   Uint32 counter = 0;
   rand = rand % ndbNodes.size();
-  while(counter++ < ndbNodes.size() && ndbNodes[rand].node_id == master)
+  while(counter++ < ndbNodes.size() && ndbNodes[rand].node_id == primary)
     rand = (rand + 1) % ndbNodes.size();
   
-  if(ndbNodes[rand].node_id != master)
+  if(ndbNodes[rand].node_id != primary)
     return ndbNodes[rand].node_id;
   return -1;
 }
@@ -876,10 +876,10 @@ NdbRestarter::getNode(NodeSelector type)
   switch(type){
   case NS_RANDOM:
     return getDbNodeId(rand() % getNumDbNodes());
-  case NS_MASTER:
-    return getMasterNodeId();
-  case NS_NON_MASTER:
-    return getRandomNotMasterNodeId(rand());
+  case NS_PRIMARY:
+    return getPrimaryNodeId();
+  case NS_NON_PRIMARY:
+    return getRandomNotPrimaryNodeId(rand());
   default:
     abort();
   }
@@ -967,14 +967,14 @@ loop:
 }
 
 int
-NdbRestarter::getMasterNodeVersion(int& version)
+NdbRestarter::getPrimaryNodeVersion(int& version)
 {
-  int masterNodeId = getMasterNodeId();
-  if (masterNodeId != -1)
+  int primaryNodeId = getPrimaryNodeId();
+  if (primaryNodeId != -1)
   {
     for(unsigned i = 0; i < ndbNodes.size(); i++)
     {
-      if (ndbNodes[i].node_id == masterNodeId)
+      if (ndbNodes[i].node_id == primaryNodeId)
       {
         version =  ndbNodes[i].version;
         return 0;
@@ -982,8 +982,8 @@ NdbRestarter::getMasterNodeVersion(int& version)
     }
   }
 
-  g_err << "Could not find node info for master node id "
-        << masterNodeId << endl;
+  g_err << "Could not find node info for primary node id "
+        << primaryNodeId << endl;
   return -1;
 }
 

@@ -32,8 +32,8 @@ drop database if exists mysqltest;
 --enable_warnings
 
 call mtr.add_suppression("Did not write failed .* ");
-connect (master,localhost,root,,);
-connection master;
+connect (primary,localhost,root,,);
+connection primary;
 SET NAMES binary;
 #
 # Test that SSL options works properly
@@ -376,7 +376,7 @@ update mysqltest_2.t1, mysqltest_2.t2 set d=10 where s=2;
 # the following two should work
 update mysqltest_1.t1, mysqltest_2.t2 set a=10,d=10;
 update mysqltest_1.t1, mysqltest_2.t1 set a=20 where c=20;
-connection master;
+connection primary;
 select t1.*,t2.* from mysqltest_1.t1,mysqltest_1.t2;
 select t1.*,t2.* from mysqltest_2.t1,mysqltest_2.t2;
 revoke all on mysqltest_1.t1 from mysqltest_3@localhost;
@@ -407,7 +407,7 @@ update mysqltest_2.t1, mysqltest_1.t2 set c=100,b=200;
 --error ER_COLUMNACCESS_DENIED_ERROR
 update mysqltest_1.t1, mysqltest_2.t2 set a=100,d=200;
 # lets see the result
-connection master;
+connection primary;
 select t1.*,t2.* from mysqltest_1.t1,mysqltest_1.t2;
 select t1.*,t2.* from mysqltest_2.t1,mysqltest_2.t2;
 
@@ -428,14 +428,14 @@ SHOW PRIVILEGES;
 #
 # Rights for renaming test (Bug#3270)
 #
-connect (root,localhost,root,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+connect (root,localhost,root,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 connection root;
 --disable_warnings
 create database mysqltest;
 --enable_warnings
 create table mysqltest.t1 (a int,b int,c int);
 grant all on mysqltest.t1 to mysqltest_1@localhost;
-connect (user1,localhost,mysqltest_1,,mysqltest,$MASTER_MYPORT,$MASTER_MYSOCK);
+connect (user1,localhost,mysqltest_1,,mysqltest,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 connection user1;
 -- error ER_TABLEACCESS_DENIED_ERROR
 alter table t1 rename t2;
@@ -572,7 +572,7 @@ drop database mysqltest;
 #
 # Bug#27515 DROP previlege is not required for RENAME TABLE
 #
-connection master;
+connection primary;
 create database db27515;
 use db27515;
 create table t1 (a int);
@@ -585,7 +585,7 @@ connection conn27515;
 rename table t1 to t2;
 disconnect conn27515;
 
-connection master;
+connection primary;
 revoke all privileges, grant option from user27515@localhost;
 drop user user27515@localhost;
 drop database db27515;
@@ -631,7 +631,7 @@ where grantee like "'mysqltest_8'%";
 connect (conn3,localhost,mysqltest_8,,);
 select * from t1;
 disconnect conn3;
-connection master;
+connection primary;
 revoke select on mysqltest.* from mysqltest_8@'';
 revoke select on mysqltest.* from mysqltest_8;
 show grants for mysqltest_8@'';
@@ -659,7 +659,7 @@ select * from  information_schema.column_privileges;
 connect (conn4,localhost,mysqltest_8,,);
 select * from t1;
 disconnect conn4;
-connection master;
+connection primary;
 revoke update (a) on t1 from mysqltest_8@'';
 revoke update (a) on t1 from mysqltest_8;
 show grants for mysqltest_8@'';
@@ -681,7 +681,7 @@ select * from  information_schema.table_privileges;
 connect (conn5,localhost,mysqltest_8,,);
 select * from t1;
 disconnect conn5;
-connection master;
+connection primary;
 revoke update on t1 from mysqltest_8@'';
 revoke update on t1 from mysqltest_8;
 show grants for mysqltest_8@'';
@@ -704,7 +704,7 @@ where grantee like "'mysqltest_8'%";
 connect (conn5,localhost,mysqltest_8,,);
 select * from t1;
 disconnect conn5;
-connection master;
+connection primary;
 flush privileges;
 show grants for mysqltest_8@'';
 show grants for mysqltest_8;
@@ -715,10 +715,10 @@ show grants for mysqltest_8;
 select * from  information_schema.user_privileges
 where grantee like "'mysqltest_8'%";
 drop user mysqltest_8;
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (conn6,localhost,mysqltest_8,,);
-connection master;
+connection primary;
 --error ER_NONEXISTING_GRANT
 show grants for mysqltest_8;
 drop user mysqltest_8@host8;
@@ -736,7 +736,7 @@ drop table t1;
 #           privileged view
 #
 
-connection master;
+connection primary;
 
 CREATE DATABASE mysqltest3;
 USE mysqltest3;
@@ -807,7 +807,7 @@ SHOW CREATE VIEW mysqltest2.v_yy;
 SHOW CREATE TABLE mysqltest2.v_yy;
 
 # clean-up
-connection master;
+connection primary;
 
 # succeed, we're root
 SHOW CREATE TABLE mysqltest2.v_nn;
@@ -835,7 +835,7 @@ DROP USER 'mysqltest_1'@'localhost';
 # restore the original database
 USE test;
 connection default;
-disconnect master;
+disconnect primary;
 
 
 #
@@ -1719,7 +1719,7 @@ CREATE USER 'userbug33464'@'localhost';
 
 GRANT CREATE ROUTINE ON dbbug33464.* TO 'userbug33464'@'localhost';
 
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (connbug33464, localhost, userbug33464, , dbbug33464);
 --source suite/funcs_1/include/show_connection.inc
 
@@ -1929,7 +1929,7 @@ GRANT CREATE USER             ON *.* TO mysqltest_u1@localhost;
 GRANT PROCESS                 ON *.* TO mysqltest_u1@localhost;
 GRANT RELOAD                  ON *.* TO mysqltest_u1@localhost;
 GRANT REPLICATION CLIENT      ON *.* TO mysqltest_u1@localhost;
-GRANT REPLICATION SLAVE       ON *.* TO mysqltest_u1@localhost;
+GRANT REPLICATION REPLICA       ON *.* TO mysqltest_u1@localhost;
 GRANT SHOW DATABASES          ON *.* TO mysqltest_u1@localhost;
 GRANT SHUTDOWN                ON *.* TO mysqltest_u1@localhost;
 GRANT USAGE                   ON *.* TO mysqltest_u1@localhost;
@@ -2635,7 +2635,7 @@ GRANT INSERT ON db_1.test_table TO user_name_len_25_01234567@localhost;
 
 disconnect con_grant;
 --echo # Connecting via TCP/IP
-connect (con_grant,127.0.0.1,user_name_len_25_01234567,,db_1,$MASTER_MYPORT);
+connect (con_grant,127.0.0.1,user_name_len_25_01234567,,db_1,$PRIMARY_MYPORT);
 INSERT INTO db_1.test_table values('rob', 'g', 'robg@oracle.com', 'couldbeworse_street',
 'couldbeworse_city', 1);
 
@@ -2677,7 +2677,7 @@ GRANT DROP ON db_1.* TO user_name_len_25_01234567@localhost;
 
 disconnect con_grant;
 --echo # Connecting via TCP/IP/SSL
-connect (con_grant,127.0.0.1,user_name_len_25_01234567,,db_1,$MASTER_MYPORT,,SSL);
+connect (con_grant,127.0.0.1,user_name_len_25_01234567,,db_1,$PRIMARY_MYPORT,,SSL);
 
 DROP TABLE db_1.test_table;
 DROP DATABASE db_1;

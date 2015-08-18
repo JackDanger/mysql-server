@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 #########################################################################
 #                            CONFIGURATION
 #########################################################################
@@ -23,10 +23,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (43)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE FUNCTION myfunc_int RETURNS INTEGER SONAME "LIB"
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (43)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE FUNCTION myfunc_int RETURNS INTEGER SONAME "LIB"
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -37,10 +37,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (42)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION myfunc_int
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (42)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION myfunc_int
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -53,9 +53,9 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (41)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (41)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -69,9 +69,9 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (40)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (40)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -84,10 +84,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (39)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ANALYZE TABLE nt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (39)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ANALYZE TABLE nt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -100,9 +100,9 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (38)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (38)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -115,10 +115,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (37)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; OPTIMIZE TABLE nt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (37)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; OPTIMIZE TABLE nt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -131,10 +131,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (36)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; REPAIR TABLE nt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (36)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; REPAIR TABLE nt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -145,9 +145,9 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (35)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (35)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -158,9 +158,9 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (34)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (34)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -171,10 +171,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (33)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (33)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -185,10 +185,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (32)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; GRANT ALL PRIVILEGES ON *.* TO 'user'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (32)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; GRANT ALL PRIVILEGES ON *.* TO 'user'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -199,10 +199,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (31)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*D8DECEC305209EEFEC43008E1D420E1AA06B19E0'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (31)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*D8DECEC305209EEFEC43008E1D420E1AA06B19E0'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -213,10 +213,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (30)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'user'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (30)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'user'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -227,10 +227,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (29)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; RENAME USER 'user'@'localhost' TO 'user_new'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (29)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; RENAME USER 'user'@'localhost' TO 'user_new'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -241,10 +241,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (28)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP USER 'user_new'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (28)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP USER 'user_new'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -255,10 +255,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (27)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` EVENT evt ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR DO SELECT * FROM tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (27)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` EVENT evt ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR DO SELECT * FROM tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -269,10 +269,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (26)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER EVENT evt COMMENT 'evt'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (26)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER EVENT evt COMMENT 'evt'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -283,10 +283,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (25)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP EVENT evt
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (25)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP EVENT evt
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -297,10 +297,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (24)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` TRIGGER tr AFTER INSERT ON tt_1 FOR EACH ROW UPDATE tt_2 SET ddl_case = ddl_case WHERE ddl_case= NEW.ddl_case
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (24)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` TRIGGER tr AFTER INSERT ON tt_1 FOR EACH ROW UPDATE tt_2 SET ddl_case = ddl_case WHERE ddl_case= NEW.ddl_case
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -311,10 +311,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (23)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP TRIGGER tr
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (23)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP TRIGGER tr
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -325,10 +325,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (22)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` FUNCTION `fc`() RETURNS varchar(64) CHARSET latin1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (22)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` FUNCTION `fc`() RETURNS varchar(64) CHARSET latin1
 RETURN "fc"
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
@@ -340,10 +340,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (21)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER FUNCTION fc COMMENT 'fc'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (21)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER FUNCTION fc COMMENT 'fc'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -354,10 +354,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (20)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION fc
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (20)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION fc
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -368,10 +368,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (19)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` PROCEDURE `pc`()
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (19)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` PROCEDURE `pc`()
 UPDATE tt_2 SET ddl_case = ddl_case WHERE ddl_case= NEW.ddl_case
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
@@ -383,10 +383,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (18)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER PROCEDURE pc COMMENT 'pc'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (18)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER PROCEDURE pc COMMENT 'pc'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -397,10 +397,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (17)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP PROCEDURE pc
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (17)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP PROCEDURE pc
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -411,10 +411,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (16)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (16)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -425,10 +425,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (15)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (15)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -439,10 +439,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (14)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP VIEW v
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (14)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP VIEW v
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -453,10 +453,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (13)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE INDEX ix ON tt_1(ddl_case)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (13)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE INDEX ix ON tt_1(ddl_case)
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -467,10 +467,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (12)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP INDEX ix ON tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (12)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP INDEX ix ON tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -481,10 +481,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (11)
-master-bin.000001	#	Query	#	#	use `test`; CREATE TEMPORARY TABLE tt_xx (a int)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (11)
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TEMPORARY TABLE tt_xx (a int)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -495,10 +495,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (10)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx ADD COLUMN (b int)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (10)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx ADD COLUMN (b int)
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -509,10 +509,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (9)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx RENAME new_tt_xx
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (9)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx RENAME new_tt_xx
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -523,10 +523,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (8)
-master-bin.000001	#	Query	#	#	DROP TEMPORARY TABLE IF EXISTS `test`.`new_tt_xx` /* generated by server */
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (8)
+primary-bin.000001	#	Query	#	#	DROP TEMPORARY TABLE IF EXISTS `test`.`new_tt_xx` /* generated by server */
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -537,10 +537,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (7)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE tt_xx (a int)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (7)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE tt_xx (a int)
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -551,10 +551,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (6)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx ADD COLUMN (b int)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (6)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx ADD COLUMN (b int)
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -565,10 +565,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (5)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; RENAME TABLE tt_xx TO new_tt_xx
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (5)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; RENAME TABLE tt_xx TO new_tt_xx
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -579,10 +579,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (4)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; TRUNCATE TABLE new_tt_xx
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (4)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; TRUNCATE TABLE new_tt_xx
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -595,10 +595,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (3)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `tt_xx`,`new_tt_xx` /* generated by server */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (3)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `tt_xx`,`new_tt_xx` /* generated by server */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -609,10 +609,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (2)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	CREATE DATABASE db
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (2)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	CREATE DATABASE db
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -623,19 +623,19 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (1)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	DROP DATABASE IF EXISTS db
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO tt_1(ddl_case) VALUES (1)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	DROP DATABASE IF EXISTS db
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 ###################################################################################
 #                               CHECK CONSISTENCY
 ###################################################################################
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:tt_1,slave:tt_1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:tt_1,replica:tt_1]
 ###################################################################################
 #                                        CLEAN
 ###################################################################################
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

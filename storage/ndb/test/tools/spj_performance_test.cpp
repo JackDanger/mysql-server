@@ -206,14 +206,14 @@ void TestThread::run(){
   require(pthread_mutex_lock(&m_mutex)==0);
   while(true){
     while(m_params==NULL && m_state==State_Active){
-      // Wait for a new command from master thread.
+      // Wait for a new command from primary thread.
       require(pthread_cond_wait(&m_condition, &m_mutex)==0);
     }
     if(m_state != State_Active){
       // We have been told to stop.
       require(m_state == State_Stopping);
       m_state = State_Stopped;
-      // Wake up master thread and release lock.
+      // Wake up primary thread and release lock.
       require(pthread_cond_signal(&m_condition)==0);
       require(pthread_mutex_unlock(&m_mutex)==0);
       // Exit thread.

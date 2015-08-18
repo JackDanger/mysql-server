@@ -1291,7 +1291,7 @@ row_truncate_complete(
 
 	ut_ad(!trx_is_started(trx));
 
-	srv_wake_master_thread();
+	srv_wake_primary_thread();
 
 	DBUG_EXECUTE_IF("ib_trunc_crash_after_truncate_done",
 			DBUG_SUICIDE(););

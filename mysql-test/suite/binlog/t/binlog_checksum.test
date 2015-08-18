@@ -11,24 +11,24 @@ source include/have_log_bin.inc;
 #
 
 set @save_binlog_checksum = @@global.binlog_checksum;
-set @save_master_verify_checksum = @@global.master_verify_checksum;
+set @save_primary_verify_checksum = @@global.primary_verify_checksum;
 set @@global.binlog_checksum = CRC32;
-set @@global.master_verify_checksum = 1;
+set @@global.primary_verify_checksum = 1;
 let $MYSQLD_DATADIR= `select @@datadir`;
 
-reset master; 
---echo must be master-bin.000001 
+reset primary; 
+--echo must be primary-bin.000001 
 --source include/show_binary_logs.inc
 
 create table t1 (a int);
 flush logs;
-copy_file $MYSQLD_DATADIR/master-bin.000001 $MYSQLD_DATADIR/master-bin.saved;
+copy_file $MYSQLD_DATADIR/primary-bin.000001 $MYSQLD_DATADIR/primary-bin.saved;
 drop table t1;
 
 # Reset GTIDs
-RESET MASTER;
+RESET PRIMARY;
 
---exec $MYSQL_BINLOG -c $MYSQLD_DATADIR/master-bin.saved | $MYSQL
+--exec $MYSQL_BINLOG -c $MYSQLD_DATADIR/primary-bin.saved | $MYSQL
 --source include/show_binlog_events.inc
 show tables;
 
@@ -36,6 +36,6 @@ show tables;
 
 drop table t1;
 set @@global.binlog_checksum = @save_binlog_checksum;
-set @@global.master_verify_checksum = @save_master_verify_checksum;
+set @@global.primary_verify_checksum = @save_primary_verify_checksum;
 
 --echo End of the tests

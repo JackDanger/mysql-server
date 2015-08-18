@@ -19,12 +19,12 @@
 #include "my_global.h"
 #include "mysql_com.h"            // NAME_LEN
 #include "rpl_info_handler.h"     // Rpl_info_handler
-#include "rpl_reporting.h"        // Slave_reporting_capability
+#include "rpl_reporting.h"        // Replica_reporting_capability
 
 
 #define  CHANNEL_NAME_LENGTH NAME_LEN
 
-class Rpl_info : public Slave_reporting_capability
+class Rpl_info : public Replica_reporting_capability
 {
 public:
   virtual ~Rpl_info();
@@ -48,7 +48,7 @@ public:
     sleep_cond - when killed
 
     'data_cond' is only being used in class Relay_log_info and not in the
-    class Master_info. So 'data_cond' could be moved to Relay_log_info.
+    class Primary_info. So 'data_cond' could be moved to Relay_log_info.
   */
   mysql_cond_t data_cond, start_cond, stop_cond, sleep_cond;
 
@@ -63,9 +63,9 @@ public:
   THD *info_thd;
 
   bool inited;
-  volatile bool abort_slave;
-  volatile uint slave_running;
-  volatile ulong slave_run_id;
+  volatile bool abort_replica;
+  volatile uint replica_running;
+  volatile ulong replica_run_id;
 
 #ifndef DBUG_OFF
   int events_until_exit;
@@ -140,12 +140,12 @@ public:
   }
 
  /**
-   To search in the slave repositories, each slave info object
+   To search in the replica repositories, each replica info object
    (mi, rli or worker) should use a primary key. This function
-   sets the field values of the slave info objects with
-   the search information, which is nothing but PK in mysql slave
+   sets the field values of the replica info objects with
+   the search information, which is nothing but PK in mysql replica
    info tables.
-   Ex: field_value[23]="channel_name" in the master info
+   Ex: field_value[23]="channel_name" in the primary info
    object.
 
    Currently, used only for TABLE repository.
@@ -165,16 +165,16 @@ protected:
     is used only during startup to retrieve information from the
     repositories.
 
-    @todo, This is not anymore required for Master_info and
+    @todo, This is not anymore required for Primary_info and
            Relay_log_info, since Channel can be used to uniquely
            identify this. To preserve backward compatibility,
-           we keep this for Master_info and Relay_log_info.
+           we keep this for Primary_info and Relay_log_info.
            However, {id, channel} is still required for a worker info.
   */
   uint internal_id;
 
   /**
-     Every slave info object acts on a particular channel in Multisource
+     Every replica info object acts on a particular channel in Multisource
      Replication.
   */
   char channel[CHANNEL_NAME_LENGTH+1];

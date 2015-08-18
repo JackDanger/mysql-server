@@ -91,7 +91,7 @@ SET @aborted_clients= 0;
 --enable_query_log
 
 --echo connection con1;
-connect (con1,127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (con1,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 --echo --disable_reconnect;
 --disable_reconnect
 SELECT 1;

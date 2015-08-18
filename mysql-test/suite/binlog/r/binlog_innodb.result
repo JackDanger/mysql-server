@@ -1,5 +1,5 @@
 SET BINLOG_FORMAT=MIXED;
-RESET MASTER;
+RESET PRIMARY;
 CREATE TABLE t1 (a INT PRIMARY KEY, b INT) ENGINE=INNODB;
 INSERT INTO t1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6);
 SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
@@ -65,53 +65,53 @@ UPDATE t1 SET b = 4*a WHERE a > 4;
 COMMIT;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT PRIMARY KEY, b INT) ENGINE=INNODB
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 2*a WHERE a > 1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 3*a WHERE a > 3
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 4*a WHERE a > 4
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 3*a WHERE a > 3
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 4*a WHERE a > 4
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT PRIMARY KEY, b INT) ENGINE=INNODB
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 2*a WHERE a > 1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 3*a WHERE a > 3
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 4*a WHERE a > 4
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 3*a WHERE a > 3
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; UPDATE t1 SET b = 4*a WHERE a > 4
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 DROP TABLE t1;
 flush status;
 show status like "binlog_cache_use";
@@ -149,7 +149,7 @@ PRIMARY KEY  (`a`)
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 ;
 insert into t1 values (1,1),(2,2);
 insert into t2 values (1,1),(4,4);
-reset master;
+reset primary;
 UPDATE t2,t1 SET t2.a=t1.a+2;
 ERROR 23000: Duplicate entry '3' for key 'PRIMARY'
 select * from t2 /* must be (3,1), (4,4) */;
@@ -163,7 +163,7 @@ delete from t1;
 delete from t2;
 insert into t1 values (1,2),(3,4),(4,4);
 insert into t2 values (1,2),(3,4),(4,4);
-reset master;
+reset primary;
 UPDATE t2,t1  SET t2.a=t2.b where t2.a=t1.a;
 ERROR 23000: Duplicate entry '4' for key 'PRIMARY'
 # There must be no UPDATE query event;

@@ -81,7 +81,7 @@ void SetErrorString(YasslError error, char* buffer)
         break; 
 
     case prefix_error : 
-        strncpy(buffer, "bad master secret derivation, prefix too big", max);
+        strncpy(buffer, "bad primary secret derivation, prefix too big", max);
         break; 
 
     case record_layer : 
@@ -141,7 +141,7 @@ void SetErrorString(YasslError error, char* buffer)
         break;
 
     case pms_version_error :
-        strncpy(buffer, "bad PreMasterSecret version error", max);
+        strncpy(buffer, "bad PrePrimarySecret version error", max);
         break;
 
     case sanityCipher_error :

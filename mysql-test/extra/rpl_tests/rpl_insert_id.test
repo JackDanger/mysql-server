@@ -18,34 +18,34 @@
 --echo # We also check how the foreign_key_check variable is replicated
 --echo #
 
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 #should work for both SBR and RBR
 
 --disable_query_log
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
---connection slave
+--connection replica
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 --enable_query_log
 
 
 # If concurrent inserts are on, it is not guaranteed that the rows
 # inserted by INSERT are immediately accessible by SELECT in another
-# thread. This would cause problems near the line 'connection master1'
+# thread. This would cause problems near the line 'connection primary1'
 # below. So we turn off concurrent inserts.
-connection master;
+connection primary;
 SET @old_concurrent_insert= @@global.concurrent_insert;
 SET @@global.concurrent_insert= 0;
 
-connection master;
+connection primary;
 eval create table t1(a int auto_increment, key(a)) engine=$engine_type;
 eval create table t2(b int auto_increment, c int, key(b)) engine=$engine_type;
 insert into t1 values (1),(2),(3);
 insert into t1 values (null);
 insert into t2 values (null,last_insert_id());
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 ORDER BY a;
 select * from t2 ORDER BY b;
-connection master;
+connection primary;
 #check if multi-line inserts,
 #which set last_insert_id to the first id inserted,
 #are replicated the same way
@@ -61,10 +61,10 @@ insert into t1 values (null),(null),(null);
 insert into t2 values (5,0);
 insert into t2 values (null,last_insert_id());
 SET FOREIGN_KEY_CHECKS=1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
 select * from t2;
-connection master;
+connection primary;
 
 --echo #
 --echo # check if INSERT SELECT in auto_increment is well replicated (bug #490)
@@ -80,36 +80,36 @@ insert into t2 values (5,0);
 --disable_warnings ONCE
 insert into t2 (c) select * from t1 ORDER BY a;
 select * from t2 ORDER BY b;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 ORDER BY a;
 select * from t2 ORDER BY b;
-connection master;
+connection primary;
 drop table t1;
 drop table t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo #
 --echo # Bug#8412: Error codes reported in binary log for CHARACTER SET,
 --echo #           FOREIGN_KEY_CHECKS
 --echo #
 
-connection master;
+connection primary;
 SET TIMESTAMP=1000000000;
 eval CREATE TABLE t1 ( a INT UNIQUE ) engine=$engine_type;
 SET FOREIGN_KEY_CHECKS=0;
 # Duplicate Key Errors
 --error 1022, ER_DUP_ENTRY
 INSERT INTO t1 VALUES (1),(1);
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo #
 --echo # Bug#14553: NULL in WHERE resets LAST_INSERT_ID
 --echo #
 
-connection master;
+connection primary;
 set @@session.sql_auto_is_null=1;
 eval create table t1(a int auto_increment, key(a)) engine=$engine_type;
 eval create table t2(a int) engine=$engine_type;
@@ -119,10 +119,10 @@ insert into t2 (a) select a from t1 where a is null;
 insert into t2 (a) select a from t1 where a is null;
 --enable_warnings
 select * from t2;
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 select * from t2;
-connection master;
+connection primary;
 drop table t1;
 drop table t2;
 
@@ -136,7 +136,7 @@ drop table t2;
 --echo # The solution is not to reset last_insert_id on enter to sub-statement.
 --echo #
 
-connection master;
+connection primary;
 --disable_warnings
 drop function if exists bug15728;
 drop function if exists bug15728_insert;
@@ -205,10 +205,10 @@ call foo();
 
 select * from t1;
 select * from t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
 select * from t2;
-connection master;
+connection primary;
 
 drop function bug15728;
 drop function bug15728_insert;
@@ -232,18 +232,18 @@ set sql_log_bin=1;
 
 insert into t1 values(null,100);
 select * from t1 order by n;
---source include/sync_slave_sql_with_master.inc
-# make slave's table autoinc counter bigger
+--source include/sync_replica_sql_with_primary.inc
+# make replica's table autoinc counter bigger
 insert into t1 values(null,200),(null,300);
 delete from t1 where b <> 100;
-# check that slave's table content is identical to master
+# check that replica's table content is identical to primary
 select * from t1 order by n;
 # only the auto_inc counter differs.
 
-connection master;
+connection primary;
 replace into t1 values(null,100),(null,350);
 select * from t1 order by n;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 order by n;
 
 # Same test as for REPLACE, but for ON DUPLICATE KEY UPDATE
@@ -251,50 +251,50 @@ select * from t1 order by n;
 # We first check that if we update a row using a value larger than the
 # table's counter, the counter for next row is bigger than the
 # after-value of the updated row.
-connection master;
+connection primary;
 --disable_warnings ONCE
 insert into t1 values (NULL,400),(3,500),(NULL,600) on duplicate key UPDATE n=1000;
 select * from t1 order by n;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 order by n;
 
 # and now test for the bug:
-connection master;
+connection primary;
 drop table t1;
 eval create table t1 (n int primary key auto_increment not null,
                       b int, unique(b)) engine=$engine_type;
 insert into t1 values(null,100);
 select * from t1 order by n;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 insert into t1 values(null,200),(null,300);
 delete from t1 where b <> 100;
 select * from t1 order by n;
 
-connection master;
+connection primary;
 --disable_warnings ONCE
 insert into t1 values(null,100),(null,350) on duplicate key update n=2;
 select * from t1 order by n;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 order by n;
 
-connection master;
+connection primary;
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # BUG#24432 "INSERT... ON DUPLICATE KEY UPDATE skips auto_increment values"
 #
 
-connection master;
+connection primary;
 # testcase with INSERT VALUES
 eval CREATE TABLE t1 (a INT NOT NULL PRIMARY KEY AUTO_INCREMENT, b INT,
                       UNIQUE(b)) ENGINE=$engine_type;
 --disable_warnings ONCE
 INSERT INTO t1(b) VALUES(1),(1),(2) ON DUPLICATE KEY UPDATE t1.b=10;
 SELECT * FROM t1 ORDER BY a;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY a;
-connection master;
+connection primary;
 drop table t1;
 
 # tescase with INSERT SELECT
@@ -335,9 +335,9 @@ ON DUPLICATE KEY UPDATE
 t1.field_3 = t2.field_c;
 --enable_warnings
 SELECT * FROM t1 ORDER BY id;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY id;
-connection master;
+connection primary;
 drop table t1, t2;
 
 #
@@ -348,7 +348,7 @@ drop table t1, t2;
 # actually originates in 5.1, and this is the version that is merged
 # from 5.0.
 #
-connection master;
+connection primary;
 
 --disable_warnings
 DROP PROCEDURE IF EXISTS p1;
@@ -382,11 +382,11 @@ CALL p1();
 SELECT * FROM t1 ORDER BY id;
 SELECT * FROM t2 ORDER BY id;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY id;
 SELECT * FROM t2 ORDER BY id;
 
-connection master;
+connection primary;
 
 DROP PROCEDURE p1;
 DROP TABLE t1, t2;
@@ -454,20 +454,20 @@ INSERT INTO t1 (i) VALUES (NULL);
 
 # Here, we rely on having set @@concurrent_insert= 0 (see comment at
 # the top of this file).
-connection master1;
+connection primary1;
 INSERT INTO t1 (i) VALUES (NULL);
 
-connection master;
+connection primary;
 SELECT f3();
 
 SELECT * FROM t1 ORDER BY i;
 SELECT * FROM t2 ORDER BY i;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1;
 SELECT * FROM t2;
 
-connection master;
+connection primary;
 DROP PROCEDURE p1;
 DROP FUNCTION f1;
 DROP FUNCTION f2;
@@ -475,14 +475,14 @@ DROP FUNCTION f3;
 DROP TABLE t1, t2;
 
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo #
 --echo # End of 5.0 tests
 --echo #
 
 # Tests in this file are tightly bound together.  Recreate t2.
-connection master;
+connection primary;
 eval create table t2 (
   id int not null auto_increment,
   last_id int,
@@ -491,9 +491,9 @@ eval create table t2 (
 
 
 # Test for BUG#20341 "stored function inserting into one
-# auto_increment puts bad data in slave"
+# auto_increment puts bad data in replica"
 
-connection master;
+connection primary;
 truncate table t2;
 # no auto_increment
 eval create table t1 (id tinyint primary key) engine=$engine_type;
@@ -521,11 +521,11 @@ insert into t1 select insid();
 select * from t1 order by id;
 select * from t2 order by id;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 order by id;
 select * from t2 order by id;
 
-connection master;
+connection primary;
 drop table t1;
 drop function insid;
 
@@ -546,11 +546,11 @@ call foo();
 select * from t1 order by n;
 select * from t2 order by id;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 order by n;
 select * from t2 order by id;
 
-connection master;
+connection primary;
 drop table t1, t2;
 drop procedure foo;
 SET @@global.concurrent_insert= @old_concurrent_insert;

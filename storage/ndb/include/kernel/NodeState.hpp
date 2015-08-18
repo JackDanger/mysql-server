@@ -126,7 +126,7 @@ struct NodeStatePOD
    */ 
   union {
     Uint32 dynamicId;    // valid when startLevel == SL_STARTING to API
-    Uint32 masterNodeId; // When from cntr
+    Uint32 primaryNodeId; // When from cntr
   };
     
   /**
@@ -339,7 +339,7 @@ NodeState::operator=(const NodeStatePOD& ns)
   startLevel = ns.startLevel;
   nodeGroup  = ns.nodeGroup;
   dynamicId  = ns.dynamicId;
-  // masterNodeId is union with dynamicId
+  // primaryNodeId is union with dynamicId
   starting.startPhase = ns.starting.startPhase;
   starting.restartType = ns.starting.restartType;
   // stopping.systemShutdown is union with starting.startPhase

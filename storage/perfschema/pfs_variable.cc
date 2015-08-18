@@ -607,18 +607,18 @@ bool PFS_status_variable_cache::filter_by_name(const SHOW_VAR *show_var)
   else
   {
     /*
-      Slave status resides in Performance Schema replication tables. Exclude
-      these slave status variables from the SHOW STATUS command and from the
+      Replica status resides in Performance Schema replication tables. Exclude
+      these replica status variables from the SHOW STATUS command and from the
       status tables.
-      Assume null prefix to ensure that only server-defined slave status
+      Assume null prefix to ensure that only server-defined replica status
       variables are filtered.
     */
     const char *name= show_var->name;
-    if (!my_strcasecmp(system_charset_info, name, "Slave_running") ||
-        !my_strcasecmp(system_charset_info, name, "Slave_retried_transactions") ||
-        !my_strcasecmp(system_charset_info, name, "Slave_last_heartbeat") ||
-        !my_strcasecmp(system_charset_info, name, "Slave_received_heartbeats") ||
-        !my_strcasecmp(system_charset_info, name, "Slave_heartbeat_period"))
+    if (!my_strcasecmp(system_charset_info, name, "Replica_running") ||
+        !my_strcasecmp(system_charset_info, name, "Replica_retried_transactions") ||
+        !my_strcasecmp(system_charset_info, name, "Replica_last_heartbeat") ||
+        !my_strcasecmp(system_charset_info, name, "Replica_received_heartbeats") ||
+        !my_strcasecmp(system_charset_info, name, "Replica_heartbeat_period"))
     {
       return true;
     }

@@ -25,7 +25,7 @@
 #include "table_replication_connection_status.h"
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_info.h"
 #include  "rpl_rli.h"
 #include "rpl_mi.h"
@@ -147,7 +147,7 @@ ha_rows table_replication_connection_status::get_row_count()
 
 int table_replication_connection_status::rnd_next(void)
 {
-  Master_info *mi= NULL;
+  Primary_info *mi= NULL;
 
   mysql_mutex_lock(&LOCK_msr_map);
 
@@ -175,7 +175,7 @@ int table_replication_connection_status::rnd_next(void)
 
 int table_replication_connection_status::rnd_pos(const void *pos)
 {
-  Master_info *mi;
+  Primary_info *mi;
 
   set_position(pos);
 
@@ -195,7 +195,7 @@ int table_replication_connection_status::rnd_pos(const void *pos)
 
 }
 
-void table_replication_connection_status::make_row(Master_info *mi)
+void table_replication_connection_status::make_row(Primary_info *mi)
 {
   DBUG_ENTER("table_replication_connection_status::make_row");
   m_row_exists= false;
@@ -263,25 +263,25 @@ void table_replication_connection_status::make_row(Master_info *mi)
   }
   else
   {
-    /* Slave channel. */
-    if (mi->master_uuid[0] != 0)
+    /* Replica channel. */
+    if (mi->primary_uuid[0] != 0)
     {
-      memcpy(m_row.source_uuid, mi->master_uuid, UUID_LENGTH);
+      memcpy(m_row.source_uuid, mi->primary_uuid, UUID_LENGTH);
       m_row.source_uuid_is_null= false;
     }
 
-    if (mi->slave_running == MYSQL_SLAVE_RUN_CONNECT)
+    if (mi->replica_running == MYSQL_REPLICA_RUN_CONNECT)
       m_row.service_state= PS_RPL_CONNECT_SERVICE_STATE_YES;
     else
     {
-      if (mi->slave_running == MYSQL_SLAVE_RUN_NOT_CONNECT)
+      if (mi->replica_running == MYSQL_REPLICA_RUN_NOT_CONNECT)
         m_row.service_state= PS_RPL_CONNECT_SERVICE_STATE_CONNECTING;
       else
         m_row.service_state= PS_RPL_CONNECT_SERVICE_STATE_NO;
     }
   }
 
-  if (mi->slave_running == MYSQL_SLAVE_RUN_CONNECT)
+  if (mi->replica_running == MYSQL_REPLICA_RUN_CONNECT)
   {
     PSI_thread *psi= thd_get_psi(mi->info_thd);
     PFS_thread *pfs= reinterpret_cast<PFS_thread *> (psi);

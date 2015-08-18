@@ -20,7 +20,7 @@
 #include "log_event.h"                      // Query_log_event
 #include "rpl_rli.h"                        // Relay_log_info
 #include "rpl_rli_pdb.h"                    // db_worker_hash_entry
-#include "rpl_slave_commit_order_manager.h" // Commit_order_manager
+#include "rpl_replica_commit_order_manager.h" // Commit_order_manager
 #include "sql_class.h"                      // THD
 
 
@@ -92,7 +92,7 @@ Mts_submode_database::attach_temp_tables(THD *thd, const Relay_log_info* rli,
 
 int
 Mts_submode_database::wait_for_workers_to_finish(Relay_log_info *rli,
-                                                 Slave_worker *ignore)
+                                                 Replica_worker *ignore)
 {
   uint ret= 0;
   HASH *hash= &rli->mapping_db_to_worker;
@@ -111,7 +111,7 @@ Mts_submode_database::wait_for_workers_to_finish(Relay_log_info *rli,
   {
     db_worker_hash_entry *entry;
 
-    mysql_mutex_lock(&rli->slave_worker_hash_lock);
+    mysql_mutex_lock(&rli->replica_worker_hash_lock);
 
     entry= (db_worker_hash_entry*) my_hash_element(hash, i);
 
@@ -120,41 +120,41 @@ Mts_submode_database::wait_for_workers_to_finish(Relay_log_info *rli,
     // the ignore Worker retains its active resources
     if (ignore && entry->worker == ignore && entry->usage > 0)
     {
-      mysql_mutex_unlock(&rli->slave_worker_hash_lock);
+      mysql_mutex_unlock(&rli->replica_worker_hash_lock);
       continue;
     }
 
     if (entry->usage > 0 && !thd->killed)
     {
       PSI_stage_info old_stage;
-      Slave_worker *w_entry= entry->worker;
+      Replica_worker *w_entry= entry->worker;
 
       entry->worker= NULL; // mark Worker to signal when  usage drops to 0
-      thd->ENTER_COND(&rli->slave_worker_hash_cond,
-                      &rli->slave_worker_hash_lock,
-                      &stage_slave_waiting_worker_to_release_partition,
+      thd->ENTER_COND(&rli->replica_worker_hash_cond,
+                      &rli->replica_worker_hash_lock,
+                      &stage_replica_waiting_worker_to_release_partition,
                       &old_stage);
       do
       {
-        mysql_cond_wait(&rli->slave_worker_hash_cond, &rli->slave_worker_hash_lock);
+        mysql_cond_wait(&rli->replica_worker_hash_cond, &rli->replica_worker_hash_lock);
         DBUG_PRINT("info",
                    ("Either got awakened of notified: "
                     "entry %p, usage %lu, worker %lu",
                     entry, entry->usage, w_entry->id));
       } while (entry->usage != 0 && !thd->killed);
       entry->worker= w_entry; // restoring last association, needed only for assert
-      mysql_mutex_unlock(&rli->slave_worker_hash_lock);
+      mysql_mutex_unlock(&rli->replica_worker_hash_lock);
       thd->EXIT_COND(&old_stage);
       ret++;
     }
     else
     {
-      mysql_mutex_unlock(&rli->slave_worker_hash_lock);
+      mysql_mutex_unlock(&rli->replica_worker_hash_lock);
     }
     // resources relocation
     mts_move_temp_tables_to_thd(thd, entry->temporary_tables);
     entry->temporary_tables= NULL;
-    if (entry->worker->running_status != Slave_worker::RUNNING)
+    if (entry->worker->running_status != Replica_worker::RUNNING)
       cant_sync= TRUE;
   }
 
@@ -263,15 +263,15 @@ Mts_submode_database::detach_temp_tables(THD *thd, const Relay_log_info* rli,
     rli relay log info of coordinator
     ws arrayy of worker threads
     ev event for which we are searching for a worker.
-  @return slave worker thread
+  @return replica worker thread
  */
-Slave_worker *
+Replica_worker *
 Mts_submode_database::get_least_occupied_worker(Relay_log_info *rli,
-                                                Slave_worker_array *ws,
+                                                Replica_worker_array *ws,
                                                 Log_event *ev)
 {
  long usage= LONG_MAX;
-  Slave_worker **ptr_current_worker= NULL, *worker= NULL;
+  Replica_worker **ptr_current_worker= NULL, *worker= NULL;
 
   DBUG_ENTER("Mts_submode_database::get_least_occupied_worker");
 
@@ -288,7 +288,7 @@ Mts_submode_database::get_least_occupied_worker(Relay_log_info *rli,
   }
 #endif
 
-  for (Slave_worker **it= ws->begin(); it != ws->end(); ++it)
+  for (Replica_worker **it= ws->begin(); it != ws->end(); ++it)
   {
     ptr_current_worker= it;
     if ((*ptr_current_worker)->usage_partition <= usage)
@@ -301,7 +301,7 @@ Mts_submode_database::get_least_occupied_worker(Relay_log_info *rli,
   DBUG_RETURN(worker);
 }
 
-/* MTS submode master Default constructor */
+/* MTS submode primary Default constructor */
 Mts_submode_logical_clock::Mts_submode_logical_clock()
 {
   type= MTS_PARALLEL_TYPE_LOGICAL_CLOCK;
@@ -363,7 +363,7 @@ longlong Mts_submode_logical_clock::get_lwm_timestamp(Relay_log_info *rli,
                                                       bool need_lock)
 {
   longlong lwm_estim;
-  Slave_job_group* ptr_g;
+  Replica_job_group* ptr_g;
   bool is_stale= false;
 
   if (!need_lock)
@@ -515,7 +515,7 @@ wait_for_last_committed_trx(Relay_log_info* rli,
  @param:  Relay_log_info* rli
           Log_event *ev
  @return: ER_MTS_CANT_PARALLEL, ER_MTS_INCONSISTENT_DATA
-          0 if no error or slave has been killed gracefully
+          0 if no error or replica has been killed gracefully
  */
 int
 Mts_submode_logical_clock::schedule_next_event(Relay_log_info* rli,
@@ -527,10 +527,10 @@ Mts_submode_logical_clock::schedule_next_event(Relay_log_info* rli,
   DBUG_ENTER("Mts_submode_logical_clock::schedule_next_event");
   // We should check if the SQL thread was already killed before we schedule
   // the next transaction
-  if (sql_slave_killed(rli->info_thd, rli))
+  if (sql_replica_killed(rli->info_thd, rli))
     DBUG_RETURN(0);
 
-  Slave_job_group *ptr_group=
+  Replica_job_group *ptr_group=
     rli->gaq->get_job_group(rli->gaq->assigned_group_index);
   /*
     A group id updater must satisfy the following:
@@ -608,8 +608,8 @@ Mts_submode_logical_clock::schedule_next_event(Relay_log_info* rli,
      /* Rewritten event without commit point timestamp (todo: find use case) */
      sequence_number == SEQ_UNINIT ||
      /*
-       undefined parent (e.g the very first trans from the master),
-       or old master.
+       undefined parent (e.g the very first trans from the primary),
+       or old primary.
      */
      last_committed == SEQ_UNINIT ||
      /*
@@ -652,7 +652,7 @@ Mts_submode_logical_clock::schedule_next_event(Relay_log_info* rli,
         DBUG_RETURN(-1);
       }
       /*
-        Making the slave's max last committed (lwm) to satisfy this
+        Making the replica's max last committed (lwm) to satisfy this
         transaction's scheduling condition.
       */
       if (gap_successor)
@@ -672,7 +672,7 @@ Mts_submode_logical_clock::schedule_next_event(Relay_log_info* rli,
 
     /*
       Under the new group fall the following use cases:
-      - events from an OLD (sequence_number unaware) master;
+      - events from an OLD (sequence_number unaware) primary;
       - malformed (missed BEGIN or GTID_NEXT) group incl. its
         particular form of CREATE..SELECT..from..@user_var (or rand- and
         int- var in place of @user- var).
@@ -727,7 +727,7 @@ Mts_submode_logical_clock::attach_temp_tables(THD *thd, const Relay_log_info* rl
   if (!is_mts_worker(thd) || (ev->ends_group() || ev->starts_group()))
     DBUG_VOID_RETURN;
   /* fetch coordinator's rli */
-  Relay_log_info *c_rli= static_cast<const Slave_worker *>(rli)->c_rli;
+  Relay_log_info *c_rli= static_cast<const Replica_worker *>(rli)->c_rli;
   DBUG_ASSERT(!thd->temporary_tables);
   mysql_mutex_lock(&c_rli->mts_temp_table_LOCK);
   if (!(table= c_rli->info_thd->temporary_tables))
@@ -792,7 +792,7 @@ Mts_submode_logical_clock::detach_temp_tables( THD *thd, const Relay_log_info* r
     there are no race conditions which may lead to assert failures and
     non-deterministic results.
   */
-  Relay_log_info *c_rli= static_cast<const Slave_worker *>(rli)->c_rli;
+  Relay_log_info *c_rli= static_cast<const Replica_worker *>(rli)->c_rli;
   mysql_mutex_lock(&c_rli->mts_temp_table_LOCK);
   mts_move_temp_tables_to_thd(c_rli->info_thd, thd->temporary_tables);
   mysql_mutex_unlock(&c_rli->mts_temp_table_LOCK);
@@ -801,20 +801,20 @@ Mts_submode_logical_clock::detach_temp_tables( THD *thd, const Relay_log_info* r
 }
 
 /**
-  Logic to get least occupied worker when the sql mts_submode= master_parallel
+  Logic to get least occupied worker when the sql mts_submode= primary_parallel
   @param
     rli relay log info of coordinator
     ws arrayy of worker threads
     ev event for which we are searching for a worker.
-  @return slave worker thread or NULL when coordinator is killed by any worker.
+  @return replica worker thread or NULL when coordinator is killed by any worker.
  */
 
-Slave_worker *
+Replica_worker *
 Mts_submode_logical_clock::get_least_occupied_worker(Relay_log_info *rli,
-                                                     Slave_worker_array *ws,
+                                                     Replica_worker_array *ws,
                                                      Log_event * ev)
 {
-  Slave_worker *worker= NULL;
+  Replica_worker *worker= NULL;
   PSI_stage_info *old_stage= 0;
   THD* thd= rli->info_thd;
   DBUG_ENTER("Mts_submode_logical_clock::get_least_occupied_worker");
@@ -829,8 +829,8 @@ Mts_submode_logical_clock::get_least_occupied_worker(Relay_log_info *rli,
     DBUG_ASSERT(worker != NULL);
     DBUG_RETURN(worker);
   }
-  Slave_committed_queue *gaq= rli->gaq;
-  Slave_job_group* ptr_group;
+  Replica_committed_queue *gaq= rli->gaq;
+  Replica_job_group* ptr_group;
   ptr_group= gaq->get_job_group(rli->gaq->assigned_group_index);
 #endif
   /*
@@ -863,7 +863,7 @@ Mts_submode_logical_clock::get_least_occupied_worker(Relay_log_info *rli,
 
       set_timespec_nsec(&ts[0], 0);
       // Update thd info as waiting for workers to finish.
-      thd->enter_stage(&stage_slave_waiting_for_workers_to_process_queue,
+      thd->enter_stage(&stage_replica_waiting_for_workers_to_process_queue,
                        old_stage,
                        __func__, __FILE__, __LINE__);
       while (!worker && !thd->killed)
@@ -892,10 +892,10 @@ Mts_submode_logical_clock::get_least_occupied_worker(Relay_log_info *rli,
   }
 
   DBUG_ASSERT(ptr_group);
-  // assert that we have a worker thread for this event or the slave has
+  // assert that we have a worker thread for this event or the replica has
   // stopped.
   DBUG_ASSERT(worker != NULL || thd->killed);
-  /* The master my have send  db partition info. make sure we never use them*/
+  /* The primary my have send  db partition info. make sure we never use them*/
   if (ev->get_type_code() == binary_log::QUERY_EVENT)
     static_cast<Query_log_event*>(ev)->mts_accessed_dbs= 0;
 
@@ -912,12 +912,12 @@ Mts_submode_logical_clock::get_least_occupied_worker(Relay_log_info *rli,
 
   @return  a pointer to Worker or NULL if none is free.
 */
-Slave_worker*
+Replica_worker*
 Mts_submode_logical_clock::get_free_worker(Relay_log_info *rli)
 {
-  for (Slave_worker **it= rli->workers.begin(); it != rli->workers.end(); ++it)
+  for (Replica_worker **it= rli->workers.begin(); it != rli->workers.end(); ++it)
   {
-    Slave_worker *w_i= *it;
+    Replica_worker *w_i= *it;
     if (w_i->jobs.len == 0)
       return w_i;
   }
@@ -925,18 +925,18 @@ Mts_submode_logical_clock::get_free_worker(Relay_log_info *rli)
 }
 
 /**
-  Waits for slave workers to finish off the pending tasks before returning.
+  Waits for replica workers to finish off the pending tasks before returning.
   Used in this submode to make sure that all assigned jobs have been done.
 
   @param Relay_log info *rli  coordinator rli.
-  @param Slave worker to ignore.
+  @param Replica worker to ignore.
   @return -1 for error.
            0 no error.
  */
 int
 Mts_submode_logical_clock::
    wait_for_workers_to_finish(Relay_log_info *rli,
-                              __attribute__((unused)) Slave_worker * ignore)
+                              __attribute__((unused)) Replica_worker * ignore)
 {
   PSI_stage_info *old_stage= 0;
   THD *thd= rli->info_thd;
@@ -944,7 +944,7 @@ Mts_submode_logical_clock::
   DBUG_PRINT("info",("delegated %d, jobs_done %d", delegated_jobs,
                           jobs_done));
   // Update thd info as waiting for workers to finish.
-  thd->enter_stage(&stage_slave_waiting_for_workers_to_process_queue,
+  thd->enter_stage(&stage_replica_waiting_for_workers_to_process_queue,
                    old_stage,
                     __func__, __FILE__, __LINE__);
   while (delegated_jobs > jobs_done && !thd->killed && !is_error)

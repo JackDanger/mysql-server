@@ -67,8 +67,8 @@ check_timeout(Uint32 errCode)
 Trix::Trix(Block_context& ctx) :
   SimulatedBlock(TRIX, ctx),
   c_theNodes(c_theNodeRecPool),
-  c_masterNodeId(0),
-  c_masterTrixRef(0),
+  c_primaryNodeId(0),
+  c_primaryTrixRef(0),
   c_noNodesFailed(0),
   c_noActiveNodes(0),
   c_theSubscriptions(c_theSubscriptionRecPool)
@@ -222,8 +222,8 @@ void Trix::execREAD_NODESCONF(Signal* signal)
   //Uint32 noOfNodes   = readNodes->noOfNodes;
   NodeRecPtr nodeRecPtr;
 
-  c_masterNodeId = readNodes->masterNodeId;
-  c_masterTrixRef = RNIL;
+  c_primaryNodeId = readNodes->primaryNodeId;
+  c_primaryTrixRef = RNIL;
   c_noNodesFailed = 0;
 
   for(unsigned i = 0; i < MAX_NDB_NODES; i++) {
@@ -234,8 +234,8 @@ void Trix::execREAD_NODESCONF(Signal* signal)
       ndbrequire(c_theNodes.getPool().seizeId(nodeRecPtr, i));
       c_theNodes.addFirst(nodeRecPtr);
       nodeRecPtr.p->trixRef = calcTrixBlockRef(i);
-      if (i == c_masterNodeId) {
-        c_masterTrixRef = nodeRecPtr.p->trixRef;
+      if (i == c_primaryNodeId) {
+        c_primaryTrixRef = nodeRecPtr.p->trixRef;
       }
       if(NdbNodeBitmask::get(readNodes->inactiveNodes, i)){
         // Node is not active
@@ -282,7 +282,7 @@ void Trix::execNODE_FAILREP(Signal* signal)
 
   //Uint32 failureNr    = nodeFail->failNo;
   //Uint32 numberNodes  = nodeFail->noOfNodes;
-  Uint32 masterNodeId = nodeFail->masterNodeId;
+  Uint32 primaryNodeId = nodeFail->primaryNodeId;
 
   NodeRecPtr nodeRecPtr;
 
@@ -295,10 +295,10 @@ void Trix::execNODE_FAILREP(Signal* signal)
       c_noActiveNodes--;      
     }
   }
-  if (c_masterNodeId != masterNodeId) {
-    c_masterNodeId = masterNodeId;
-    NodeRecord* nodeRec = c_theNodes.getPtr(masterNodeId);
-    c_masterTrixRef = nodeRec->trixRef;
+  if (c_primaryNodeId != primaryNodeId) {
+    c_primaryNodeId = primaryNodeId;
+    NodeRecord* nodeRec = c_theNodes.getPtr(primaryNodeId);
+    c_primaryTrixRef = nodeRec->trixRef;
   }
 }
 

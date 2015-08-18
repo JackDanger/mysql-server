@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 create table t1 (a int not null auto_increment,b int, primary key (a)) engine=myisam auto_increment=3;
 insert into t1 values (NULL,1),(NULL,2),(NULL,3);
 select * from t1;
@@ -10,7 +10,7 @@ a	b
 12	1
 22	2
 32	3
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a	b
 12	1
@@ -28,7 +28,7 @@ a	b
 3	3
 22	5
 32	6
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a	b
 1	1
@@ -65,7 +65,7 @@ a
 400
 410
 1000
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 5
@@ -100,7 +100,7 @@ a
 400
 410
 1000
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 5
@@ -150,7 +150,7 @@ a
 600
 610
 611
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 1
@@ -168,7 +168,7 @@ a
 drop table t1;
 set @@session.auto_increment_increment=10, @@session.auto_increment_offset=1;
 create table t1 (a int not null auto_increment, primary key (a)) engine=myisam;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 insert into t1 values(2),(12),(22),(32),(42);
 insert into t1 values (NULL),(NULL);
 insert into t1 values (3),(NULL),(NULL);
@@ -179,7 +179,7 @@ a
 11
 21
 31
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 1
@@ -228,7 +228,7 @@ Warning	1264	Out of range value for column 'a' at row 1
 select * from t3 order by a;
 a
 127
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1 order by a;
 a
 103
@@ -242,7 +242,7 @@ a
 127
 drop table t1,t2,t3;
 SET sql_mode = default;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 set auto_increment_increment=1;
 set auto_increment_offset=1;
 CREATE TABLE t1 (id MEDIUMINT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=innodb;
@@ -253,7 +253,7 @@ t1	CREATE TABLE `t1` (
   `id` mediumint(9) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -317,25 +317,25 @@ id
 INSERT INTO t1 VALUES(4);
 INSERT INTO t2 VALUES(4);
 FLUSH LOGS;
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
-include/diff_tables.inc [master:t2, slave:t2]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
+include/diff_tables.inc [primary:t2, replica:t2]
 DROP TABLE t1;
 DROP TABLE t2;
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-RESET MASTER;
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+RESET PRIMARY;
 FLUSH LOGS;
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
-include/diff_tables.inc [master:t2, slave:t2]
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
+include/diff_tables.inc [primary:t2, replica:t2]
 DROP TABLE t1;
 DROP TABLE t2;
 SET SQL_MODE='';
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CREATE TABLE t1 (id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, data INT) ENGINE=innodb;
 BEGIN;
 # Set sql_mode with NO_AUTO_VALUE_ON_ZERO for allowing
@@ -343,28 +343,28 @@ BEGIN;
 SET SQL_MODE=NO_AUTO_VALUE_ON_ZERO;
 INSERT INTO t1(id,data) VALUES(0,2);
 # Resetting sql_mode without NO_AUTO_VALUE_ON_ZERO to
-# affect the execution of the transaction on slave.
+# affect the execution of the transaction on replica.
 SET SQL_MODE=0;
 COMMIT;
 SELECT * FROM t1;
 id	data
 0	2
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1;
 id	data
 0	2
 DROP TABLE t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 create table t1(a int auto_increment primary key) engine=innodb;
 insert into t1 values (null),(null),(1025),(null);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 1
 2
 1025
 1026
-include/diff_tables.inc [master:t1, slave:t1]
+include/diff_tables.inc [primary:t1, replica:t1]
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

@@ -31,25 +31,25 @@
 
 #
 # Creates tables used throughout the test and changes the type of the
-# mysql.slave_relay_log_info to Innodb.
+# mysql.replica_relay_log_info to Innodb.
 #
 if ($commands == 'configure')
 {
-  --sync_slave_with_master
-  --source include/stop_slave.inc
-  SHOW CREATE TABLE mysql.slave_relay_log_info;
-  SHOW CREATE TABLE mysql.slave_worker_info;
-  ALTER TABLE mysql.slave_relay_log_info ENGINE= Innodb;
-  ALTER TABLE mysql.slave_worker_info ENGINE= Innodb;
-  SHOW CREATE TABLE mysql.slave_relay_log_info;
-  SHOW CREATE TABLE mysql.slave_worker_info;
-  --source include/start_slave.inc
+  --sync_replica_with_primary
+  --source include/stop_replica.inc
+  SHOW CREATE TABLE mysql.replica_relay_log_info;
+  SHOW CREATE TABLE mysql.replica_worker_info;
+  ALTER TABLE mysql.replica_relay_log_info ENGINE= Innodb;
+  ALTER TABLE mysql.replica_worker_info ENGINE= Innodb;
+  SHOW CREATE TABLE mysql.replica_relay_log_info;
+  SHOW CREATE TABLE mysql.replica_worker_info;
+  --source include/start_replica.inc
 
-  connection master;
+  connection primary;
   --source extra/rpl_tests/rpl_mixing_engines.inc
 
-  --sync_slave_with_master
-  connection master;
+  --sync_replica_with_primary
+  connection primary;
   --let $commands=
 }
 
@@ -59,7 +59,7 @@ if ($commands == 'configure')
 #
 if ($commands == 'clean')
 {
-  connection master;
+  connection primary;
   --source extra/rpl_tests/rpl_mixing_engines.inc
   --let $commands=
 }
@@ -72,13 +72,13 @@ if ($commands != '')
 {
   # 
   # If an fault injection point was defined, stop the SQL THREAD and
-  # prepare the slave to be restarted. Otherwise, do nothing.
+  # prepare the replica to be restarted. Otherwise, do nothing.
   #
   if ($failure != '')
   {
-    connection slave;
-    STOP SLAVE SQL_THREAD;
-    source include/wait_for_slave_sql_to_stop.inc;
+    connection replica;
+    STOP REPLICA SQL_THREAD;
+    source include/wait_for_replica_sql_to_stop.inc;
     --eval SET GLOBAL debug="$failure";
     --exec echo "wait" > $MYSQLTEST_VARDIR/tmp/mysqld.2.expect
   }
@@ -87,7 +87,7 @@ if ($commands != '')
   # Prints the expected outcome after the recovery. Check the
   # WL#4801 for further details.
   #
-  connection master;
+  connection primary;
   if ($failure != '')
   {
     --let $outcome= O2
@@ -108,47 +108,47 @@ if ($commands != '')
   # Executes the set of commands defined in $command by calling
   # rpl_mixing_engines.inc
   #
-  connection master;
-  let $master_before= query_get_value(SHOW MASTER STATUS, Position, 1);
+  connection primary;
+  let $primary_before= query_get_value(SHOW PRIMARY STATUS, Position, 1);
   --source extra/rpl_tests/rpl_mixing_engines.inc
-  let $master_after= query_get_value(SHOW MASTER STATUS, Position, 1);
+  let $primary_after= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 
   #
-  # Restarts the SQL THREAD and waits for the SLAVE to be crashed and
+  # Restarts the SQL THREAD and waits for the REPLICA to be crashed and
   # re-started.
   #
-  connection master;
+  connection primary;
   if ($failure != '')
   {
-    connection slave;
+    connection replica;
     --error 0, 2013
-    START SLAVE SQL_THREAD;
+    START REPLICA SQL_THREAD;
     --source include/wait_until_disconnected.inc
     --exec echo "restart" > $MYSQLTEST_VARDIR/tmp/mysqld.2.expect
     --let $rpl_server_number= 2
     --source include/rpl_reconnect.inc
-    connection slave;
-    --let $slave_before= `SELECT master_log_pos FROM mysql.slave_relay_log_info`
-    START SLAVE;
-    source include/wait_for_slave_to_start.inc;
+    connection replica;
+    --let $replica_before= `SELECT primary_log_pos FROM mysql.replica_relay_log_info`
+    START REPLICA;
+    source include/wait_for_replica_to_start.inc;
   }
 
   #
-  # Syncs the slave with the master and checks if the slaves applied all
-  # changes from the master and is not out of sync.
+  # Syncs the replica with the primary and checks if the replicas applied all
+  # changes from the primary and is not out of sync.
   #
-  connection master;
-  sync_slave_with_master;
+  connection primary;
+  sync_replica_with_primary;
 
-  --let $slave_after= `SELECT master_log_pos FROM mysql.slave_relay_log_info`
-  if ($slave_after != $master_after)
+  --let $replica_after= `SELECT primary_log_pos FROM mysql.replica_relay_log_info`
+  if ($replica_after != $primary_after)
   {
-    --echo Slave is out of sync.
-    --echo MASTER_BEFORE $master_before MASTER_AFTER $master_after SLAVE_BEFORE $slave_before SLAVE_AFTER $slave_after
-    connection slave;
+    --echo Replica is out of sync.
+    --echo PRIMARY_BEFORE $primary_before PRIMARY_AFTER $primary_after REPLICA_BEFORE $replica_before REPLICA_AFTER $replica_after
+    connection replica;
     --source include/show_rpl_debug_info.inc
     --die
   }
 }
 
-connection master;
+connection primary;

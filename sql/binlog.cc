@@ -21,10 +21,10 @@
 #include "log_event.h"                      // Rows_log_event
 #include "mysqld_thd_manager.h"             // Global_THD_manager
 #include "rpl_handler.h"                    // RUN_HOOK
-#include "rpl_mi.h"                         // Master_info
+#include "rpl_mi.h"                         // Primary_info
 #include "rpl_rli.h"                        // Relay_log_info
-#include "rpl_rli_pdb.h"                    // Slave_worker
-#include "rpl_slave_commit_order_manager.h" // Commit_order_manager
+#include "rpl_rli_pdb.h"                    // Replica_worker
+#include "rpl_replica_commit_order_manager.h" // Commit_order_manager
 #include "rpl_trx_boundary_parser.h"        // Transaction_boundary_parser
 #include "sql_class.h"                      // THD
 #include "sql_parse.h"                      // sqlcom_can_generate_row_events
@@ -214,7 +214,7 @@ public:
       my_safe_print_system_time();
       my_safe_printf_stderr("%s", "[Fatal] Out of memory while attaching to "
                             "session thread during the group commit phase. "
-                            "Data consistency between master and slave can "
+                            "Data consistency between primary and replica can "
                             "be guaranteed after server restarts.\n");
       _exit(MYSQLD_FAILURE_EXIT);
     }
@@ -1221,12 +1221,12 @@ int MYSQL_BIN_LOG::gtid_end_transaction(THD *thd)
   {
     DBUG_ASSERT(thd->variables.gtid_next.type == GTID_GROUP);
 
-    if (!opt_bin_log || (thd->slave_thread && !opt_log_slave_updates))
+    if (!opt_bin_log || (thd->replica_thread && !opt_log_replica_updates))
     {
       /*
         If the binary log is disabled for this thread (either by
-        log_bin=0 or sql_log_bin=0 or by log_slave_updates=0 for a
-        slave thread), then the statement must not be written to the
+        log_bin=0 or sql_log_bin=0 or by log_replica_updates=0 for a
+        replica thread), then the statement must not be written to the
         binary log.  In this case, we just save the GTID into the
         table directly.
 
@@ -1569,14 +1569,14 @@ static int binlog_prepare(handlerton *hton, THD *thd, bool all)
    Logging XA commit/rollback of a prepared transaction.
 
    The function is called at XA-commit or XA-rollback logging via
-   two paths: the recovered-or-slave-applier or immediately through
+   two paths: the recovered-or-replica-applier or immediately through
    the  XA-prepared transaction connection itself.
    It fills in appropiate event in the statement cache whenever
    xid state is marked with is_binlogged() flag that indicates
    the prepared part of the transaction must've been logged.
 
    About early returns from the function.
-   In the recovered-or-slave-applier case the function may be called
+   In the recovered-or-replica-applier case the function may be called
    for the 2nd time, which has_logged_xid monitors.
    ONE_PHASE option to XA-COMMIT is handled to skip
    writing XA-commit event now.
@@ -1620,7 +1620,7 @@ inline int do_binlog_xa_commit_rollback(THD *thd, XID *xid, bool commit)
 
 /**
    Logging XA commit/rollback of a prepared transaction in the case
-   it was disconnected and resumed (recovered), or executed by a slave applier.
+   it was disconnected and resumed (recovered), or executed by a replica applier.
 
    @param thd         THD handle
    @param xid         a pointer to XID object
@@ -1812,7 +1812,7 @@ Stage_manager::enroll_for(StageID stage, THD *thd, mysql_mutex_t *stage_mutex)
 #ifdef HAVE_REPLICATION
   if (stage == FLUSH_STAGE && has_commit_order_manager(thd))
   {
-    Slave_worker *worker= dynamic_cast<Slave_worker *>(thd->rli_slave);
+    Replica_worker *worker= dynamic_cast<Replica_worker *>(thd->rli_replica);
     Commit_order_manager *mngr= worker->get_commit_order_manager();
 
     mngr->unregister_trx(worker);
@@ -2193,7 +2193,7 @@ end:
   solution is that when the user calls SAVEPOINT, we write it to the binlog
   cache (so no need to later insert it). As transactions are never intermixed
   in the binary log (i.e. they are serialized), we won't have conflicts with
-  savepoint names when using mysqlbinlog or in the slave SQL thread.
+  savepoint names when using mysqlbinlog or in the replica SQL thread.
   Then when ROLLBACK TO SAVEPOINT is called, if we updated some
   non-transactional table, we don't truncate the binlog cache but instead write
   ROLLBACK TO SAVEPOINT to it; otherwise we truncate the binlog cache (which
@@ -2266,7 +2266,7 @@ static int binlog_savepoint_rollback(handlerton *hton, THD *thd, void *sv)
 }
 
 /**
-   purge logs, master and slave sides both, related error code
+   purge logs, primary and replica sides both, related error code
    convertor.
    Called from @c purge_error_message(), @c MYSQL_BIN_LOG::reset_logs()
 
@@ -2319,7 +2319,7 @@ static bool binlog_savepoint_rollback_can_release_mdl(handlerton *hton,
 
 #ifdef HAVE_REPLICATION
 /**
-  Adjust log offset in the binary log file for all running slaves
+  Adjust log offset in the binary log file for all running replicas
   This class implements call back function for do_for_all_thd().
   It is called for each thd in thd list to adjust offset.
 */
@@ -2350,7 +2350,7 @@ private:
 };
 
 /*
-  Adjust the position pointer in the binary log file for all running slaves.
+  Adjust the position pointer in the binary log file for all running replicas.
 
   SYNOPSIS
     adjust_linfo_offsets()
@@ -2365,7 +2365,7 @@ private:
       using any binary log file before purge_offset.
 
   TODO
-    - Inform the slave threads that they should sync the position
+    - Inform the replica threads that they should sync the position
       in the binary log file with flush_relay_log_info.
       Now they sync is done for next read.
 */
@@ -2598,7 +2598,7 @@ bool stmt_cannot_safely_rollback(const THD* thd)
   @retval FALSE success
   @retval TRUE failure
 */
-bool purge_master_logs(THD* thd, const char* to_log)
+bool purge_primary_logs(THD* thd, const char* to_log)
 {
   char search_file_name[FN_REFLEN];
   if (!mysql_bin_log.is_open())
@@ -2627,7 +2627,7 @@ bool purge_master_logs(THD* thd, const char* to_log)
   @retval FALSE success
   @retval TRUE failure
 */
-bool purge_master_logs_before_date(THD* thd, time_t purge_time)
+bool purge_primary_logs_before_date(THD* thd, time_t purge_time)
 {
   if (!mysql_bin_log.is_open())
   {
@@ -2786,7 +2786,7 @@ bool show_binlog_events(THD *thd, MYSQL_BIN_LOG *binary_log)
 
   if (binary_log->is_open())
   {
-    LEX_MASTER_INFO *lex_mi= &thd->lex->mi;
+    LEX_PRIMARY_INFO *lex_mi= &thd->lex->mi;
     SELECT_LEX_UNIT *unit= thd->lex->unit;
     ha_rows event_count, limit_start, limit_end;
     my_off_t pos = max<my_off_t>(BIN_LOG_HEADER_SIZE, lex_mi->pos); // user-friendly
@@ -2838,7 +2838,7 @@ bool show_binlog_events(THD *thd, MYSQL_BIN_LOG *binary_log)
       Rotate then Format_desc).
     */
     ev= Log_event::read_log_event(&log, (mysql_mutex_t*)0, description_event,
-                                   opt_master_verify_checksum);
+                                   opt_primary_verify_checksum);
     if (ev)
     {
       if (ev->get_type_code() == binary_log::FORMAT_DESCRIPTION_EVENT)
@@ -2861,7 +2861,7 @@ bool show_binlog_events(THD *thd, MYSQL_BIN_LOG *binary_log)
     for (event_count = 0;
          (ev = Log_event::read_log_event(&log, (mysql_mutex_t*) 0,
                                          description_event,
-                                         opt_master_verify_checksum)); )
+                                         opt_primary_verify_checksum)); )
     {
       if (ev->get_type_code() == binary_log::FORMAT_DESCRIPTION_EVENT)
         description_event->common_footer->checksum_alg=
@@ -3553,7 +3553,7 @@ read_gtids_and_update_trx_parser_from_relaylog(
         UUID:3 transaction was spanned across 4 relay log files.
 
         The transaction spanning can be caused by "FLUSH RELAY LOGS" commands
-        on slave while it is queuing the transaction.
+        on replica while it is queuing the transaction.
 
         So, in order to correctly add UUID:3 into Retrieved_Gtid_Set, we need
         to parse the relay log starting on the file we found the last GTID
@@ -4047,7 +4047,7 @@ bool MYSQL_BIN_LOG::find_first_log_not_in_gtid_set(char *binlog_file_name,
     switch (read_gtids_from_binlog(filename, NULL, &binlog_previous_gtid_set,
                                    first_gtid,
                                    binlog_previous_gtid_set.get_sid_map(),
-                                   opt_master_verify_checksum, is_relay_log))
+                                   opt_primary_verify_checksum, is_relay_log))
     {
     case ERROR:
       *errmsg= "Error reading header of binary log while looking for "
@@ -4069,7 +4069,7 @@ bool MYSQL_BIN_LOG::find_first_log_not_in_gtid_set(char *binlog_file_name,
         /*
           Verify that the selected binlog is not the first binlog,
         */
-        DBUG_EXECUTE_IF("slave_reconnect_with_gtid_set_executed",
+        DBUG_EXECUTE_IF("replica_reconnect_with_gtid_set_executed",
                         DBUG_ASSERT(strcmp(filename_list.begin()->c_str(),
                                            binlog_file_name) != 0););
         goto end;
@@ -4084,7 +4084,7 @@ bool MYSQL_BIN_LOG::find_first_log_not_in_gtid_set(char *binlog_file_name,
 
   if (rit == filename_list.rend())
   {
-    *errmsg= ER(ER_MASTER_HAS_PURGED_REQUIRED_GTIDS);
+    *errmsg= ER(ER_PRIMARY_HAS_PURGED_REQUIRED_GTIDS);
     error= -5;
   }
 
@@ -4108,7 +4108,7 @@ bool MYSQL_BIN_LOG::init_gtid_sets(Gtid_set *all_gtids, Gtid_set *lost_gtids,
                       is_relay_log));
 
   /*
-    If this is a relay log, we must have the IO thread Master_info trx_parser
+    If this is a relay log, we must have the IO thread Primary_info trx_parser
     in order to correctly feed it with relay log events.
   */
 #ifndef DBUG_OFF
@@ -4263,7 +4263,7 @@ bool MYSQL_BIN_LOG::init_gtid_sets(Gtid_set *all_gtids, Gtid_set *lost_gtids,
       must check if it ends on next relay log files.
       We also need to feed the boundary parser with the rest of the
       relay log to put it in the correct state before receiving new
-      events from the master in the case of GTID auto positioning be
+      events from the primary in the case of GTID auto positioning be
       disabled.
     */
     if (is_relay_log)
@@ -4295,7 +4295,7 @@ bool MYSQL_BIN_LOG::init_gtid_sets(Gtid_set *all_gtids, Gtid_set *lost_gtids,
         UUID:2 transaction was spanned across 4 relay log files.
 
         The transaction spanning can be caused by "FLUSH RELAY LOGS" commands
-        on slave while it is queuing the transaction.
+        on replica while it is queuing the transaction.
 
         So, in order to correctly add UUID:2 into Retrieved_Gtid_Set, we need
         to parse the relay log starting on the file we found the last GTID
@@ -4520,9 +4520,9 @@ bool MYSQL_BIN_LOG::open_binlog(const char *log_name,
     /* relay-log */
     if (relay_log_checksum_alg == binary_log::BINLOG_CHECKSUM_ALG_UNDEF)
     {
-      /* inherit master's A descriptor if one has been received */
-      if (opt_slave_sql_verify_checksum == 0)
-        /* otherwise use slave's local preference of RL events verification */
+      /* inherit primary's A descriptor if one has been received */
+      if (opt_replica_sql_verify_checksum == 0)
+        /* otherwise use replica's local preference of RL events verification */
         relay_log_checksum_alg= binary_log::BINLOG_CHECKSUM_ALG_OFF;
       else
         relay_log_checksum_alg= static_cast<enum_binlog_checksum_alg>
@@ -4597,7 +4597,7 @@ bool MYSQL_BIN_LOG::open_binlog(const char *log_name,
   else // !(current_thd)
   {
     /*
-      If the slave was configured before server restart, the server will
+      If the replica was configured before server restart, the server will
       generate a new relay log file without having current_thd, but this
       new relay log file must have a PREVIOUS_GTIDS event as we now
       generate the PREVIOUS_GTIDS event always.
@@ -4612,7 +4612,7 @@ bool MYSQL_BIN_LOG::open_binlog(const char *log_name,
          file but won't write the PREVIOUS_GTIDS event yet;
       2) Initialize server's GTIDs;
       3) Write the binary log PREVIOUS_GTIDS;
-      4) Call init_slave() in where the new relay log file will be created
+      4) Call init_replica() in where the new relay log file will be created
          after initializing relay log's Retrieved_Gtid_Set;
     */
     if (is_relay_log)
@@ -4640,23 +4640,23 @@ bool MYSQL_BIN_LOG::open_binlog(const char *log_name,
       extra_description_event->binlog_version>=4)
   {
     /*
-      This is a relay log written to by the I/O slave thread.
+      This is a relay log written to by the I/O replica thread.
       Write the event so that others can later know the format of this relay
       log.
       Note that this event is very close to the original event from the
-      master (it has binlog version of the master, event types of the
-      master), so this is suitable to parse the next relay log's event. It
+      primary (it has binlog version of the primary, event types of the
+      primary), so this is suitable to parse the next relay log's event. It
       has been produced by
       Format_description_log_event::Format_description_log_event(char* buf,).
       Why don't we want to write the mi_description_event if this
       event is for format<4 (3.23 or 4.x): this is because in that case, the
       mi_description_event describes the data received from the
-      master, but not the data written to the relay log (*conversion*),
-      which is in format 4 (slave's).
+      primary, but not the data written to the relay log (*conversion*),
+      which is in format 4 (replica's).
     */
     /*
       Set 'created' to 0, so that in next relay logs this event does not
-      trigger cleaning actions on the slave in
+      trigger cleaning actions on the replica in
       Format_description_log_event::apply_event_impl().
     */
     extra_description_event->created= 0;
@@ -5143,7 +5143,7 @@ int MYSQL_BIN_LOG::find_next_relay_log(char log_name[FN_REFLEN+1])
 }
 
 /**
-  Removes files, as part of a RESET MASTER or RESET SLAVE statement,
+  Removes files, as part of a RESET PRIMARY or RESET REPLICA statement,
   by deleting all logs refered to in the index file. Then, it starts
   writing to a new log file.
 
@@ -5152,7 +5152,7 @@ int MYSQL_BIN_LOG::find_next_relay_log(char log_name[FN_REFLEN+1])
   @param thd Thread
 
   @note
-    If not called from slave thread, write start event to new log
+    If not called from replica thread, write start event to new log
 
   @retval
     0	ok
@@ -5415,15 +5415,15 @@ int MYSQL_BIN_LOG::close_crash_safe_index_file()
   @param included     If false, all relay logs that are strictly before
                       rli->group_relay_log_name are deleted ; if true, the
                       latter is deleted too (i.e. all relay logs
-                      read by the SQL slave thread are deleted).
+                      read by the SQL replica thread are deleted).
 
   @note
-    - This is only called from the slave SQL thread when it has read
+    - This is only called from the replica SQL thread when it has read
     all commands from a relay log and want to switch to a new relay log.
     - When this happens, we can be in an active transaction as
     a transaction can span over two relay logs
-    (although it is always written as a single block to the master's binary
-    log, hence cannot span over two master's binary logs).
+    (although it is always written as a single block to the primary's binary
+    log, hence cannot span over two primary's binary logs).
 
   @retval
     0			ok
@@ -5443,10 +5443,10 @@ int MYSQL_BIN_LOG::purge_first_log(Relay_log_info* rli, bool included)
   char *to_purge_if_included= NULL;
   DBUG_ENTER("purge_first_log");
 
-  DBUG_ASSERT(current_thd->system_thread == SYSTEM_THREAD_SLAVE_SQL);
+  DBUG_ASSERT(current_thd->system_thread == SYSTEM_THREAD_REPLICA_SQL);
   DBUG_ASSERT(is_relay_log);
   DBUG_ASSERT(is_open());
-  DBUG_ASSERT(rli->slave_running == 1);
+  DBUG_ASSERT(rli->replica_running == 1);
   DBUG_ASSERT(!strcmp(rli->linfo.log_file_name,rli->get_event_relay_log_name()));
 
   mysql_mutex_assert_owner(&rli->data_lock);
@@ -5721,7 +5721,7 @@ int MYSQL_BIN_LOG::purge_logs(const char *to_log,
     global_sid_lock->wrlock();
     error= init_gtid_sets(NULL,
                           const_cast<Gtid_set *>(gtid_state->get_lost_gtids()),
-                          opt_master_verify_checksum,
+                          opt_primary_verify_checksum,
                           false/*false=don't need lock*/,
                           NULL/*trx_parser*/, NULL/*gtid_partial_trx*/);
     global_sid_lock->unlock();
@@ -6399,7 +6399,7 @@ int MYSQL_BIN_LOG::new_file_impl(bool need_lock_log, Format_description_log_even
      If this is a binary log, the Format_description_log_event at the beginning of
      the new file should have created=0 (to distinguish with the
      Format_description_log_event written at server startup, which should
-     trigger temp tables deletion on slaves.
+     trigger temp tables deletion on replicas.
   */
 
   /* reopen index binlog file, BUG#34582 */
@@ -6487,7 +6487,7 @@ end:
 
   @note The caller must hold LOCK_log before invoking this function.
 
-  @param mi Master_info for the IO thread.
+  @param mi Primary_info for the IO thread.
   @param need_data_lock If true, mi->data_lock will be acquired if a
   rotation is needed.  Otherwise, mi->data_lock must be held by the
   caller.
@@ -6495,7 +6495,7 @@ end:
   @retval false success
   @retval true error
 */
-bool MYSQL_BIN_LOG::after_append_to_relay_log(Master_info *mi)
+bool MYSQL_BIN_LOG::after_append_to_relay_log(Primary_info *mi)
 {
   DBUG_ENTER("MYSQL_BIN_LOG::after_append_to_relay_log");
   DBUG_PRINT("info",("max_size: %lu",max_size));
@@ -6504,7 +6504,7 @@ bool MYSQL_BIN_LOG::after_append_to_relay_log(Master_info *mi)
   mysql_mutex_assert_owner(&LOCK_log);
   mysql_mutex_assert_owner(&mi->data_lock);
   DBUG_ASSERT(is_relay_log);
-  DBUG_ASSERT(current_thd->system_thread == SYSTEM_THREAD_SLAVE_IO);
+  DBUG_ASSERT(current_thd->system_thread == SYSTEM_THREAD_REPLICA_IO);
 
   /*
     We allow the relay log rotation by relay log size
@@ -6514,7 +6514,7 @@ bool MYSQL_BIN_LOG::after_append_to_relay_log(Master_info *mi)
 
 #ifndef DBUG_OFF
   if ((uint) my_b_append_tell(&log_file) >
-      DBUG_EVALUATE_IF("rotate_slave_debug_group", 500, max_size) &&
+      DBUG_EVALUATE_IF("rotate_replica_debug_group", 500, max_size) &&
       !can_rotate)
   {
     DBUG_PRINT("info",("Postponing the rotation by size waiting for "
@@ -6545,13 +6545,13 @@ bool MYSQL_BIN_LOG::after_append_to_relay_log(Master_info *mi)
     /*
       If relay log is too big, rotate. But only if not in the middle of a
       transaction when GTIDs are enabled.
-      We now try to mimic the following master binlog behavior: "A transaction
+      We now try to mimic the following primary binlog behavior: "A transaction
       is written in one chunk to the binary log, so it is never split between
       several binary logs. Therefore, if you have big transactions, you might
       see binary log files larger than max_binlog_size."
     */
     if ((uint) my_b_append_tell(&log_file) >
-        DBUG_EVALUATE_IF("rotate_slave_debug_group", 500, max_size))
+        DBUG_EVALUATE_IF("rotate_replica_debug_group", 500, max_size))
     {
       error= new_file_without_locking(mi->get_mi_description_event());
     }
@@ -6563,7 +6563,7 @@ bool MYSQL_BIN_LOG::after_append_to_relay_log(Master_info *mi)
 }
 
 
-bool MYSQL_BIN_LOG::append_event(Log_event* ev, Master_info *mi)
+bool MYSQL_BIN_LOG::append_event(Log_event* ev, Primary_info *mi)
 {
   DBUG_ENTER("MYSQL_BIN_LOG::append");
 
@@ -6589,7 +6589,7 @@ bool MYSQL_BIN_LOG::append_event(Log_event* ev, Master_info *mi)
 }
 
 
-bool MYSQL_BIN_LOG::append_buffer(const char* buf, uint len, Master_info *mi)
+bool MYSQL_BIN_LOG::append_buffer(const char* buf, uint len, Primary_info *mi)
 {
   DBUG_ENTER("MYSQL_BIN_LOG::append_buffer");
 
@@ -6736,7 +6736,7 @@ bool MYSQL_BIN_LOG::write_event(Log_event *event_info)
   /*
     We only end the statement if we are in a top-level statement.  If
     we are inside a stored function, we do not end the statement since
-    this will close all tables on the slave.
+    this will close all tables on the replica.
   */
   bool const end_stmt=
     thd->locked_tables_mode && thd->lex->requires_prelocking();
@@ -7177,7 +7177,7 @@ bool MYSQL_BIN_LOG::write_incident(Incident_log_event *ev, bool need_lock_log,
   */
   if (!error)
     sql_print_error("%s An incident event has been written to the binary "
-                    "log which will stop the slaves.", err_msg);
+                    "log which will stop the replicas.", err_msg);
 
   if (do_flush_and_sync)
   {
@@ -7348,7 +7348,7 @@ int MYSQL_BIN_LOG::wait_for_update_relay_log(THD* thd, const struct timespec *ti
   DBUG_ENTER("wait_for_update_relay_log");
 
   thd->ENTER_COND(&update_cond, &LOCK_log,
-                  &stage_slave_has_read_all_relay_log,
+                  &stage_replica_has_read_all_relay_log,
                   &old_stage);
 
   if (!timeout)
@@ -7364,7 +7364,7 @@ int MYSQL_BIN_LOG::wait_for_update_relay_log(THD* thd, const struct timespec *ti
 
 /**
   Wait until we get a signal that the binary log has been updated.
-  Applies to master only.
+  Applies to primary only.
      
   NOTES
   @param[in] thd        a THD struct
@@ -7617,7 +7617,7 @@ int MYSQL_BIN_LOG::open_binlog(const char *opt_name)
       Later we will take this value and truncate the log if need be.
     */
     if ((ev= Log_event::read_log_event(&log, 0, &fdle,
-                                       opt_master_verify_checksum)) &&
+                                       opt_primary_verify_checksum)) &&
         ev->get_type_code() == binary_log::FORMAT_DESCRIPTION_EVENT &&
         (ev->common_header->flags & LOG_EVENT_BINLOG_IN_USE_F ||
          DBUG_EVALUATE_IF("eval_force_bin_log_recovery", true, false)))
@@ -7644,7 +7644,7 @@ int MYSQL_BIN_LOG::open_binlog(const char *opt_name)
                                  O_RDWR | O_BINARY, MYF(MY_WME))) < 0)
       {
         sql_print_error("Failed to open the crashed binlog file "
-                        "when master server is recovering it.");
+                        "when primary server is recovering it.");
         return -1;
       }
 
@@ -7654,7 +7654,7 @@ int MYSQL_BIN_LOG::open_binlog(const char *opt_name)
         if (my_chsize(file, valid_pos, 0, MYF(MY_WME)))
         {
           sql_print_error("Failed to trim the crashed binlog file "
-                          "when master server is recovering it.");
+                          "when primary server is recovering it.");
           mysql_file_close(file, MYF(MY_WME));
           return -1;
         }
@@ -7672,7 +7672,7 @@ int MYSQL_BIN_LOG::open_binlog(const char *opt_name)
       if (mysql_file_pwrite(file, &flags, 1, offset, MYF(0)) != 1)
       {
         sql_print_error("Failed to clear LOG_EVENT_BINLOG_IN_USE_F "
-                        "for the crashed binlog file when master "
+                        "for the crashed binlog file when primary "
                         "server is recovering it.");
         mysql_file_close(file, MYF(MY_WME));
         return -1;
@@ -7708,10 +7708,10 @@ int MYSQL_BIN_LOG::prepare(THD *thd, bool all)
   DBUG_ASSERT(opt_bin_log);
   /*
     The applier thread explicitly overrides the value of sql_log_bin
-    with the value of log_slave_updates.
+    with the value of log_replica_updates.
   */
-  DBUG_ASSERT(thd->slave_thread ?
-              opt_log_slave_updates : thd->variables.sql_log_bin);
+  DBUG_ASSERT(thd->replica_thread ?
+              opt_log_replica_updates : thd->variables.sql_log_bin);
 
   /*
     Set HA_IGNORE_DURABILITY to not flush the prepared record of the
@@ -8132,7 +8132,7 @@ void MYSQL_BIN_LOG::update_max_committed(THD *thd)
 
   @see MYSQL_BIN_LOG::ordered_commit
 
-  @param thd The "master" thread
+  @param thd The "primary" thread
   @param first First thread in the queue of threads to commit
  */
 
@@ -8200,7 +8200,7 @@ MYSQL_BIN_LOG::process_commit_stage_queue(THD *thd, THD *first)
 /**
   Process after commit for a sequence of sessions.
 
-  @param thd The "master" thread
+  @param thd The "primary" thread
   @param first First thread in the queue of threads to commit
  */
 
@@ -8588,7 +8588,7 @@ int MYSQL_BIN_LOG::ordered_commit(THD *thd, bool all, bool skip_commit)
 #ifdef HAVE_REPLICATION
   if (has_commit_order_manager(thd))
   {
-    Slave_worker *worker= dynamic_cast<Slave_worker *>(thd->rli_slave);
+    Replica_worker *worker= dynamic_cast<Replica_worker *>(thd->rli_replica);
     Commit_order_manager *mngr= worker->get_commit_order_manager();
 
     if (mngr->wait_for_its_turn(worker, all))
@@ -9328,9 +9328,9 @@ static bool inline fulltext_unsafe_set(TABLE_SHARE *s)
   - The type of statement.  There are three types of statements:
     "normal" safe statements; unsafe statements; and row injections.
     An unsafe statement is one that, if logged in statement format,
-    might produce different results when replayed on the slave (e.g.,
+    might produce different results when replayed on the replica (e.g.,
     queries with a LIMIT clause).  A row injection is either a BINLOG
-    statement, or a row event executed by the slave's SQL thread.
+    statement, or a row event executed by the replica's SQL thread.
 
   - The capabilities of tables modified by the statement.  The
     *capabilities vector* for a table is a set of flags associated
@@ -9496,9 +9496,9 @@ int THD::decide_logging_format(TABLE_LIST *tables)
       Currently, these tables are:
       - mysql.slow_log
       - mysql.general_log
-      - mysql.slave_relay_log_info
-      - mysql.slave_master_info
-      - mysql.slave_worker_info
+      - mysql.replica_relay_log_info
+      - mysql.replica_primary_info
+      - mysql.replica_worker_info
       - performance_schema.*
       - TODO: information_schema.*
       In practice, from this list, only performance_schema.* tables
@@ -9829,13 +9829,13 @@ int THD::decide_logging_format(TABLE_LIST *tables)
     }
 
     if (is_write &&
-        lex->sql_command != SQLCOM_END /* rows-event applying by slave */)
+        lex->sql_command != SQLCOM_END /* rows-event applying by replica */)
     {
       /*
-        Master side of DML in the STMT format events parallelization.
+        Primary side of DML in the STMT format events parallelization.
         All involving table db:s are stored in a abc-ordered name list.
         In case the number of databases exceeds MAX_DBS_IN_EVENT_MTS maximum
-        the list gathering breaks since it won't be sent to the slave.
+        the list gathering breaks since it won't be sent to the replica.
       */
       for (TABLE_LIST *table= tables; table; table= table->next_global)
       {
@@ -9848,7 +9848,7 @@ int THD::decide_logging_format(TABLE_LIST *tables)
         {
           /* 
              FK-referenced dbs can't be gathered currently. The following
-             event will be marked for sequential execution on slave.
+             event will be marked for sequential execution on replica.
           */
           binlog_accessed_db_names= NULL;
           add_to_binlog_accessed_dbs("");
@@ -10078,7 +10078,7 @@ bool THD::is_ddl_gtid_compatible(bool handle_error, bool handle_nonerror)
       CREATE ... SELECT (without TEMPORARY) is unsafe because if
       binlog_format=row it will be logged as a CREATE TABLE followed
       by row events, re-executed non-atomically as two transactions,
-      and then written to the slave's binary log as two separate
+      and then written to the replica's binary log as two separate
       transactions with the same GTID.
     */
     bool ret= handle_gtid_consistency_violation(
@@ -10092,7 +10092,7 @@ bool THD::is_ddl_gtid_compatible(bool handle_error, bool handle_nonerror)
     /*
       [CREATE|DROP] TEMPORARY TABLE is unsafe to execute
       inside a transaction because the table will stay and the
-      transaction will be written to the slave's binary log with the
+      transaction will be written to the replica's binary log with the
       GTID even if the transaction is rolled back.
     */
     if (in_multi_stmt_transaction_mode())
@@ -10914,9 +10914,9 @@ inline int64 Logical_clock::set_if_greater(int64 new_val)
   - After the all calls to ha_*_row() functions have been issued.
 
   - After any writes to system tables. Rationale: if system tables
-    were written after a call to this function, and the master crashes
+    were written after a call to this function, and the primary crashes
     after the call to this function and before writing the system
-    tables, then the master and slave get out of sync.
+    tables, then the primary and replica get out of sync.
 
   - Before tables are unlocked and closed.
 
@@ -10949,7 +10949,7 @@ int THD::binlog_query(THD::enum_binlog_query_type qtype, const char *query_arg,
     If we are not in prelocked mode, mysql_unlock_tables() will be
     called after this binlog_query(), so we have to flush the pending
     rows event with the STMT_END_F set to unlock all tables at the
-    slave side as well.
+    replica side as well.
 
     If we are in prelocked mode, the flushing will be done inside the
     top-most close_thread_tables().
@@ -11020,7 +11020,7 @@ int THD::binlog_query(THD::enum_binlog_query_type qtype, const char *query_arg,
                             suppress_use, errcode);
       /*
         Binlog table maps will be irrelevant after a Query_log_event
-        (they are just removed on the slave side) so after the query
+        (they are just removed on the replica side) so after the query
         log event is written to the binary log, we pretend that no
         table maps were written.
        */

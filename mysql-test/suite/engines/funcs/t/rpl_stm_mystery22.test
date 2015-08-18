@@ -4,63 +4,63 @@
 # Change: Added back have stm binlog
 # and added requirments comments
 ################################
-# test case to make slave thread get ahead by 22 bytes
+# test case to make replica thread get ahead by 22 bytes
 ################################
-#REQUIREMENT: If there is a faked slave duplicate key insert 
-#error and the slave is restarted, the replication should 
+#REQUIREMENT: If there is a faked replica duplicate key insert 
+#error and the replica is restarted, the replication should 
 #proceed in a correct way.
 ################################
-#REQUIREMENT: If there is a faked slave non-existing record 
-#delete error and the slave is restarted, then the replication 
+#REQUIREMENT: If there is a faked replica non-existing record 
+#delete error and the replica is restarted, then the replication 
 #should proceed in a correct way.
 #################################
 
 -- source include/have_binlog_format_mixed_or_statement.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
-# first, cause a duplicate key problem on the slave
+# first, cause a duplicate key problem on the replica
 create table t1(n int auto_increment primary key, s char(10));
-sync_slave_with_master;
+sync_replica_with_primary;
 insert into t1 values (2,'old');
-connection master;
+connection primary;
 insert into t1 values(NULL,'new');
 insert into t1 values(NULL,'new');
-save_master_pos;
-connection slave;
-# wait until the slave tries to run the query, fails and aborts slave thread
-wait_for_slave_to_stop;
+save_primary_pos;
+connection replica;
+# wait until the replica tries to run the query, fails and aborts replica thread
+wait_for_replica_to_stop;
 select * from t1 order by n;
 delete from t1 where n = 2;
 --disable_warnings
-start slave;
+start replica;
 --enable_warnings
-sync_with_master;
-#now the buggy slave would be confused on the offset but it can replicate
-#in order to make it break, we need to stop/start the slave one more time
-stop slave;
-connection master;
-# to be able to really confuse the slave, we need some non-auto-increment
+sync_with_primary;
+#now the buggy replica would be confused on the offset but it can replicate
+#in order to make it break, we need to stop/start the replica one more time
+stop replica;
+connection primary;
+# to be able to really confuse the replica, we need some non-auto-increment
 # events in the log
 create table t2(n int);
 drop table t2;
 insert into t1 values(NULL,'new');
-# what happens when we delete a row which does not exist on slave?
+# what happens when we delete a row which does not exist on replica?
 set sql_log_bin=0;
 insert into t1 values(NULL,'new');
 set sql_log_bin=1;
 delete from t1 where n=4;
-save_master_pos;
-connection slave;
+save_primary_pos;
+connection replica;
 --disable_warnings
-start slave;
+start replica;
 --enable_warnings
-#now the truth comes out - if the slave is buggy, it will never sync because
-#the slave thread is not able to read events
-sync_with_master;
+#now the truth comes out - if the replica is buggy, it will never sync because
+#the replica thread is not able to read events
+sync_with_primary;
 select * from t1 order by n;
 #clean up
-connection master;
+connection primary;
 drop table t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 # End of 4.1 tests

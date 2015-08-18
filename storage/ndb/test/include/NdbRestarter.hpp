@@ -93,14 +93,14 @@ public:
   int dumpStateOneNode(int _nodeId, const int * _args, int _num_args);
   int dumpStateAllNodes(const int * _args, int _num_args);
 
-  int getMasterNodeId();
-  int getNextMasterNodeId(int nodeId);
+  int getPrimaryNodeId();
+  int getNextPrimaryNodeId(int nodeId);
   int getNodeGroup(int nodeId);
   int getRandomNodeSameNodeGroup(int nodeId, int randomNumber);
   int getRandomNodeOtherNodeGroup(int nodeId, int randomNumber);
-  int getRandomNotMasterNodeId(int randomNumber);
+  int getRandomNotPrimaryNodeId(int randomNumber);
 
-  int getMasterNodeVersion(int& version);
+  int getPrimaryNodeVersion(int& version);
   int getNodeTypeVersionRange(ndb_mgm_node_type type, int& minVer, int& maxVer);
   
   int getNodeStatus(int nodeId); // return NDB_MGM_NODE_STATUS_*
@@ -116,8 +116,8 @@ public:
   enum NodeSelector
   {
     NS_RANDOM     = 0, // Any node
-    NS_MASTER     = 1, // Master node
-    NS_NON_MASTER = 2
+    NS_PRIMARY     = 1, // Primary node
+    NS_NON_PRIMARY = 2
   };
 
   int getNode(NodeSelector);

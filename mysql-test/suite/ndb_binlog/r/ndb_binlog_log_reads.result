@@ -16,14 +16,14 @@ insert into test.t1 values
 (9, "Initial data 9", 9, 9),
 (10, "Initial data 10", 10, 10);
 Test 1: Testing logging of pk reads
-reset master;
+reset primary;
 create table test.synch(x int primary key) engine=ndb;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 SET ndb_log_exclusive_reads= 1;
 select * from test.t1 where a = 7 order by a for update;
 a	b	c	d
@@ -46,14 +46,14 @@ mysqld4:	### Extra row data format: 0, len: 4 :0x02000400
 mysqld4:	### UPDATE `test`.`t1`
 SET ndb_log_exclusive_reads= 0;
 Test 2: Testing logging of unique index reads
-reset master;
+reset primary;
 delete from test.synch;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 SET ndb_log_exclusive_reads= 1;
 select * from test.t1 where c = 7 order by a for update;
 a	b	c	d
@@ -76,14 +76,14 @@ mysqld4:	### Extra row data format: 0, len: 4 :0x02000400
 mysqld4:	### UPDATE `test`.`t1`
 SET ndb_log_exclusive_reads= 0;
 Test 3: Testing logging of ordered index scans
-reset master;
+reset primary;
 delete from test.synch;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 SET ndb_log_exclusive_reads= 1;
 select * from test.t1 where d = 7 order by a for update;
 a	b	c	d
@@ -106,14 +106,14 @@ mysqld4:	### Extra row data format: 0, len: 4 :0x02000400
 mysqld4:	### UPDATE `test`.`t1`
 SET ndb_log_exclusive_reads= 0;
 Test 4: Testing logging of table scans
-reset master;
+reset primary;
 delete from test.synch;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 show create table test.synch;
-reset master;
+reset primary;
 SET ndb_log_exclusive_reads= 1;
 select * from test.t1 where b like "Initial data 7" order by a for update;
 a	b	c	d

@@ -614,7 +614,7 @@ enhancements, session resumption, and improved TLS support including:
 
 - HMAC for MD5 and SHA-1
 - PRF (pseudo random function)
-- Master Secret and Key derivation routines
+- Primary Secret and Key derivation routines
 - Record Authentication codes
 - Finish verify data check
 

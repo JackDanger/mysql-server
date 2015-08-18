@@ -58,13 +58,13 @@ flush table mysql.proc;
 --write_file $MYSQLD_DATADIR/mysql/proc.frm
 saljdfa
 EOF
---replace_result $MYSQLTEST_VARDIR . master-data// '' '\\' '/'
+--replace_result $MYSQLTEST_VARDIR . primary-data// '' '\\' '/'
 --error ER_NOT_FORM_FILE
 call bug14233();
---replace_result $MYSQLTEST_VARDIR . master-data// '' '\\' '/'
+--replace_result $MYSQLTEST_VARDIR . primary-data// '' '\\' '/'
 --error ER_NOT_FORM_FILE
 create view v1 as select bug14233_f();
---replace_result $MYSQLTEST_VARDIR . master-data// '' '\\' '/'
+--replace_result $MYSQLTEST_VARDIR . primary-data// '' '\\' '/'
 --error ER_NOT_FORM_FILE
 insert into t1 values (0);
 

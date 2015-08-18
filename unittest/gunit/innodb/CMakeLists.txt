@@ -55,11 +55,11 @@ IF (MERGE_UNITTESTS)
   ADD_EXECUTABLE(merge_innodb_tests-t ${SRC_FILES})
 
   TARGET_LINK_LIBRARIES(merge_innodb_tests-t
-    sql binlog rpl master slave sql)
+    sql binlog rpl primary replica sql)
   TARGET_LINK_LIBRARIES(merge_innodb_tests-t
     gunit_large strings dbug regex mysys)
   TARGET_LINK_LIBRARIES(merge_innodb_tests-t
-    sql binlog rpl master slave sql)
+    sql binlog rpl primary replica sql)
 
   IF(WITH_PERFSCHEMA_STORAGE_ENGINE)
     TARGET_LINK_LIBRARIES(merge_innodb_tests-t perfschema)
@@ -78,9 +78,9 @@ ELSE()
     ENDIF()
     ADD_EXECUTABLE(${test}-t ${SRC_FILES})
 
-    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl master slave sql)
+    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl primary replica sql)
     TARGET_LINK_LIBRARIES(${test}-t gunit_large strings dbug regex mysys)
-    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl master slave sql)
+    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl primary replica sql)
 
     IF(WITH_PERFSCHEMA_STORAGE_ENGINE)
       TARGET_LINK_LIBRARIES(${test}-t perfschema)

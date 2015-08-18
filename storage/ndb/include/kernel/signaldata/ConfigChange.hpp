@@ -73,7 +73,7 @@ struct ConfigChangeRef
   enum ErrorCode {
     OK                      = 0,
     ConfigChangeOnGoing     = 1,
-    NotMaster               = 2,
+    NotPrimary               = 2,
     NoConfigData            = 3,
     ConfigNotOk             = 4,
     InternalError           = 5,
@@ -96,8 +96,8 @@ struct ConfigChangeRef
     switch (error){
     case ConfigChangeOnGoing:
       return "Config change ongoing";
-    case NotMaster:
-      return "Not the config change master";
+    case NotPrimary:
+      return "Not the config change primary";
     case NoConfigData:
       return "No config data in signal";
     case ConfigNotOk:

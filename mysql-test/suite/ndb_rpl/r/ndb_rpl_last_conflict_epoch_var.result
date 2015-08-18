@@ -1,14 +1,14 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 Setup circular replication
-SLAVE_SERVER_ID: 3
+REPLICA_SERVER_ID: 3
 Warnings:
 Note	1759	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	1760	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-MASTER_SERVER_ID: 1
+Note	1760	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+PRIMARY_SERVER_ID: 1
 Setup ndb_replication and t1 exceptions table
 Populate ndb_replication table as necessary
 create table test.t1 (
@@ -17,9 +17,9 @@ b int,
 c varchar(2000)) engine=ndb;
 insert into test.t1 values (1,1,repeat("B", 1000));
 Stopping Primary -> Secondary replication
-stop slave;
+stop replica;
 Stopping Secondary -> Primary replication
-stop slave;
+stop replica;
 Making change on Primary
 update test.t1 set b=2 where a=1;
 Making conflicting change on Secondary
@@ -27,7 +27,7 @@ begin;
 update test.t1 set b=3 where a=1;
 insert into test.t1 values (2,2,repeat("A", 1000));
 commit;
-Capturing session epoch from Master
+Capturing session epoch from Primary
 Show that last_conflict_epoch is 0
 Variable_name	Value
 Ndb_conflict_last_conflict_epoch	0
@@ -35,7 +35,7 @@ Restart Secondary->Primary replication
 Check that max_replicated_epoch is 
 still < the saved session epoch
 Max replicated epoch should be < committed epoch
-@max_replicated_epoch < @master_session_epoch
+@max_replicated_epoch < @primary_session_epoch
 1
 Some invariants :
 @conflict_detected_epoch != 0
@@ -43,7 +43,7 @@ Some invariants :
 @conflict_detected_epoch > @max_replicated_epoch
 1
 Primary has detected the problem, but Secondary
-is unaware as the slave is offline.
+is unaware as the replica is offline.
 Now bring it back
 Now sync up
 Now lets check that the max replicated epoch

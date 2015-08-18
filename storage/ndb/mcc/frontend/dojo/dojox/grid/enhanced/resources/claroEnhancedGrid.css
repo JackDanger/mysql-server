@@ -14,13 +14,13 @@
 .dojoxGrid td {
 	-moz-outline: none;
 }
-.dojoxGridMasterHeader {
+.dojoxGridPrimaryHeader {
 	position: relative;
 }
-.dojoxGridMasterView  {
+.dojoxGridPrimaryView  {
 	position: relative;
 }
-.dojoxGridMasterMessages {
+.dojoxGridPrimaryMessages {
 	position: relative;
 	padding: 1em;
 	text-align: center;
@@ -351,7 +351,7 @@
 	background-color: #fff;
 	border: 1px solid #DBDBDB;
 }
-.claro .dojoxGridMasterMessages {
+.claro .dojoxGridPrimaryMessages {
 	background-color: #fefefe;
 }
 .claro .dojoxGridLoading, 
@@ -414,7 +414,7 @@
 .claro .dojoxGridSortUp .dojoxGridArrowButtonNode {
 	background-position:-21px 50%;
 }
-.claro .dojoxGridMasterHeader {
+.claro .dojoxGridPrimaryHeader {
 	background: url(../../resources/images/header.png) #EDF2F7 repeat-x bottom;
 	background: -moz-linear-gradient(top, #EDF2F7, #D0DFEA);
 	background: -webkit-gradient(linear, left top, left bottom, from(#EDF2F7), to(#D0DFEA));
@@ -422,7 +422,7 @@
 	border: 1px solid #FFFFFF;
 	border-right: none;
 }
-.claro .dojoxGridMasterHeader .dojoxGridRowTable {
+.claro .dojoxGridPrimaryHeader .dojoxGridRowTable {
 	border-left: 1px solid #BCBCBC;
 	border-right: 1px solid #FFFFFF;
 	background-color: transparent;
@@ -472,7 +472,7 @@
 	border:none;
 	background-color:#fff;
 }
-.dj_ie .claro .dojoxGridMasterView .dojoxGridRowTable {
+.dj_ie .claro .dojoxGridPrimaryView .dojoxGridRowTable {
 	border-collapse:separate;
 }
 .claro .dojoxGridRowTable tr {

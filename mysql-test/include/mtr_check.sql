@@ -111,7 +111,7 @@ BEGIN
   -- Dump all views, only those in the sys schema should exist
   SELECT * FROM INFORMATION_SCHEMA.VIEWS;
 
-  SHOW GLOBAL STATUS LIKE 'slave_open_temp_tables';
+  SHOW GLOBAL STATUS LIKE 'replica_open_temp_tables';
 
   -- Checksum system tables to make sure they have been properly
   -- restored after test

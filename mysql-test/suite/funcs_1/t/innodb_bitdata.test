@@ -14,4 +14,4 @@ exit;
 # Create some objects needed in many testcases
 USE test;
 --source suite/funcs_1/include/innodb_tb4.inc
---source suite/funcs_1/bitdata/bitdata_master.test
+--source suite/funcs_1/bitdata/bitdata_primary.test

@@ -5,19 +5,19 @@
 # -----------------
 #
 # A number of concurrently executable transactions are prepared on the
-# master.  It's done with adding a "separator" group which is a DML in
+# primary.  It's done with adding a "separator" group which is a DML in
 # myisam table.  Considering their sizes and a small value of
 # max_relay_log_size they are relay-logged in a sequence of files
 # possibly being broken into pieces so different pieces of a
 # transaction be scattered across few logs.
 # At applying a number of transactions  is let to complete until a separator
-# is found. At this point a slave local session locks random records in
+# is found. At this point a replica local session locks random records in
 # the data tables which leads to a timeout error.
-# After the slave applier is stopped, the failure conditions are removed,
-# and slave resumes with two phases. When the gaps are filled up, a next
+# After the replica applier is stopped, the failure conditions are removed,
+# and replica resumes with two phases. When the gaps are filled up, a next
 # undisturbed round of applying follows.
 # Gaps filling is done in two branches: an immediate restart in the
-# "hot" server, and the slave server shutdown, restart and the slave
+# "hot" server, and the replica server shutdown, restart and the replica
 # service restart.  In either case MTS recovery must be completed with
 # positive data consistency check.
 
@@ -25,35 +25,35 @@
 # Parameters:
 #
 
-# Number of master connection. For Logical_clock it means
+# Number of primary connection. For Logical_clock it means
 # parallelization window, for the Database scheduler it means a number
 # of databases.
 --let $conn_cnt=4
-# Total number of failures that the slave is subject to by simulation
+# Total number of failures that the replica is subject to by simulation
 --let $total_fail_cnt=4
 --let $fail_to_shutdown=2
 # max number of simulataneous errors by Workers at a time
 --let $simul_fail_cnt=4
-# total number of transactions to be processed by slave
+# total number of transactions to be processed by replica
 --let $total_trx_cnt=128
 # give up waiting for lock in Innodb at error simulation
 --let $innodb_wait_timeout=1
 # small value for max relay-log-size
 --let $relay_log_size= 4096
 
---connection slave
+--connection replica
 
-CALL mtr.add_suppression("The slave coordinator and worker threads are stopped");
+CALL mtr.add_suppression("The replica coordinator and worker threads are stopped");
 
 SET @save.innodb_lock_wait_timeout=@@GLOBAL.innodb_lock_wait_timeout;
 eval SET @@global.innodb_lock_wait_timeout=$innodb_wait_timeout;
-SET @save.slave_transaction_retries= @@global.slave_transaction_retries;
-SET @@global.slave_transaction_retries= 0;
+SET @save.replica_transaction_retries= @@global.replica_transaction_retries;
+SET @@global.replica_transaction_retries= 0;
 SET @save.max_relay_log_size= @@global.max_relay_log_size;
 --eval SET @@global.max_relay_log_size=$relay_log_size
 
---source include/stop_slave_sql.inc
---source include/start_slave_sql.inc
+--source include/stop_replica_sql.inc
+--source include/start_replica_sql.inc
 
 --let $assert_text= the max size of relay log must be $relay_log_size
 --let $assert_cond= [select @@global.max_relay_log_size] = $relay_log_size
@@ -72,9 +72,9 @@ while ($index)
   --dec $index
 }
 
---connection master
-# Inserts into myisam will be caught/blocked on the slave side
-# to serve as synchronization tool by which the slave side
+--connection primary
+# Inserts into myisam will be caught/blocked on the replica side
+# to serve as synchronization tool by which the replica side
 # becomes aware of execution/scheduling point in the replicated load.
 # So each such insert is made to "trigger" a failure.
 CREATE TABLE t1m (a INT) ENGINE=myisam;
@@ -83,14 +83,14 @@ if ($rpl_multi_source)
 {
   --let $rpl_channel_name= channel_1
 }
-#--let $sync_slave_connection= server_2
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+#--let $sync_replica_connection= server_2
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
---connection slave
+--connection replica
 LOCK TABLES t1m WRITE;
 
---connection master
+--connection primary
 #
 # Parallelizable load generator
 #
@@ -114,7 +114,7 @@ while ($iter)
       COMMIT;
       if (`SELECT  ($total_trx_cnt-$iter) % $trans_no_failure = FLOOR($trans_no_failure/2)`)
      {
-	--connection master
+	--connection primary
           INSERT INTO t1m SET a=1;
      }
     --dec $index
@@ -124,9 +124,9 @@ while ($iter)
 --enable_query_log
 
 #
-# The slave failures loop. Slave sql threads stop and restarted
+# The replica failures loop. Replica sql threads stop and restarted
 # prescribed number of times. After being waited tables are unlocked
-# the slave must always recover.
+# the replica must always recover.
 #
 
 --disable_query_log
@@ -135,7 +135,7 @@ while ($iter)
 while ($iter)
 {
   --let $iter_err= $simul_fail_cnt
-  --connection slave1
+  --connection replica1
   BEGIN;
   while ($iter_err)
   {
@@ -143,80 +143,80 @@ while ($iter)
     --eval SELECT * FROM db$index .t FOR UPDATE
     --dec $iter_err
   }
-  --connection slave
+  --connection replica
   UNLOCK TABLES;
-  --let $slave_sql_errno=convert_error(ER_LOCK_WAIT_TIMEOUT)
-  --let $show_slave_sql_error= 0
-  --source include/wait_for_slave_sql_error.inc
+  --let $replica_sql_errno=convert_error(ER_LOCK_WAIT_TIMEOUT)
+  --let $show_replica_sql_error= 0
+  --source include/wait_for_replica_sql_error.inc
 
-  --connection slave1
+  --connection replica1
   ROLLBACK;
 
   # first few iterations with a "warm" restart
   if ($iter > $fail_to_shutdown)
   {
-    --connection slave
+    --connection replica
     if ($rpl_multi_source)
     {
-      START SLAVE UNTIL SQL_AFTER_MTS_GAPS for channel 'channel_1';
+      START REPLICA UNTIL SQL_AFTER_MTS_GAPS for channel 'channel_1';
       --let $rpl_channel_name= channel_1
     }
     if (!$rpl_multi_source)
     {
-      START SLAVE UNTIL SQL_AFTER_MTS_GAPS;
+      START REPLICA UNTIL SQL_AFTER_MTS_GAPS;
     }
-    --source include/wait_for_slave_sql_to_stop.inc
+    --source include/wait_for_replica_sql_to_stop.inc
   }
   if ($iter <= $fail_to_shutdown)
   {
     --let $rpl_server_number= 2
-    --let $rpl_skip_start_slave= 1
+    --let $rpl_skip_start_replica= 1
     --source include/rpl_restart_server.inc
-    --connection slave
+    --connection replica
     SET @save.innodb_lock_wait_timeout=@@GLOBAL.innodb_lock_wait_timeout;
     eval SET @@global.innodb_lock_wait_timeout=$innodb_wait_timeout;
-    SET @save.slave_transaction_retries= @@global.slave_transaction_retries;
-    SET @@global.slave_transaction_retries= 0;
+    SET @save.replica_transaction_retries= @@global.replica_transaction_retries;
+    SET @@global.replica_transaction_retries= 0;
     SET @save.max_relay_log_size= @@global.max_relay_log_size;
     SET @@global.max_relay_log_size=4096;
     if ($rpl_multi_source)
     {
-      START SLAVE UNTIL SQL_AFTER_MTS_GAPS for channel 'channel_1';
+      START REPLICA UNTIL SQL_AFTER_MTS_GAPS for channel 'channel_1';
       --let $rpl_channel_name= channel_1
     }
     if (!$rpl_multi_source)
     {
-      START SLAVE UNTIL SQL_AFTER_MTS_GAPS;
+      START REPLICA UNTIL SQL_AFTER_MTS_GAPS;
     }
-    --source include/wait_for_slave_sql_to_stop.inc
+    --source include/wait_for_replica_sql_to_stop.inc
   }
   LOCK TABLES t1m WRITE;
   if ($rpl_multi_source)
   {
     --let $rpl_channel_name= channel_1
   }
-  --source include/start_slave_sql.inc
+  --source include/start_replica_sql.inc
 
   --dec $iter
-} #eof of the slave error load
+} #eof of the replica error load
 --enable_result_log
 --enable_query_log
 
---connection slave
+--connection replica
   UNLOCK TABLES;
 
---connection master
+--connection primary
 if ($rpl_multi_source)
 {
   --let $rpl_channel_name= channel_1
 }
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Cleanup
 #
---connection master
+--connection primary
 DROP TABLE t1m;
 --let $index=$conn_cnt
 while ($index)
@@ -225,7 +225,7 @@ while ($index)
   --dec $index
 }
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SET @@global.innodb_lock_wait_timeout=@save.innodb_lock_wait_timeout;
-SET @@global.slave_transaction_retries= @save.slave_transaction_retries;
+SET @@global.replica_transaction_retries= @save.replica_transaction_retries;
 SET @@global.max_relay_log_size= @save.max_relay_log_size;

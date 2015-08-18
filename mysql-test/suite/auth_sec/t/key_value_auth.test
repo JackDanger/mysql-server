@@ -67,13 +67,13 @@ connect(con2,127.0.0.1,Tanjotuser2,abc,,);
 
 # Verifying the client access denied passing null password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con3,localhost,Tanjotuser1,,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con4,127.0.0.1,Tanjotuser2,,,);
@@ -81,13 +81,13 @@ connect(con4,127.0.0.1,Tanjotuser2,,,);
 
 # Verifying the client access denied passing blank password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con5,localhost,Tanjotuser1, ,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con6,127.0.0.1,Tanjotuser2, ,,);
@@ -131,13 +131,13 @@ connect(con20,127.0.0.1,Tanjotuser2,,,);
 
 # Verifying the client connection using the same sha256_password plugin and junk password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con21,localhost,Tanjotuser1," ",,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con22,127.0.0.1,Tanjotuser2," ",,);
@@ -156,13 +156,13 @@ SET PASSWORD FOR 'Tanjotuser2'@'127.0.0.1'='abc';
 
 # Verifying the client connection using the same sha256_password plugin and NULL password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con23,localhost,Tanjotuser1,,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con24,127.0.0.1,Tanjotuser2,,,);
@@ -170,13 +170,13 @@ connect(con24,127.0.0.1,Tanjotuser2,,,);
 
 # Verifying the client connection using the same sha256_password plugin and junk password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con25,localhost,Tanjotuser1," ",,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con26,127.0.0.1,Tanjotuser2," ",,);
@@ -243,13 +243,13 @@ connect(con30,127.0.0.1,Tanjotuser2,aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeee
 
 # Verifying the client access denied passing null password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con31,localhost,Tanjotuser1,,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con32,127.0.0.1,Tanjotuser2,,,);
@@ -298,13 +298,13 @@ connect(con38,127.0.0.1,Tanjotuser2,aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeee
 
 # Verifying the client connection using the same sha256_password plugin and NULL password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con39,localhost,Tanjotuser1,,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con40,127.0.0.1,Tanjotuser2,,,);
@@ -339,13 +339,13 @@ connect(con42,127.0.0.1,Tanjotuser2,,,);
 
 # Verifying the client access denied passing not null password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con43,localhost,Tanjotuser1," ",,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con44,127.0.0.1,Tanjotuser2," ",,);
@@ -354,13 +354,13 @@ connect(con44,127.0.0.1,Tanjotuser2," ",,);
 
 # Verifying the client access denied passing not null password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con45,localhost,Tanjotuser1,NULL,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con46,127.0.0.1,Tanjotuser2,NULL,,);
@@ -369,13 +369,13 @@ connect(con46,127.0.0.1,Tanjotuser2,NULL,,);
 
 # Verifying the client access denied passing not null password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con47,localhost,Tanjotuser1,0,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con48,127.0.0.1,Tanjotuser2,0,,);
@@ -424,13 +424,13 @@ connect(con58,127.0.0.1,Tanjotuser2,,,);
 
 # Verifying the client connection using the sha256_password plugin and not NULL password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con59,localhost,Tanjotuser1," ",,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con60,127.0.0.1,Tanjotuser2," ",,);
@@ -438,13 +438,13 @@ connect(con60,127.0.0.1,Tanjotuser2," ",,);
 
 # Verifying the client connection using the sha256_password plugin and not NULL password
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con61,localhost,Tanjotuser1,0,,);
 --enable_query_log
 
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con62,127.0.0.1,Tanjotuser2,0,,);

@@ -6,7 +6,7 @@ DROP DATABASE IF EXISTS `drop-temp+table-test`;
 connect (con1,localhost,root,,);
 connect (con2,localhost,root,,);
 connection con1;
-RESET MASTER;
+RESET PRIMARY;
 CREATE DATABASE `drop-temp+table-test`;
 USE `drop-temp+table-test`;
 CREATE TEMPORARY TABLE shortn1 (a INT);
@@ -42,7 +42,7 @@ DROP TEMPORARY TABLE tmp3;
 #In RBR, tmp2 will NOT be binlogged, because it is a temporary table.
 DROP TABLE IF EXISTS tmp2, t;
 
-#In RBR, tmp2 will be binlogged, because it does not exist and master do not know
+#In RBR, tmp2 will be binlogged, because it does not exist and primary do not know
 # whether it is a temporary table or not.
 DROP TABLE IF EXISTS tmp2, t;
 --enable_warnings
@@ -50,7 +50,7 @@ DROP TABLE IF EXISTS tmp2, t;
 SELECT GET_LOCK("a",10);
 
 #
-# BUG48216 Replication fails on all slaves after upgrade to 5.0.86 on master
+# BUG48216 Replication fails on all replicas after upgrade to 5.0.86 on primary
 #
 # When the session is closed, any temporary tables of the session are dropped
 # and are binlogged. But it will be binlogged with a wrong database name when
@@ -84,7 +84,7 @@ DROP DATABASE `drop-temp+table-test`;
 # for temporary tables on session closing must be logged.
 #
 
-RESET MASTER;
+RESET PRIMARY;
 
 CREATE TABLE t1 ( i text );
 
@@ -101,7 +101,7 @@ SELECT @@session.binlog_format;
 --let $mask_binlog_commit_events= 1
 -- source include/show_binlog_events.inc
 --let $mask_binlog_commit_events= 0
-RESET MASTER;
+RESET PRIMARY;
 
 DROP TABLE t1;
 

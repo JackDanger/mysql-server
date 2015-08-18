@@ -27,8 +27,8 @@
 ** Adapted and optimized for MySQL by
 ** Michael Widenius, Sinisa Milivojevic, Jani Tolonen
 ** -w --where added 9/10/98 by Jim Faucette
-** slave code by David Saez Padros <david@ols.es>
-** master/autocommit code by Brian Aker <brian@tangent.org>
+** replica code by David Saez Padros <david@ols.es>
+** primary/autocommit code by Brian Aker <brian@tangent.org>
 ** SSL by
 ** Andrei Errapart <andreie@no.spam.ee>
 ** TÃµnu Samuel  <tonu@please.do.not.remove.this.spam.ee>
@@ -100,14 +100,14 @@ static my_bool  verbose= 0, opt_no_create_info= 0, opt_no_data= 0,
                 opt_alldbs=0,opt_create_db=0,opt_lock_all_tables=0,
                 opt_set_charset=0, opt_dump_date=1,
                 opt_autocommit=0,opt_disable_keys=1,opt_xml=0,
-                opt_delete_master_logs=0, tty_password=0,
+                opt_delete_primary_logs=0, tty_password=0,
                 opt_single_transaction=0, opt_comments= 0, opt_compact= 0,
                 opt_hex_blob=0, opt_order_by_primary=0, opt_ignore=0,
                 opt_complete_insert= 0, opt_drop_database= 0,
                 opt_replace_into= 0,
                 opt_dump_triggers= 0, opt_routines=0, opt_tz_utc=1,
-                opt_slave_apply= 0, 
-                opt_include_master_host_port= 0,
+                opt_replica_apply= 0, 
+                opt_include_primary_host_port= 0,
                 opt_events= 0, opt_comments_used= 0,
                 opt_alltspcs=0, opt_notspcs= 0, opt_drop_trigger= 0,
                 opt_secure_auth= TRUE;
@@ -127,12 +127,12 @@ static char compatible_mode_normal_str[255];
 /* Server supports character_set_results session variable? */
 static my_bool server_supports_switching_charsets= TRUE;
 static ulong opt_compatible_mode= 0;
-#define MYSQL_OPT_MASTER_DATA_EFFECTIVE_SQL 1
-#define MYSQL_OPT_MASTER_DATA_COMMENTED_SQL 2
-#define MYSQL_OPT_SLAVE_DATA_EFFECTIVE_SQL 1
-#define MYSQL_OPT_SLAVE_DATA_COMMENTED_SQL 2
-static uint opt_mysql_port= 0, opt_master_data;
-static uint opt_slave_data;
+#define MYSQL_OPT_PRIMARY_DATA_EFFECTIVE_SQL 1
+#define MYSQL_OPT_PRIMARY_DATA_COMMENTED_SQL 2
+#define MYSQL_OPT_REPLICA_DATA_EFFECTIVE_SQL 1
+#define MYSQL_OPT_REPLICA_DATA_COMMENTED_SQL 2
+static uint opt_mysql_port= 0, opt_primary_data;
+static uint opt_replica_data;
 static uint my_end_arg;
 static char * opt_mysql_unix_port=0;
 static char *opt_bind_addr = NULL;
@@ -235,9 +235,9 @@ static struct my_option my_long_options[] =
   {"allow-keywords", OPT_KEYWORDS,
    "Allow creation of column names that are keywords.", &opt_keywords,
    &opt_keywords, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
-  {"apply-slave-statements", OPT_MYSQLDUMP_SLAVE_APPLY,
-   "Adds 'STOP SLAVE' prior to 'CHANGE MASTER' and 'START SLAVE' to bottom of dump.",
-   &opt_slave_apply, &opt_slave_apply, 0, GET_BOOL, NO_ARG,
+  {"apply-replica-statements", OPT_MYSQLDUMP_REPLICA_APPLY,
+   "Adds 'STOP REPLICA' prior to 'CHANGE PRIMARY' and 'START REPLICA' to bottom of dump.",
+   &opt_replica_apply, &opt_replica_apply, 0, GET_BOOL, NO_ARG,
    0, 0, 0, 0, 0, 0},
   {"bind-address", 0, "IP address to bind to.",
    (uchar**) &opt_bind_addr, (uchar**) &opt_bind_addr, 0, GET_STR,
@@ -298,18 +298,18 @@ static struct my_option my_long_options[] =
   {"default-character-set", OPT_DEFAULT_CHARSET,
    "Set the default character set.", &default_charset,
    &default_charset, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
-  {"delete-master-logs", OPT_DELETE_MASTER_LOGS,
-   "Delete logs on master after backup. This automatically enables --master-data.",
-   &opt_delete_master_logs, &opt_delete_master_logs, 0,
+  {"delete-primary-logs", OPT_DELETE_PRIMARY_LOGS,
+   "Delete logs on primary after backup. This automatically enables --primary-data.",
+   &opt_delete_primary_logs, &opt_delete_primary_logs, 0,
    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
   {"disable-keys", 'K',
    "'/*!40000 ALTER TABLE tb_name DISABLE KEYS */; and '/*!40000 ALTER "
    "TABLE tb_name ENABLE KEYS */; will be put in the output.", &opt_disable_keys,
    &opt_disable_keys, 0, GET_BOOL, NO_ARG, 1, 0, 0, 0, 0, 0},
-  {"dump-slave", OPT_MYSQLDUMP_SLAVE_DATA,
-   "This causes the binary log position and filename of the master to be "
+  {"dump-replica", OPT_MYSQLDUMP_REPLICA_DATA,
+   "This causes the binary log position and filename of the primary to be "
    "appended to the dumped data output. Setting the value to 1, will print"
-   "it as a CHANGE MASTER command in the dumped data output; if equal"
+   "it as a CHANGE PRIMARY command in the dumped data output; if equal"
    " to 2, that command will be prefixed with a comment symbol. "
    "This option will turn --lock-all-tables on, unless "
    "--single-transaction is specified too (in which case a "
@@ -317,8 +317,8 @@ static struct my_option my_long_options[] =
    "- don't forget to read about --single-transaction below). In all cases "
    "any action on logs will happen at the exact moment of the dump."
    "Option automatically turns --lock-tables off.",
-   &opt_slave_data, &opt_slave_data, 0,
-   GET_UINT, OPT_ARG, 0, 0, MYSQL_OPT_SLAVE_DATA_COMMENTED_SQL, 0, 0, 0},
+   &opt_replica_data, &opt_replica_data, 0,
+   GET_UINT, OPT_ARG, 0, 0, MYSQL_OPT_REPLICA_DATA_COMMENTED_SQL, 0, 0, 0},
   {"events", 'E', "Dump events.",
      &opt_events, &opt_events, 0, GET_BOOL,
      NO_ARG, 0, 0, 0, 0, 0, 0},
@@ -343,11 +343,11 @@ static struct my_option my_long_options[] =
    "Note that if you dump many databases at once (using the option "
    "--databases= or --all-databases), the logs will be flushed for "
    "each database dumped. The exception is when using --lock-all-tables "
-   "or --master-data: "
+   "or --primary-data: "
    "in this case the logs will be flushed only once, corresponding "
    "to the moment all tables are locked. So if you want your dump and "
    "the log flush to happen at the same exact moment you should use "
-   "--lock-all-tables or --master-data with --flush-logs.",
+   "--lock-all-tables or --primary-data with --flush-logs.",
    &flush_logs, &flush_logs, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0,
    0, 0},
   {"flush-privileges", OPT_ESC, "Emit a FLUSH PRIVILEGES statement "
@@ -376,10 +376,10 @@ static struct my_option my_long_options[] =
    "be specified with both database and table names, e.g., "
    "--ignore-table=database.table.",
    0, 0, 0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
-  {"include-master-host-port", OPT_MYSQLDUMP_INCLUDE_MASTER_HOST_PORT,
-   "Adds 'MASTER_HOST=<host>, MASTER_PORT=<port>' to 'CHANGE MASTER TO..' "
-   "in dump produced with --dump-slave.", &opt_include_master_host_port,
-   &opt_include_master_host_port, 0, GET_BOOL, NO_ARG,
+  {"include-primary-host-port", OPT_MYSQLDUMP_INCLUDE_PRIMARY_HOST_PORT,
+   "Adds 'PRIMARY_HOST=<host>, PRIMARY_PORT=<port>' to 'CHANGE PRIMARY TO..' "
+   "in dump produced with --dump-replica.", &opt_include_primary_host_port,
+   &opt_include_primary_host_port, 0, GET_BOOL, NO_ARG,
    0, 0, 0, 0, 0, 0},
   {"insert-ignore", OPT_INSERT_IGNORE, "Insert rows with INSERT IGNORE.",
    &opt_ignore, &opt_ignore, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0,
@@ -398,9 +398,9 @@ static struct my_option my_long_options[] =
   {"log-error", OPT_ERROR_LOG_FILE, "Append warnings and errors to given file.",
    &log_error_file, &log_error_file, 0, GET_STR,
    REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
-  {"master-data", OPT_MASTER_DATA,
+  {"primary-data", OPT_PRIMARY_DATA,
    "This causes the binary log position and filename to be appended to the "
-   "output. If equal to 1, will print it as a CHANGE MASTER command; if equal"
+   "output. If equal to 1, will print it as a CHANGE PRIMARY command; if equal"
    " to 2, that command will be prefixed with a comment symbol. "
    "This option will turn --lock-all-tables on, unless "
    "--single-transaction is specified too (in which case a "
@@ -408,8 +408,8 @@ static struct my_option my_long_options[] =
    "don't forget to read about --single-transaction below). In all cases, "
    "any action on logs will happen at the exact moment of the dump. "
    "Option automatically turns --lock-tables off.",
-   &opt_master_data, &opt_master_data, 0,
-   GET_UINT, OPT_ARG, 0, 0, MYSQL_OPT_MASTER_DATA_COMMENTED_SQL, 0, 0, 0},
+   &opt_primary_data, &opt_primary_data, 0,
+   GET_UINT, OPT_ARG, 0, 0, MYSQL_OPT_PRIMARY_DATA_COMMENTED_SQL, 0, 0, 0},
   {"max_allowed_packet", OPT_MAX_ALLOWED_PACKET, 
    "The maximum packet length to send to or receive from server.",
     &opt_max_allowed_packet, &opt_max_allowed_packet, 0,
@@ -492,7 +492,7 @@ static struct my_option my_long_options[] =
    0, GET_STR_ALLOC, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
 #endif
   /*
-    Note that the combination --single-transaction --master-data
+    Note that the combination --single-transaction --primary-data
     will give bullet-proof binlog position only if server >=4.1.3. That's the
     old "FLUSH TABLES WITH READ LOCK does not block commit" fixed bug.
   */
@@ -851,13 +851,13 @@ get_one_option(int optid, const struct my_option *opt __attribute__((unused)),
   case '?':
     usage();
     exit(0);
-  case (int) OPT_MASTER_DATA:
+  case (int) OPT_PRIMARY_DATA:
     if (!argument) /* work like in old versions */
-      opt_master_data= MYSQL_OPT_MASTER_DATA_EFFECTIVE_SQL;
+      opt_primary_data= MYSQL_OPT_PRIMARY_DATA_EFFECTIVE_SQL;
     break;
-  case (int) OPT_MYSQLDUMP_SLAVE_DATA:
+  case (int) OPT_MYSQLDUMP_REPLICA_DATA:
     if (!argument) /* work like in old versions */
-      opt_slave_data= MYSQL_OPT_SLAVE_DATA_EFFECTIVE_SQL;
+      opt_replica_data= MYSQL_OPT_REPLICA_DATA_EFFECTIVE_SQL;
     break;
   case (int) OPT_OPTIMIZE:
     extended_insert= opt_drop= opt_lock= quick= create_options=
@@ -1022,27 +1022,27 @@ static int get_options(int *argc, char ***argv)
     return(EX_USAGE);
   }
 
-  /* We don't delete master logs if slave data option */
-  if (opt_slave_data)
+  /* We don't delete primary logs if replica data option */
+  if (opt_replica_data)
   {
     opt_lock_all_tables= !opt_single_transaction;
-    opt_master_data= 0;
-    opt_delete_master_logs= 0;
+    opt_primary_data= 0;
+    opt_delete_primary_logs= 0;
   }
 
   /* Ensure consistency of the set of binlog & locking options */
-  if (opt_delete_master_logs && !opt_master_data)
-    opt_master_data= MYSQL_OPT_MASTER_DATA_COMMENTED_SQL;
+  if (opt_delete_primary_logs && !opt_primary_data)
+    opt_primary_data= MYSQL_OPT_PRIMARY_DATA_COMMENTED_SQL;
   if (opt_single_transaction && opt_lock_all_tables)
   {
     fprintf(stderr, "%s: You can't use --single-transaction and "
             "--lock-all-tables at the same time.\n", my_progname);
     return(EX_USAGE);
   }
-  if (opt_master_data)
+  if (opt_primary_data)
   {
     opt_lock_all_tables= !opt_single_transaction;
-    opt_slave_data= 0;
+    opt_replica_data= 0;
   }
   if (opt_single_transaction || opt_lock_all_tables)
     lock_tables= 0;
@@ -4927,162 +4927,162 @@ static int dump_selected_tables(char *db, char **table_names, int tables)
 } /* dump_selected_tables */
 
 
-static int do_show_master_status(MYSQL *mysql_con)
+static int do_show_primary_status(MYSQL *mysql_con)
 {
   MYSQL_ROW row;
-  MYSQL_RES *master;
+  MYSQL_RES *primary;
   const char *comment_prefix=
-    (opt_master_data == MYSQL_OPT_MASTER_DATA_COMMENTED_SQL) ? "-- " : "";
-  if (mysql_query_with_error_report(mysql_con, &master, "SHOW MASTER STATUS"))
+    (opt_primary_data == MYSQL_OPT_PRIMARY_DATA_COMMENTED_SQL) ? "-- " : "";
+  if (mysql_query_with_error_report(mysql_con, &primary, "SHOW PRIMARY STATUS"))
   {
     return 1;
   }
   else
   {
-    row= mysql_fetch_row(master);
+    row= mysql_fetch_row(primary);
     if (row && row[0] && row[1])
     {
-      /* SHOW MASTER STATUS reports file and position */
+      /* SHOW PRIMARY STATUS reports file and position */
       print_comment(md_result_file, 0,
                     "\n--\n-- Position to start replication or point-in-time "
                     "recovery from\n--\n\n");
       fprintf(md_result_file,
-              "%sCHANGE MASTER TO MASTER_LOG_FILE='%s', MASTER_LOG_POS=%s;\n",
+              "%sCHANGE PRIMARY TO PRIMARY_LOG_FILE='%s', PRIMARY_LOG_POS=%s;\n",
               comment_prefix, row[0], row[1]);
       check_io(md_result_file);
     }
     else if (!opt_force)
     {
-      /* SHOW MASTER STATUS reports nothing and --force is not enabled */
+      /* SHOW PRIMARY STATUS reports nothing and --force is not enabled */
       my_printf_error(0, "Error: Binlogging on server not active",
                       MYF(0));
-      mysql_free_result(master);
+      mysql_free_result(primary);
       maybe_exit(EX_MYSQLERR);
       return 1;
     }
-    mysql_free_result(master);
+    mysql_free_result(primary);
   }
   return 0;
 }
 
-static int do_stop_slave_sql(MYSQL *mysql_con)
+static int do_stop_replica_sql(MYSQL *mysql_con)
 {
-  MYSQL_RES *slave;
-  /* We need to check if the slave sql is running in the first place */
-  if (mysql_query_with_error_report(mysql_con, &slave, "SHOW SLAVE STATUS"))
+  MYSQL_RES *replica;
+  /* We need to check if the replica sql is running in the first place */
+  if (mysql_query_with_error_report(mysql_con, &replica, "SHOW REPLICA STATUS"))
     return(1);
   else
   {
-    MYSQL_ROW row= mysql_fetch_row(slave);
+    MYSQL_ROW row= mysql_fetch_row(replica);
     if (row && row[11])
     {
-      /* if SLAVE SQL is not running, we don't stop it */
+      /* if REPLICA SQL is not running, we don't stop it */
       if (!strcmp(row[11],"No"))
       {
-        mysql_free_result(slave);
-        /* Silently assume that they don't have the slave running */
+        mysql_free_result(replica);
+        /* Silently assume that they don't have the replica running */
         return(0);
       }
     }
   }
-  mysql_free_result(slave);
+  mysql_free_result(replica);
 
-  /* now, stop slave if running */
-  if (mysql_query_with_error_report(mysql_con, 0, "STOP SLAVE SQL_THREAD"))
+  /* now, stop replica if running */
+  if (mysql_query_with_error_report(mysql_con, 0, "STOP REPLICA SQL_THREAD"))
     return(1);
 
   return(0);
 }
 
-static int add_stop_slave(void)
+static int add_stop_replica(void)
 {
   if (opt_comments)
     fprintf(md_result_file,
-            "\n--\n-- stop slave statement to make a recovery dump)\n--\n\n");
-  fprintf(md_result_file, "STOP SLAVE;\n");
+            "\n--\n-- stop replica statement to make a recovery dump)\n--\n\n");
+  fprintf(md_result_file, "STOP REPLICA;\n");
   return(0);
 }
 
-static int add_slave_statements(void)
+static int add_replica_statements(void)
 {
   if (opt_comments)
     fprintf(md_result_file,
-            "\n--\n-- start slave statement to make a recovery dump)\n--\n\n");
-  fprintf(md_result_file, "START SLAVE;\n");
+            "\n--\n-- start replica statement to make a recovery dump)\n--\n\n");
+  fprintf(md_result_file, "START REPLICA;\n");
   return(0);
 }
 
-static int do_show_slave_status(MYSQL *mysql_con)
+static int do_show_replica_status(MYSQL *mysql_con)
 {
-  MYSQL_RES *slave= NULL;
+  MYSQL_RES *replica= NULL;
   const char *comment_prefix=
-    (opt_slave_data == MYSQL_OPT_SLAVE_DATA_COMMENTED_SQL) ? "-- " : "";
-  if (mysql_query_with_error_report(mysql_con, &slave, "SHOW SLAVE STATUS"))
+    (opt_replica_data == MYSQL_OPT_REPLICA_DATA_COMMENTED_SQL) ? "-- " : "";
+  if (mysql_query_with_error_report(mysql_con, &replica, "SHOW REPLICA STATUS"))
   {
     if (!opt_force)
     {
-      /* SHOW SLAVE STATUS reports nothing and --force is not enabled */
-      my_printf_error(0, "Error: Slave not set up", MYF(0));
+      /* SHOW REPLICA STATUS reports nothing and --force is not enabled */
+      my_printf_error(0, "Error: Replica not set up", MYF(0));
     }
-    mysql_free_result(slave);
+    mysql_free_result(replica);
     return 1;
   }
   else
   {
-    MYSQL_ROW row= mysql_fetch_row(slave);
+    MYSQL_ROW row= mysql_fetch_row(replica);
     if (row && row[9] && row[21])
     {
-      /* SHOW MASTER STATUS reports file and position */
+      /* SHOW PRIMARY STATUS reports file and position */
       if (opt_comments)
         fprintf(md_result_file,
                 "\n--\n-- Position to start replication or point-in-time "
-                "recovery from (the master of this slave)\n--\n\n");
+                "recovery from (the primary of this replica)\n--\n\n");
 
-      fprintf(md_result_file, "%sCHANGE MASTER TO ", comment_prefix);
+      fprintf(md_result_file, "%sCHANGE PRIMARY TO ", comment_prefix);
 
-      if (opt_include_master_host_port)
+      if (opt_include_primary_host_port)
       {
         if (row[1])
-          fprintf(md_result_file, "MASTER_HOST='%s', ", row[1]);
+          fprintf(md_result_file, "PRIMARY_HOST='%s', ", row[1]);
         if (row[3])
-          fprintf(md_result_file, "MASTER_PORT=%s, ", row[3]);
+          fprintf(md_result_file, "PRIMARY_PORT=%s, ", row[3]);
       }
       fprintf(md_result_file,
-              "MASTER_LOG_FILE='%s', MASTER_LOG_POS=%s;\n", row[9], row[21]);
+              "PRIMARY_LOG_FILE='%s', PRIMARY_LOG_POS=%s;\n", row[9], row[21]);
 
       check_io(md_result_file);
     }
-    mysql_free_result(slave);
+    mysql_free_result(replica);
   }
   return 0;
 }
 
-static int do_start_slave_sql(MYSQL *mysql_con)
+static int do_start_replica_sql(MYSQL *mysql_con)
 {
-  MYSQL_RES *slave;
-  /* We need to check if the slave sql is stopped in the first place */
-  if (mysql_query_with_error_report(mysql_con, &slave, "SHOW SLAVE STATUS"))
+  MYSQL_RES *replica;
+  /* We need to check if the replica sql is stopped in the first place */
+  if (mysql_query_with_error_report(mysql_con, &replica, "SHOW REPLICA STATUS"))
     return(1);
   else
   {
-    MYSQL_ROW row= mysql_fetch_row(slave);
+    MYSQL_ROW row= mysql_fetch_row(replica);
     if (row && row[11])
     {
-      /* if SLAVE SQL is not running, we don't start it */
+      /* if REPLICA SQL is not running, we don't start it */
       if (!strcmp(row[11],"Yes"))
       {
-        mysql_free_result(slave);
-        /* Silently assume that they don't have the slave running */
+        mysql_free_result(replica);
+        /* Silently assume that they don't have the replica running */
         return(0);
       }
     }
   }
-  mysql_free_result(slave);
+  mysql_free_result(replica);
 
-  /* now, start slave if stopped */
-  if (mysql_query_with_error_report(mysql_con, 0, "START SLAVE"))
+  /* now, start replica if stopped */
+  if (mysql_query_with_error_report(mysql_con, 0, "START REPLICA"))
   {
-    my_printf_error(0, "Error: Unable to start slave", MYF(0));
+    my_printf_error(0, "Error: Unable to start replica", MYF(0));
     return 1;
   }
   return(0);
@@ -5102,7 +5102,7 @@ static int do_flush_tables_read_lock(MYSQL *mysql_con)
   */
   return
     ( mysql_query_with_error_report(mysql_con, 0, 
-                                    ((opt_master_data != 0) ? 
+                                    ((opt_primary_data != 0) ? 
                                         "FLUSH /*!40101 LOCAL */ TABLES" : 
                                         "FLUSH TABLES")) ||
       mysql_query_with_error_report(mysql_con, 0,
@@ -5121,7 +5121,7 @@ static int get_bin_log_name(MYSQL *mysql_con,
   MYSQL_RES *res;
   MYSQL_ROW row;
 
-  if (mysql_query(mysql_con, "SHOW MASTER STATUS") ||
+  if (mysql_query(mysql_con, "SHOW PRIMARY STATUS") ||
       !(res= mysql_store_result(mysql)))
     return 1;
 
@@ -5157,7 +5157,7 @@ static int start_transaction(MYSQL *mysql_con)
 {
   verbose_msg("-- Starting transaction...\n");
   /*
-    We use BEGIN for old servers. --single-transaction --master-data will fail
+    We use BEGIN for old servers. --single-transaction --primary-data will fail
     on old servers, but that's ok as it was already silently broken (it didn't
     do a consistent read, so better tell people frankly, with the error).
 
@@ -5165,10 +5165,10 @@ static int start_transaction(MYSQL *mysql_con)
     need the REPEATABLE READ level (not anything lower, for example READ
     COMMITTED would give one new consistent read per dumped table).
   */
-  if ((mysql_get_server_version(mysql_con) < 40100) && opt_master_data)
+  if ((mysql_get_server_version(mysql_con) < 40100) && opt_primary_data)
   {
     fprintf(stderr, "-- %s: the combination of --single-transaction and "
-            "--master-data requires a MySQL server version of at least 4.1 "
+            "--primary-data requires a MySQL server version of at least 4.1 "
             "(current server's version is %s). %s\n",
             opt_force ? "Warning" : "Error",
             mysql_con->server_version ? mysql_con->server_version : "unknown",
@@ -5891,10 +5891,10 @@ int main(int argc, char **argv)
   if (!path)
     write_header(md_result_file, *argv);
 
-  if (opt_slave_data && do_stop_slave_sql(mysql))
+  if (opt_replica_data && do_stop_replica_sql(mysql))
     goto err;
 
-  if ((opt_lock_all_tables || opt_master_data ||
+  if ((opt_lock_all_tables || opt_primary_data ||
        (opt_single_transaction && flush_logs)) &&
       do_flush_tables_read_lock(mysql))
     goto err;
@@ -5903,11 +5903,11 @@ int main(int argc, char **argv)
     Flush logs before starting transaction since
     this causes implicit commit starting mysql-5.5.
   */
-  if (opt_lock_all_tables || opt_master_data ||
+  if (opt_lock_all_tables || opt_primary_data ||
       (opt_single_transaction && flush_logs) ||
-      opt_delete_master_logs)
+      opt_delete_primary_logs)
   {
-    if (flush_logs || opt_delete_master_logs)
+    if (flush_logs || opt_delete_primary_logs)
     {
       if (mysql_refresh(mysql, REFRESH_LOG))
         goto err;
@@ -5918,7 +5918,7 @@ int main(int argc, char **argv)
     flush_logs= 0;
   }
 
-  if (opt_delete_master_logs)
+  if (opt_delete_primary_logs)
   {
     if (get_bin_log_name(mysql, bin_log_name, sizeof(bin_log_name)))
       goto err;
@@ -5927,8 +5927,8 @@ int main(int argc, char **argv)
   if (opt_single_transaction && start_transaction(mysql))
     goto err;
 
-  /* Add 'STOP SLAVE to beginning of dump */
-  if (opt_slave_apply && add_stop_slave())
+  /* Add 'STOP REPLICA to beginning of dump */
+  if (opt_replica_apply && add_stop_replica())
     goto err;
 
 
@@ -5937,9 +5937,9 @@ int main(int argc, char **argv)
     goto err;
 
 
-  if (opt_master_data && do_show_master_status(mysql))
+  if (opt_primary_data && do_show_primary_status(mysql))
     goto err;
-  if (opt_slave_data && do_show_slave_status(mysql))
+  if (opt_replica_data && do_show_replica_status(mysql))
     goto err;
   if (opt_single_transaction && do_unlock_tables(mysql)) /* unlock but no commit! */
     goto err;
@@ -5985,8 +5985,8 @@ int main(int argc, char **argv)
     }
   }
 
-  /* if --dump-slave , start the slave sql thread */
-  if (opt_slave_data && do_start_slave_sql(mysql))
+  /* if --dump-replica , start the replica sql thread */
+  if (opt_replica_data && do_start_replica_sql(mysql))
     goto err;
 
   /*
@@ -5995,8 +5995,8 @@ int main(int argc, char **argv)
   */
   set_session_binlog(TRUE);
 
-  /* add 'START SLAVE' to end of dump */
-  if (opt_slave_apply && add_slave_statements())
+  /* add 'START REPLICA' to end of dump */
+  if (opt_replica_apply && add_replica_statements())
     goto err;
 
   if (md_result_file)
@@ -6018,7 +6018,7 @@ int main(int argc, char **argv)
     goto err;
   }
   /* everything successful, purge the old logs files */
-  if (opt_delete_master_logs && purge_bin_logs_to(mysql, bin_log_name))
+  if (opt_delete_primary_logs && purge_bin_logs_to(mysql, bin_log_name))
     goto err;
 
 #if defined (_WIN32) && !defined (EMBEDDED_LIBRARY)

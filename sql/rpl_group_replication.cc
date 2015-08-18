@@ -20,7 +20,7 @@
 #include "rpl_group_replication.h"
 #include "rpl_channel_service_interface.h"
 #include "rpl_info_factory.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "tc_log.h"
 #include "mysqld_thd_manager.h"
 
@@ -314,7 +314,7 @@ get_server_startup_prerequirements(Trans_context_info& requirements,
   requirements.mi_repository_type= opt_mi_repository_id;
   requirements.rli_repository_type= opt_rli_repository_id;
   requirements.parallel_applier_type= mts_parallel_option;
-  requirements.parallel_applier_workers= opt_mts_slave_parallel_workers;
+  requirements.parallel_applier_workers= opt_mts_replica_parallel_workers;
 }
 #endif //HAVE_REPLICATION
 

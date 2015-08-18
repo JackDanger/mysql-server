@@ -1478,7 +1478,7 @@ ha_innopart::close()
 	/* Tell InnoDB server that there might be work for
 	utility threads: */
 
-	srv_active_wake_master_thread();
+	srv_active_wake_primary_thread();
 
 	DBUG_RETURN(0);
 }
@@ -2903,7 +2903,7 @@ end:
 	/* Tell the InnoDB server that there might be work for
 	utility threads: */
 
-	srv_active_wake_master_thread();
+	srv_active_wake_primary_thread();
 
 	trx_free_for_mysql(info.trx());
 

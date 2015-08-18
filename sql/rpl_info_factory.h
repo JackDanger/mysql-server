@@ -24,11 +24,11 @@
 
 #include <vector>
 
-class Master_info;
+class Primary_info;
 class Multisource_info;
 class Relay_log_info;
 class Rpl_info;
-class Slave_worker;
+class Replica_worker;
 
 
 extern ulong opt_mi_repository_id;
@@ -37,26 +37,26 @@ extern ulong opt_rli_repository_id;
 class Rpl_info_factory
 {
 public:
-  static bool create_slave_info_objects(uint mi_option, uint rli_option, int
+  static bool create_replica_info_objects(uint mi_option, uint rli_option, int
                                         thread_mask, Multisource_info *pmsr_map);
 
-  static Master_info*
-  create_slave_per_channel(uint mi_option,uint rli_option,
+  static Primary_info*
+  create_replica_per_channel(uint mi_option,uint rli_option,
                            const char* channel,
                            bool convert_repo,
                            Multisource_info* msr_map,
                            enum_channel_type channel_type=
-                               SLAVE_REPLICATION_CHANNEL);
+                               REPLICA_REPLICATION_CHANNEL);
 
-  static Master_info *create_mi(uint rli_option, const char* channel,
+  static Primary_info *create_mi(uint rli_option, const char* channel,
                                 bool conver_repo);
-  static bool change_mi_repository(Master_info *mi, const uint mi_option,
+  static bool change_mi_repository(Primary_info *mi, const uint mi_option,
                                    const char **msg);
-  static Relay_log_info *create_rli(uint rli_option, bool is_slave_recovery,
+  static Relay_log_info *create_rli(uint rli_option, bool is_replica_recovery,
                                     const char* channel, bool convert_repo);
   static bool change_rli_repository(Relay_log_info *rli, const uint rli_option,
                                     const char **msg);
-  static Slave_worker *create_worker(uint rli_option, uint worker_id,
+  static Replica_worker *create_worker(uint rli_option, uint worker_id,
                                      Relay_log_info *rli,
                                      bool is_gaps_collecting_phase);
   static bool reset_workers(Relay_log_info *rli);

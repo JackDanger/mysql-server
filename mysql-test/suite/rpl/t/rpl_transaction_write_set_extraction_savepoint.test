@@ -5,7 +5,7 @@
 # since it was not compatible with write set extraction.
 #
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo
 --echo ############################################################

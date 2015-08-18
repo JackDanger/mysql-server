@@ -1,45 +1,45 @@
 # ==== Purpose ====
 #
-# Waits until SHOW SLAVE STATUS has returned a specified value, or
+# Waits until SHOW REPLICA STATUS has returned a specified value, or
 # until a timeout is reached.
 #
 #
 # ==== Usage ====
 #
-# --let $slave_param= Slave_SQL_Running
-# --let $slave_param_value= No
-# [--let $slave_param_comparison= [ < | <= | >= | > | = | != ]]
-# [--let $slave_timeout= NUMBER]
-# [--let $slave_error_param= [Slave_SQL_Errno | Slave_IO_Errno]]
+# --let $replica_param= Replica_SQL_Running
+# --let $replica_param_value= No
+# [--let $replica_param_comparison= [ < | <= | >= | > | = | != ]]
+# [--let $replica_timeout= NUMBER]
+# [--let $replica_error_param= [Replica_SQL_Errno | Replica_IO_Errno]]
 # [--let $rpl_channel_name= NAME]
 # [--let $rpl_debug= 1]
-# --source include/wait_for_slave_param.inc
+# --source include/wait_for_replica_param.inc
 #
 # Parameters:
 #
-# $slave_param, $slave_param_value
-#   This macro will wait until the column of the output of SHOW SLAVE
-#   STATUS named $slave_param gets the value $slave_param_value.  See
+# $replica_param, $replica_param_value
+#   This macro will wait until the column of the output of SHOW REPLICA
+#   STATUS named $replica_param gets the value $replica_param_value.  See
 #   the example above.
 #
-# $slave_param_comparison
-#   By default, this file waits until $slave_param becomes equal to
-#   $slave_param_value.  If you want to wait until $slave_param
-#   becomes *unequal* to $slave_param_value, set this parameter to the
+# $replica_param_comparison
+#   By default, this file waits until $replica_param becomes equal to
+#   $replica_param_value.  If you want to wait until $replica_param
+#   becomes *unequal* to $replica_param_value, set this parameter to the
 #   string '!=', like this:
-#     --let $slave_param_comparison= !=
+#     --let $replica_param_comparison= !=
 #
 # $rpl_channel_name
 #   If this is not '', adds a FOR CHANNEL  '$rpl_channel_name' clause
-#   to SHOW SLAVE STATUS.
+#   to SHOW REPLICA STATUS.
 #
-# $slave_timeout
+# $replica_timeout
 #   The default timeout is 30 seconds. You can change the timeout by
-#   setting $slave_timeout. The unit is one second.
+#   setting $replica_timeout. The unit is one second.
 #
-# $slave_error_param
+# $replica_error_param
 #   If set, this script will check if the column of the output from
-#   SHOW SLAVE STATUS named $slave_error_param is nonzero.  If it is,
+#   SHOW REPLICA STATUS named $replica_error_param is nonzero.  If it is,
 #   this script will faile immediately.  Typically, this should be set
 #   to Last_IO_Errno or Last_SQL_Errno.
 #
@@ -48,17 +48,17 @@
 #
 # ==== mysqltest variables configured by this file ====
 #
-# This file sets $slave_param_statement to the SQL statement used to
-# get the slave status: either SHOW SLAVE STATUS or SHOW SLAVE STATUS
+# This file sets $replica_param_statement to the SQL statement used to
+# get the replica status: either SHOW REPLICA STATUS or SHOW REPLICA STATUS
 # FOR CHANNEL  '<channel>'.
 
 
---let $_wait_for_slave_params= $slave_param
+--let $_wait_for_replica_params= $replica_param
 if ($rpl_channel_name != '')
 {
-  --let $_wait_for_slave_params= $_wait_for_slave_params channel=$rpl_channel_name
+  --let $_wait_for_replica_params= $_wait_for_replica_params channel=$rpl_channel_name
 }
---let $include_filename= wait_for_slave_param.inc [$_wait_for_slave_params]
+--let $include_filename= wait_for_replica_param.inc [$_wait_for_replica_params]
 --source include/begin_include_file.inc
 
 --let $default_timeout= 30
@@ -68,83 +68,83 @@ if ($rpl_channel_name != '')
 
 --let $start_to_wait=`select current_timestamp()`
 
-let $_slave_timeout= $slave_timeout;
-if (!$_slave_timeout)
+let $_replica_timeout= $replica_timeout;
+if (!$_replica_timeout)
 {
-  let $_slave_timeout= `select $default_timeout * $sleep_freq`;
+  let $_replica_timeout= `select $default_timeout * $sleep_freq`;
 }
 if ($VALGRIND_TEST) {
-  let $_slave_timeout= `select $_slave_timeout * 6`;
+  let $_replica_timeout= `select $_replica_timeout * 6`;
 }
 
-if ($slave_error_param == '')
+if ($replica_error_param == '')
 {
-  --let $slave_error_param= 1
+  --let $replica_error_param= 1
 }
 
-let $_slave_param_comparison= $slave_param_comparison;
-if (!$_slave_param_comparison)
+let $_replica_param_comparison= $replica_param_comparison;
+if (!$_replica_param_comparison)
 {
-  let $_slave_param_comparison= =;
+  let $_replica_param_comparison= =;
 }
 
 if ($rpl_debug)
 {
-  --echo Waiting until '$slave_param' $_slave_param_comparison '$slave_param_value' [timeout='$_slave_timeout', \$slave_error_param='$slave_error_param']
+  --echo Waiting until '$replica_param' $_replica_param_comparison '$replica_param_value' [timeout='$_replica_timeout', \$replica_error_param='$replica_error_param']
 }
 
---let $slave_param_statement= SHOW SLAVE STATUS
+--let $replica_param_statement= SHOW REPLICA STATUS
 if ($rpl_channel_name != '')
 {
-  --let $slave_param_statement= $slave_param_statement FOR CHANNEL  '$rpl_channel_name'
+  --let $replica_param_statement= $replica_param_statement FOR CHANNEL  '$rpl_channel_name'
 }
 
---let $_slave_check_configured= query_get_value($slave_param_statement, Slave_IO_Running, 1)
+--let $_replica_check_configured= query_get_value($replica_param_statement, Replica_IO_Running, 1)
 
-if ($_slave_check_configured == 'No such row')
+if ($_replica_check_configured == 'No such row')
 {
-  --echo **** ERROR: $slave_param_statement returned empty result set. Slave not configured. ****
+  --echo **** ERROR: $replica_param_statement returned empty result set. Replica not configured. ****
   --source include/show_rpl_debug_info.inc
-  --die SHOW SLAVE STATUS returned empty result set. Slave not configured.
+  --die SHOW REPLICA STATUS returned empty result set. Replica not configured.
 }
 
---let $_slave_timeout_counter= `select $_slave_timeout * $sleep_freq`
---let $_slave_continue= 1
-while ($_slave_continue)
+--let $_replica_timeout_counter= `select $_replica_timeout * $sleep_freq`
+--let $_replica_continue= 1
+while ($_replica_continue)
 {
-  --let $_show_slave_status_value= query_get_value($slave_param_statement, $slave_param, 1)
+  --let $_show_replica_status_value= query_get_value($replica_param_statement, $replica_param, 1)
 
   # Check if an error condition is reached.
-  if (!$slave_error_param)
+  if (!$replica_error_param)
   {
-    --let $_show_slave_status_error_value= query_get_value($slave_param_statement, $slave_error_param, 1)
-    if ($_show_slave_status_error_value)
+    --let $_show_replica_status_error_value= query_get_value($replica_param_statement, $replica_error_param, 1)
+    if ($_show_replica_status_error_value)
     {
-      --echo **** ERROR: $slave_error_param = '$_show_slave_status_error_value' while waiting for slave parameter $slave_param $_slave_param_comparison $slave_param_value ****
+      --echo **** ERROR: $replica_error_param = '$_show_replica_status_error_value' while waiting for replica parameter $replica_param $_replica_param_comparison $replica_param_value ****
       --source include/show_rpl_debug_info.inc
-      --die Error condition reached in include/wait_for_slave_param.inc
+      --die Error condition reached in include/wait_for_replica_param.inc
     }
   }
 
   # Check if the termination condition is reached.
-  --let $_slave_continue= `SELECT NOT('$_show_slave_status_value' $_slave_param_comparison '$slave_param_value')`
+  --let $_replica_continue= `SELECT NOT('$_show_replica_status_value' $_replica_param_comparison '$replica_param_value')`
 
   # Decrease timer, and check if the timeout is reached.
-  if ($_slave_continue)
+  if ($_replica_continue)
   {
-    --dec $_slave_timeout_counter
-    if (!$_slave_timeout_counter)
+    --dec $_replica_timeout_counter
+    if (!$_replica_timeout_counter)
     {
       --let $end_to_wait=`select current_timestamp()`
 
-      --echo **** ERROR: timeout after $_slave_timeout ($end_to_wait - $start_to_wait) seconds while waiting for slave parameter $slave_param $_slave_param_comparison $slave_param_value ****
+      --echo **** ERROR: timeout after $_replica_timeout ($end_to_wait - $start_to_wait) seconds while waiting for replica parameter $replica_param $_replica_param_comparison $replica_param_value ****
       --source include/show_rpl_debug_info.inc
-      --die Timeout in include/wait_for_slave_param.inc
+      --die Timeout in include/wait_for_replica_param.inc
     }
     --sleep  $sleep_time
   }
 }
 
 
---let $include_filename= wait_for_slave_param.inc [$slave_param]
+--let $include_filename= wait_for_replica_param.inc [$replica_param]
 --source include/end_include_file.inc

@@ -1,9 +1,9 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-==========MASTER==========
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+==========PRIMARY==========
 show global variables like 'binlog_format%';
 Variable_name	Value
 binlog_format	MIXED
@@ -13,7 +13,7 @@ binlog_format	MIXED
 select @@global.binlog_format, @@session.binlog_format;
 @@global.binlog_format	@@session.binlog_format
 MIXED	MIXED
-==========SLAVE===========
+==========REPLICA===========
 show global variables like 'binlog_format%';
 Variable_name	Value
 binlog_format	MIXED
@@ -36,7 +36,7 @@ INSERT INTO t2 VALUES(1, 't2, text 1');
 ******************** DELETE ********************
 DELETE FROM t1 WHERE a = 1;
 DELETE FROM t2 WHERE b <> UUID();
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -48,7 +48,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -71,7 +71,7 @@ INSERT INTO t2 SELECT * FROM t1;
 INSERT INTO t2 VALUES (1, 't1, text 1') ON DUPLICATE KEY UPDATE b = 't2, text 1';
 DELETE FROM t1 WHERE a = 2;
 DELETE FROM t2 WHERE a = 2;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -84,7 +84,7 @@ COUNT(*)
 SELECT * FROM t2 ORDER BY a;
 a	b
 1	t2, text 1
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -108,7 +108,7 @@ a	b
 10	line A
 20	line B
 30	line C
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 3
@@ -122,7 +122,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -148,7 +148,7 @@ REPLACE INTO t1 VALUES(1, 't1, text 11');
 REPLACE INTO t1 VALUES(2, UUID());
 REPLACE INTO t1 SET a=3, b='t1, text 33';
 DELETE FROM t1 WHERE a = 2;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 2
@@ -161,7 +161,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -214,7 +214,7 @@ DELETE FROM t2;
 
 ******************** TRUNCATE ********************
 INSERT INTO t1 VALUES(1, 't1, text 1');
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -226,7 +226,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -240,7 +240,7 @@ COUNT(*)
 SELECT * FROM t2 ORDER BY a;
 a	b
 TRUNCATE t1;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 0
@@ -251,7 +251,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -270,7 +270,7 @@ DELETE FROM t2;
 INSERT INTO t1 VALUES(1, 't1, text 1');
 INSERT INTO t2 VALUES(1, 't2, text 1');
 UPDATE t1 SET b = 't1, text 1 updated' WHERE a = 1;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -283,7 +283,7 @@ COUNT(*)
 SELECT * FROM t2 ORDER BY a;
 a	b
 1	t2, text 1
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -298,7 +298,7 @@ SELECT * FROM t2 ORDER BY a;
 a	b
 1	t2, text 1
 UPDATE t1, t2 SET t1.b = 'test', t2.b = 'test';
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -311,7 +311,7 @@ COUNT(*)
 SELECT * FROM t2 ORDER BY a;
 a	b
 1	test
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -344,7 +344,7 @@ USE test_rpl;
 START TRANSACTION;
 INSERT INTO t1 VALUES (1, 'start');
 COMMIT;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -356,7 +356,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -372,7 +372,7 @@ a	b
 START TRANSACTION;
 INSERT INTO t1 VALUES (2, 'rollback');
 ROLLBACK;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -384,7 +384,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -402,7 +402,7 @@ INSERT INTO t1 VALUES (3, 'before savepoint s1');
 SAVEPOINT s1;
 INSERT INTO t1 VALUES (4, 'after savepoint s1');
 ROLLBACK TO SAVEPOINT s1;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 2
@@ -415,7 +415,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -436,7 +436,7 @@ INSERT INTO t1 VALUES (7, CONCAT('with UUID() ',UUID()));
 RELEASE SAVEPOINT s2;
 COMMIT;
 DELETE FROM t1 WHERE a = 7;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
@@ -451,7 +451,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -484,11 +484,11 @@ SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 CREATE USER 'user_test_rpl'@'localhost' IDENTIFIED BY PASSWORD '*1111111111111111111111111111111111111111';
 Warnings:
 Warning	1287	'IDENTIFIED BY PASSWORD' is deprecated and will be removed in a future release. Please use IDENTIFIED WITH <plugin> AS <hash> instead
-==========MASTER==========
+==========PRIMARY==========
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
 localhost	user_test_rpl	*1111111111111111111111111111111111111111	N
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
@@ -496,11 +496,11 @@ localhost	user_test_rpl	*1111111111111111111111111111111111111111	N
 
 ******************** GRANT ********************
 GRANT SELECT ON *.* TO 'user_test_rpl'@'localhost';
-==========MASTER==========
+==========PRIMARY==========
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
 localhost	user_test_rpl	*1111111111111111111111111111111111111111	Y
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
@@ -508,11 +508,11 @@ localhost	user_test_rpl	*1111111111111111111111111111111111111111	Y
 
 ******************** REVOKE ********************
 REVOKE SELECT ON *.* FROM 'user_test_rpl'@'localhost';
-==========MASTER==========
+==========PRIMARY==========
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
 localhost	user_test_rpl	*1111111111111111111111111111111111111111	N
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
@@ -520,11 +520,11 @@ localhost	user_test_rpl	*1111111111111111111111111111111111111111	N
 
 ******************** SET PASSWORD ********************
 SET PASSWORD FOR 'user_test_rpl'@'localhost' = '*0000000000000000000000000000000000000000';
-==========MASTER==========
+==========PRIMARY==========
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
 localhost	user_test_rpl	*A38FBE0EB6B1C58EA7C5AAAE654E921DC6CD0007	N
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
@@ -532,11 +532,11 @@ localhost	user_test_rpl	*A38FBE0EB6B1C58EA7C5AAAE654E921DC6CD0007	N
 
 ******************** RENAME USER ********************
 RENAME USER 'user_test_rpl'@'localhost' TO 'user_test_rpl_2'@'localhost';
-==========MASTER==========
+==========PRIMARY==========
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
 localhost	user_test_rpl_2	*A38FBE0EB6B1C58EA7C5AAAE654E921DC6CD0007	N
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
@@ -544,10 +544,10 @@ localhost	user_test_rpl_2	*A38FBE0EB6B1C58EA7C5AAAE654E921DC6CD0007	N
 
 ******************** DROP USER ********************
 DROP USER 'user_test_rpl_2'@'localhost';
-==========MASTER==========
+==========PRIMARY==========
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT host, user, authentication_string, select_priv FROM mysql.user WHERE user LIKE 'user_test_rpl%';
 host	user	authentication_string	select_priv
@@ -585,11 +585,11 @@ SHOW VARIABLES LIKE 'test_rpl_var';
 Variable_name	Value
 
 ******************** SHOW ********************
-==========MASTER==========
+==========PRIMARY==========
 SHOW DATABASES LIKE 'test_rpl%';
 Database (test_rpl%)
 test_rpl
-==========SLAVE===========
+==========REPLICA===========
 SHOW DATABASES LIKE 'test_rpl%';
 Database (test_rpl%)
 test_rpl
@@ -608,7 +608,7 @@ CALL p1();
 INSERT  INTO t1 VALUES(202, 'test 202');
 CALL p2();
 DELETE FROM t1 WHERE a = 202;
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 2
@@ -621,7 +621,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -647,7 +647,7 @@ FOR EACH ROW BEGIN
 INSERT INTO t2 SET a = NEW.a, b = NEW.b;
 END|
 INSERT INTO t1 VALUES (1, 'test');
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -660,7 +660,7 @@ COUNT(*)
 SELECT * FROM t2 ORDER BY a;
 a	b
 1	test
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -683,16 +683,16 @@ DROP TRIGGER tr1;
 GRANT EVENT ON *.* TO 'root'@'localhost';
 INSERT INTO t1 VALUES(1, 'test1');
 CREATE EVENT e1 ON SCHEDULE EVERY '1' SECOND COMMENT 'e_second_comment' DO DELETE FROM t1;
-==========MASTER==========
+==========PRIMARY==========
 SHOW EVENTS;
 Db	Name	Definer	Time zone	Type	Execute at	Interval value	Interval field	Starts	Ends	Status	Originator	character_set_client	collation_connection	Database Collation
 test_rpl	e1	root@localhost	SYSTEM	RECURRING	NULL	1	#	#	NULL	ENABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SHOW EVENTS;
 Db	Name	Definer	Time zone	Type	Execute at	Interval value	Interval field	Starts	Ends	Status	Originator	character_set_client	collation_connection	Database Collation
-test_rpl	e1	root@localhost	SYSTEM	RECURRING	NULL	1	#	#	NULL	SLAVESIDE_DISABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
-==========MASTER==========
+test_rpl	e1	root@localhost	SYSTEM	RECURRING	NULL	1	#	#	NULL	REPLICASIDE_DISABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -704,7 +704,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -717,7 +717,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========MASTER==========
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -729,7 +729,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -743,16 +743,16 @@ COUNT(*)
 SELECT * FROM t2 ORDER BY a;
 a	b
 ALTER EVENT e1 RENAME TO e2;
-==========MASTER==========
+==========PRIMARY==========
 SHOW EVENTS;
 Db	Name	Definer	Time zone	Type	Execute at	Interval value	Interval field	Starts	Ends	Status	Originator	character_set_client	collation_connection	Database Collation
 test_rpl	e2	root@localhost	SYSTEM	RECURRING	NULL	1	#	#	NULL	ENABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SHOW EVENTS;
 Db	Name	Definer	Time zone	Type	Execute at	Interval value	Interval field	Starts	Ends	Status	Originator	character_set_client	collation_connection	Database Collation
-test_rpl	e2	root@localhost	SYSTEM	RECURRING	NULL	1	#	#	NULL	SLAVESIDE_DISABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
-==========MASTER==========
+test_rpl	e2	root@localhost	SYSTEM	RECURRING	NULL	1	#	#	NULL	REPLICASIDE_DISABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
+==========PRIMARY==========
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 1
@@ -764,7 +764,7 @@ COUNT(*)
 0
 SELECT * FROM t2 ORDER BY a;
 a	b
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -778,10 +778,10 @@ COUNT(*)
 SELECT * FROM t2 ORDER BY a;
 a	b
 DROP EVENT e2;
-==========MASTER==========
+==========PRIMARY==========
 SHOW EVENTS;
 Db	Name	Definer	Time zone	Type	Execute at	Interval value	Interval field	Starts	Ends	Status	Originator	character_set_client	collation_connection	Database Collation
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SHOW EVENTS;
 Db	Name	Definer	Time zone	Type	Execute at	Interval value	Interval field	Starts	Ends	Status	Originator	character_set_client	collation_connection	Database Collation
@@ -793,14 +793,14 @@ INSERT INTO t1 VALUES(1, 'test1');
 INSERT INTO t1 VALUES(2, 'test2');
 CREATE VIEW v1 AS SELECT * FROM t1 WHERE a = 1;
 CREATE VIEW v2 AS SELECT * FROM t1 WHERE b <> UUID();
-==========MASTER==========
+==========PRIMARY==========
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
 v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` AS `a`,`t1`.`b` AS `b` from `t1` where (`t1`.`a` = 1)	latin1	latin1_swedish_ci
 SELECT * FROM v1 ORDER BY a;
 a	b
 1	test1
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
@@ -809,14 +809,14 @@ SELECT * FROM v1 ORDER BY a;
 a	b
 1	test1
 ALTER VIEW v1 AS SELECT * FROM t1 WHERE a = 2;
-==========MASTER==========
+==========PRIMARY==========
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
 v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` AS `a`,`t1`.`b` AS `b` from `t1` where (`t1`.`a` = 2)	latin1	latin1_swedish_ci
 SELECT * FROM v1 ORDER BY a;
 a	b
 2	test2
-==========SLAVE===========
+==========REPLICA===========
 USE test_rpl;
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
@@ -833,276 +833,276 @@ DELETE FROM t2;
 ******************** SHOW BINLOG EVENTS ********************
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	CREATE DATABASE test_rpl
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE TABLE t1 (a int auto_increment not null, b char(254), PRIMARY KEY(a)) ENGINE=innodb
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE TABLE t2 (a int auto_increment not null, b char(254), PRIMARY KEY(a)) ENGINE=innodb
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 't1, text 2')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 't2, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t2)
-master-bin.000001	#	Delete_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t2)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES (1, 't1, text 1') ON DUPLICATE KEY UPDATE b = 't2, text 1'
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2 WHERE a = 2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 't1, text 2')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(3, 't1, text 3')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; REPLACE INTO t1 VALUES(1, 't1, text 11')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; REPLACE INTO t1 SET a=3, b='t1, text 33'
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 'CCC')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 'DDD')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 'DDD')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(2, 'CCC')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 't2, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; TRUNCATE t1
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 't2, text 1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; UPDATE t1 SET b = 't1, text 1 updated' WHERE a = 1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; UPDATE t1, t2 SET t1.b = 'test', t2.b = 'test'
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (1, 'start')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (3, 'before savepoint s1')
-master-bin.000001	#	Query	#	#	SAVEPOINT `s1`
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (5, 'before savepoint s2')
-master-bin.000001	#	Query	#	#	SAVEPOINT `s2`
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (6, 'after savepoint s2')
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 7
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE USER 'user_test_rpl'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*1111111111111111111111111111111111111111' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
-master-bin.000001	#	Query	#	#	use `test_rpl`; GRANT SELECT ON *.* TO 'user_test_rpl'@'localhost'
-master-bin.000001	#	Query	#	#	use `test_rpl`; REVOKE SELECT ON *.* FROM 'user_test_rpl'@'localhost'
-master-bin.000001	#	Query	#	#	use `test_rpl`; ALTER USER 'user_test_rpl'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*A38FBE0EB6B1C58EA7C5AAAE654E921DC6CD0007'
-master-bin.000001	#	Query	#	#	use `test_rpl`; RENAME USER 'user_test_rpl'@'localhost' TO 'user_test_rpl_2'@'localhost'
-master-bin.000001	#	Query	#	#	use `test_rpl`; DROP USER 'user_test_rpl_2'@'localhost'
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(100, 'test')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; ANALYZE TABLE t1
-master-bin.000001	#	Query	#	#	use `test_rpl`; OPTIMIZE TABLE t1
-master-bin.000001	#	Query	#	#	use `test_rpl`; REPAIR TABLE t1
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` PROCEDURE `p1`()
+primary-bin.000001	#	Query	#	#	CREATE DATABASE test_rpl
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE TABLE t1 (a int auto_increment not null, b char(254), PRIMARY KEY(a)) ENGINE=innodb
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE TABLE t2 (a int auto_increment not null, b char(254), PRIMARY KEY(a)) ENGINE=innodb
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 't1, text 2')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 't2, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t2)
+primary-bin.000001	#	Delete_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t2)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES (1, 't1, text 1') ON DUPLICATE KEY UPDATE b = 't2, text 1'
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2 WHERE a = 2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 't1, text 2')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(3, 't1, text 3')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; REPLACE INTO t1 VALUES(1, 't1, text 11')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; REPLACE INTO t1 SET a=3, b='t1, text 33'
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 'CCC')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 'DDD')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 'DDD')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(2, 'CCC')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 't2, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; TRUNCATE t1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 't1, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t2 VALUES(1, 't2, text 1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; UPDATE t1 SET b = 't1, text 1 updated' WHERE a = 1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; UPDATE t1, t2 SET t1.b = 'test', t2.b = 'test'
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (1, 'start')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (3, 'before savepoint s1')
+primary-bin.000001	#	Query	#	#	SAVEPOINT `s1`
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (5, 'before savepoint s2')
+primary-bin.000001	#	Query	#	#	SAVEPOINT `s2`
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES (6, 'after savepoint s2')
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 7
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE USER 'user_test_rpl'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*1111111111111111111111111111111111111111' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
+primary-bin.000001	#	Query	#	#	use `test_rpl`; GRANT SELECT ON *.* TO 'user_test_rpl'@'localhost'
+primary-bin.000001	#	Query	#	#	use `test_rpl`; REVOKE SELECT ON *.* FROM 'user_test_rpl'@'localhost'
+primary-bin.000001	#	Query	#	#	use `test_rpl`; ALTER USER 'user_test_rpl'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*A38FBE0EB6B1C58EA7C5AAAE654E921DC6CD0007'
+primary-bin.000001	#	Query	#	#	use `test_rpl`; RENAME USER 'user_test_rpl'@'localhost' TO 'user_test_rpl_2'@'localhost'
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DROP USER 'user_test_rpl_2'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(100, 'test')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; ANALYZE TABLE t1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; OPTIMIZE TABLE t1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; REPAIR TABLE t1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` PROCEDURE `p1`()
 BEGIN
 UPDATE t1 SET b = 'test' WHERE a = 201;
 END
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` PROCEDURE `p2`()
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` PROCEDURE `p2`()
 BEGIN
 UPDATE t1 SET b = UUID() WHERE a = 202;
 END
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT  INTO t1 VALUES(201, 'test 201')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; UPDATE t1 SET b = 'test' WHERE a = 201
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT  INTO t1 VALUES(202, 'test 202')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
-master-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 202
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; ALTER PROCEDURE p1 COMMENT 'p1'
-master-bin.000001	#	Query	#	#	use `test_rpl`; DROP PROCEDURE p1
-master-bin.000001	#	Query	#	#	use `test_rpl`; DROP PROCEDURE p2
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` TRIGGER tr1 BEFORE INSERT ON t1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT  INTO t1 VALUES(201, 'test 201')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; UPDATE t1 SET b = 'test' WHERE a = 201
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT  INTO t1 VALUES(202, 'test 202')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
+primary-bin.000001	#	Update_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1 WHERE a = 202
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; ALTER PROCEDURE p1 COMMENT 'p1'
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DROP PROCEDURE p1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DROP PROCEDURE p2
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` TRIGGER tr1 BEFORE INSERT ON t1
 FOR EACH ROW BEGIN
 INSERT INTO t2 SET a = NEW.a, b = NEW.b;
 END
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
-master-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t2)
-master-bin.000001	#	Write_rows	#	#	table_id: #
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; DROP TRIGGER tr1
-master-bin.000001	#	Query	#	#	use `test_rpl`; GRANT EVENT ON *.* TO 'root'@'localhost'
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 'test1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` EVENT e1 ON SCHEDULE EVERY '1' SECOND COMMENT 'e_second_comment' DO DELETE FROM t1
-master-bin.000001	#	Query	#	#	use `test_rpl`; ALTER EVENT e1 RENAME TO e2
-master-bin.000001	#	Query	#	#	use `test_rpl`; DROP EVENT e2
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 'test1')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 'test2')
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS SELECT * FROM t1 WHERE a = 1
-master-bin.000001	#	Query	#	#	use `test_rpl`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v2` AS SELECT * FROM t1 WHERE b <> UUID()
-master-bin.000001	#	Query	#	#	use `test_rpl`; ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS SELECT * FROM t1 WHERE a = 2
-master-bin.000001	#	Query	#	#	use `test_rpl`; DROP VIEW v1
-master-bin.000001	#	Query	#	#	use `test_rpl`; DROP VIEW v2
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t1)
+primary-bin.000001	#	Table_map	#	#	table_id: # (test_rpl.t2)
+primary-bin.000001	#	Write_rows	#	#	table_id: #
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DROP TRIGGER tr1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; GRANT EVENT ON *.* TO 'root'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 'test1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE DEFINER=`root`@`localhost` EVENT e1 ON SCHEDULE EVERY '1' SECOND COMMENT 'e_second_comment' DO DELETE FROM t1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; ALTER EVENT e1 RENAME TO e2
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DROP EVENT e2
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(1, 'test1')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; INSERT INTO t1 VALUES(2, 'test2')
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS SELECT * FROM t1 WHERE a = 1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v2` AS SELECT * FROM t1 WHERE b <> UUID()
+primary-bin.000001	#	Query	#	#	use `test_rpl`; ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS SELECT * FROM t1 WHERE a = 2
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DROP VIEW v1
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DROP VIEW v2
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test_rpl`; DELETE FROM t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 drop database test_rpl;
 include/rpl_end.inc

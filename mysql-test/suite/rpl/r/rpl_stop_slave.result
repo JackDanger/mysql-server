@@ -1,30 +1,30 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 
-# BUG#56118 STOP SLAVE does not wait till trx with CREATE TMP TABLE ends
+# BUG#56118 STOP REPLICA does not wait till trx with CREATE TMP TABLE ends
 #
 # If a temporary table is created or dropped, the transaction should be
 # regarded similarly that a non-transactional table is modified. So 
-# STOP SLAVE should wait until the transaction has finished.
+# STOP REPLICA should wait until the transaction has finished.
 CREATE TABLE t1(c1 INT) ENGINE=InnoDB;
 CREATE TABLE t2(c1 INT) ENGINE=InnoDB;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET DEBUG_SYNC= 'RESET';
-include/stop_slave.inc
+include/stop_replica.inc
 
 # Suspend the INSERT statement in current transaction on SQL thread.
 # It guarantees that SQL thread is applying the transaction when
-# STOP SLAVE command launchs.
+# STOP REPLICA command launchs.
 SET GLOBAL debug= 'd,after_mysql_insert';
-include/start_slave.inc
+include/start_replica.inc
 
 # CREATE TEMPORARY TABLE with InnoDB engine
 # -----------------------------------------
 
-[ On Master ]
+[ On Primary ]
 BEGIN;
 DELETE FROM t1;
 CREATE TEMPORARY TABLE tt1(c1 INT) ENGINE = InnoDB;
@@ -32,26 +32,26 @@ INSERT INTO t1 VALUES (1);
 DROP TEMPORARY TABLE tt1;
 COMMIT;
 
-[ On Slave ]
-STOP SLAVE SQL_THREAD;
+[ On Replica ]
+STOP REPLICA SQL_THREAD;
 
-[ On Slave1 ]
-# To resume slave SQL thread
+[ On Replica1 ]
+# To resume replica SQL thread
 SET DEBUG_SYNC= 'now SIGNAL signal.continue';
 SET DEBUG_SYNC= 'RESET';
 
-[ On Slave ]
-include/wait_for_slave_sql_to_stop.inc
-# Slave should stop after the transaction has committed.
-# So t1 on master is same to t1 on slave.
-include/diff_tables.inc [master:t1, slave:t1]
-START SLAVE SQL_THREAD;
-include/wait_for_slave_sql_to_start.inc
+[ On Replica ]
+include/wait_for_replica_sql_to_stop.inc
+# Replica should stop after the transaction has committed.
+# So t1 on primary is same to t1 on replica.
+include/diff_tables.inc [primary:t1, replica:t1]
+START REPLICA SQL_THREAD;
+include/wait_for_replica_sql_to_start.inc
 
 # CREATE TEMPORARY TABLE ... SELECT with InnoDB engine
 # ----------------------------------------------------
 
-[ On Master ]
+[ On Primary ]
 BEGIN;
 DELETE FROM t1;
 CREATE TEMPORARY TABLE tt1(c1 INT) ENGINE = InnoDB
@@ -60,74 +60,74 @@ INSERT INTO t1 VALUES (1);
 DROP TEMPORARY TABLE tt1;
 COMMIT;
 
-[ On Slave ]
-STOP SLAVE SQL_THREAD;
+[ On Replica ]
+STOP REPLICA SQL_THREAD;
 
-[ On Slave1 ]
-# To resume slave SQL thread
+[ On Replica1 ]
+# To resume replica SQL thread
 SET DEBUG_SYNC= 'now SIGNAL signal.continue';
 SET DEBUG_SYNC= 'RESET';
 
-[ On Slave ]
-include/wait_for_slave_sql_to_stop.inc
-# Slave should stop after the transaction has committed.
-# So t1 on master is same to t1 on slave.
-include/diff_tables.inc [master:t1, slave:t1]
-START SLAVE SQL_THREAD;
-include/wait_for_slave_sql_to_start.inc
+[ On Replica ]
+include/wait_for_replica_sql_to_stop.inc
+# Replica should stop after the transaction has committed.
+# So t1 on primary is same to t1 on replica.
+include/diff_tables.inc [primary:t1, replica:t1]
+START REPLICA SQL_THREAD;
+include/wait_for_replica_sql_to_start.inc
 
 # Test end
 SET GLOBAL debug= '$debug_save';
-include/restart_slave.inc
-call mtr.add_suppression("Slave SQL.*Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
-[connection master]
+include/restart_replica.inc
+call mtr.add_suppression("Replica SQL.*Request to stop replica SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+[connection primary]
 DROP TABLE t1, t2;
 
 # Bug#58546 test rpl_packet timeout failure sporadically on PB
 # ----------------------------------------------------------------------
-# STOP SLAVE stopped IO thread first and then stopped SQL thread. It was
+# STOP REPLICA stopped IO thread first and then stopped SQL thread. It was
 # possible that IO thread stopped after replicating part of a transaction
 # which SQL thread was executing. SQL thread would be hung if the
 # transaction could not be rolled back safely.
 # It caused some sporadic failures on PB2.
 #
-# This test verifies that when 'STOP SLAVE' is issued by a user, IO
+# This test verifies that when 'STOP REPLICA' is issued by a user, IO
 # thread will continue to fetch the rest events of the transaction which
 # is being executed by SQL thread and is not able to be rolled back safely.
 CREATE TABLE t1 (c1 INT KEY, c2 INT) ENGINE=InnoDB;
 CREATE TABLE t2 (c1 INT) ENGINE=MyISAM;
 INSERT INTO t1 VALUES(1, 1);
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-[connection master]
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+[connection primary]
 include/stop_dump_threads.inc
 SET GLOBAL debug= 'd,dump_thread_wait_before_send_xid';
-[connection slave]
-include/start_slave.inc
+[connection replica]
+include/start_replica.inc
 BEGIN;
 UPDATE t1 SET c2 = 2 WHERE c1 = 1;
-[connection master]
+[connection primary]
 BEGIN;
 INSERT INTO t1 VALUES(2, 2);
 INSERT INTO t2 VALUES(1);
 UPDATE t1 SET c2 = 3 WHERE c1 = 1;
 COMMIT;
-[connection slave1]
-STOP SLAVE;
-[connection slave]
+[connection replica1]
+STOP REPLICA;
+[connection replica]
 ROLLBACK;
-[connection master]
+[connection primary]
 SET DEBUG_SYNC= 'now SIGNAL signal.continue';
 SET DEBUG_SYNC= 'RESET';
-[connection slave]
-include/wait_for_slave_to_stop.inc
-[connection slave1]
-[connection master]
+[connection replica]
+include/wait_for_replica_to_stop.inc
+[connection replica1]
+[connection primary]
 SET GLOBAL debug= '$debug_save';
 include/stop_dump_threads.inc
-[connection slave1]
-include/start_slave.inc
-[connection master]
+[connection replica1]
+include/start_replica.inc
+[connection primary]
 DROP TABLE t1, t2;
 include/rpl_end.inc

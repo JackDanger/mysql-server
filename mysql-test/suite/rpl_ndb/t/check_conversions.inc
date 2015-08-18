@@ -9,8 +9,8 @@ CREATE TEMPORARY TABLE failed_type_conversions ENGINE = 'MyISAM' AS
          RPAD(Flags, 25, ' ') AS All_Type_Conversion_Flags,
          IF(Compare IS NULL AND Error IS NOT NULL, '<Correct error>',
             IF(Compare, '<Correct value>',
-               CONCAT("'", On_Slave, "' != '", Expected, "'")))
-           AS Value_On_Slave
+               CONCAT("'", On_Replica, "' != '", Expected, "'")))
+           AS Value_On_Replica
   FROM type_conversions
   WHERE Compare != 1 OR (Compare IS NULL AND Error IS NULL);
 enable_query_log;

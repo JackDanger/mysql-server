@@ -1774,12 +1774,12 @@ eval select "$long_rep" as x;
 --echo $animal
 
 # ----------------------------------------------------------------------------
-# Test sync_with_master
+# Test sync_with_primary
 # ----------------------------------------------------------------------------
 --error 1
---exec echo "sync_with_master 10!;" | $MYSQL_TEST 2>&1
+--exec echo "sync_with_primary 10!;" | $MYSQL_TEST 2>&1
 --error 1
---exec echo "sync_with_master a;" | $MYSQL_TEST 2>&1
+--exec echo "sync_with_primary a;" | $MYSQL_TEST 2>&1
 
 # ----------------------------------------------------------------------------
 # Test connect
@@ -2923,7 +2923,7 @@ select 1;
 
 
 # ----------------------------------------------------------------------------
-# BUG#35701 please allow test language variables in connection and sync_slave_with_master
+# BUG#35701 please allow test language variables in connection and sync_replica_with_primary
 # Test that "connection $variable" works and that $CURRENT_CONNECTION has the right value.
 # ----------------------------------------------------------------------------
 

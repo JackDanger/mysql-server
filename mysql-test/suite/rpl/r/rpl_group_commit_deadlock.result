@@ -1,35 +1,35 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET @max_binlog_size_save= @@GLOBAL.MAX_BINLOG_SIZE;
 SET @@GLOBAL.MAX_BINLOG_SIZE= 4096;
 # Disable diff_table test
 # Test tables with MyISAM engine when disabling diff_table and
 # simulating flush error
-include/sync_slave_sql_with_master.inc
-# Build connections to master server
+include/sync_replica_sql_with_primary.inc
+# Build connections to primary server
 # Stress test that execute massive queries on every connection
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 # Enable diff_table test
 # Test tables with InnoDB engine when enableing diff_table
 # and simulating flush error
-include/sync_slave_sql_with_master.inc
-# Build connections to master server
+include/sync_replica_sql_with_primary.inc
+# Build connections to primary server
 # Stress test that execute massive queries on every connection
-include/sync_slave_sql_with_master.inc
-# Test if the results are consistent on master and slave
-include/diff_tables.inc [master:t1, slave:t1]
-include/diff_tables.inc [master:t2, slave:t2]
-include/diff_tables.inc [master:t3, slave:t3]
-include/diff_tables.inc [master:t4, slave:t4]
-include/diff_tables.inc [master:t5, slave:t5]
-include/diff_tables.inc [master:t6, slave:t6]
-include/diff_tables.inc [master:t7, slave:t7]
-include/diff_tables.inc [master:t8, slave:t8]
-include/diff_tables.inc [master:t9, slave:t9]
-include/diff_tables.inc [master:t10, slave:t10]
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
+# Test if the results are consistent on primary and replica
+include/diff_tables.inc [primary:t1, replica:t1]
+include/diff_tables.inc [primary:t2, replica:t2]
+include/diff_tables.inc [primary:t3, replica:t3]
+include/diff_tables.inc [primary:t4, replica:t4]
+include/diff_tables.inc [primary:t5, replica:t5]
+include/diff_tables.inc [primary:t6, replica:t6]
+include/diff_tables.inc [primary:t7, replica:t7]
+include/diff_tables.inc [primary:t8, replica:t8]
+include/diff_tables.inc [primary:t9, replica:t9]
+include/diff_tables.inc [primary:t10, replica:t10]
+include/sync_replica_sql_with_primary.inc
 SET @@GLOBAL.MAX_BINLOG_SIZE= @max_binlog_size_save;
 include/rpl_end.inc

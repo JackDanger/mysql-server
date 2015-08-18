@@ -7,7 +7,7 @@
 # 3. nist suite
 # 4. engine independant suite
 # 5. Covers debug and non-debug runs
-# 6. Covers all suites with Multi-Threaded-Slave and MIXED binlog-format
+# 6. Covers all suites with Multi-Threaded-Replica and MIXED binlog-format
 # 7. Covers all suites with innodb-page-size=4k and 8k
 
 # Repeat daily run

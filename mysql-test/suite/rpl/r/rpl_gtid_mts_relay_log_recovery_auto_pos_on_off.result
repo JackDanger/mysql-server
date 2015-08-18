@@ -1,19 +1,19 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[connection slave]
-CALL mtr.add_suppression("Recovery from master pos*");
-CALL mtr.add_suppression("Slave SQL.*Duplicate entry.* Error_code: 1062");
-CALL mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
-include/stop_slave.inc
-CHANGE MASTER TO MASTER_AUTO_POSITION=0;
-SET @@global.slave_parallel_workers=4;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[connection replica]
+CALL mtr.add_suppression("Recovery from primary pos*");
+CALL mtr.add_suppression("Replica SQL.*Duplicate entry.* Error_code: 1062");
+CALL mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION=0;
+SET @@global.replica_parallel_workers=4;
 SET @@global.relay_log_info_repository='TABLE';
-SET @@global.master_info_repository='TABLE';
-include/start_slave.inc
-[connection master]
+SET @@global.primary_info_repository='TABLE';
+include/start_replica.inc
+[connection primary]
 CREATE DATABASE d1;
 CREATE DATABASE d2;
 CREATE DATABASE d3;
@@ -22,69 +22,69 @@ CREATE TABLE d1.t1 (a int unique) ENGINE=INNODB;
 CREATE TABLE d2.t1 (a int unique) ENGINE=INNODB;
 CREATE TABLE d3.t1 (a int unique) ENGINE=INNODB;
 CREATE TABLE d4.t1 (a int unique) ENGINE=INNODB;
-include/sync_slave_sql_with_master.inc
-STOP SLAVE SQL_THREAD;
+include/sync_replica_sql_with_primary.inc
+STOP REPLICA SQL_THREAD;
 SET GLOBAL DEBUG='d,flush_after_reading_user_var_event';
 BEGIN;
 INSERT INTO d1.t1 VALUES (1);
 INSERT INTO d2.t1 VALUES (2);
 INSERT INTO d3.t1 VALUES (3);
-[connection master]
+[connection primary]
 INSERT INTO d1.t1 VALUES (4);
 INSERT INTO d2.t1 VALUES (5);
 INSERT INTO d3.t1 VALUES (6);
 INSERT INTO d4.t1 VALUES (7);
-[connection master1]
+[connection primary1]
 BEGIN;
 INSERT INTO d1.t1 VALUES (1);
 SET @v= 100;
 INSERT INTO d1.t1 VALUES (@v);
 INSERT INTO d2.t1 VALUES (2);
 INSERT INTO d3.t1 VALUES (3);
-[connection master]
+[connection primary]
 BEGIN;
 INSERT INTO d4.t1 VALUES (8);
-[connection master1]
+[connection primary1]
 COMMIT;
-[connection slave1]
+[connection replica1]
 SET DEBUG_SYNC='now WAIT_FOR Reached';
 FLUSH LOGS;
 # Let IO thread continue splitting has been done now.
 SET DEBUG_SYNC= 'now SIGNAL signal.flush_complete_continue';
-[connection master]
+[connection primary]
 COMMIT;
 INSERT INTO d4.t1 VALUES (9);
-include/sync_slave_io_with_master.inc
-[connection slave1]
-START SLAVE SQL_THREAD;
-[connection slave]
+include/sync_replica_io_with_primary.inc
+[connection replica1]
+START REPLICA SQL_THREAD;
+[connection replica]
 COMMIT;
-include/wait_for_slave_sql_error.inc [errno=1062]
-include/stop_slave_io.inc
+include/wait_for_replica_sql_error.inc [errno=1062]
+include/stop_replica_io.inc
 DELETE FROM d1.t1 where a=1;
 DELETE FROM d2.t1 where a=2;
 DELETE FROM d3.t1 where a=3;
-include/rpl_restart_server.inc [server_number=2 gtids=on parameters: --skip_slave_start=FALSE --relay_log_info_repository=TABLE --master_info_repository=TABLE --sync_master_info=1 --relay-log-recovery=1]
-[connection master]
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:d4.t1, slave:d4.t1]
-include/diff_tables.inc [master:d3.t1, slave:d3.t1]
-include/diff_tables.inc [master:d2.t1, slave:d2.t1]
-include/diff_tables.inc [master:d1.t1, slave:d1.t1]
-[connection master]
+include/rpl_restart_server.inc [server_number=2 gtids=on parameters: --skip_replica_start=FALSE --relay_log_info_repository=TABLE --primary_info_repository=TABLE --sync_primary_info=1 --relay-log-recovery=1]
+[connection primary]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:d4.t1, replica:d4.t1]
+include/diff_tables.inc [primary:d3.t1, replica:d3.t1]
+include/diff_tables.inc [primary:d2.t1, replica:d2.t1]
+include/diff_tables.inc [primary:d1.t1, replica:d1.t1]
+[connection primary]
 DROP DATABASE d1;
 DROP DATABASE d2;
 DROP DATABASE d3;
 DROP DATABASE d4;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_reset.inc
-include/stop_slave.inc
-CHANGE MASTER TO MASTER_AUTO_POSITION=1;
-SET @@global.slave_parallel_workers=4;
+include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION=1;
+SET @@global.replica_parallel_workers=4;
 SET @@global.relay_log_info_repository='TABLE';
-SET @@global.master_info_repository='TABLE';
-include/start_slave.inc
-[connection master]
+SET @@global.primary_info_repository='TABLE';
+include/start_replica.inc
+[connection primary]
 CREATE DATABASE d1;
 CREATE DATABASE d2;
 CREATE DATABASE d3;
@@ -93,59 +93,59 @@ CREATE TABLE d1.t1 (a int unique) ENGINE=INNODB;
 CREATE TABLE d2.t1 (a int unique) ENGINE=INNODB;
 CREATE TABLE d3.t1 (a int unique) ENGINE=INNODB;
 CREATE TABLE d4.t1 (a int unique) ENGINE=INNODB;
-include/sync_slave_sql_with_master.inc
-STOP SLAVE SQL_THREAD;
+include/sync_replica_sql_with_primary.inc
+STOP REPLICA SQL_THREAD;
 SET GLOBAL DEBUG='d,flush_after_reading_user_var_event';
 BEGIN;
 INSERT INTO d1.t1 VALUES (1);
 INSERT INTO d2.t1 VALUES (2);
 INSERT INTO d3.t1 VALUES (3);
-[connection master]
+[connection primary]
 INSERT INTO d1.t1 VALUES (4);
 INSERT INTO d2.t1 VALUES (5);
 INSERT INTO d3.t1 VALUES (6);
 INSERT INTO d4.t1 VALUES (7);
-[connection master1]
+[connection primary1]
 BEGIN;
 INSERT INTO d1.t1 VALUES (1);
 SET @v= 100;
 INSERT INTO d1.t1 VALUES (@v);
 INSERT INTO d2.t1 VALUES (2);
 INSERT INTO d3.t1 VALUES (3);
-[connection master]
+[connection primary]
 BEGIN;
 INSERT INTO d4.t1 VALUES (8);
-[connection master1]
+[connection primary1]
 COMMIT;
-[connection slave1]
+[connection replica1]
 SET DEBUG_SYNC='now WAIT_FOR Reached';
 FLUSH LOGS;
 # Let IO thread continue splitting has been done now.
 SET DEBUG_SYNC= 'now SIGNAL signal.flush_complete_continue';
-[connection master]
+[connection primary]
 COMMIT;
 INSERT INTO d4.t1 VALUES (9);
-include/sync_slave_io_with_master.inc
-[connection slave1]
-START SLAVE SQL_THREAD;
-[connection slave]
+include/sync_replica_io_with_primary.inc
+[connection replica1]
+START REPLICA SQL_THREAD;
+[connection replica]
 COMMIT;
-include/wait_for_slave_sql_error.inc [errno=1062]
-include/stop_slave_io.inc
+include/wait_for_replica_sql_error.inc [errno=1062]
+include/stop_replica_io.inc
 DELETE FROM d1.t1 where a=1;
 DELETE FROM d2.t1 where a=2;
 DELETE FROM d3.t1 where a=3;
-include/rpl_restart_server.inc [server_number=2 gtids=on parameters: --skip_slave_start=FALSE --relay_log_info_repository=TABLE --master_info_repository=TABLE --sync_master_info=1 --relay-log-recovery=1]
-[connection master]
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:d4.t1, slave:d4.t1]
-include/diff_tables.inc [master:d3.t1, slave:d3.t1]
-include/diff_tables.inc [master:d2.t1, slave:d2.t1]
-include/diff_tables.inc [master:d1.t1, slave:d1.t1]
-[connection master]
+include/rpl_restart_server.inc [server_number=2 gtids=on parameters: --skip_replica_start=FALSE --relay_log_info_repository=TABLE --primary_info_repository=TABLE --sync_primary_info=1 --relay-log-recovery=1]
+[connection primary]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:d4.t1, replica:d4.t1]
+include/diff_tables.inc [primary:d3.t1, replica:d3.t1]
+include/diff_tables.inc [primary:d2.t1, replica:d2.t1]
+include/diff_tables.inc [primary:d1.t1, replica:d1.t1]
+[connection primary]
 DROP DATABASE d1;
 DROP DATABASE d2;
 DROP DATABASE d3;
 DROP DATABASE d4;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

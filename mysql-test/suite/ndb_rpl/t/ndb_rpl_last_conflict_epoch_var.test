@@ -5,27 +5,27 @@
 #
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --echo Setup circular replication
 
 --disable_query_log
---connection slave
-RESET MASTER;
-let $SLAVE_SERVER_ID= `select @@server_id`;
-echo SLAVE_SERVER_ID: $SLAVE_SERVER_ID;
+--connection replica
+RESET PRIMARY;
+let $REPLICA_SERVER_ID= `select @@server_id`;
+echo REPLICA_SERVER_ID: $REPLICA_SERVER_ID;
 
---connection master
---replace_result $SLAVE_MYPORT SLAVE_PORT
---eval CHANGE MASTER TO master_host="127.0.0.1",master_port=$SLAVE_MYPORT,master_user="root"
-START SLAVE;
-let $MASTER_SERVER_ID= `select @@server_id`;
-echo MASTER_SERVER_ID: $MASTER_SERVER_ID;
+--connection primary
+--replace_result $REPLICA_MYPORT REPLICA_PORT
+--eval CHANGE PRIMARY TO primary_host="127.0.0.1",primary_port=$REPLICA_MYPORT,primary_user="root"
+START REPLICA;
+let $PRIMARY_SERVER_ID= `select @@server_id`;
+echo PRIMARY_SERVER_ID: $PRIMARY_SERVER_ID;
 
 --echo Setup ndb_replication and t1$EX exceptions table
 
 --disable_warnings
---connection master
+--connection primary
 drop table if exists mysql.ndb_replication;
 CREATE TABLE mysql.ndb_replication
   (db VARBINARY(63),
@@ -39,8 +39,8 @@ CREATE TABLE mysql.ndb_replication
 
 --echo Populate ndb_replication table as necessary
 eval replace into mysql.ndb_replication values
-  ("test", "t1", $SLAVE_SERVER_ID, 7, NULL),
-  ("test", "t1", $MASTER_SERVER_ID, 7, "NDB\$EPOCH()");
+  ("test", "t1", $REPLICA_SERVER_ID, 7, NULL),
+  ("test", "t1", $PRIMARY_SERVER_ID, 7, "NDB\$EPOCH()");
 --enable_query_log
 
 create table test.t1 (
@@ -50,21 +50,21 @@ create table test.t1 (
 
 insert into test.t1 values (1,1,repeat("B", 1000));
 
---sync_slave_with_master slave
+--sync_replica_with_primary replica
 
---connection slave
+--connection replica
 --echo Stopping Primary -> Secondary replication
-stop slave;
+stop replica;
 
---connection master
+--connection primary
 --echo Stopping Secondary -> Primary replication
-stop slave;
+stop replica;
 
 --echo Making change on Primary
 update test.t1 set b=2 where a=1;
 
 --echo Making conflicting change on Secondary
---connection slave
+--connection replica
 begin;
 update test.t1 set b=3 where a=1;
 insert into test.t1 values (2,2,repeat("A", 1000));
@@ -72,9 +72,9 @@ commit;
 
 --disable_query_log
 --disable_result_log
---connection master
---echo Capturing session epoch from Master
-select @master_session_epoch:=Variable_value
+--connection primary
+--echo Capturing session epoch from Primary
+select @primary_session_epoch:=Variable_value
 from information_schema.global_status
 where Variable_name="Ndb_last_commit_epoch_session";
 
@@ -84,11 +84,11 @@ where Variable_name="Ndb_last_commit_epoch_session";
 show status like 'ndb_conflict_last_conflict_epoch';
 
 --echo Restart Secondary->Primary replication
-start slave;
+start replica;
 
---connection slave
---sync_slave_with_master master
---connection master
+--connection replica
+--sync_replica_with_primary primary
+--connection primary
 
 --echo Check that max_replicated_epoch is 
 --echo still < the saved session epoch
@@ -96,11 +96,11 @@ start slave;
 
 select @max_replicated_epoch:=Variable_value
 from information_schema.global_status
-where Variable_name="Ndb_slave_max_replicated_epoch";
+where Variable_name="Ndb_replica_max_replicated_epoch";
 
 --enable_result_log
 --echo Max replicated epoch should be < committed epoch
-select @max_replicated_epoch < @master_session_epoch;
+select @max_replicated_epoch < @primary_session_epoch;
 
 --disable_result_log
 select @conflict_detected_epoch:=Variable_value
@@ -113,25 +113,25 @@ select @conflict_detected_epoch != 0;
 select @conflict_detected_epoch > @max_replicated_epoch;
 
 --echo Primary has detected the problem, but Secondary
---echo is unaware as the slave is offline.
+--echo is unaware as the replica is offline.
 --echo Now bring it back
 
---connection slave
-start slave;
+--connection replica
+start replica;
 
 --echo Now sync up
---connection master
---sync_slave_with_master slave
---connection slave
---sync_slave_with_master master
---connection master
+--connection primary
+--sync_replica_with_primary replica
+--connection replica
+--sync_replica_with_primary primary
+--connection primary
 
 --echo Now lets check that the max replicated epoch
 --echo on the Primary is == the last_conflict_epoch
 --disable_result_log
 select @max_replicated_epoch:=Variable_value
 from information_schema.global_status
-where Variable_name="Ndb_slave_max_replicated_epoch";
+where Variable_name="Ndb_replica_max_replicated_epoch";
 
 select @conflict_detected_epoch:=Variable_value
 from information_schema.global_status
@@ -145,10 +145,10 @@ select @max_replicated_epoch = @conflict_detected_epoch;
 drop table test.t1;
 drop table mysql.ndb_replication;
 
---sync_slave_with_master slave
---connection slave
---sync_slave_with_master master
---connection master
-stop slave;
+--sync_replica_with_primary replica
+--connection replica
+--sync_replica_with_primary primary
+--connection primary
+stop replica;
 
 --source include/rpl_end.inc

@@ -28,7 +28,7 @@ class DefineBackupReq {
   /**
    * Sender(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
   
   /**
    * Reciver(s)
@@ -85,7 +85,7 @@ class DefineBackupRef {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printDEFINE_BACKUP_REF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -120,7 +120,7 @@ class DefineBackupConf {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printDEFINE_BACKUP_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -135,7 +135,7 @@ class StartBackupReq {
   /**
    * Sender(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
   
   /**
    * Reciver(s)
@@ -161,7 +161,7 @@ class StartBackupRef {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printSTART_BACKUP_REF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -186,7 +186,7 @@ class StartBackupConf {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printSTART_BACKUP_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -201,7 +201,7 @@ class BackupFragmentReq {
   /**
    * Sender(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
   
   /**
    * Reciver(s)
@@ -231,7 +231,7 @@ class BackupFragmentRef {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printBACKUP_FRAGMENT_REF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -254,7 +254,7 @@ class BackupFragmentConf {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printBACKUP_FRAGMENT_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -289,7 +289,7 @@ class StopBackupReq {
   /**
    * Sender(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
   
   /**
    * Reciver(s)
@@ -316,7 +316,7 @@ class StopBackupRef {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printSTOP_BACKUP_REF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -338,7 +338,7 @@ class StopBackupConf {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printSTOP_BACKUP_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 public:
@@ -355,7 +355,7 @@ class BackupStatusReq {
   /**
    * Sender(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
   
   /**
    * Reciver(s)
@@ -378,7 +378,7 @@ class BackupStatusConf {
   /**
    * Reciver(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
 
   friend bool printBACKUP_STATUS_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 public:

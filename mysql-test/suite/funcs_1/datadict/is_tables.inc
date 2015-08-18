@@ -127,7 +127,7 @@ WHERE table_schema = 'db_datadict' ORDER BY table_name;
 let $my_show = SHOW TABLES FROM db_datadict;
 
 --echo # Establish connection testuser1 (user=testuser1)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser1, localhost, testuser1, , db_datadict);
 # tb2 is not granted to anyone
 --replace_result $engine_type <engine_type>
@@ -180,7 +180,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser2 (user=testuser2)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser2, localhost, testuser2, , db_datadict);
 if ($have_bug_32285)
 {
@@ -193,7 +193,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser3 (user=testuser3)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser3, localhost, testuser3, , db_datadict);
 if ($have_bug_32285)
 {

@@ -15,5 +15,5 @@ exit;
 USE test;
 --source suite/funcs_1/include/innodb_tb1.inc
 
---source suite/funcs_1/cursors/cursors_master.test
+--source suite/funcs_1/cursors/cursors_primary.test
 

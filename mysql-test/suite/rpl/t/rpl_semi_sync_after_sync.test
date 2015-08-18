@@ -4,28 +4,28 @@
 #
 # Two wait points are there for semisync. AFTER_SYNC and AFTER_COMMIT
 # The main differece is that Other sessions could NOT see the data before it
-# replicated to slave if waiting at AFTER_SYNC wait point. In contrast, when
+# replicated to replica if waiting at AFTER_SYNC wait point. In contrast, when
 # waiting at AFTER_COMMIT, other sessions could see the data before it is
-# replicated to slave.
+# replicated to replica.
 #################################################################################
 --source include/not_group_replication_plugin.inc
 --source include/have_innodb.inc
 --source include/have_debug_sync.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_semisync_plugin.inc
 --source include/install_semisync.inc
 
 CREATE TABLE t1(c1 INT) ENGINE=InnoDB;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --source extra/rpl_tests/rpl_semi_sync_after_sync.test
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --let $saved_binlog_order_commits= `SELECT @@GLOBAL.binlog_order_commits`
 SET GLOBAL binlog_order_commits = OFF;
 
 --source extra/rpl_tests/rpl_semi_sync_after_sync.test
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 eval SET GLOBAL binlog_order_commits= $saved_binlog_order_commits;
 
 --echo #

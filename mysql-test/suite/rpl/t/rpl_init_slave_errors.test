@@ -1,18 +1,18 @@
 ######################################################################
-# Some errors that cause the slave SQL thread to stop are not shown in 
-# the Slave_SQL_Error column of "SHOW SLAVE STATUS". Instead, the error 
+# Some errors that cause the replica SQL thread to stop are not shown in 
+# the Replica_SQL_Error column of "SHOW REPLICA STATUS". Instead, the error 
 # is only in the server's error log.
 #
 # Two failures and their respective reporting are verified:
 #             
-# 1 - Failures during slave thread initialization
-# 2 - Failures while processing queries passed through the init_slave
+# 1 - Failures during replica thread initialization
+# 2 - Failures while processing queries passed through the init_replica
 # option.
 #
 # In order to check the first type of failure, we inject a fault in the 
 # SQL/IO Threads through SET GLOBAL debug.
 #
-# To check the second type, we set @@global.init_slave to an invalid 
+# To check the second type, we set @@global.init_replica to an invalid 
 # command thus preventing the initialization of the SQL Thread.
 #
 # Obs:
@@ -29,69 +29,69 @@
 #                    Configuring the Environment
 ######################################################################
 source include/have_debug.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/have_log_bin.inc;
 
-connection slave;
+connection replica;
 
 --disable_warnings
-stop slave;
+stop replica;
 --enable_warnings
-reset slave;
+reset replica;
 
 ######################################################################
 #           Injecting faults in the threads' initialization
 ######################################################################
-connection slave;
+connection replica;
 
-# Set debug flags on slave to force errors to occur
-SET GLOBAL debug= "d,simulate_io_slave_error_on_init,simulate_sql_slave_error_on_init";
+# Set debug flags on replica to force errors to occur
+SET GLOBAL debug= "d,simulate_io_replica_error_on_init,simulate_sql_replica_error_on_init";
 
-start slave;
+start replica;
 
 #
-# slave is going to stop because of emulated failures
+# replica is going to stop because of emulated failures
 # but there won't be any crashes nor asserts hit.
 #
---let $slave_sql_errno= convert_error(ER_SLAVE_FATAL_ERROR)
---let $show_slave_sql_error= 1
---source include/wait_for_slave_sql_error.inc
+--let $replica_sql_errno= convert_error(ER_REPLICA_FATAL_ERROR)
+--let $show_replica_sql_error= 1
+--source include/wait_for_replica_sql_error.inc
 
 SET SESSION sql_log_bin= 0;
-call mtr.add_suppression("Failed during slave.* thread initialization");
+call mtr.add_suppression("Failed during replica.* thread initialization");
 SET SESSION sql_log_bin= 1;
 
 # Bug#11765758 - 58754
 # above tests part logics make sure the IO thread is down to allow 
 # safe updating to @@global.debug
---let $slave_io_errno= convert_error(ER_SLAVE_FATAL_ERROR)
---let $show_slave_io_error= 1
---source include/wait_for_slave_io_error.inc
+--let $replica_io_errno= convert_error(ER_REPLICA_FATAL_ERROR)
+--let $show_replica_io_error= 1
+--source include/wait_for_replica_io_error.inc
 
 SET GLOBAL debug= "";
 
 ######################################################################
-#             Injecting faults in the init_slave option
+#             Injecting faults in the init_replica option
 ######################################################################
-connection slave;
+connection replica;
 
-reset slave;
+reset replica;
 
-SET GLOBAL init_slave= "garbage";
+SET GLOBAL init_replica= "garbage";
 
-start slave;
+start replica;
 # 1064 = ER_PARSE_ERROR
---let $slave_sql_errno= 1064
---let $show_slave_sql_error= 1
---source include/wait_for_slave_sql_error.inc
+--let $replica_sql_errno= 1064
+--let $show_replica_sql_error= 1
+--source include/wait_for_replica_sql_error.inc
 
 ######################################################################
 #                             Clean up
 ######################################################################
-SET GLOBAL init_slave= "";
+SET GLOBAL init_replica= "";
 
 # Clean up Last_SQL_Error
---source include/stop_slave_io.inc
-RESET SLAVE;
+--source include/stop_replica_io.inc
+RESET REPLICA;
 --let $rpl_only_running_threads= 1
 --source include/rpl_end.inc

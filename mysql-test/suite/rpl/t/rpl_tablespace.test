@@ -14,10 +14,10 @@
 --echo # #######################################################################
 
 --source include/have_gtid.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---connection master
---echo [On MASTER]
+--connection primary
+--echo [On PRIMARY]
 
 --echo # TEST Bug#21082728: Execute CREATE TABLESPACE inside active transaction
 --echo # with GTID_NEXT set. Check for proper error code and transaction state
@@ -50,6 +50,6 @@ SELECT * FROM t1;
 DROP TABLE t1;
 DROP TABLESPACE ts1;
 SET GTID_NEXT= @saved_gtid_next;
---echo # "STOP SLAVE" and verify that the SQL thread was properly stopped and
+--echo # "STOP REPLICA" and verify that the SQL thread was properly stopped and
 --echo # left no gaps.
 --source include/rpl_end.inc

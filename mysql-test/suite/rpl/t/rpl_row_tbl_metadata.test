@@ -28,7 +28,7 @@
 -- source include/not_group_replication_plugin.inc
 -- source include/have_innodb.inc
 -- source include/have_binlog_format_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 --disable_query_log
 call mtr.add_suppression("InnoDB: Cannot add field");
@@ -197,22 +197,22 @@ LOCK TABLES `t1` WRITE;
 INSERT INTO `t1`(c2) VALUES ('1');
 FLUSH LOGS;
 
---source include/sync_slave_sql_with_master.inc
--- connection master
+--source include/sync_replica_sql_with_primary.inc
+-- connection primary
 
--- echo ### assertion: the slave replicated event successfully and tables match
--- let $diff_tables= master:t1, slave:t1
+-- echo ### assertion: the replica replicated event successfully and tables match
+-- let $diff_tables= primary:t1, replica:t1
 -- source include/diff_tables.inc
 
--- connection master
+-- connection primary
 DROP TABLE `t1`;
---source include/sync_slave_sql_with_master.inc
--- connection master
+--source include/sync_replica_sql_with_primary.inc
+-- connection primary
 
 -- echo === Using mysqlbinlog to detect failure. Before the patch mysqlbinlog would find a corrupted event, thence would fail.
 
 -- let $MYSQLD_DATADIR= `SELECT @@datadir`
--- exec $MYSQL_BINLOG $MYSQLD_DATADIR/master-bin.000001 > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_bug42749.binlog
+-- exec $MYSQL_BINLOG $MYSQLD_DATADIR/primary-bin.000001 > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_bug42749.binlog
 -- remove_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog_bug42749.binlog
 
 #############################################################
@@ -226,17 +226,17 @@ DROP TABLE `t1`;
 #  1. SQL for several CREATE TABLE and INSERTS are generated 
 #     into a file.
 #  2. This file is then "sourced"
-#  3. The slave is synchronized with the master
-#  4. FLUSH LOGS on master
-#  5. Compare tables on master and slave.
-#  6. run mysqlbinlog on  master's binary log
+#  3. The replica is synchronized with the primary
+#  4. FLUSH LOGS on primary
+#  5. Compare tables on primary and replica.
+#  6. run mysqlbinlog on  primary's binary log
 #
 # Steps #5 and #6 assert that binary log is not corrupted 
-# in both cases: when slave is replaying events and when
+# in both cases: when replica is replaying events and when
 # mysqlbinlog is used to read the binary log
 
 --source include/rpl_reset.inc
--- connection master
+-- connection primary
 
 # Create several tables with field_metadata_size ranging
 # from 249 to 258 (so that we cover 251 and 255 range).
@@ -318,24 +318,24 @@ EOF
 -- enable_query_log
 -- enable_warnings
 
---source include/sync_slave_sql_with_master.inc
--- connection master
+--source include/sync_replica_sql_with_primary.inc
+-- connection primary
 
 FLUSH LOGS;
 
 -- let $ntables=10
 while($ntables)
 {
-  -- echo ### assertion: the slave replicated event successfully and tables match for t$ntables
-  -- let $diff_tables= master:t$ntables, slave:t$ntables
+  -- echo ### assertion: the replica replicated event successfully and tables match for t$ntables
+  -- let $diff_tables= primary:t$ntables, replica:t$ntables
   -- source include/diff_tables.inc
 
-  -- connection master
+  -- connection primary
   -- disable_query_log
   -- eval DROP TABLE t$ntables
   -- enable_query_log
-  --source include/sync_slave_sql_with_master.inc
-  -- connection master
+  --source include/sync_replica_sql_with_primary.inc
+  -- connection primary
 
   -- dec $ntables
 }
@@ -344,7 +344,7 @@ while($ntables)
 -- echo ###            detect failure. Before the patch mysqlbinlog would find 
 -- echo ###            a corrupted event, thence would fail.
 -- let $MYSQLD_DATADIR= `SELECT @@datadir`
--- exec $MYSQL_BINLOG -v --hexdump $MYSQLD_DATADIR/master-bin.000001 > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_bug50018.binlog
+-- exec $MYSQL_BINLOG -v --hexdump $MYSQLD_DATADIR/primary-bin.000001 > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_bug50018.binlog
 
 ## clean up
 ## For debugging purposes you might want not to remove these

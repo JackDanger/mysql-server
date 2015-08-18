@@ -5,7 +5,7 @@
 #  Misc.:
 #     https://github.com/mapnik/node-mapnik/issues/74 --  /FORCE:MULTIPLE
 #     https://github.com/TooTallNate/node-gyp/wiki/%22binding.gyp%22-files-out-in-the-wild
-#     https://github.com/TooTallNate/node-gyp/blob/master/addon.gypi
+#     https://github.com/TooTallNate/node-gyp/blob/primary/addon.gypi
 
 {
  

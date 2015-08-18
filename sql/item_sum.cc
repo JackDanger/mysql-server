@@ -317,9 +317,9 @@ bool Item_sum::register_sum_func(THD *thd, Item **ref)
       has aggregate functions directly referenced (i.e. not through a subquery).
     */
     for (SELECT_LEX *sl= thd->lex->current_select(); 
-         sl && sl != aggr_sel && sl->master_unit()->item;
+         sl && sl != aggr_sel && sl->primary_unit()->item;
          sl= sl->outer_select())
-      sl->master_unit()->item->with_sum_func= true;
+      sl->primary_unit()->item->with_sum_func= true;
   }
   thd->lex->current_select()->mark_as_dependent(aggr_sel);
   return false;

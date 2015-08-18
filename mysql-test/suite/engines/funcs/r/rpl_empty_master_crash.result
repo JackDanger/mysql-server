@@ -1,10 +1,10 @@
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
-load table t1 from master;
-ERROR 08S01: Error connecting to master: Master is not configured
-load table t1 from master;
-ERROR HY000: Error from master: 'Table 'test.t1' doesn't exist'
+start replica;
+load table t1 from primary;
+ERROR 08S01: Error connecting to primary: Primary is not configured
+load table t1 from primary;
+ERROR HY000: Error from primary: 'Table 'test.t1' doesn't exist'

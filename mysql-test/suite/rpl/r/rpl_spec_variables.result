@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 
 * auto_increment_increment, auto_increment_offset *
 SET @@global.auto_increment_increment=2;
@@ -14,28 +14,28 @@ SET @@session.auto_increment_increment=3;
 SET @@global.auto_increment_offset=20;
 SET @@session.auto_increment_offset=20;
 CREATE TABLE t1 (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY, b VARCHAR(10)) ENGINE=MyISAM;
-INSERT INTO t1 (b) VALUES ('master');
-INSERT INTO t1 (b) VALUES ('master');
+INSERT INTO t1 (b) VALUES ('primary');
+INSERT INTO t1 (b) VALUES ('primary');
 SELECT * FROM t1 ORDER BY a;
 a	b
-2	master
-4	master
-include/sync_slave_sql_with_master.inc
+2	primary
+4	primary
+include/sync_replica_sql_with_primary.inc
 CREATE TABLE t2 (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY, b VARCHAR(10)) ENGINE=MyISAM;
-INSERT INTO t1 (b) VALUES ('slave');
-INSERT INTO t1 (b) VALUES ('slave');
-INSERT INTO t2 (b) VALUES ('slave');
-INSERT INTO t2 (b) VALUES ('slave');
+INSERT INTO t1 (b) VALUES ('replica');
+INSERT INTO t1 (b) VALUES ('replica');
+INSERT INTO t2 (b) VALUES ('replica');
+INSERT INTO t2 (b) VALUES ('replica');
 SELECT * FROM t1 ORDER BY a;
 a	b
-2	master
-4	master
-7	slave
-10	slave
+2	primary
+4	primary
+7	replica
+10	replica
 SELECT * FROM t2 ORDER BY a;
 a	b
-1	slave
-4	slave
+1	replica
+4	replica
 DROP TABLE IF EXISTS t1,t2;
 SET @@global.auto_increment_increment=1;
 SET @@session.auto_increment_increment=1;
@@ -49,8 +49,8 @@ SET auto_increment_increment=1;
 SET auto_increment_offset=1;
 
 * character_set_database, collation_server *
-SET @restore_master_character_set_database=@@global.character_set_database;
-SET @restore_master_collation_server=@@global.collation_server;
+SET @restore_primary_character_set_database=@@global.character_set_database;
+SET @restore_primary_collation_server=@@global.collation_server;
 SET @@global.character_set_database=latin1;
 Warnings:
 Warning	1681	Updating 'character_set_database' is deprecated. It will be made read-only in a future release.
@@ -59,8 +59,8 @@ Warnings:
 Warning	1681	Updating 'character_set_database' is deprecated. It will be made read-only in a future release.
 SET @@global.collation_server=latin1_german1_ci;
 SET @@session.collation_server=latin1_german1_ci;
-SET @restore_slave_character_set_database=@@global.character_set_database;
-SET @restore_slave_collation_server=@@global.collation_server;
+SET @restore_replica_character_set_database=@@global.character_set_database;
+SET @restore_replica_collation_server=@@global.collation_server;
 SET @@global.character_set_database=utf8;
 Warnings:
 Warning	1681	Updating 'character_set_database' is deprecated. It will be made read-only in a future release.
@@ -77,7 +77,7 @@ t1	CREATE TABLE `t1` (
   `b` varchar(10) COLLATE latin1_german1_ci DEFAULT NULL,
   PRIMARY KEY (`a`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 COLLATE=latin1_german1_ci
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CREATE TABLE t2 (a INT NOT NULL PRIMARY KEY, b VARCHAR(10)) ENGINE=MyISAM;
 SHOW CREATE TABLE t1;
 Table	Create Table
@@ -105,16 +105,16 @@ SET @@session.default_week_format=0;
 SET @@global.default_week_format=1;
 SET @@session.default_week_format=1;
 CREATE TABLE t1 (a INT NOT NULL PRIMARY KEY, b VARCHAR(10), c INT) ENGINE=MyISAM;
-INSERT INTO t1 VALUES (1, 'master ', WEEK('2008-01-07'));
+INSERT INTO t1 VALUES (1, 'primary ', WEEK('2008-01-07'));
 SELECT * FROM t1 ORDER BY a;
 a	b	c
-1	master 	1
-include/sync_slave_sql_with_master.inc
-INSERT INTO t1 VALUES (2, 'slave ', WEEK('2008-01-07'));
+1	primary 	1
+include/sync_replica_sql_with_primary.inc
+INSERT INTO t1 VALUES (2, 'replica ', WEEK('2008-01-07'));
 SELECT * FROM t1 ORDER BY a;
 a	b	c
-1	master 	1
-2	slave 	2
+1	primary 	1
+2	replica 	2
 DROP TABLE t1;
 SET @@global.default_week_format=0;
 SET @@session.default_week_format=0;
@@ -126,7 +126,7 @@ LOAD DATA LOCAL INFILE 'FILE' INTO TABLE t1 (b);
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 70
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 LOAD DATA LOCAL INFILE 'FILE2' INTO TABLE t1 (b);
 ERROR 42000: The used command is not allowed with this MySQL version
 SELECT COUNT(*) FROM t1;
@@ -136,35 +136,35 @@ SET @@global.local_infile=1;
 DROP TABLE t1;
 
 * max_heap_table_size *
-SET @restore_slave_max_heap_table_size=@@global.max_heap_table_size;
+SET @restore_replica_max_heap_table_size=@@global.max_heap_table_size;
 SET @@global.max_heap_table_size=16384;
 SET @@session.max_heap_table_size=16384;
 CREATE TABLE t1 (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY, b VARCHAR(10), c CHAR(254)) ENGINE=MEMORY;
 SELECT COUNT(*)=2000 FROM t1;
 COUNT(*)=2000
 1
-include/sync_slave_sql_with_master.inc
-SELECT COUNT(*)=2000 FROM t1 WHERE b='master' GROUP BY b ORDER BY b;
+include/sync_replica_sql_with_primary.inc
+SELECT COUNT(*)=2000 FROM t1 WHERE b='primary' GROUP BY b ORDER BY b;
 COUNT(*)=2000
 1
-SELECT COUNT(*)<2000 AND COUNT(*)>0 FROM t1 WHERE b='slave' GROUP BY b ORDER BY b;
+SELECT COUNT(*)<2000 AND COUNT(*)>0 FROM t1 WHERE b='replica' GROUP BY b ORDER BY b;
 COUNT(*)<2000 AND COUNT(*)>0
 1
-SELECT COUNT(*)<2000 AND COUNT(*)>0 FROM t2 WHERE b='slave' GROUP BY b ORDER BY b;
+SELECT COUNT(*)<2000 AND COUNT(*)>0 FROM t2 WHERE b='replica' GROUP BY b ORDER BY b;
 COUNT(*)<2000 AND COUNT(*)>0
 1
 DROP TABLE IF EXISTS t1,t2;
 
 * storage_engine *
-SET @restore_master_storage_engine=@@global.default_storage_engine;
+SET @restore_primary_storage_engine=@@global.default_storage_engine;
 SET @@global.default_storage_engine=InnoDB;
 SET @@session.default_storage_engine=InnoDB;
-SET @restore_slave_storage_engine=@@global.default_storage_engine;
+SET @restore_replica_storage_engine=@@global.default_storage_engine;
 SET @@global.default_storage_engine=Memory;
 SET @@session.default_storage_engine=Memory;
 CREATE TABLE t1 (a INT NOT NULL PRIMARY KEY, b VARCHAR(10));
 CREATE TABLE t2 (a INT NOT NULL PRIMARY KEY, b VARCHAR(10)) ENGINE=InnoDB;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CREATE TABLE t3 (a INT NOT NULL PRIMARY KEY, b VARCHAR(10));
 SHOW CREATE TABLE t1;
 Table	Create Table
@@ -215,16 +215,16 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 SET @@global.sql_mode=TRADITIONAL;
 SET @@session.sql_mode=TRADITIONAL;
 CREATE TABLE t1 (a INT NOT NULL PRIMARY KEY, b VARCHAR(10), c DATE);
-INSERT INTO t1 VALUES (1, 'master', '0000-00-00');
+INSERT INTO t1 VALUES (1, 'primary', '0000-00-00');
 SELECT * FROM t1 ORDER BY a;
 a	b	c
-1	master	0000-00-00
-include/sync_slave_sql_with_master.inc
-INSERT INTO t1 VALUES (1, 'slave', '0000-00-00');
+1	primary	0000-00-00
+include/sync_replica_sql_with_primary.inc
+INSERT INTO t1 VALUES (1, 'replica', '0000-00-00');
 ERROR 22007: Incorrect date value: '0000-00-00' for column 'c' at row 1
 SELECT * FROM t1 ORDER BY a;
 a	b	c
-1	master	0000-00-00
+1	primary	0000-00-00
 SET @@global.sql_mode=DEFAULT;
 SET @@session.sql_mode=DEFAULT;
 SET @@global.sql_mode=DEFAULT;
@@ -232,18 +232,18 @@ SET @@session.sql_mode=DEFAULT;
 DROP TABLE t1;
 
 *** clean up ***
-SET @@global.character_set_database=@restore_master_character_set_database;
+SET @@global.character_set_database=@restore_primary_character_set_database;
 Warnings:
 Warning	1681	Updating 'character_set_database' is deprecated. It will be made read-only in a future release.
-SET @@global.collation_server=@restore_master_collation_server;
-SET @@global.default_storage_engine=@restore_master_storage_engine;
-include/sync_slave_sql_with_master.inc
-SET @@global.character_set_database=@restore_slave_character_set_database;
+SET @@global.collation_server=@restore_primary_collation_server;
+SET @@global.default_storage_engine=@restore_primary_storage_engine;
+include/sync_replica_sql_with_primary.inc
+SET @@global.character_set_database=@restore_replica_character_set_database;
 Warnings:
 Warning	1681	Updating 'character_set_database' is deprecated. It will be made read-only in a future release.
-SET @@global.collation_server=@restore_slave_collation_server;
-SET @@global.max_heap_table_size=@restore_slave_max_heap_table_size;
-SET @@global.default_storage_engine=@restore_slave_storage_engine;
+SET @@global.collation_server=@restore_replica_collation_server;
+SET @@global.max_heap_table_size=@restore_replica_max_heap_table_size;
+SET @@global.default_storage_engine=@restore_replica_storage_engine;
 
 call mtr.add_suppression("The table 't[12]' is full");
 include/rpl_end.inc

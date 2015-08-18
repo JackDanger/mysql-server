@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE t1 (pk int primary key, uk int not null, unique(uk)) engine=ndb;
 insert into t1 values (1,1);
 insert into t1 values (2,2);
@@ -24,7 +24,7 @@ pk	uk
 3	2
 4	3
 5	4
-Master table contents
+Primary table contents
 select * from t1 order by pk;
 pk	uk
 1	0
@@ -33,7 +33,7 @@ pk	uk
 4	3
 5	4
 flush logs;
-Slave table contents
+Replica table contents
 select * from t1 order by pk;
 pk	uk
 1	0

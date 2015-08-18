@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 create table t1 (a varchar(10) character set utf8);
 load data infile '../../std_data/loaddata6.dat' into table t1;
 set @@character_set_database=koi8r;
@@ -32,7 +32,7 @@ C3BF
 C3BF
 D0AA
 D0AA
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select hex(a) from t1;
 hex(a)
 C3BF
@@ -43,7 +43,7 @@ C3BF
 D0AA
 D0AA
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------test bug#45516------------------
 DROP DATABASE IF EXISTS mysqltest;
 CREATE DATABASE mysqltest CHARSET UTF8;
@@ -51,13 +51,13 @@ USE mysqltest;
 CREATE TABLE t (cl varchar(100)) CHARSET UTF8;
 LOAD DATA LOCAL INFILE './std_data/loaddata_utf8.dat' INTO TABLE t
 FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';
-----------content on master----------
+----------content on primary----------
 SELECT hex(cl) FROM t;
 hex(cl)
 E4B880E4BA8CE4B889
 E59B9BE4BA94E585AD
 E4B883E585ABE4B99D
-----------content on slave----------
+----------content on replica----------
 USE mysqltest;
 SELECT hex(cl) FROM t;
 hex(cl)
@@ -71,13 +71,13 @@ USE mysqltest;
 CREATE TABLE t (cl varchar(100)) CHARSET UTF8;
 LOAD DATA INFILE '../../std_data/loaddata_utf8.dat' INTO TABLE t
 FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';
-----------content on master----------
+----------content on primary----------
 SELECT hex(cl) FROM t;
 hex(cl)
 E4B880E4BA8CE4B889
 E59B9BE4BA94E585AD
 E4B883E585ABE4B99D
-----------content on slave----------
+----------content on replica----------
 USE mysqltest;
 SELECT hex(cl) FROM t;
 hex(cl)

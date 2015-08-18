@@ -1,1 +1,1 @@
---init-slave="set global max_connections=500"
+--init-replica="set global max_connections=500"

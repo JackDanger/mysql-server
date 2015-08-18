@@ -38,7 +38,7 @@ struct NodeFailRep {
    * Note: This field is only set when signals is sent FROM Ndbcntr
    *       (not when signal is sent from Qmgr)
    */
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 
   Uint32 noOfNodes;
   union

@@ -30,7 +30,7 @@
 #include "rpl_msr.h"
 #include "rpl_info.h" /*CHANNEL_NAME_LENGTH*/
 
-class Master_info;
+class Primary_info;
 
 /**
   @addtogroup Performance_schema_tables
@@ -57,7 +57,7 @@ struct st_row_coordinator {
   bool thread_id_is_null;
   enum_rpl_yes_no service_state;
   uint last_error_number;
-  char last_error_message[MAX_SLAVE_ERRMSG];
+  char last_error_message[MAX_REPLICA_ERRMSG];
   uint last_error_message_length;
   ulonglong last_error_timestamp;
 };
@@ -66,7 +66,7 @@ struct st_row_coordinator {
 class table_replication_applier_status_by_coordinator: public PFS_engine_table
 {
 private:
-  void make_row(Master_info *mi);
+  void make_row(Primary_info *mi);
 
   /** Table share lock. */
   static THR_LOCK m_table_lock;

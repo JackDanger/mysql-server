@@ -28,7 +28,7 @@
 # Example:
 #
 # --let $event_number= 2
-# --let $binlog_name= master-bin.000002
+# --let $binlog_name= primary-bin.000002
 # --let $debug= 1
 # --source include/show_binlog_events_server_id.inc
 #

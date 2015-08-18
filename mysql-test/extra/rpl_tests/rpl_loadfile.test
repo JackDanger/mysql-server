@@ -1,6 +1,6 @@
 # Begin clean up test section
 --disable_warnings
-connection master;
+connection primary;
 DROP PROCEDURE IF EXISTS test.p1;
 DROP TABLE IF EXISTS test.t1;
 --enable_warnings
@@ -20,9 +20,9 @@ delimiter ;|
 
 CALL test.p1();
 SELECT * FROM test.t1 ORDER BY blob_column;
-save_master_pos;
---source include/sync_slave_sql_with_master.inc
-connection slave;
+save_primary_pos;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 # Need to allow some time when NDB engine is used for
 # the injector thread to have time to populate binlog
 let $wait_condition= SELECT INSTR(blob_column,'aberration') > 0 FROM test.t1 WHERE a = 2;
@@ -30,7 +30,7 @@ let $wait_condition= SELECT INSTR(blob_column,'aberration') > 0 FROM test.t1 WHE
 SELECT * FROM test.t1 ORDER BY blob_column;
 
 # Cleanup
-connection master;
+connection primary;
 DROP PROCEDURE IF EXISTS test.p1;
 DROP TABLE test.t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc

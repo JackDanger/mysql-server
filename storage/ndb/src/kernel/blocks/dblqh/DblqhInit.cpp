@@ -30,7 +30,7 @@
 void Dblqh::initData() 
 {
 #ifdef ERROR_INSERT
-  c_master_node_id = RNIL;
+  c_primary_node_id = RNIL;
 #endif
 
   caddfragrecFileSize = ZADDFRAGREC_FILE_SIZE;

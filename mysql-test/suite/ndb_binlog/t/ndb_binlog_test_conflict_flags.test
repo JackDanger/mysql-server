@@ -4,7 +4,7 @@
 
 use test;
 
-reset master;
+reset primary;
 
 create table t1 (a int primary key, b int) engine=ndb;
 
@@ -50,7 +50,7 @@ drop table raw_binlog_rows;
 
 set global debug='';
 delete from test.t1;
-reset master;
+reset primary;
 
 --echo Specific flag settings test : Reflect
 
@@ -95,7 +95,7 @@ drop table raw_binlog_rows;
 
 set global debug='';
 delete from test.t1;
-reset master;
+reset primary;
 
 --echo Specific flag settings test : Refresh
 set global debug='+d,ndb_set_refresh_anyvalue';

@@ -137,13 +137,13 @@ void Qmgr::execCONTINUEB(Signal* signal)
     }//if
     regreqTimeLimitLab(signal);
     break;
-  case ZREGREQ_MASTER_TIMELIMIT:
+  case ZREGREQ_PRIMARY_TIMELIMIT:
     jam();
     if (c_start.m_startKey != tdata0 || c_start.m_startNode != tdata1) {
       jam();
       return;
     }//if
-    //regreqMasterTimeLimitLab(signal);
+    //regreqPrimaryTimeLimitLab(signal);
     failReportLab(signal, c_start.m_startNode, FailRep::ZSTART_IN_REGREQ, getOwnNodeId());
     return;
     break;
@@ -695,7 +695,7 @@ Qmgr::execREAD_NODESREF(Signal* signal)
  *                                   ---------CM_ACKADD(AddCommit)------->>
  *
  * Here we report to DBDIH about new node included in heartbeat protocol
- * in master node.
+ * in primary node.
  *
  * <----CM_ADD(CommitNew)--------------------------------------------------
  *
@@ -1125,7 +1125,7 @@ void Qmgr::execCM_REGREQ(Signal* signal)
    * Set timer
    */
   return;
-  signal->theData[0] = ZREGREQ_MASTER_TIMELIMIT;
+  signal->theData[0] = ZREGREQ_PRIMARY_TIMELIMIT;
   signal->theData[1] = c_start.m_startKey;
   sendSignalWithDelay(QMGR_REF, GSN_CONTINUEB, signal, 30000, 2);
 
@@ -1284,13 +1284,13 @@ retry:
     return;
   }
   
-  if (conf->masterNodeId == ZNIL)
+  if (conf->primaryNodeId == ZNIL)
   {
     jam();
     goto retry;
   }
   
-  Uint32 president = conf->masterNodeId;
+  Uint32 president = conf->primaryNodeId;
   if (president == cpresident)
   {
     jam();
@@ -3897,7 +3897,7 @@ Qmgr::sendApiRegConf(Signal *signal, Uint32 node)
     ptrCheckGuard(nodePtr, MAX_NDB_NODES, nodeRec);
     Uint32 dynamicId = nodePtr.p->ndynamicId;
 
-    if(apiRegConf->nodeState.masterNodeId != getOwnNodeId()){
+    if(apiRegConf->nodeState.primaryNodeId != getOwnNodeId()){
       jam();
       apiRegConf->nodeState.dynamicId = dynamicId;
     } else {
@@ -4728,7 +4728,7 @@ void Qmgr::execCOMMIT_FAILREQ(Signal* signal)
     NodeFailRep * const nodeFail = (NodeFailRep *)&signal->theData[0];
     
     nodeFail->failNo    = ccommitFailureNr;
-    nodeFail->masterNodeId = cpresident;
+    nodeFail->primaryNodeId = cpresident;
     nodeFail->noOfNodes = ccommitFailedNodes.count();
     ccommitFailedNodes.copyto(NdbNodeBitmask::Size, nodeFail->theNodes);
 
@@ -4917,7 +4917,7 @@ void Qmgr::execREAD_NODESREQ(Signal* signal)
   tmp.bitANDC(c_clusterNodes);
 
   readNodes->noOfNodes = c_definedNodes.count();
-  readNodes->masterNodeId = cpresident;
+  readNodes->primaryNodeId = cpresident;
   readNodes->ndynamicId = nodePtr.p->ndynamicId;
   c_definedNodes.copyto(NdbNodeBitmask::Size, readNodes->definedNodes);
   c_clusterNodes.copyto(NdbNodeBitmask::Size, readNodes->clusterNodes);
@@ -5119,7 +5119,7 @@ void Qmgr::failReport(Signal* signal,
           jam();
 	  /*-----------------------------------------------------------------*/
 	  // In this case it could be that a commit process is still ongoing. 
-	  // If so we must conclude it as the new master.
+	  // If so we must conclude it as the new primary.
 	  /*-----------------------------------------------------------------*/
           for (nodePtr.i = 1; nodePtr.i < MAX_NDB_NODES; 
 	       nodePtr.i++) {
@@ -6563,12 +6563,12 @@ Qmgr::execALLOC_NODEID_REQ(Signal * signal)
 
   if (refToBlock(req.senderRef) != QMGR) // request from management server
   {
-    /* master */
+    /* primary */
 
     if (getOwnNodeId() != cpresident)
     {
       jam();
-      error = AllocNodeIdRef::NotMaster;
+      error = AllocNodeIdRef::NotPrimary;
     }
     else if (!opAllocNodeIdReq.m_tracker.done())
     {
@@ -6602,7 +6602,7 @@ Qmgr::execALLOC_NODEID_REQ(Signal * signal)
       AllocNodeIdRef * ref = (AllocNodeIdRef*)signal->getDataPtrSend();
       ref->senderRef = reference();
       ref->errorCode = error;
-      ref->masterRef = numberToRef(QMGR, cpresident);
+      ref->primaryRef = numberToRef(QMGR, cpresident);
       ref->senderData = req.senderData;
       ref->nodeId = req.nodeId;
       sendSignal(req.senderRef, GSN_ALLOC_NODEID_REF, signal,
@@ -6690,9 +6690,9 @@ Qmgr::execALLOC_NODEID_REQ(Signal * signal)
   }
 #if 0
   /**
-   * For now only make "time/secret" based reservation on master
+   * For now only make "time/secret" based reservation on primary
    *   as we otherwise also need to clear it on failure + handle
-   *   master failure
+   *   primary failure
    */
   else if (nodePtr.p->m_secret != 0)
   {
@@ -6709,7 +6709,7 @@ Qmgr::execALLOC_NODEID_REQ(Signal * signal)
     ref->errorCode = error;
     ref->senderData = req.senderData;
     ref->nodeId = req.nodeId;
-    ref->masterRef = numberToRef(QMGR, cpresident);
+    ref->primaryRef = numberToRef(QMGR, cpresident);
     sendSignal(req.senderRef, GSN_ALLOC_NODEID_REF, signal,
                AllocNodeIdRef::SignalLength, JBB);
     return;
@@ -6726,7 +6726,7 @@ Qmgr::execALLOC_NODEID_REQ(Signal * signal)
 void
 Qmgr::execALLOC_NODEID_CONF(Signal * signal)
 {
-  /* master */
+  /* primary */
 
   jamEntry();
   const AllocNodeIdConf * conf = (AllocNodeIdConf*)signal->getDataPtr();
@@ -6755,7 +6755,7 @@ Qmgr::execALLOC_NODEID_CONF(Signal * signal)
 void
 Qmgr::execALLOC_NODEID_REF(Signal * signal)
 {
-  /* master */
+  /* primary */
 
   jamEntry();
   const AllocNodeIdRef * ref = (AllocNodeIdRef*)signal->getDataPtr();
@@ -6805,7 +6805,7 @@ Qmgr::execALLOC_NODEID_REF(Signal * signal)
 void
 Qmgr::completeAllocNodeIdReq(Signal *signal)
 {
-  /* master */
+  /* primary */
 
   if (!opAllocNodeIdReq.m_tracker.done())
   {
@@ -6840,7 +6840,7 @@ Qmgr::completeAllocNodeIdReq(Signal *signal)
     ref->senderData = opAllocNodeIdReq.m_req.senderData;
     ref->nodeId = opAllocNodeIdReq.m_req.nodeId;
     ref->errorCode = opAllocNodeIdReq.m_error;
-    ref->masterRef = numberToRef(QMGR, cpresident);
+    ref->primaryRef = numberToRef(QMGR, cpresident);
     ndbassert(AllocNodeIdRef::SignalLength == 5);
     sendSignal(opAllocNodeIdReq.m_req.senderRef, GSN_ALLOC_NODEID_REF, signal,
                AllocNodeIdRef::SignalLength, JBB);
@@ -6859,7 +6859,7 @@ Qmgr::completeAllocNodeIdReq(Signal *signal)
              AllocNodeIdConf::SignalLength, JBB);
 
   /**
-   * We are the master and master DIH wants to keep track of node restart
+   * We are the primary and primary DIH wants to keep track of node restart
    * state to be able to control LCP start and stop and also to be able
    * to easily report this state to the user when he asks for it.
    */

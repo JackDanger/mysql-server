@@ -329,7 +329,7 @@ set foreign_key_checks=0;
 create table t2 (a varchar(10), foreign key (a) references t1(a)) engine = innodb DEFAULT CHARSET=latin1;
 create table t3(a varchar(10) primary key) engine = innodb DEFAULT CHARSET=utf8;
 # Embedded server doesn't chdir to data directory
---replace_result $MYSQLD_DATADIR ./ master-data/ ''
+--replace_result $MYSQLD_DATADIR ./ primary-data/ ''
 -- error 1025
 rename table t3 to t1;
 set foreign_key_checks=1;

@@ -2296,7 +2296,7 @@ public:
     If this variable is a parameter in LIMIT clause.
     Used only during NAME_CONST substitution, to not append
     NAME_CONST to the resulting query and thus not break
-    the slave.
+    the replica.
   */
   bool limit_clause_param;
   /* 
@@ -4248,10 +4248,10 @@ protected:
   Item_in_subselect* owner;
 public:
   Item_ref_null_helper(Name_resolution_context *context_arg,
-                       Item_in_subselect* master, Item **item,
+                       Item_in_subselect* primary, Item **item,
 		       const char *table_name_arg, const char *field_name_arg)
     :Item_ref(context_arg, item, table_name_arg, field_name_arg),
-     owner(master) {}
+     owner(primary) {}
   double val_real();
   longlong val_int();
   longlong val_time_temporal();

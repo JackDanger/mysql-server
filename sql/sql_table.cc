@@ -2291,12 +2291,12 @@ int mysql_rm_table_no_locks(THD *thd, TABLE_LIST *tables, bool if_exists,
     transaction and changes to non-transactional tables must be written
     ahead of the transaction in some circumstances.
 
-    6- Slave SQL thread ignores all replicate-* filter rules
+    6- Replica SQL thread ignores all replicate-* filter rules
     for temporary tables with 'IF EXISTS' clause. (See sql/sql_parse.cc:
     mysql_execute_command() for details). These commands will be binlogged
     as they are, even if the default database (from USE `db`) is not present
-    on the Slave. This can cause point in time recovery failures later
-    when user uses the slave's binlog to re-apply. Hence at the time of binary
+    on the Replica. This can cause point in time recovery failures later
+    when user uses the replica's binlog to re-apply. Hence at the time of binary
     logging, these commands will be written with fully qualified table names
     and use `db` will be suppressed.
   */
@@ -2633,13 +2633,13 @@ err:
       non-transactional ones.
 
       This logic ensures that:
-      - On master, transactional and non-transactional tables are
+      - On primary, transactional and non-transactional tables are
         written to different statements.
-      - Therefore, slave will never see statements containing both
+      - Therefore, replica will never see statements containing both
         transactional and non-transactional tables.
       - Since non-existing temporary tables are logged together with
-        whatever type of temporary tables that exist, the slave thus
-        writes any statement as just one statement. I.e., the slave
+        whatever type of temporary tables that exist, the replica thus
+        writes any statement as just one statement. I.e., the replica
         never splits a statement into two.  This is crucial when GTIDs
         are enabled, since otherwise the statement, which already has
         a GTID, would need two different GTIDs.
@@ -3804,7 +3804,7 @@ mysql_prepare_create_table(THD *thd, HA_CREATE_INFO *create_info,
   /*
    CREATE TABLE[with auto_increment column] SELECT is unsafe as the rows
    inserted in the created table depends on the order of the rows fetched
-   from the select tables. This order may differ on master and slave. We
+   from the select tables. This order may differ on primary and replica. We
    therefore mark it as unsafe.
   */
   if (select_field_count > 0 && auto_increment)

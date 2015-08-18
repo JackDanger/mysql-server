@@ -1,31 +1,31 @@
 include/rpl_init.inc [topology=1->2->3]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-CON: 'server_1', IMG: 'NOBLOB', RESTART SLAVE: 'N'
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+CON: 'server_1', IMG: 'NOBLOB', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	NOBLOB
-CON: 'server_2', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
+CON: 'server_2', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	NOBLOB
-CON: 'server_3', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
+CON: 'server_3', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -35,7 +35,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
@@ -62,7 +62,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -89,7 +89,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -116,7 +116,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -143,7 +143,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -170,7 +170,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -197,7 +197,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -224,7 +224,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -251,7 +251,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -278,7 +278,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -305,7 +305,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -332,7 +332,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -359,7 +359,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -386,7 +386,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -413,7 +413,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -440,7 +440,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -469,7 +469,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
@@ -496,7 +496,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -523,7 +523,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -550,7 +550,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -577,7 +577,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -604,7 +604,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -631,7 +631,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -658,7 +658,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -685,7 +685,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -712,7 +712,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -739,7 +739,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -766,7 +766,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -793,7 +793,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -820,7 +820,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -847,7 +847,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -874,7 +874,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -903,7 +903,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
@@ -930,7 +930,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -957,7 +957,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -984,7 +984,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1011,7 +1011,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -1038,7 +1038,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -1065,7 +1065,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1092,7 +1092,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1119,7 +1119,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -1146,7 +1146,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -1173,7 +1173,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1200,7 +1200,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1227,7 +1227,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -1254,7 +1254,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -1281,7 +1281,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1308,7 +1308,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1337,7 +1337,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
@@ -1364,7 +1364,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -1391,7 +1391,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1418,7 +1418,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1445,7 +1445,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -1472,7 +1472,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -1499,7 +1499,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1526,7 +1526,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1553,7 +1553,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -1580,7 +1580,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -1607,7 +1607,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1634,7 +1634,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1661,7 +1661,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -1688,7 +1688,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -1715,7 +1715,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1742,7 +1742,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -1771,7 +1771,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
@@ -1798,7 +1798,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -1825,7 +1825,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1852,7 +1852,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1879,7 +1879,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -1906,7 +1906,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -1933,7 +1933,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1960,7 +1960,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -1987,7 +1987,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -2014,7 +2014,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -2041,7 +2041,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2068,7 +2068,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2095,7 +2095,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -2122,7 +2122,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -2149,7 +2149,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2176,7 +2176,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2205,7 +2205,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
@@ -2232,7 +2232,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -2259,7 +2259,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2286,7 +2286,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2313,7 +2313,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -2340,7 +2340,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -2367,7 +2367,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2394,7 +2394,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2421,7 +2421,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -2448,7 +2448,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -2475,7 +2475,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2502,7 +2502,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2529,7 +2529,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -2556,7 +2556,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -2583,7 +2583,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2610,7 +2610,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -2639,7 +2639,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;
@@ -2666,7 +2666,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -2693,7 +2693,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2720,7 +2720,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2747,7 +2747,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -2774,7 +2774,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -2801,7 +2801,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2828,7 +2828,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2855,7 +2855,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -2882,7 +2882,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -2909,7 +2909,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2936,7 +2936,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -2963,7 +2963,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= MyISAM;;
@@ -2990,7 +2990,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= MyISAM;;
@@ -3017,7 +3017,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= MyISAM;;
@@ -3044,7 +3044,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= MyISAM;;
@@ -3073,7 +3073,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no keys slaves with no keys as well
+### Primary with no keys replicas with no keys as well
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;
@@ -3100,7 +3100,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with keys
+### Primary with no key, replicas with keys
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -3127,7 +3127,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields (first slave with UK NOT NULL, second with PK)
+### Primary with no key, replicas with PKs on different fields (first replica with UK NOT NULL, second with PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3154,7 +3154,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with no key, slaves with PKs on different fields
+### Primary with no key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3181,7 +3181,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with no keys
+### Primary with Key, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -3208,7 +3208,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, first slave with key on different field and second slave with key on yet another different field.
+### Primary with Key, first replica with key on different field and second replica with key on yet another different field.
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -3235,7 +3235,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields (first slave has UK NOT NULL)
+### Primary with Key, replicas with PKs on different fields (first replica has UK NOT NULL)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3262,7 +3262,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with Key, slaves with PKs on different fields
+### Primary with Key, replicas with PKs on different fields
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3289,7 +3289,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, slaves with no keys
+### Primary with UK NULLABLE, replicas with no keys
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -3316,7 +3316,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NULLABLE, first slave with K on different field second slave with key on yet another different field
+### Primary with UK NULLABLE, first replica with K on different field second replica with key on yet another different field
 CREATE TABLE t (c1 int, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -3343,7 +3343,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL, first slave with UK NOT NULL on different field
+### Primary with UK NOT NULL, first replica with UK NOT NULL on different field
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3370,7 +3370,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with UK NOT NULL and slaves with PK on different fields
+### Primary with UK NOT NULL and replicas with PK on different fields
 CREATE TABLE t (c1 int NOT NULL, c2 blob, c3 int, unique key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3397,7 +3397,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and no keys on the slaves
+### Primary with PK and no keys on the replicas
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int) engine= InnoDB;;
@@ -3424,7 +3424,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Master with PK and first slave with KEY only
+### Primary with PK and first replica with KEY only
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, key(c2(512))) engine= InnoDB;;
@@ -3451,7 +3451,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave (which has unique NOT NULL key instead of PK)
+### Different PKs on primary and first replica (which has unique NOT NULL key instead of PK)
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, unique key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob NOT NULL, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3478,7 +3478,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-### Different PKs on master and first slave
+### Different PKs on primary and first replica
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c2(512))) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 blob, c3 int, primary key(c1)) engine= InnoDB;;
@@ -3502,27 +3502,27 @@ include/rpl_sync.inc
 include/diff_tables.inc [server_1:test.t, server_2:test.t, server_3:test.t]
 DROP TABLE t;
 include/rpl_sync.inc
-CON: 'server_1', IMG: 'FULL', RESTART SLAVE: 'N'
+CON: 'server_1', IMG: 'FULL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'server_2', IMG: 'FULL', RESTART SLAVE: 'Y'
+CON: 'server_2', IMG: 'FULL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'server_3', IMG: 'FULL', RESTART SLAVE: 'Y'
+CON: 'server_3', IMG: 'FULL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value

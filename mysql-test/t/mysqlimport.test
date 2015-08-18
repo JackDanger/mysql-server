@@ -32,9 +32,9 @@ DROP DATABASE b12688860_db;
 CREATE USER 'user_with_length_32_abcdefghijkl'@'localhost';
 GRANT ALL ON *.* TO 'user_with_length_32_abcdefghijkl'@'localhost';
 
---exec $MYSQL --host=127.0.0.1 -P $MASTER_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP -e "create table mysql.test(a int)"
+--exec $MYSQL --host=127.0.0.1 -P $PRIMARY_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP -e "create table mysql.test(a int)"
 --exec echo "" > $MYSQL_TMP_DIR/test.txt
---exec $MYSQL_IMPORT --host=127.0.0.1 -P $MASTER_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP --local mysql $MYSQL_TMP_DIR/test.txt 
+--exec $MYSQL_IMPORT --host=127.0.0.1 -P $PRIMARY_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP --local mysql $MYSQL_TMP_DIR/test.txt 
 
 --echo # cleanup
 DROP TABLE mysql.test;

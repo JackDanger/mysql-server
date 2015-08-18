@@ -1,4 +1,4 @@
-reset master;
+reset primary;
 set timestamp=1000000000;
 drop table if exists t1,t2,t3,t4,t5,t03,t04;
 create table t1 (word varchar(20));
@@ -15,7 +15,7 @@ flush logs;
 
 --- Local --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -97,10 +97,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- Broken LOAD DATA --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # [empty]
@@ -148,10 +148,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- --database --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -210,10 +210,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- --start-position --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 SET @@SESSION.GTID_NEXT= '#'/*!*/;
@@ -240,10 +240,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- Remote --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -325,10 +325,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- Broken LOAD DATA --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # [empty]
@@ -376,10 +376,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- --database --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -438,10 +438,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- --start-position --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 SET @@SESSION.GTID_NEXT= '#'/*!*/;
@@ -468,10 +468,10 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 --- reading stdin --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -490,9 +490,9 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 use `test`/*!*/;
@@ -510,7 +510,7 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 drop table t1,t2;
 flush logs;
 flush logs;
@@ -554,7 +554,7 @@ drop procedure p1;
 call p1();
 ERROR 42000: PROCEDURE test.p1 does not exist
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # [empty]
@@ -579,7 +579,7 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 call p1();
 1
 1
@@ -617,7 +617,7 @@ D0AA
 drop table t1;
 flush logs;
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # [empty]
@@ -717,7 +717,7 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 CREATE TABLE t1 (c1 CHAR(10));
 FLUSH LOGS;
 INSERT INTO t1 VALUES ('0123456789');
@@ -755,7 +755,7 @@ CREATE TABLE t1 (a INT, b CHAR(64));
 flush logs;
 INSERT INTO t1 VALUES (1,USER());
 flush logs;
-mysqlbinlog var/log/master_binlog_file > var/tmp/bug31611.sql
+mysqlbinlog var/log/primary_binlog_file > var/tmp/bug31611.sql
 mysql mysqltest1 -uuntrusted < var/tmp/bug31611.sql
 INSERT INTO t1 VALUES (1,USER());
 ERROR 42000: INSERT command denied to user 'untrusted'@'localhost' for table 't1'
@@ -781,7 +781,7 @@ an_int	1000
 a_decimal	907.79
 a_string	Just a test
 DROP TABLE t1;
->> mysqlbinlog var/log/master_binlog_file > var/tmp/bug32580.sql
+>> mysqlbinlog var/log/primary_binlog_file > var/tmp/bug32580.sql
 >> mysql test < var/tmp/bug32580.sql
 SELECT * FROM t1;
 a_real	158.883
@@ -790,7 +790,7 @@ a_decimal	907.79
 a_string	Just a test
 DROP TABLE t1;
 SET @@global.server_id= 4294967295;
-RESET MASTER;
+RESET PRIMARY;
 FLUSH LOGS;
 SELECT
 (@a:=LOAD_FILE("MYSQLTEST_VARDIR/tmp/mysqlbinlog_bug37313.binlog"))
@@ -800,14 +800,14 @@ IS NOT NULL
 1
 *** Unsigned server_id 4294967295 is found: 1 ***
 SET @@global.server_id= 1;
-RESET MASTER;
+RESET PRIMARY;
 FLUSH LOGS;
-RESET MASTER;
+RESET PRIMARY;
 FLUSH LOGS;
 #
 # Test if the 'BEGIN', 'ROLLBACK' and 'COMMIT' are output if the database specified exists
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -858,11 +858,11 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 #
 # Test if the 'BEGIN', 'ROLLBACK' and 'COMMIT' are output if the database specified does not exist
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -894,11 +894,11 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 #
 # Test if the 'SAVEPOINT', 'ROLLBACK TO' are output if the database specified exists
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 SET TIMESTAMP=#/*!*/;
@@ -939,11 +939,11 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 #
 # Test if the 'SAVEPOINT', 'ROLLBACK TO' are output if the database specified does not exist
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 SET TIMESTAMP=#/*!*/;
@@ -969,16 +969,16 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 End of 5.0 tests
 End of 5.1 tests
 # Expect error for unknown argument.
 Unknown option to base64-output: always
 Alternatives are: 'NEVER','AUTO','UNSPEC','DECODE-ROWS'
 # Expect error for unknown argument again.
-Unknown option to base64-output: std_data/master-bin.000001
+Unknown option to base64-output: std_data/primary-bin.000001
 Alternatives are: 'NEVER','AUTO','UNSPEC','DECODE-ROWS'
-RESET MASTER;
+RESET PRIMARY;
 CREATE DATABASE test1;
 USE test1;
 CREATE TABLE t1(id int);
@@ -991,14 +991,14 @@ DROP DATABASE test1;
 FLUSH LOGS;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000002	#	Query	#	#	CREATE DATABASE test1
-master-bin.000002	#	Query	#	#	use `test1`; CREATE TABLE t1(id int)
-master-bin.000002	#	Query	#	#	DROP DATABASE test1
-master-bin.000002	#	Query	#	#	CREATE DATABASE test1
-master-bin.000002	#	Query	#	#	use `test1`; CREATE TABLE t1(id int)
-master-bin.000002	#	Query	#	#	use `test1`; DROP TABLE `t1` /* generated by server */
-master-bin.000002	#	Query	#	#	DROP DATABASE test1
-RESET MASTER;
+primary-bin.000002	#	Query	#	#	CREATE DATABASE test1
+primary-bin.000002	#	Query	#	#	use `test1`; CREATE TABLE t1(id int)
+primary-bin.000002	#	Query	#	#	DROP DATABASE test1
+primary-bin.000002	#	Query	#	#	CREATE DATABASE test1
+primary-bin.000002	#	Query	#	#	use `test1`; CREATE TABLE t1(id int)
+primary-bin.000002	#	Query	#	#	use `test1`; DROP TABLE `t1` /* generated by server */
+primary-bin.000002	#	Query	#	#	DROP DATABASE test1
+RESET PRIMARY;
 USE test;
 CREATE TABLE t1 (a INT);
 SET GLOBAL SERVER_ID = 2;
@@ -1015,7 +1015,7 @@ SET GLOBAL SERVER_ID = 1;
 #
 include/mysqlbinlog.inc
 mysqlbinlog: [Warning] Using a password on the command line interface can be insecure.
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # at #
@@ -1031,6 +1031,6 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 End of tests

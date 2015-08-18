@@ -13,7 +13,7 @@ define("dojox/image/Lightbox", ["dojo", "dijit", "dojox", "dojo/text!./resources
 		// description:
 		//	An Elegant, keyboard accessible, markup and store capable Lightbox widget to show images
 		//	in a modal dialog-esque format. Can show individual images as Modal dialog, or can group
-		//	images with multiple entry points, all using a single "master" Dialog for visualization
+		//	images with multiple entry points, all using a single "primary" Dialog for visualization
 		//
 		//	key controls:
 		//		ESC - close
@@ -65,12 +65,12 @@ define("dojox/image/Lightbox", ["dojo", "dijit", "dojox", "dojo/text!./resources
 
 		startup: function(){
 			this.inherited(arguments);
-			// setup an attachment to the masterDialog (or create the masterDialog)
+			// setup an attachment to the primaryDialog (or create the primaryDialog)
 			var tmp = dijit.byId('dojoxLightboxDialog');
 			if(tmp){
 				this._attachedDialog = tmp;
 			}else{
-				// this is the first instance to start, so we make the masterDialog
+				// this is the first instance to start, so we make the primaryDialog
 				this._attachedDialog = new dojox.image.LightboxDialog({ id: "dojoxLightboxDialog" });
 				this._attachedDialog.startup();
 			}
@@ -83,7 +83,7 @@ define("dojox/image/Lightbox", ["dojo", "dijit", "dojox", "dojo/text!./resources
 		},
 
 		_addSelf: function(){
-			// summary: Add this instance to the master LightBoxDialog
+			// summary: Add this instance to the primary LightBoxDialog
 			this._attachedDialog.addImage({
 				href: this.href,
 				title: this.title
@@ -161,7 +161,7 @@ define("dojox/image/Lightbox", ["dojo", "dijit", "dojox", "dojo/text!./resources
 		// inGroup: Array
 		//		Array of objects. this is populated by from the JSON object _groups, and
 		//		should not be populate manually. it is a placeholder for the currently
-		//		showing group of images in this master dialog
+		//		showing group of images in this primary dialog
 		inGroup: null,
 
 		// imgUrl: String
@@ -220,7 +220,7 @@ define("dojox/image/Lightbox", ["dojo", "dijit", "dojox", "dojo/text!./resources
 		},
 
 		show: function(/* Object */groupData){
-			// summary: Show the Master Dialog. Starts the chain of events to show
+			// summary: Show the Primary Dialog. Starts the chain of events to show
 			//		an image in the dialog, including showing the dialog if it is
 			//		not already visible
 			//
@@ -483,7 +483,7 @@ define("dojox/image/Lightbox", ["dojo", "dijit", "dojox", "dojo/text!./resources
 		},
 
 		hide: function(){
-			// summary: Hide the Master Lightbox
+			// summary: Hide the Primary Lightbox
 			dojo.fadeOut({
 				node: this.titleNode,
 				duration: 200,
@@ -501,7 +501,7 @@ define("dojox/image/Lightbox", ["dojo", "dijit", "dojox", "dojo/text!./resources
 		},
 
 		addImage: function(child, group){
-			// summary: Add an image to this Master Lightbox
+			// summary: Add an image to this Primary Lightbox
 			//
 			// child: Object
 			//		The image information to add.

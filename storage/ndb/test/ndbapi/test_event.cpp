@@ -2788,7 +2788,7 @@ runNFSubscribe(NDBT_Context* ctx, NDBT_Step* step)
   }
 
   int codes[] = {
-    6023,  (int)NdbRestarter::NS_NON_MASTER,
+    6023,  (int)NdbRestarter::NS_NON_PRIMARY,
     13013, (int)NdbRestarter::NS_RANDOM,
     13019, (int)NdbRestarter::NS_RANDOM,
     13020, (int)NdbRestarter::NS_RANDOM,
@@ -3571,13 +3571,13 @@ runBug30780(NDBT_Context* ctx, NDBT_Step* step)
     loops = cases + 1;
   for (int i = 0; i<loops; i++)
   {
-    int master = res.getMasterNodeId();
-    int next = res.getNextMasterNodeId(master);
+    int primary = res.getPrimaryNodeId();
+    int next = res.getNextPrimaryNodeId(primary);
 
     res.insertErrorInNode(next, 8064);
     int val1[] = { 7213, 0 };
     int val2[] = { DumpStateOrd::CmvmiSetRestartOnErrorInsert, 1 };
-    if (res.dumpStateOneNode(master, val2, 2))
+    if (res.dumpStateOneNode(primary, val2, 2))
       return NDBT_FAILED;
 
     int c = i % cases;
@@ -3593,33 +3593,33 @@ runBug30780(NDBT_Context* ctx, NDBT_Step* step)
 #endif
     switch(c){
     case 0:
-      ndbout_c("stopping %u", master);
-      res.restartOneDbNode(master,
+      ndbout_c("stopping %u", primary);
+      res.restartOneDbNode(primary,
                            /** initial */ false,
                            /** nostart */ true,
                            /** abort   */ true);
       break;
     case 1:
-      ndbout_c("stopping %u, err 7213", master);
+      ndbout_c("stopping %u, err 7213", primary);
       val1[0] = 7213;
-      val1[1] = master;
+      val1[1] = primary;
       res.dumpStateOneNode(next, val1, 2);
       break;
     case 2:
-      ndbout_c("stopping %u, err 7214", master);
+      ndbout_c("stopping %u, err 7214", primary);
       val1[0] = 7214;
-      val1[1] = master;
+      val1[1] = primary;
       res.dumpStateOneNode(next, val1, 2);
       break;
     case 3:
-      ndbout_c("stopping %u, err 7007", master);
-      res.insertErrorInNode(master, 7007);
+      ndbout_c("stopping %u, err 7007", primary);
+      res.insertErrorInNode(primary, 7007);
       break;
     }
-    ndbout_c("waiting for %u", master);
-    res.waitNodesNoStart(&master, 1);
-    ndbout_c("starting %u", master);
-    res.startNodes(&master, 1);
+    ndbout_c("waiting for %u", primary);
+    res.waitNodesNoStart(&primary, 1);
+    ndbout_c("starting %u", primary);
+    res.startNodes(&primary, 1);
     ndbout_c("waiting for cluster started");
     if (res.waitClusterStarted())
     {

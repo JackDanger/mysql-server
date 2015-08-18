@@ -327,9 +327,9 @@ extern const GlobalSignalNumber NO_OF_SIGNAL_NAMES;
 #define GSN_SCHEMA_INFO                 225
 #define GSN_SCHEMA_INFOCONF             226
 
-#define GSN_MASTER_GCPCONF              227
-#define GSN_MASTER_GCPREF               228
-#define GSN_MASTER_GCPREQ               229
+#define GSN_PRIMARY_GCPCONF              227
+#define GSN_PRIMARY_GCPREF               228
+#define GSN_PRIMARY_GCPREQ               229
 
 /* 230 not unused */
 /* 231 not unused */
@@ -429,9 +429,9 @@ extern const GlobalSignalNumber NO_OF_SIGNAL_NAMES;
 #define GSN_LQHKEYREF                   315
 #define GSN_LQHKEYREQ                   316
 
-#define GSN_MASTER_LCPCONF              318
-#define GSN_MASTER_LCPREF               319
-#define GSN_MASTER_LCPREQ               320
+#define GSN_PRIMARY_LCPCONF              318
+#define GSN_PRIMARY_LCPREF               319
+#define GSN_PRIMARY_LCPREQ               320
 
 #define GSN_MEMCHECKCONF                321
 #define GSN_MEMCHECKREQ                 322
@@ -727,7 +727,7 @@ extern const GlobalSignalNumber NO_OF_SIGNAL_NAMES;
 #define GSN_STOP_BACKUP_CONF            550
 
 /**
- * Used for master take-over / API status request
+ * Used for primary take-over / API status request
  */
 #define GSN_BACKUP_STATUS_REQ           551
 #define GSN_BACKUP_STATUS_REF           116
@@ -1011,7 +1011,7 @@ extern const GlobalSignalNumber NO_OF_SIGNAL_NAMES;
 #define GSN_DROP_FILE_IMPL_REF          668
 #define GSN_DROP_FILE_IMPL_CONF         669
 
-/* DICT master takeover signals */
+/* DICT primary takeover signals */
 #define GSN_DICT_TAKEOVER_REQ           765
 #define GSN_DICT_TAKEOVER_REF           766
 #define GSN_DICT_TAKEOVER_CONF          767

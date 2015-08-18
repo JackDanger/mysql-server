@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE test.t1 (a INT AUTO_INCREMENT KEY, t CHAR(6)) ENGINE=INNODB;
 CREATE TABLE test.t2 (a INT AUTO_INCREMENT KEY, f INT, FOREIGN KEY(a) REFERENCES test.t1(a) ON DELETE CASCADE) ENGINE=INNODB;
 create procedure test.p1(IN i CHAR(6))
@@ -25,7 +25,7 @@ call test.p1('to');
 call test.p1('OK');
 call test.p1('MySQL');
 
-< -- test 1 select master after p1 -- >
+< -- test 1 select primary after p1 -- >
 ---------------------------------------
 SELECT * FROM test.t1;
 a	t
@@ -44,9 +44,9 @@ a	f
 5	5
 6	6
 
-< -- test 1 select slave after p1 -- >
+< -- test 1 select replica after p1 -- >
 --------------------------------------
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 a	t
 1	texas
@@ -64,7 +64,7 @@ a	f
 5	5
 6	6
 
-< -- test 1 call p2 & select master -- >
+< -- test 1 call p2 & select primary -- >
 ----------------------------------------
 call test.p2(4);
 SELECT * FROM test.t1;
@@ -78,9 +78,9 @@ a	f
 5	5
 6	6
 
-< -- test 1 select slave after p2 -- >
+< -- test 1 select replica after p2 -- >
 --------------------------------------
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 a	t
 4	to
@@ -118,7 +118,7 @@ CALL test.p1(4,'to');
 CALL test.p1(5,'OK');
 CALL test.p1(6,'MySQL');
 
-< -- test 2 select Master after p1 -- >
+< -- test 2 select Primary after p1 -- >
 ---------------------------------------
 SELECT * FROM test.t1;
 a	t
@@ -137,9 +137,9 @@ a	f
 5	6
 6	6
 
-< -- test 2 select Slave after p1 -- >
+< -- test 2 select Replica after p1 -- >
 --------------------------------------
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 a	t
 1	texas
@@ -157,7 +157,7 @@ a	f
 5	6
 6	6
 
-< -- test 2 call p2 & select Master -- >
+< -- test 2 call p2 & select Primary -- >
 ----------------------------------------
 CALL test.p2(2);
 CALL test.p2(4);
@@ -179,9 +179,9 @@ a	f
 40	6
 60	6
 
-< -- test 1 select Slave after p2 -- >
+< -- test 1 select Replica after p2 -- >
 --------------------------------------
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 a	t
 1	texas
@@ -216,7 +216,7 @@ START TRANSACTION;
 ROLLBACK;
 select * from test.t3;
 a	t
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from test.t3;
 a	t
 START TRANSACTION;
@@ -224,7 +224,7 @@ COMMIT;
 select * from test.t3;
 a	t
 98	NONE
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from test.t3;
 a	t
 98	NONE

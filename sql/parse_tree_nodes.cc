@@ -80,7 +80,7 @@ bool PT_order::contextualize(Parse_context *pc)
 
   THD *thd= pc->thd;
   LEX *lex= thd->lex;
-  SELECT_LEX_UNIT * const unit= pc->select->master_unit();
+  SELECT_LEX_UNIT * const unit= pc->select->primary_unit();
   const bool braces= pc->select->braces;
 
   if (pc->select->linkage != GLOBAL_OPTIONS_TYPE &&
@@ -266,7 +266,7 @@ bool PT_table_factor_parenthesis::contextualize(Parse_context *pc)
       are no outer parentheses, add_table_to_list() will throw
       error in this case
     */
-    SELECT_LEX_UNIT *unit= pc->select->master_unit();
+    SELECT_LEX_UNIT *unit= pc->select->primary_unit();
     pc->select= outer_select;
     Table_ident *ti= new Table_ident(unit);
     if (ti == NULL)

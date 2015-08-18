@@ -45,9 +45,9 @@
 
 #ifdef HAVE_REPLICATION
 C_MODE_START
-void slave_io_thread_detach_vio();
+void replica_io_thread_detach_vio();
 C_MODE_END
 #else
-#define slave_io_thread_detach_vio()
+#define replica_io_thread_detach_vio()
 #endif
 

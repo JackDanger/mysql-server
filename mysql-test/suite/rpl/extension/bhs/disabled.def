@@ -1,5 +1,5 @@
 # 
-# Blackhole slave disabled tests
+# Blackhole replica disabled tests
 #
 rpl000013 : BHS incompatible test
 rpl000017 : BHS incompatible test
@@ -9,7 +9,7 @@ rpl_auto_increment : BHS incompatible test
 rpl_auto_increment_update_failure : BHS incompatible test
 rpl_begin_commit_rollback : BHS incompatible test
 rpl_binlog_auto_inc_bug33029 : BHS incompatible test
-rpl_change_master : BHS incompatible test
+rpl_change_primary : BHS incompatible test
 rpl_circular_for_4_hosts : BHS incompatible test
 rpl_colSize : BHS incompatible test
 rpl_commit_after_flush : BHS incompatible test
@@ -24,8 +24,8 @@ rpl_err_ignoredtable : BHS incompatible test
 rpl_events : BHS incompatible test
 rpl_extraCol_innodb : BHS incompatible test
 rpl_extraCol_myisam : BHS incompatible test
-rpl_extraColmaster_innodb : BHS incompatible test
-rpl_extraColmaster_myisam : BHS incompatible test
+rpl_extraColprimary_innodb : BHS incompatible test
+rpl_extraColprimary_myisam : BHS incompatible test
 rpl_filter_tables_not_exist : BHS incompatible test
 rpl_flush_logs : BHS incompatible test
 rpl_flushlog_loop : BHS incompatible test
@@ -34,7 +34,7 @@ rpl_geometry : BHS incompatible test
 rpl_get_lock : BHS incompatible test
 rpl_grant : BHS incompatible test
 rpl_heartbeat : BHS incompatible test
-rpl_heartbeat_2slaves : BHS incompatible test
+rpl_heartbeat_2replicas : BHS incompatible test
 rpl_heartbeat_basic : BHS incompatible test
 rpl_heartbeat_ssl : BHS incompatible test
 rpl_ignore_grant : BHS incompatible test
@@ -55,7 +55,7 @@ rpl_loaddatalocal : BHS incompatible test
 rpl_loadfile : BHS incompatible test
 rpl_log_pos : BHS incompatible test
 rpl_manual_change_index_file : BHS incompatible test
-rpl_master_pos_wait : BHS incompatible test
+rpl_primary_pos_wait : BHS incompatible test
 rpl_mixed_binlog_max_cache_size : BHS incompatible test
 rpl_mixed_ddl_dml : BHS incompatible test
 rpl_mixed_mixing_engines : BHS incompatible test
@@ -91,7 +91,7 @@ rpl_row_blob_innodb : BHS incompatible test
 rpl_row_blob_myisam : BHS incompatible test
 rpl_row_colSize : BHS incompatible test
 rpl_row_conflicts : BHS incompatible test
-rpl_row_disabled_slave_key : BHS incompatible test
+rpl_row_disabled_replica_key : BHS incompatible test
 rpl_row_event_max_size : BHS incompatible test
 rpl_row_find_row : BHS incompatible test
 rpl_row_idempotency : BHS incompatible test
@@ -103,7 +103,7 @@ rpl_row_mixing_engines : BHS incompatible test
 rpl_row_mysqlbinlog : BHS incompatible test
 rpl_row_rec_comp_innodb : BHS incompatible test
 rpl_row_rec_comp_myisam : BHS incompatible test
-rpl_row_reset_slave : BHS incompatible test
+rpl_row_reset_replica : BHS incompatible test
 rpl_row_show_relaylog_events : BHS incompatible test
 rpl_row_sp002_innodb : BHS incompatible test
 rpl_row_sp005 : BHS incompatible test
@@ -120,9 +120,9 @@ rpl_server_id2 : BHS incompatible test
 rpl_server_id_ignore : BHS incompatible test
 rpl_set_null_innodb : BHS incompatible test
 rpl_set_null_myisam : BHS incompatible test
-rpl_show_slave_hosts : BHS incompatible test
+rpl_show_replica_hosts : BHS incompatible test
 rpl_skip_error : BHS incompatible test
-rpl_slave_skip : BHS incompatible test
+rpl_replica_skip : BHS incompatible test
 rpl_slow_query_log : BHS incompatible test
 rpl_sp : BHS incompatible test
 rpl_ssl : BHS incompatible test
@@ -139,9 +139,9 @@ rpl_stm_log : BHS incompatible test
 rpl_stm_max_relay_size : BHS incompatible test
 rpl_stm_mix_show_relaylog_events : BHS incompatible test
 rpl_stm_mixing_engines : BHS incompatible test
-rpl_stm_reset_slave : BHS incompatible test
+rpl_stm_reset_replica : BHS incompatible test
 rpl_stm_sql_mode : BHS incompatible test
-rpl_stm_start_stop_slave : BHS incompatible test
+rpl_stm_start_stop_replica : BHS incompatible test
 rpl_stm_until : BHS incompatible test
 rpl_stm_user_variables : BHS incompatible test
 rpl_switch_stm_row_mixed : BHS incompatible test

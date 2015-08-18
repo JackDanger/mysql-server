@@ -1,15 +1,15 @@
 --source include/not_group_replication_plugin.inc
 --source include/have_innodb.inc
 --source include/have_myisam.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo #
 --echo # Bug#50124 Rpl failure on DROP table with concurrent txn/non-txn
 --echo #           DML flow and SAVEPOINT
 --echo #
 
---echo # Connection master
-connection master;
+--echo # Connection primary
+connection primary;
 
 --disable_warnings
 DROP TABLE IF EXISTS tt, nt;
@@ -23,13 +23,13 @@ INSERT INTO nt VALUES (1);
 SAVEPOINT insert_statement;
 INSERT INTO tt VALUES (1);
 
---echo # Connection master1
-connection master1;
+--echo # Connection primary1
+connection primary1;
 --echo # Sending:
 --send DROP TABLE tt
 
---echo # Connection master
-connection master;
+--echo # Connection primary
+connection primary;
 let $wait_condition=
   SELECT COUNT(*) = 1 FROM information_schema.processlist
   WHERE state = "Waiting for table metadata lock" AND info = "DROP TABLE tt";
@@ -37,14 +37,14 @@ let $wait_condition=
 ROLLBACK TO SAVEPOINT insert_statement;
 COMMIT;
 
---echo # Connection master1
-connection master1;
+--echo # Connection primary1
+connection primary1;
 --echo # Reaping: DROP TABLE tt
 --reap
 FLUSH LOGS;
 
---echo # Connection master
-connection master;
+--echo # Connection primary
+connection primary;
 DROP TABLE nt;
 
 --source include/rpl_end.inc

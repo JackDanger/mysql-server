@@ -123,7 +123,7 @@ struct SubStartRef {
     Defining = 1418,
     OutOfSubscriberRecords = 1412,
     OutOfSubOpRecords = 1424,
-    NotMaster = 702, // For API/DICT communication
+    NotPrimary = 702, // For API/DICT communication
     BusyWithNR = 1405,
     NodeDied = 1427
     ,NotStarted = 1428
@@ -132,7 +132,7 @@ struct SubStartRef {
 
   STATIC_CONST( SignalLength = 7 );
   STATIC_CONST( SignalLength2 = SignalLength+1 );
-  STATIC_CONST( SL_MasterNode = 9 );
+  STATIC_CONST( SL_PrimaryNode = 9 );
   
   Uint32 senderRef;
   Uint32 senderData;
@@ -145,7 +145,7 @@ struct SubStartRef {
   // with SignalLength2
   union {
     Uint32 subscriberRef;
-    Uint32 m_masterNodeId;
+    Uint32 m_primaryNodeId;
   };
 };
 
@@ -207,13 +207,13 @@ struct SubStopRef {
     Defining = 1425,
     OutOfSubOpRecords = 1424,
     NoSuchSubscriber = 1426,
-    NotMaster = 702,
+    NotPrimary = 702,
     BusyWithNR = 1405
     ,NotStarted = 1428
   };
 
   STATIC_CONST( SignalLength = 8 );
-  STATIC_CONST( SL_MasterNode = 9 );
+  STATIC_CONST( SL_PrimaryNode = 9 );
   
   Uint32 senderRef;
   Uint32 senderData;
@@ -223,7 +223,7 @@ struct SubStopRef {
   Uint32 subscriberData;
   Uint32 subscriberRef;
   Uint32 errorCode;
-  Uint32 m_masterNodeId;
+  Uint32 m_primaryNodeId;
 };
 
 struct SubStopConf {
@@ -295,7 +295,7 @@ struct SubSyncRef {
   Uint32 senderRef;
   Uint32 senderData;
   Uint32 errorCode;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 struct SubSyncConf {

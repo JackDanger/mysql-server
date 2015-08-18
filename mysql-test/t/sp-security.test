@@ -427,13 +427,13 @@ delimiter ;//
 
 grant usage on *.* to mysqltest_1@localhost;
 
-connect (n1,localhost,mysqltest_1,,information_schema,$MASTER_MYPORT,$MASTER_MYSOCK);
+connect (n1,localhost,mysqltest_1,,information_schema,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 connection n1;
 --error ER_PROCACCESS_DENIED_ERROR
 call mysqltest_1.p1();
 disconnect n1;
 # Test also without a current database
-connect (n2,localhost,mysqltest_1,,*NO-ONE*,$MASTER_MYPORT,$MASTER_MYSOCK);
+connect (n2,localhost,mysqltest_1,,*NO-ONE*,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 connection n2;
 --error ER_PROCACCESS_DENIED_ERROR
 call mysqltest_1.p1();
@@ -459,7 +459,7 @@ begin
   return 'ok';
 end;
 create user user_bug12812@localhost IDENTIFIED BY 'ABC'|
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (test_user_12812,localhost,user_bug12812,ABC,test)|
 --error ER_PROCACCESS_DENIED_ERROR
 SELECT test.bug12812()|
@@ -569,7 +569,7 @@ drop database db_bug14533;
 #
 # The following cases are tested in other test suites:
 #   - check that mysqldump dumps new attribute correctly;
-#   - check that slave replicates CREATE-statements with explicitly specified
+#   - check that replica replicates CREATE-statements with explicitly specified
 #     DEFINER correctly.
 #
 

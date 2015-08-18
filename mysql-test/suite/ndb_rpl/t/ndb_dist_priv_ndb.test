@@ -14,7 +14,7 @@
 --source include/have_binlog_format_mixed_or_row.inc
 
 # Start replication
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 # Setup distributed privilege tables
 --disable_query_log
@@ -37,8 +37,8 @@ flush privileges;
 --enable_query_log
 
 # Create connections to different mysqld(s)
---connect(server1,127.0.0.1,root,,test,$MASTER_MYPORT,)
---connect(server2,127.0.0.1,root,,test,$MASTER_MYPORT1,)
+--connect(server1,127.0.0.1,root,,test,$PRIMARY_MYPORT,)
+--connect(server2,127.0.0.1,root,,test,$PRIMARY_MYPORT1,)
 
 # Run the common test script
 --source ndb_dist_priv_common.inc

@@ -12,14 +12,14 @@
 let $iter = 20;
 let $databases = 16;
 
-connection slave;
+connection replica;
 
-call mtr.add_suppression('Slave: Error dropping database'); ## todo: fix
+call mtr.add_suppression('Replica: Error dropping database'); ## todo: fix
 
-source include/stop_slave.inc;
-start slave;
+source include/stop_replica.inc;
+start replica;
 
-connection master;
+connection primary;
 
 --disable_query_log
 --disable_result_log
@@ -38,8 +38,8 @@ while($i)
   create table ti_wk (a int auto_increment primary key, b int, c text) engine=innodb;
   
   # this table is special - just for timing. It's more special on test0 db
-  # where it contains master timing of the load as well.
-  create table benchmark (state text) engine=myisam; # timestamp keep on the slave side
+  # where it contains primary timing of the load as well.
+  create table benchmark (state text) engine=myisam; # timestamp keep on the replica side
 
   dec $i;
 }
@@ -48,8 +48,8 @@ while($i)
 --enable_query_log
 
 
---source include/sync_slave_sql_with_master.inc
-#connection slave;
+--source include/sync_replica_sql_with_primary.inc
+#connection replica;
 
 --disable_query_log
 --disable_result_log
@@ -69,11 +69,11 @@ while($i)
 
 
 # not gather events into relay log w/o executing yet
-stop slave sql_thread;
+stop replica sql_thread;
 
 ##call p1(1);
 
-connection master;
+connection primary;
 
 --disable_query_log
 --disable_result_log
@@ -84,7 +84,7 @@ connection master;
 
 # initial timestamp to record
 
-# the extra ts col on slave is effective only with the STMT format (todo: bug-report)
+# the extra ts col on replica is effective only with the STMT format (todo: bug-report)
 set @save.binlog_format= @@session.binlog_format;
 set @@session.binlog_format=STATEMENT;
 let $i = $databases + 1;
@@ -94,19 +94,19 @@ while($i)
   dec $i1;
   eval use test$i1;
 
-  insert into benchmark set state='slave takes on load';
+  insert into benchmark set state='replica takes on load';
 
   dec $i;
 }
 set @@session.binlog_format= @save.binlog_format;
 
-connection slave;
+connection replica;
 
 use test0;
-insert into benchmark set state='master started load';
+insert into benchmark set state='primary started load';
 
 
-connection master;
+connection primary;
 
 while ($iter)
 {
@@ -138,12 +138,12 @@ while ($iter)
     dec $iter;
 }
 
-connection slave;
+connection replica;
 
 use test0;
-insert into benchmark set state='master ends load';
+insert into benchmark set state='primary ends load';
 
-connection master;
+connection primary;
 
 # terminal timestamp to record
 
@@ -156,7 +156,7 @@ while($i)
   dec $i1;
   eval use test$i1;
 
-  insert into benchmark set state='slave ends load';
+  insert into benchmark set state='replica ends load';
 
   dec $i;
 }
@@ -165,23 +165,23 @@ set @@session.binlog_format= @save.binlog_format;
 --enable_result_log
 --enable_query_log
 
-connection slave;
+connection replica;
 
 ## todo: record start and end time of appying to compare times of
 #  parallel and sequential execution.
 
 --disable_result_log
 
-insert into test0.benchmark set state='slave is processing load';
+insert into test0.benchmark set state='replica is processing load';
 
 # todo: replace with another algorithm of measuring time
-# To force filling timestamp cols with the slave local clock values
+# To force filling timestamp cols with the replica local clock values
 # to implement benchmarking.
 
-#set @save.mts_exp_slave_local_timestamp=@@global.mts_exp_slave_local_timestamp;
-#set @@global.mts_exp_slave_local_timestamp=1;
+#set @save.mts_exp_replica_local_timestamp=@@global.mts_exp_replica_local_timestamp;
+#set @@global.mts_exp_replica_local_timestamp=1;
 
-start slave sql_thread;
+start replica sql_thread;
 
 let $wait_timeout= 600;
 let $wait_condition= SELECT count(*)+sleep(1) = 5 FROM test0.benchmark;
@@ -195,10 +195,10 @@ use test;
 let $benchmark_file= `select replace(concat("benchmark_",uuid(),".out"),"-","_")`;
 --replace_regex /benchmark_.*.out/benchmark.out/
 eval select * from test0.benchmark into outfile '$benchmark_file';
-select ts from test0.benchmark where state like 'master started load' into @m_0;
-select ts from test0.benchmark where state like 'master ends load' into @m_1;
-select ts from test0.benchmark where state like 'slave takes on load' into @s_0;
-select ts from test0.benchmark where state like 'slave ends load' into @s_1;
+select ts from test0.benchmark where state like 'primary started load' into @m_0;
+select ts from test0.benchmark where state like 'primary ends load' into @m_1;
+select ts from test0.benchmark where state like 'replica takes on load' into @s_0;
+select ts from test0.benchmark where state like 'replica ends load' into @s_1;
 
 let $delta_file= `select replace(concat("delta_",uuid(),".out"),"-","_")`;
 --replace_regex /delta_.*.out/delta.out/
@@ -216,7 +216,7 @@ while($i)
   dec $i1;
 
   # removing uuid() non-deterministic last collumn with statement format
-  connection master;
+  connection primary;
 
   --disable_query_log
   if (`select @@global.binlog_format like 'statement'`)
@@ -228,19 +228,19 @@ while($i)
   }
   --disable_query_log
 
-  --source include/sync_slave_sql_with_master.inc
+  --source include/sync_replica_sql_with_primary.inc
 
 
-  let $diff_tables=master:test$i1.tm_nk, slave:test$i1.tm_nk;
+  let $diff_tables=primary:test$i1.tm_nk, replica:test$i1.tm_nk;
   source include/diff_tables.inc;
 
-  let $diff_tables=master:test$i1.ti_nk, slave:test$i1.ti_nk;
+  let $diff_tables=primary:test$i1.ti_nk, replica:test$i1.ti_nk;
   source include/diff_tables.inc;
 
-  let $diff_tables=master:test$i1.tm_wk, slave:test$i1.tm_wk;
+  let $diff_tables=primary:test$i1.tm_wk, replica:test$i1.tm_wk;
   source include/diff_tables.inc;
 
-  let $diff_tables=master:test$i1.ti_wk, slave:test$i1.ti_wk;
+  let $diff_tables=primary:test$i1.ti_wk, replica:test$i1.ti_wk;
   source include/diff_tables.inc;
 
   dec $i;
@@ -249,7 +249,7 @@ while($i)
 --enable_query_log
 
 
-connection master;
+connection primary;
 
 --disable_query_log
 --disable_result_log
@@ -267,4 +267,4 @@ while($i)
 --enable_result_log
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc

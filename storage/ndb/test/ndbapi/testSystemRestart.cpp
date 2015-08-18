@@ -1398,9 +1398,9 @@ runBug29167(NDBT_Context* ctx, NDBT_Step* step)
     return NDBT_OK;
 
   struct ndb_logevent event;
-  int master = restarter.getMasterNodeId();
+  int primary = restarter.getPrimaryNodeId();
   do {
-    int node1 = restarter.getRandomNodeOtherNodeGroup(master, rand());
+    int node1 = restarter.getRandomNodeOtherNodeGroup(primary, rand());
     int node2 = restarter.getRandomNodeSameNodeGroup(node1, rand());
     
     ndbout_c("node1: %u node2: %u", node1, node2);
@@ -2261,14 +2261,14 @@ runBug46412(NDBT_Context* ctx, NDBT_Step* step)
   for (Uint32 l = 0; l<loops; l++)
   {
 loop:
-    printf("checking nodegroups of getNextMasterNodeId(): ");
+    printf("checking nodegroups of getNextPrimaryNodeId(): ");
     int nodes[256];
     bzero(nodes, sizeof(nodes));
-    nodes[0] = res.getMasterNodeId();
+    nodes[0] = res.getPrimaryNodeId();
     printf("%d ", nodes[0]);
     for (Uint32 i = 1; i<nodeCount; i++)
     {
-      nodes[i] = res.getNextMasterNodeId(nodes[i-1]);
+      nodes[i] = res.getNextPrimaryNodeId(nodes[i-1]);
       printf("%d ", nodes[i]);
     }
     printf("\n");
@@ -2431,7 +2431,7 @@ runBug48436(NDBT_Context* ctx, NDBT_Step* step)
       case 10:
       {
         res.dumpStateAllNodes(val2, 2);
-        int node = res.getMasterNodeId();
+        int node = res.getPrimaryNodeId();
         res.insertErrorInNode(node, 7222);
         res.waitClusterNoStart();
         res.startAll();
@@ -2473,7 +2473,7 @@ runBug54611(NDBT_Context* ctx, NDBT_Step* step)
     int val2[] = { DumpStateOrd::CmvmiSetRestartOnErrorInsert, 1 };
     res.dumpStateAllNodes(val2, 2);
 
-    int node = res.getMasterNodeId();
+    int node = res.getPrimaryNodeId();
     res.insertErrorInNode(node, 7222);
 
     while (hugoTrans.scanUpdateRecords(pNdb, rows) == 0);

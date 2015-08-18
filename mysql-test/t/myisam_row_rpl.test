@@ -2,11 +2,11 @@
 --source include/have_myisam.inc
 --source include/force_myisam_default.inc
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo #
 --echo # Bug#11940249: RBR: MYISAM TABLE CORRUPTION AFTER FIRST LARGE INSERT
---echo #               ON SLAVE
+--echo #               ON REPLICA
 --echo #
 
 --echo # Must have > 100 rows in the first rpl event (to trigger bulk_insert
@@ -38,33 +38,33 @@ CREATE TABLE t
  KEY a (a))
 ENGINE = MyISAM;
 
---let $binlog_file=query_get_value(SHOW MASTER STATUS, File, 1)
---let $binlog_start=query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_file=query_get_value(SHOW PRIMARY STATUS, File, 1)
+--let $binlog_start=query_get_value(SHOW PRIMARY STATUS, Position, 1)
 INSERT INTO t SELECT * FROM tmp;
 
---sync_slave_with_master
---connection slave
---echo # on slave:
+--sync_replica_with_primary
+--connection replica
+--echo # on replica:
 SELECT COUNT(*) FROM t WHERE b > -1;
---connection master
---echo # on master:
+--connection primary
+--echo # on primary:
 --source include/show_binlog_events.inc
 
 RENAME TABLE t to t_2;
 RENAME TABLE t_2 to t;
 
---sync_slave_with_master
---connection slave
---echo # on slave:
+--sync_replica_with_primary
+--connection replica
+--echo # on replica:
 SELECT COUNT(*) FROM t WHERE b > -1;
 CHECK TABLE t;
 REPAIR TABLE t;
 SELECT COUNT(*) FROM t WHERE b > -1;
---let $diff_tables= master:t, slave:t
+--let $diff_tables= primary:t, replica:t
 --source include/diff_tables.inc
 
---connection master
+--connection primary
 DROP TABLE t, tmp;
---sync_slave_with_master
+--sync_replica_with_primary
 
 --source include/rpl_end.inc

@@ -1,61 +1,61 @@
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_binlog_format_statement.inc
 
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 #
-# Bug #19930381 WL1697: 'START SLAVE' CRASHES POST RESTART
+# Bug #19930381 WL1697: 'START REPLICA' CRASHES POST RESTART
 #
 # Testing how well MSR manipulates the MTS Worker info table.
 #
 
-call mtr.add_suppression("Recovery from master pos .*");
-call mtr.add_suppression("Corrupted table mysql.slave_worker_info");
-call mtr.add_suppression("Could not delete from Slave Workers info repository");
+call mtr.add_suppression("Recovery from primary pos .*");
+call mtr.add_suppression("Corrupted table mysql.replica_worker_info");
+call mtr.add_suppression("Could not delete from Replica Workers info repository");
 
---source include/stop_slave.inc
-RESET SLAVE ALL;
-SET @@global.master_info_repository="TABLE";
+--source include/stop_replica.inc
+RESET REPLICA ALL;
+SET @@global.primary_info_repository="TABLE";
 SET @@global.relay_log_info_repository="TABLE";
-SET @save.slave_parallel_workers=@@global.slave_parallel_workers;
-SET @@global.slave_parallel_workers=2;
---replace_result $MASTER_MYPORT MASTER_PORT
-eval CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=$MASTER_MYPORT FOR CHANNEL 'ch_a';
-CHANGE MASTER TO MASTER_HOST='dummy_host', MASTER_USER='root', MASTER_PORT=13010 FOR CHANNEL 'ch_b';
-START SLAVE;
+SET @save.replica_parallel_workers=@@global.replica_parallel_workers;
+SET @@global.replica_parallel_workers=2;
+--replace_result $PRIMARY_MYPORT PRIMARY_PORT
+eval CHANGE PRIMARY TO PRIMARY_HOST='localhost', PRIMARY_USER='root', PRIMARY_PORT=$PRIMARY_MYPORT FOR CHANNEL 'ch_a';
+CHANGE PRIMARY TO PRIMARY_HOST='dummy_host', PRIMARY_USER='root', PRIMARY_PORT=13010 FOR CHANNEL 'ch_b';
+START REPLICA;
 
 --let $count=4
---let $table=mysql.slave_worker_info
+--let $table=mysql.replica_worker_info
 --source include/wait_until_rows_count.inc
 
 # Per channel removal from worker info table proof:
-STOP SLAVE FOR CHANNEL 'ch_b';
-RESET SLAVE FOR CHANNEL 'ch_b';
+STOP REPLICA FOR CHANNEL 'ch_b';
+RESET REPLICA FOR CHANNEL 'ch_b';
 --let $count=2
---let $table=mysql.slave_worker_info
+--let $table=mysql.replica_worker_info
 --source include/wait_until_rows_count.inc
 
 #
 # Testing error branches.
 #
 
-STOP SLAVE FOR CHANNEL 'ch_a';
+STOP REPLICA FOR CHANNEL 'ch_a';
 # Faking the worker table info corruption
-ALTER TABLE mysql.slave_worker_info DROP PRIMARY KEY;
+ALTER TABLE mysql.replica_worker_info DROP PRIMARY KEY;
 
 --error ER_UNKNOWN_ERROR
-RESET SLAVE ALL FOR CHANNEL 'ch_a';
-ALTER TABLE mysql.slave_worker_info ADD PRIMARY KEY (`channel_name`,`id`);
+RESET REPLICA ALL FOR CHANNEL 'ch_a';
+ALTER TABLE mysql.replica_worker_info ADD PRIMARY KEY (`channel_name`,`id`);
 # now to compensate the above fake with removing the aimed records
-DELETE FROM mysql.slave_worker_info WHERE channel_name like 'ch_a';
-STOP SLAVE IO_THREAD;
+DELETE FROM mysql.replica_worker_info WHERE channel_name like 'ch_a';
+STOP REPLICA IO_THREAD;
 
---replace_result $MASTER_MYPORT MASTER_PORT
-eval CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=$MASTER_MYPORT FOR CHANNEL 'ch_b';
---let $assert_text=Two workers are expected to survive the last RESET SLAVE
---let $assert_cond= `SELECT COUNT(*) = 0 FROM mysql.slave_worker_info`
+--replace_result $PRIMARY_MYPORT PRIMARY_PORT
+eval CHANGE PRIMARY TO PRIMARY_HOST='localhost', PRIMARY_USER='root', PRIMARY_PORT=$PRIMARY_MYPORT FOR CHANNEL 'ch_b';
+--let $assert_text=Two workers are expected to survive the last RESET REPLICA
+--let $assert_cond= `SELECT COUNT(*) = 0 FROM mysql.replica_worker_info`
 --source include/assert.inc
 
-START SLAVE;
+START REPLICA;
 
 #
 # Testing Worker info table after server restarts.
@@ -63,16 +63,16 @@ START SLAVE;
 --echo
 --echo === RESTART SERVER ===
 --let $rpl_server_number= 1
---let $rpl_server_parameters= --gtid-mode=off --master-info-repository=TABLE --relay-log-info-repository=TABLE
+--let $rpl_server_parameters= --gtid-mode=off --primary-info-repository=TABLE --relay-log-info-repository=TABLE
 --source include/rpl_restart_server.inc
 
 --let $rpl_server_number= 2
---let $rpl_server_parameters= --relay-log-recovery --skip-slave-start --gtid-mode=off --master-info-repository=TABLE --relay-log-info-repository=TABLE
+--let $rpl_server_parameters= --relay-log-recovery --skip-replica-start --gtid-mode=off --primary-info-repository=TABLE --relay-log-info-repository=TABLE
 --source include/rpl_restart_server.inc
 
---source include/rpl_connection_slave.inc
-START SLAVE;
---source include/stop_slave.inc
+--source include/rpl_connection_replica.inc
+START REPLICA;
+--source include/stop_replica.inc
 
-RESET SLAVE ALL;
+RESET REPLICA ALL;
 

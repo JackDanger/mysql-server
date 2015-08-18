@@ -62,7 +62,7 @@
 --source include/assert.inc
 
 # Get connection id
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --let $connection_id= `SELECT CONNECTION_ID()`
 
 # Create database, table, and trigger table
@@ -71,7 +71,7 @@ eval USE $database;
 eval CREATE TABLE $table (a INT) ENGINE = MyISAM;
 eval CREATE TABLE trigger_table (a INT) ENGINE = MyISAM;
 
-# This master-only trigger will sleep for N seconds when the value N
+# This primary-only trigger will sleep for N seconds when the value N
 # is inserted to a row.
 SET SQL_LOG_BIN=0;
 --delimiter |
@@ -92,7 +92,7 @@ SET SQL_LOG_BIN=1;
 eval INSERT INTO $table VALUES (0), (1);
 
 # Wait until the sleep for the second row happens.
---source include/rpl_connection_master1.inc
+--source include/rpl_connection_primary1.inc
 
 --let $wait_condition= SELECT @@GLOBAL.BINLOG_FORMAT = 'ROW'
 --let $show_rpl_debug_info= 1
@@ -103,7 +103,7 @@ eval INSERT INTO $table VALUES (0), (1);
 eval KILL QUERY $connection_id;
 
 # Get the error message.
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --error ER_QUERY_INTERRUPTED
 reap;
 

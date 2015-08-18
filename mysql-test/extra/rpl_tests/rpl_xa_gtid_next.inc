@@ -5,7 +5,7 @@
 # param  $conclude_as            Commit or Rollback
 # param  $gtid_phase1            GTID_NEXT value for the prepared round
 # param  $gtid_phase2	         GTID_NEXT value for the conclusion round
-# param  $conn_external [master] connection to return control too
+# param  $conn_external [primary] connection to return control too
 #                                and randomly run conclusive query
 # param  $xa_table      [t1]     Table to operate on in transaction
 # param  $xa_error_simul         Provoke a failure to set GTID_NEXT correctly.
@@ -19,7 +19,7 @@
 --let $disconnect_prepare = 0
 if (`SELECT concat('a','$conn_external') = 'a'`)
 {
-  --let $conn_external = master
+  --let $conn_external = primary
 }
 if (`SELECT concat('a','$gtid_phase1') = 'a'`)
 {
@@ -44,9 +44,9 @@ if (!$xa_error_simul)
 
 --connection $conn_external
 
---connect (xa_conn, 127.0.0.1,root,,test,$MASTER_MYPORT,)
+--connect (xa_conn, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
 --let $conn_id = `SELECT connection_id()`
---replace_result $master_uuid MASTER_UUID
+--replace_result $primary_uuid PRIMARY_UUID
 --eval SET @@SESSION.GTID_NEXT = '$gtid_phase1'
 --eval XA START   $xid
 --eval INSERT INTO $xa_table VALUES(1)
@@ -63,12 +63,12 @@ if ($disconnect_prepare)
 
 if (`SELECT NOT $disconnect_prepare AND $xa_error_simul AND '$gtid_phase1' <> 'automatic'`)
 {
-  --replace_result $master_uuid MASTER_UUID
+  --replace_result $primary_uuid PRIMARY_UUID
   --error ER_GTID_NEXT_TYPE_UNDEFINED_GROUP
   --eval XA $conclude_as $xid
 }
 
---replace_result $master_uuid MASTER_UUID
+--replace_result $primary_uuid PRIMARY_UUID
 --eval SET @@SESSION.GTID_NEXT = '$gtid_phase2'
 --eval XA $conclude_as $xid
 

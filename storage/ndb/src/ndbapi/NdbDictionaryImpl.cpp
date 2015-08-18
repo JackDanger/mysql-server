@@ -2347,7 +2347,7 @@ NdbDictInterface::dictSignal(NdbApiSignal* sig,
 			     const int *errcodes, int temporaryMask)
 {
   DBUG_ENTER("NdbDictInterface::dictSignal");
-  DBUG_PRINT("enter", ("useMasterNodeId: %d", node_specification));
+  DBUG_PRINT("enter", ("usePrimaryNodeId: %d", node_specification));
 
   int sleep = 50;
   int mod = 5;
@@ -2384,8 +2384,8 @@ NdbDictInterface::dictSignal(NdbApiSignal* sig,
     Uint32 node;
     switch(node_specification){
     case 0:
-      node = (m_impl->get_node_alive(m_masterNodeId) ? m_masterNodeId :
-	      (m_masterNodeId = getTransporter()->get_an_alive_node()));
+      node = (m_impl->get_node_alive(m_primaryNodeId) ? m_primaryNodeId :
+	      (m_primaryNodeId = getTransporter()->get_an_alive_node()));
       break;
     case -1:
       node = getTransporter()->get_an_alive_node();
@@ -3881,9 +3881,9 @@ NdbDictInterface::sendAlterTable(const NdbTableImpl &impl,
   req->tableVersion = impl.m_version;
   req->changeMask = change_mask;
 
-  int errCodes[] = { AlterTableRef::NotMaster, AlterTableRef::Busy, 0 };
+  int errCodes[] = { AlterTableRef::NotPrimary, AlterTableRef::Busy, 0 };
   int ret= dictSignal(&tSignal, ptr, 1,
-                      0,                        // master
+                      0,                        // primary
                       WAIT_ALTER_TAB_REQ,
                       DICT_WAITFOR_TIMEOUT, 100,
                       errCodes);
@@ -3916,9 +3916,9 @@ NdbDictInterface::sendCreateTable(const NdbTableImpl &impl,
   req->transId = m_tx.transId();
   req->transKey = m_tx.transKey();
 
-  int errCodes[]= { CreateTableRef::Busy, CreateTableRef::NotMaster, 0 };
+  int errCodes[]= { CreateTableRef::Busy, CreateTableRef::NotPrimary, 0 };
   int ret= dictSignal(&tSignal, ptr, 1,
-                      0,                        // master node
+                      0,                        // primary node
                       WAIT_CREATE_INDX_REQ,
                       DICT_WAITFOR_TIMEOUT, 100,
                       errCodes);
@@ -3949,7 +3949,7 @@ NdbDictInterface::execCREATE_TABLE_REF(const NdbApiSignal * sig,
   const CreateTableRef* ref = CAST_CONSTPTR(CreateTableRef, sig->getDataPtr());
   m_error.code= ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -3971,7 +3971,7 @@ NdbDictInterface::execALTER_TABLE_REF(const NdbApiSignal * sig,
   const AlterTableRef * ref = CAST_CONSTPTR(AlterTableRef, sig->getDataPtr());
   m_error.code= ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -4296,10 +4296,10 @@ NdbDictInterface::dropTable(const NdbTableImpl & impl)
 
   int errCodes[] =
     { DropTableRef::NoDropTableRecordAvailable,
-      DropTableRef::NotMaster,
+      DropTableRef::NotPrimary,
       DropTableRef::Busy, 0 };
   int r = dictSignal(&tSignal, 0, 0,
-		     0, // master
+		     0, // primary
 		     WAIT_DROP_TAB_REQ, 
 		     DICT_WAITFOR_TIMEOUT, 100,
 		     errCodes);
@@ -4329,7 +4329,7 @@ NdbDictInterface::execDROP_TABLE_REF(const NdbApiSignal * signal,
   const DropTableRef* ref = CAST_CONSTPTR(DropTableRef, signal->getDataPtr());
   m_error.code= ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -4564,9 +4564,9 @@ NdbDictInterface::createIndex(Ndb & ndb,
   ptr[1].p = (Uint32*)m_buffer.get_data();
   ptr[1].sz = m_buffer.length() >> 2;                //BUG?
 
-  int errCodes[] = { CreateIndxRef::Busy, CreateIndxRef::NotMaster, 0 };
+  int errCodes[] = { CreateIndxRef::Busy, CreateIndxRef::NotPrimary, 0 };
   return dictSignal(&tSignal, ptr, 2,
-		    0, // master
+		    0, // primary
 		    WAIT_CREATE_INDX_REQ,
 		    DICT_WAITFOR_TIMEOUT, 100,
 		    errCodes);
@@ -4589,8 +4589,8 @@ NdbDictInterface::execCREATE_INDX_REF(const NdbApiSignal * sig,
   const CreateIndxRef* ref = CAST_CONSTPTR(CreateIndxRef, sig->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  if (m_error.code == ref->NotMaster)
-    m_masterNodeId = ref->masterNodeId;
+  if (m_error.code == ref->NotPrimary)
+    m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -4663,7 +4663,7 @@ NdbDictInterface::doIndexStatReq(Ndb& ndb,
   req->indexVersion = indexVersion;
   req->tableId = tableId;
 
-  int errCodes[] = { IndexStatRef::Busy, IndexStatRef::NotMaster, 0 };
+  int errCodes[] = { IndexStatRef::Busy, IndexStatRef::NotPrimary, 0 };
   return dictSignal(&tSignal, 0, 0,
                     0,
                     WAIT_CREATE_INDX_REQ,
@@ -4688,8 +4688,8 @@ NdbDictInterface::execINDEX_STAT_REF(const NdbApiSignal * signal,
   const IndexStatRef* ref = CAST_CONSTPTR(IndexStatRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  if (m_error.code == ref->NotMaster)
-    m_masterNodeId = ref->masterNodeId;
+  if (m_error.code == ref->NotPrimary)
+    m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -4862,9 +4862,9 @@ NdbDictInterface::dropIndex(const NdbIndexImpl & impl,
   req->indexId = timpl.m_id;
   req->indexVersion = timpl.m_version;
 
-  int errCodes[] = { DropIndxRef::Busy, DropIndxRef::NotMaster, 0 };
+  int errCodes[] = { DropIndxRef::Busy, DropIndxRef::NotPrimary, 0 };
   int r = dictSignal(&tSignal, 0, 0,
-		     0, // master
+		     0, // primary
 		     WAIT_DROP_INDX_REQ,
 		     DICT_WAITFOR_TIMEOUT, 100,
 		     errCodes);
@@ -4892,8 +4892,8 @@ NdbDictInterface::execDROP_INDX_REF(const NdbApiSignal * signal,
   const DropIndxRef* ref = CAST_CONSTPTR(DropIndxRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  if (m_error.code == ref->NotMaster)
-    m_masterNodeId = ref->masterNodeId;
+  if (m_error.code == ref->NotPrimary)
+    m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -5095,7 +5095,7 @@ NdbDictInterface::createEvent(class Ndb & ndb,
   ptr[0].sz = (m_buffer.length()+3) >> 2;
 
   int ret = dictSignal(&tSignal,ptr, seccnt,
-		       0, // master
+		       0, // primary
 		       WAIT_CREATE_INDX_REQ,
 		       DICT_WAITFOR_TIMEOUT, 100,
 		       0, -1);
@@ -5188,10 +5188,10 @@ NdbDictInterface::executeSubscribeEvent(class Ndb & ndb,
 
   int errCodes[] = { SubStartRef::Busy,
                      SubStartRef::BusyWithNR,
-                     SubStartRef::NotMaster,
+                     SubStartRef::NotPrimary,
                      0 };
   int ret = dictSignal(&tSignal,NULL,0,
-                       0 /*use masternode id*/,
+                       0 /*use primarynode id*/,
                        WAIT_CREATE_INDX_REQ /*WAIT_CREATE_EVNT_REQ*/,
                        -1, 100,
                        errCodes, -1);
@@ -5237,10 +5237,10 @@ NdbDictInterface::stopSubscribeEvent(class Ndb & ndb,
 
   int errCodes[] = { SubStartRef::Busy,
                      SubStartRef::BusyWithNR,
-                     SubStartRef::NotMaster,
+                     SubStartRef::NotPrimary,
                      0 };
   int ret= dictSignal(&tSignal,NULL,0,
-                      0 /*use masternode id*/,
+                      0 /*use primarynode id*/,
                       WAIT_CREATE_INDX_REQ /*WAIT_SUB_STOP__REQ*/,
                       -1, 100,
                       errCodes, -1);
@@ -5417,8 +5417,8 @@ NdbDictInterface::execCREATE_EVNT_REF(const NdbApiSignal * signal,
   m_error.code= ref->getErrorCode();
   DBUG_PRINT("error",("error=%d,line=%d,node=%d",ref->getErrorCode(),
 		      ref->getErrorLine(),ref->getErrorNode()));
-  if (m_error.code == CreateEvntRef::NotMaster)
-    m_masterNodeId = ref->getMasterNode();
+  if (m_error.code == CreateEvntRef::NotPrimary)
+    m_primaryNodeId = ref->getPrimaryNode();
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -5468,10 +5468,10 @@ NdbDictInterface::execSUB_STOP_REF(const NdbApiSignal * signal,
                       subStopRef->subscriptionKey,
                       subStopRef->subscriberData,
                       m_error.code));
-  if (m_error.code == SubStopRef::NotMaster &&
-      signal->getLength() >= SubStopRef::SL_MasterNode)
+  if (m_error.code == SubStopRef::NotPrimary &&
+      signal->getLength() >= SubStopRef::SL_PrimaryNode)
   {
-    m_masterNodeId = subStopRef->m_masterNodeId;
+    m_primaryNodeId = subStopRef->m_primaryNodeId;
   }
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
@@ -5534,8 +5534,8 @@ NdbDictInterface::execSUB_START_REF(const NdbApiSignal * signal,
     CAST_CONSTPTR(SubStartRef, signal->getDataPtr());
   m_error.code= subStartRef->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  if (m_error.code == SubStartRef::NotMaster)
-    m_masterNodeId = subStartRef->m_masterNodeId;
+  if (m_error.code == SubStartRef::NotPrimary)
+    m_primaryNodeId = subStartRef->m_primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -5661,7 +5661,7 @@ NdbDictInterface::dropEvent(const NdbEventImpl &evnt)
   ptr[0].sz = (m_buffer.length()+3) >> 2;
 
   return dictSignal(&tSignal,ptr, 1,
-		    0 /*use masternode id*/,
+		    0 /*use primarynode id*/,
 		    WAIT_CREATE_INDX_REQ,
 		    -1, 100,
 		    0, -1);
@@ -5687,8 +5687,8 @@ NdbDictInterface::execDROP_EVNT_REF(const NdbApiSignal * signal,
 
   DBUG_PRINT("info",("ErrorCode=%u Errorline=%u ErrorNode=%u",
 	     ref->getErrorCode(), ref->getErrorLine(), ref->getErrorNode()));
-  if (m_error.code == DropEvntRef::NotMaster)
-    m_masterNodeId = ref->getMasterNode();
+  if (m_error.code == DropEvntRef::NotPrimary)
+    m_primaryNodeId = ref->getPrimaryNode();
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -7973,13 +7973,13 @@ NdbDictInterface::create_file(const NdbFileImpl & file,
   ptr[0].p = (Uint32*)m_buffer.get_data();
   ptr[0].sz = m_buffer.length() / 4;
 
-  int err[] = { CreateFileRef::Busy, CreateFileRef::NotMaster, 0};
+  int err[] = { CreateFileRef::Busy, CreateFileRef::NotPrimary, 0};
   /*
     Send signal without time-out since creating files can take a very long
     time if the file is very big.
   */
   int ret = dictSignal(&tSignal, ptr, 1,
-		       0, // master
+		       0, // primary
 		       WAIT_CREATE_INDX_REQ,
 		       -1, 100,
 		       err);
@@ -8025,7 +8025,7 @@ NdbDictInterface::execCREATE_FILE_REF(const NdbApiSignal * signal,
     CAST_CONSTPTR(CreateFileRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -8049,9 +8049,9 @@ NdbDictInterface::drop_file(const NdbFileImpl & file)
   req->transId = m_tx.transId();
   req->transKey = m_tx.transKey();
 
-  int err[] = { DropFileRef::Busy, DropFileRef::NotMaster, 0};
+  int err[] = { DropFileRef::Busy, DropFileRef::NotPrimary, 0};
   DBUG_RETURN(dictSignal(&tSignal, 0, 0,
-	                 0, // master
+	                 0, // primary
 		         WAIT_CREATE_INDX_REQ,
 		         DICT_WAITFOR_TIMEOUT, 100,
 		         err));
@@ -8075,7 +8075,7 @@ NdbDictInterface::execDROP_FILE_REF(const NdbApiSignal * signal,
     CAST_CONSTPTR(DropFileRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -8156,9 +8156,9 @@ NdbDictInterface::create_filegroup(const NdbFilegroupImpl & group,
   ptr[0].p = (Uint32*)m_buffer.get_data();
   ptr[0].sz = m_buffer.length() / 4;
 
-  int err[] = { CreateFilegroupRef::Busy, CreateFilegroupRef::NotMaster, 0};
+  int err[] = { CreateFilegroupRef::Busy, CreateFilegroupRef::NotPrimary, 0};
   int ret = dictSignal(&tSignal, ptr, 1,
-		       0, // master
+		       0, // primary
 		       WAIT_CREATE_INDX_REQ,
 		       DICT_WAITFOR_TIMEOUT, 100,
 		       err);
@@ -8203,7 +8203,7 @@ NdbDictInterface::execCREATE_FILEGROUP_REF(const NdbApiSignal * signal,
     CAST_CONSTPTR(CreateFilegroupRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -8227,9 +8227,9 @@ NdbDictInterface::drop_filegroup(const NdbFilegroupImpl & group)
   req->transId = m_tx.transId();
   req->transKey = m_tx.transKey();
 
-  int err[] = { DropFilegroupRef::Busy, DropFilegroupRef::NotMaster, 0};
+  int err[] = { DropFilegroupRef::Busy, DropFilegroupRef::NotPrimary, 0};
   DBUG_RETURN(dictSignal(&tSignal, 0, 0,
-                         0, // master
+                         0, // primary
 		         WAIT_CREATE_INDX_REQ,
 		         DICT_WAITFOR_TIMEOUT, 100,
 		         err));
@@ -8253,7 +8253,7 @@ NdbDictInterface::execDROP_FILEGROUP_REF(const NdbApiSignal * signal,
     CAST_CONSTPTR(DropFilegroupRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -8756,7 +8756,7 @@ NdbDictInterface::create_hashmap(const NdbHashMapImpl& src,
   ptr[0].p = (Uint32*)m_buffer.get_data();
   ptr[0].sz = m_buffer.length() / 4;
 
-  int err[]= { CreateTableRef::Busy, CreateTableRef::NotMaster, 0 };
+  int err[]= { CreateTableRef::Busy, CreateTableRef::NotPrimary, 0 };
 
   /*
     Send signal without time-out since creating files can take a very long
@@ -8768,7 +8768,7 @@ NdbDictInterface::create_hashmap(const NdbHashMapImpl& src,
     seccnt = 0;
   }
   int ret = dictSignal(&tSignal, ptr, seccnt,
-		       0, // master
+		       0, // primary
 		       WAIT_CREATE_INDX_REQ,
 		       -1, 100,
 		       err);
@@ -8792,7 +8792,7 @@ NdbDictInterface::execCREATE_HASH_MAP_REF(const NdbApiSignal * signal,
     CAST_CONSTPTR(CreateHashMapRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -8981,7 +8981,7 @@ NdbDictInterface::create_fk(const NdbForeignKeyImpl& src,
   ptr[0].p = (Uint32*)m_buffer.get_data();
   ptr[0].sz = m_buffer.length() / 4;
 
-  int err[]= { CreateTableRef::Busy, CreateTableRef::NotMaster, 0 };
+  int err[]= { CreateTableRef::Busy, CreateTableRef::NotPrimary, 0 };
 
   /*
     Send signal without time-out since creating files can take a very long
@@ -8989,7 +8989,7 @@ NdbDictInterface::create_fk(const NdbForeignKeyImpl& src,
   */
   Uint32 seccnt = 1;
   int ret = dictSignal(&tSignal, ptr, seccnt,
-		       0, // master
+		       0, // primary
 		       WAIT_CREATE_INDX_REQ,
 		       -1, 100,
 		       err);
@@ -9012,7 +9012,7 @@ NdbDictInterface::execCREATE_FK_REF(const NdbApiSignal * signal,
   const CreateFKRef* ref = CAST_CONSTPTR(CreateFKRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -9171,11 +9171,11 @@ NdbDictInterface::drop_fk(const NdbDictObjectImpl & impl)
 
   int errCodes[] =
     { DropTableRef::NoDropTableRecordAvailable,
-      DropTableRef::NotMaster,
+      DropTableRef::NotPrimary,
       DropTableRef::Busy, 0 };
 
   return dictSignal(&tSignal, 0, 0,
-                    0, // master
+                    0, // primary
                     WAIT_DROP_TAB_REQ,
                     DICT_WAITFOR_TIMEOUT, 100,
                     errCodes);
@@ -9200,7 +9200,7 @@ NdbDictInterface::execDROP_FK_REF(const NdbApiSignal * signal,
   const DropFKRef* ref = CAST_CONSTPTR(DropFKRef, signal->getDataPtr());
   m_error.code= ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -9255,13 +9255,13 @@ NdbDictionaryImpl::endSchemaTrans(Uint32 flags)
   }
   /*
     Check if schema transaction has been aborted
-    already, for example because of master node failure.
+    already, for example because of primary node failure.
    */
   if (m_tx.m_state != NdbDictInterface::Tx::Started)
   {
     m_tx.m_op.clear();
     DBUG_PRINT("info", ("endSchemaTrans: state %u, flags 0x%x\n", m_tx.m_state, flags));
-    if (m_tx.m_state == NdbDictInterface::Tx::Aborted && // rollback at master takeover
+    if (m_tx.m_state == NdbDictInterface::Tx::Aborted && // rollback at primary takeover
         flags & NdbDictionary::Dictionary::SchemaTransAbort)
     {
       m_tx.m_error.code = 0;
@@ -9275,11 +9275,11 @@ NdbDictionaryImpl::endSchemaTrans(Uint32 flags)
   int ret = m_receiver.endSchemaTrans(flags);
   if (ret == -1 || m_tx.m_error.code != 0) {
     DBUG_PRINT("info", ("endSchemaTrans: state %u, flags 0x%x\n", m_tx.m_state, flags));
-    if (m_tx.m_state == NdbDictInterface::Tx::Committed && // rollforward at master takeover
+    if (m_tx.m_state == NdbDictInterface::Tx::Committed && // rollforward at primary takeover
         !(flags & NdbDictionary::Dictionary::SchemaTransAbort))
       goto committed;
     m_tx.m_op.clear();
-    if (m_tx.m_state == NdbDictInterface::Tx::Aborted && // rollback at master takeover
+    if (m_tx.m_state == NdbDictInterface::Tx::Aborted && // rollback at primary takeover
         flags & NdbDictionary::Dictionary::SchemaTransAbort)
     {
       m_error.code = m_tx.m_error.code = 0;
@@ -9355,7 +9355,7 @@ NdbDictInterface::beginSchemaTrans(bool retry711)
   req->requestInfo = 0;
 
   int errCodes[] = {
-    SchemaTransBeginRef::NotMaster,
+    SchemaTransBeginRef::NotPrimary,
     SchemaTransBeginRef::Busy,
     retry711 ? SchemaTransBeginRef::BusyWithNR : 0,
     0
@@ -9393,7 +9393,7 @@ NdbDictInterface::endSchemaTrans(Uint32 flags)
   req->flags = flags;
 
   int errCodes[] = {
-    SchemaTransEndRef::NotMaster,
+    SchemaTransEndRef::NotPrimary,
     0
   };
   int ret = dictSignal(
@@ -9434,7 +9434,7 @@ NdbDictInterface::execSCHEMA_TRANS_BEGIN_REF(const NdbApiSignal * signal,
     CAST_CONSTPTR(SchemaTransBeginRef, signal->getDataPtr());
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -9463,7 +9463,7 @@ NdbDictInterface::execSCHEMA_TRANS_END_REF(const NdbApiSignal * signal,
   m_error.code = ref->errorCode;
   DBUG_PRINT("info", ("Error code = %d", m_error.code));
   m_tx.m_error.code = ref->errorCode;
-  m_masterNodeId = ref->masterNodeId;
+  m_primaryNodeId = ref->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }
@@ -9487,7 +9487,7 @@ NdbDictInterface::execSCHEMA_TRANS_END_REP(const NdbApiSignal * signal,
     :
     m_tx.m_state = Tx::Aborted;
   m_tx.m_error.code = rep->errorCode;
-  m_masterNodeId = rep->masterNodeId;
+  m_primaryNodeId = rep->primaryNodeId;
   m_impl->theWaiter.signal(NO_WAIT);
   DBUG_VOID_RETURN;
 }

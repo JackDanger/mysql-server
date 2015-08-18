@@ -110,32 +110,32 @@ drop table t2;
 --echo "2. Test that truncating reference table is blocked."
 use test;
 #
-create table master
+create table primary
 	(i int, f float, c char(100),
 	 primary key pk(i), index fidx(f))
 	engine = innodb;
 #
-create table slave
+create table replica
 	(i int, j int,
 	 primary key pk(i),
-	 foreign key fk(j) references master(i))
+	 foreign key fk(j) references primary(i))
 	engine = innodb;
 #
-insert into master values
+insert into primary values
 	(1, 1.1, 'a'), (2, 2.2, 'b'), (3, 3.3, 'c'),
 	(4, 4.4, 'd'), (5, 5.5, 'e');
 #
-insert into slave values
+insert into replica values
 	(101, 1), (202, 3), (303, 5);
 #
-select * from master;
-select * from slave;
+select * from primary;
+select * from replica;
 #
 --error ER_TRUNCATE_ILLEGAL_FK
-truncate table master;
+truncate table primary;
 #
-drop table slave;
-drop table master;
+drop table replica;
+drop table primary;
 
 #-----------------------------------------------------------------------------
 #
@@ -292,32 +292,32 @@ drop procedure populate_t1;
 --echo "5 check truncate with lock/unlock"
 use test;
 set global innodb_file_per_table = 1;
-create table master
+create table primary
         (i int, f float, c char(100),
          primary key pk(i), index fidx(f))
         engine = innodb;
-insert into master values
+insert into primary values
         (1, 1.1, 'a'), (2, 2.2, 'b'), (3, 3.3, 'c'),
         (4, 4.4, 'd'), (5, 5.5, 'e');
-select * from master;
+select * from primary;
 --echo "--In con1 connection--"
 connect (con1,localhost,root,,);
 use test;
-lock tables master write;
+lock tables primary write;
 --echo "--In default connection--"
 connection default;
 use test;
---send truncate table master;
+--send truncate table primary;
 --echo "--In con1 connection--"
 connection con1;
-select * from master;
+select * from primary;
 unlock tables;
 disconnect con1;
 --echo "--In default connection--"
 connection default;
 --reap
-select * from master;
-drop table master;
+select * from primary;
+drop table primary;
 
 #-----------------------------------------------------------------------------
 #

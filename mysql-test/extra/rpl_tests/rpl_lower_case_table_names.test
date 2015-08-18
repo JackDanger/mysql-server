@@ -3,55 +3,55 @@
 #  This test aims at checking whether lower_case_table_names=1 option works
 #  for database names and table names.
 #
-#  This test checks the following (when lower_case_table_names=1 is set on slave):
-#    (i) creating a database on upper case on master results in lower case
-#        database name on slave
-#   (ii) creating tables with upper case names on master results in lower case
-#        table names on slave
-#  (iii) loading data infile into capitalized table name on master replicates to
-#        lower case table name on slave
+#  This test checks the following (when lower_case_table_names=1 is set on replica):
+#    (i) creating a database on upper case on primary results in lower case
+#        database name on replica
+#   (ii) creating tables with upper case names on primary results in lower case
+#        table names on replica
+#  (iii) loading data infile into capitalized table name on primary replicates to
+#        lower case table name on replica
 #   (iv) Propagating changes from upper case table names on into correspondent 
-#        lower case table names on slave works.
+#        lower case table names on replica works.
 
 
 # setup: create database and tables
--- echo ******** [ MASTER ] ********
+-- echo ******** [ PRIMARY ] ********
 -- let $dbname_upper= BUG_37656
 -- let $dbname_lower= `SELECT LOWER('$dbname_upper')`
 -- eval CREATE DATABASE $dbname_upper
 -- eval use $dbname_upper
 
-# assert: database names are in upper case in master and lower
-#         case in slave
+# assert: database names are in upper case in primary and lower
+#         case in replica
 -- eval show databases like '$dbname_upper'
-sync_slave_with_master;
--- echo ******** [ SLAVE ] ********
+sync_replica_with_primary;
+-- echo ******** [ REPLICA ] ********
 --eval show databases like '$dbname_lower'
 
--- connection master
--- echo ******** [ MASTER ] ********
+-- connection primary
+-- echo ******** [ PRIMARY ] ********
 CREATE TABLE T1 (a int);
 -- eval CREATE TABLE T2 (b int) ENGINE=$engine
 CREATE TABLE T3 (txt TEXT);
 
-# assert: that tables exist on master with upper case names
+# assert: that tables exist on primary with upper case names
 # this fixes result mismatches for MacOSX
 --replace_result Tables_in_bug_37656 Tables_in_BUG_37656
 show tables;
 
-# assert: that tables exist on slave but with lower case names
--- sync_slave_with_master
--- echo ******** [ SLAVE ] ********
+# assert: that tables exist on replica but with lower case names
+-- sync_replica_with_primary
+-- echo ******** [ REPLICA ] ********
 -- eval use $dbname_lower
 show tables;
 
 # action: lets create t1 for asserting below that t1 does not get changes
-#         from master (slave configured with --replicate-ignore-db=$dbname_lower.t1)
+#         from primary (replica configured with --replicate-ignore-db=$dbname_lower.t1)
 CREATE TABLE t1 (a INT);
 
 # action: fill data into tables
--- connection master
--- echo ******** [ MASTER ] ********
+-- connection primary
+-- echo ******** [ PRIMARY ] ********
 -- eval use $dbname_upper
 INSERT INTO T1 VALUES (1);
 INSERT INTO T2 VALUES (1);
@@ -67,27 +67,27 @@ if  (`SELECT @@session.binlog_format = 'ROW'`)
   -- eval INSERT INTO $dbname_upper.T2 VALUES (2)
   -- eval LOAD DATA INFILE '../../std_data/words.dat' INTO TABLE $dbname_upper.T3
 }
-# assert: lower case tables on lower case database on slave
+# assert: lower case tables on lower case database on replica
 #         get updates from upper case tables on upper case
-#         database on master
--- sync_slave_with_master
--- echo ******** [ SLAVE ] ********
+#         database on primary
+-- sync_replica_with_primary
+-- echo ******** [ REPLICA ] ********
 
-# assert: changes for slave's t1 were filterd out
+# assert: changes for replica's t1 were filterd out
 if (`SELECT count(*) != 0 FROM t1`)
 {
   -- echo UNEXPECTED DATA on $dbname_lower.t1 as table is filtered by replicate-ignore-table rules
 }
 
--- let $diff_tables= master:$dbname_upper.T2, slave:$dbname_lower.t2
+-- let $diff_tables= primary:$dbname_upper.T2, replica:$dbname_lower.t2
 -- source include/diff_tables.inc
 
--- let $diff_tables= master:$dbname_upper.T3, slave:$dbname_lower.t3
+-- let $diff_tables= primary:$dbname_upper.T3, replica:$dbname_lower.t3
 -- source include/diff_tables.inc
 
 # clean up
--- connection master
--- echo ******** [ MASTER ] ********
+-- connection primary
+-- echo ******** [ PRIMARY ] ********
 -- eval DROP DATABASE $dbname_upper
 
 
@@ -96,7 +96,7 @@ if (`SELECT count(*) != 0 FROM t1`)
 #
 
 -- source include/rpl_reset.inc
--- connection master
+-- connection primary
 
 -- let $dbname= B50653
 -- let $procname= b50653_proc
@@ -107,35 +107,35 @@ if (`SELECT count(*) != 0 FROM t1`)
 
 if (`SELECT count(*) = 1 FROM mysql.proc WHERE name like '$dbname'`)
 {
-  -- die Procedure not created on MASTER
+  -- die Procedure not created on PRIMARY
 }
 
--- sync_slave_with_master
+-- sync_replica_with_primary
 if (`SELECT count(*) = 1 FROM mysql.proc WHERE name like '$dbname'`)
 {
-  -- die Procedure not created on SLAVE
+  -- die Procedure not created on REPLICA
 }
 
--- connection master
+-- connection primary
 -- eval DROP PROCEDURE $procname
 
 if (`SELECT count(*) FROM mysql.proc WHERE name like '$dbname'`)
 {
-  -- die Procedure not dropped on MASTER
+  -- die Procedure not dropped on PRIMARY
 }
 
--- sync_slave_with_master
+-- sync_replica_with_primary
 if (`SELECT count(*) FROM mysql.proc WHERE name like '$dbname'`)
 {
-  -- die Procedure not dropped on SLAVE
+  -- die Procedure not dropped on REPLICA
 }
 
--- let $last_error = query_get_value("SHOW SLAVE STATUS", Last_SQL_Errno, 1)
+-- let $last_error = query_get_value("SHOW REPLICA STATUS", Last_SQL_Errno, 1)
 if ($last_error)
 {
-  -- die UNEXPECTED SLAVE SQL error: $last_error
+  -- die UNEXPECTED REPLICA SQL error: $last_error
 }
 
--- connection master
+-- connection primary
 -- eval DROP DATABASE $dbname
--- sync_slave_with_master
+-- sync_replica_with_primary

@@ -36,7 +36,7 @@ private:
   /**
     This uniquely identifies a file.
 
-    When introducing multi-master replication one needs to ensure
+    When introducing multi-primary replication one needs to ensure
     that files' names are unique. If tables are used, there is no
     issue at all. It is highly recommend to avoid using files as
     they do not provide an atomic behavior. 

@@ -6,9 +6,9 @@ ndb-log-apply-status
 [mysqld.2.1]
 ndb-log-apply-status
 
-[mysqld.1.slave]
+[mysqld.1.replica]
 ndb-log-apply-status
 
-[mysqld.2.slave]
+[mysqld.2.replica]
 ndb-log-apply-status
 

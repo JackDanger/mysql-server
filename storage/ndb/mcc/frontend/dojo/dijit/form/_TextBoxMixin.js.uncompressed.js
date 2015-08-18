@@ -55,7 +55,7 @@ var _TextBoxMixin = declare("dijit.form._TextBoxMixin", null, {
 		//
 		//		For `dijit.form.MappedTextBox` subclasses, which have both
 		//		a "displayed value" and a separate "submit value",
-		//		This treats the "displayed value" as the master value, computing the
+		//		This treats the "displayed value" as the primary value, computing the
 		//		submit value from it via this.parse().
 		return this.parse(this.get('displayedValue'), this.constraints);
 	},

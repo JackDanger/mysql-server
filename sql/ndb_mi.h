@@ -22,22 +22,22 @@
 
 /*
    This file defines methods for interacting with the
-   Master Info structure on a Slave MySQLD.
+   Primary Info structure on a Replica MySQLD.
    These methods are only valid when running in an
-   active slave thread.
+   active replica thread.
 */
 
 /*
   Accessors
 */
-uint32 ndb_mi_get_master_server_id();
-const char* ndb_mi_get_group_master_log_name();
-uint64 ndb_mi_get_group_master_log_pos();
+uint32 ndb_mi_get_primary_server_id();
+const char* ndb_mi_get_group_primary_log_name();
+uint64 ndb_mi_get_group_primary_log_pos();
 uint64 ndb_mi_get_future_event_relay_log_pos();
 uint64 ndb_mi_get_group_relay_log_pos();
 bool ndb_mi_get_ignore_server_id(uint32 server_id);
-uint32 ndb_mi_get_slave_run_id();
-bool ndb_mi_get_slave_sql_running();
+uint32 ndb_mi_get_replica_run_id();
+bool ndb_mi_get_replica_sql_running();
 
 /*
    Relay log info related functions

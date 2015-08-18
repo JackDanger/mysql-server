@@ -24,7 +24,7 @@
 /**
  * This signal is sent by anyone to local DIH
  *
- * If local DIH is not master, it forwards it to master DIH
+ * If local DIH is not primary, it forwards it to primary DIH
  *   and start acting as a proxy
  *
  */
@@ -110,7 +110,7 @@ public:
     StopOK = 0,
     NF_CausedAbortOfProcedure = 1,
     NoWaitGCPRecords = 2,
-    NF_MasterTakeOverInProgress = 3
+    NF_PrimaryTakeOverInProgress = 3
   };
   
 private:

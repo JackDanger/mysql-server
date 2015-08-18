@@ -4,47 +4,47 @@
 # The test verifies correctness of MTS execution when system meets
 # various limits due to few configuration options:
 #
-# A. @@global.slave_pending_jobs_size_max
-# B. @@global.slave_parallel_workers
+# A. @@global.replica_pending_jobs_size_max
+# B. @@global.replica_parallel_workers
 #
 
 --source include/not_group_replication_plugin.inc
 # no support for Query-log-event in this test
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-connection slave;
+connection replica;
 
 create view coord_wait_list as
        SELECT id from Information_Schema.processlist
-              where state like 'Waiting for Slave Worker%';
+              where state like 'Waiting for Replica Worker%';
 
 # restart in Parallel
 
 let $workers= 4;
 
-source include/stop_slave.inc;
-set @save.slave_parallel_workers= @@global.slave_parallel_workers;
-eval set @@global.slave_parallel_workers= $workers;
+source include/stop_replica.inc;
+set @save.replica_parallel_workers= @@global.replica_parallel_workers;
+eval set @@global.replica_parallel_workers= $workers;
 
 #
 # A. Prescribed number of Worker threads is honored
 #
 
-connection slave;
+connection replica;
 
 create view worker_wait_list as
        SELECT id from Information_Schema.processlist
               where state like 'Waiting for an event from Coordinator';
 
-source include/stop_slave.inc;
+source include/stop_replica.inc;
 
 # relates to B preparation
 let $mts_max_q_size=1024;
-set @save_slave_pending_jobs_size_max = @@global.slave_pending_jobs_size_max;
-eval set @@global.slave_pending_jobs_size_max= $mts_max_q_size;
+set @save_replica_pending_jobs_size_max = @@global.replica_pending_jobs_size_max;
+eval set @@global.replica_pending_jobs_size_max= $mts_max_q_size;
 
-source include/start_slave.inc;
+source include/start_replica.inc;
 
 let $count= $workers;
 let $table= worker_wait_list;
@@ -57,21 +57,21 @@ source include/wait_until_rows_count.inc;
 #
 
 
-connection master;
+connection primary;
 create database d0;
 create table d0.t0 (a int auto_increment primary key, b text null) engine=innodb;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 
 begin;
 insert into d0.t0 set a= 1;
 
-# master trans structure aims at testing C's wait loop
+# primary trans structure aims at testing C's wait loop
 
 let $i_loop= 10;
 
-connection master;
+connection primary;
 
 begin;
 --disable_query_log
@@ -93,7 +93,7 @@ commit;
 
 let $d0_t0_count=`select count(*) from d0.t0`;
 
-connection slave;
+connection replica;
 
 --echo *** Coordinator must be waiting for Workers have released pending events mem ***
 
@@ -108,22 +108,22 @@ let $table= d0.t0;
 source include/wait_until_rows_count.inc;
 
 # cleanup of the max size
-set @@global.slave_pending_jobs_size_max= @save_slave_pending_jobs_size_max;
+set @@global.replica_pending_jobs_size_max= @save_replica_pending_jobs_size_max;
 
 
 #
 # cleanup
 #
 
-connection master;
+connection primary;
 
 drop database d0;
 
---source include/sync_slave_sql_with_master.inc
-#connection slave;
+--source include/sync_replica_sql_with_primary.inc
+#connection replica;
 
 drop view coord_wait_list;
 drop view worker_wait_list;
-set @@global.slave_parallel_workers= @save.slave_parallel_workers;
+set @@global.replica_parallel_workers= @save.replica_parallel_workers;
 
 --source include/rpl_end.inc

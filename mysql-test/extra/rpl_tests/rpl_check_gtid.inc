@@ -22,9 +22,9 @@
 # --let $gtid_end= <gtid_end>
 # --source extra/rpl_tests/rpl_check_gtid.inc
 #
-# Example (Checking both Previous GTIDs and current Gtids in the master's
+# Example (Checking both Previous GTIDs and current Gtids in the primary's
 #          current binary log):
-# --connection master
+# --connection primary
 # --let $binlog= binlog
 # --let $gtid_set_ini= <set_ini>
 # --let $gtid_set_end= <set_end>
@@ -32,8 +32,8 @@
 # --let $gtid_end= <gtid_end>
 # --source extra/rpl_tests/rpl_check_gtid.inc
 #
-# Example (Checking Previous GTIDs in the slave's current binary log):
-# --connection slave
+# Example (Checking Previous GTIDs in the replica's current binary log):
+# --connection replica
 # --let $binlog= binlog
 # --let $gtid_set_ini= <set_ini>
 # --let $gtid_set_end= <set_end>
@@ -41,8 +41,8 @@
 # --let $gtid_end=
 # --source extra/rpl_tests/rpl_check_gtid.inc
 #
-# Example (Checking GTIDs in the slave's current relay log):
-# --connection slave
+# Example (Checking GTIDs in the replica's current relay log):
+# --connection replica
 # --let $binlog= relaylog
 # --let $gtid_set_ini=
 # --let $gtid_set_end=
@@ -55,14 +55,14 @@
 
 if (`SELECT "$binlog" = "binlog"`)
 {
-  --let $command_set= SHOW MASTER STATUS
+  --let $command_set= SHOW PRIMARY STATUS
   --let $command_set_info= File
   --let $command_show= SHOW BINLOG EVENTS
 }
 
 if (`SELECT "$binlog" = "relaylog"`)
 {
-  --let $command_set= SHOW SLAVE STATUS
+  --let $command_set= SHOW REPLICA STATUS
   --let $command_set_info= Relay_Log_File
   --let $command_show= SHOW RELAYLOG EVENTS
 }

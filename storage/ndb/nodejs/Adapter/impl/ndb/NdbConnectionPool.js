@@ -423,7 +423,7 @@ function makeGetTableCall(dbSession, ndbConnectionPool, dbName, tableName) {
     udebug.log_detail("drColumn:", c);
   }
 
-  function masterCallback(err, table) {
+  function primaryCallback(err, table) {
     if(err) {
       err.notice = "Table " + key + " not found in NDB data dictionary";
     }
@@ -436,7 +436,7 @@ function makeGetTableCall(dbSession, ndbConnectionPool, dbName, tableName) {
     groupCallback(err, table);
   }
 
-  var apiCall = new QueuedAsyncCall(dbSession.execQueue, masterCallback);
+  var apiCall = new QueuedAsyncCall(dbSession.execQueue, primaryCallback);
   apiCall.impl = dbSession.impl;
   apiCall.dbName = dbName;
   apiCall.tableName = tableName;

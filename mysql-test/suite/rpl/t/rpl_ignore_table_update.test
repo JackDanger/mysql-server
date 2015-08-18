@@ -1,8 +1,8 @@
 # This one assumes we are ignoring updates on table mysqltest_foo, but doing
 # the ones on all other tables
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
-connection slave;
+source include/primary-replica.inc;
+connection replica;
 
 #
 # For this test we must be in the test database
@@ -16,7 +16,7 @@ drop table if exists mysqltest_bar;
 
 create table mysqltest_foo (n int);
 insert into mysqltest_foo values(4);
-connection master;
+connection primary;
 use test;
 create table mysqltest_foo (n int);
 insert into mysqltest_foo values(5);
@@ -24,15 +24,15 @@ create table mysqltest_bar (m int);
 insert into mysqltest_bar values(15);
 create table t1 (k int);
 insert into t1 values(55);
-save_master_pos;
-connection slave;
-sync_with_master;
+save_primary_pos;
+connection replica;
+sync_with_primary;
 select mysqltest_foo.n,mysqltest_bar.m,t1.k from mysqltest_foo,mysqltest_bar,t1;
-connection master;
+connection primary;
 drop table mysqltest_foo,mysqltest_bar,t1;
-save_master_pos;
-connection slave;
-sync_with_master;
+save_primary_pos;
+connection replica;
+sync_with_primary;
 drop table mysqltest_foo,mysqltest_bar,t1;
 
 # End of 4.1 tests

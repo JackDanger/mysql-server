@@ -1,6 +1,6 @@
 source suite/federated/include/federated.inc;
 
-connection slave;
+connection replica;
 DROP TABLE IF EXISTS federated.t1;
 #SHOW ENGINES;
 CREATE TABLE federated.t1 (
@@ -9,16 +9,16 @@ CREATE TABLE federated.t1 (
     )
   DEFAULT CHARSET=latin1 ENGINE=innodb;
 
-connection master;
+connection primary;
 DROP TABLE IF EXISTS federated.t1;
 # # correct connection, same named tables
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.t1 (
     `id` int(20) NOT NULL,
     `name` varchar(32) NOT NULL default ''
     )
   ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-  CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/federated/t1';
+  CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/federated/t1';
 
 set autocommit=0;
 INSERT INTO federated.t1 (id, name) VALUES (1, 'foo');

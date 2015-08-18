@@ -1,4 +1,4 @@
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 #
 # BUG#5551 "Failed OPTIMIZE TABLE is logged to binary log"
@@ -16,11 +16,11 @@ eval CREATE TABLE t1 ( a int ) ENGINE=$engine_type;
 BEGIN;
 INSERT INTO t1 VALUES (1);
 
-connection master1;
+connection primary1;
 OPTIMIZE TABLE non_existing;  
-sync_slave_with_master;
+sync_replica_with_primary;
 
-connection master;
+connection primary;
 select * from t1;
 commit;
 drop table t1;

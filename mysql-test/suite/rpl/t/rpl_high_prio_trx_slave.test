@@ -9,19 +9,19 @@
 
 --source include/have_debug.inc
 --source include/have_debug_sync.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 SET GLOBAL DEBUG="+d,dbug_set_high_prio_sql_thread";
 
 # now applier thread starts with high prio
 # since we are now setting the internal flag
---source include/stop_slave_sql.inc
---source include/start_slave_sql.inc
+--source include/stop_replica_sql.inc
+--source include/start_replica_sql.inc
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 
-####### MASTER #######
+####### PRIMARY #######
 CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (0);
 
@@ -31,26 +31,26 @@ INSERT INTO t1 VALUES (0);
 --source include/rpl_connect.inc
 
 --echo [connection sigcon]
---let $sync_slave_connection= sigcon
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= sigcon
+--source include/sync_replica_sql_with_primary.inc
 
 SET DEBUG_SYNC='ha_innobase_end_statement WAIT_FOR waiting1';
 
 BEGIN;
 --send UPDATE t1 SET c1=99 WHERE c1=0
 
-####### SLAVE #######
---source include/rpl_connection_slave.inc
+####### REPLICA #######
+--source include/rpl_connection_replica.inc
 # Wait until sigcon reaches the ha_innobase_update_row_done debug sync point.
 --let $wait_condition=SELECT COUNT(*)=1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE State = 'debug sync point: ha_innobase_end_statement'
 --source include/wait_condition.inc
 
-####### MASTER #######
---source include/rpl_connection_master.inc
+####### PRIMARY #######
+--source include/rpl_connection_primary.inc
 UPDATE t1 SET c1=1 WHERE c1=0;
 
-####### SLAVE #######
---source include/rpl_connection_slave.inc
+####### REPLICA #######
+--source include/rpl_connection_replica.inc
 
 # Wait for c1 in t1 to be 1
 --let $wait_condition=SELECT COUNT(*)=1 FROM t1 WHERE c1=1
@@ -74,10 +74,10 @@ COMMIT;
 
 --disconnect sigcon
 
-####### SLAVE #######
---connection master
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+####### REPLICA #######
+--connection primary
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
 --let $assert_text= 'There is a 1 in t1'
 --let $assert_cond= [SELECT COUNT(*) AS count FROM t1 WHERE t1.c1 = 1, count, 1] = 1
@@ -92,13 +92,13 @@ COMMIT;
 --source include/assert.inc
 
 # Clean up.
---connection master
+--connection primary
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # resetting the applier thread
---source include/stop_slave_sql.inc
+--source include/stop_replica_sql.inc
 SET GLOBAL DEBUG="-d,dbug_set_high_prio_sql_thread";
---source include/start_slave_sql.inc
+--source include/start_replica_sql.inc
 
 --source include/rpl_end.inc

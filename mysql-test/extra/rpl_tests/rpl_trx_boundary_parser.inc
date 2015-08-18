@@ -1,7 +1,7 @@
 # ==== Purpose ====
 #
-# This include will insert some data into a table at the master varying the
-# debug sync point at slave that will be used to stop the IO thread in the
+# This include will insert some data into a table at the primary varying the
+# debug sync point at replica that will be used to stop the IO thread in the
 # middle of transaction event stream (trying to let partial transactions in
 # the relay log).
 #
@@ -30,15 +30,15 @@ if ( `SELECT '$storage_engine' != '' AND UPPER('$storage_engine') <> 'INNODB' AN
 }
 
 --echo ## Running the test with the SQL thread stopped
---source include/rpl_connection_slave.inc
---source include/stop_slave_sql.inc
+--source include/rpl_connection_replica.inc
+--source include/stop_replica_sql.inc
 --source extra/rpl_tests/rpl_trx_boundary_parser_all_steps.inc
 
 --echo ## Starting and syncing the SQL thread before next round
---source include/rpl_connection_slave.inc
---source include/start_slave_sql.inc
---source include/rpl_connection_master.inc
---source include/sync_slave_sql_with_master.inc
+--source include/rpl_connection_replica.inc
+--source include/start_replica_sql.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo ## Running the test with the SQL thread started
 --source extra/rpl_tests/rpl_trx_boundary_parser_all_steps.inc

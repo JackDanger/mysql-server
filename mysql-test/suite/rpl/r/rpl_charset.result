@@ -1,23 +1,23 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 set timestamp=1000000000;
 create database mysqltest2 character set latin2;
 set @@character_set_server=latin5;
 create database mysqltest3;
 
---- --master--
+--- --primary--
 show create database mysqltest2;
 Database	Create Database
 mysqltest2	CREATE DATABASE `mysqltest2` /*!40100 DEFAULT CHARACTER SET latin2 */
 show create database mysqltest3;
 Database	Create Database
 mysqltest3	CREATE DATABASE `mysqltest3` /*!40100 DEFAULT CHARACTER SET latin5 */
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
---- --slave--
+--- --replica--
 show create database mysqltest2;
 Database	Create Database
 mysqltest2	CREATE DATABASE `mysqltest2` /*!40100 DEFAULT CHARACTER SET latin2 */
@@ -28,13 +28,13 @@ set @@collation_server=armscii8_bin;
 drop database mysqltest3;
 create database mysqltest3;
 
---- --master--
+--- --primary--
 show create database mysqltest3;
 Database	Create Database
 mysqltest3	CREATE DATABASE `mysqltest3` /*!40100 DEFAULT CHARACTER SET armscii8 COLLATE armscii8_bin */
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
---- --slave--
+--- --replica--
 show create database mysqltest3;
 Database	Create Database
 mysqltest3	CREATE DATABASE `mysqltest3` /*!40100 DEFAULT CHARACTER SET armscii8 COLLATE armscii8_bin */
@@ -46,7 +46,7 @@ insert into t1 (b) values(@@collation_server);
 insert into t1 (b) values(@@character_set_client);
 insert into t1 (b) values(@@character_set_connection);
 insert into t1 (b) values(@@collation_connection);
---- --master--
+--- --primary--
 select * from t1 order by a;
 a	b
 1	armscii8
@@ -54,8 +54,8 @@ a	b
 3	cp850
 4	latin2
 5	latin2_croatian_ci
-include/sync_slave_sql_with_master.inc
---- --slave--
+include/sync_replica_sql_with_primary.inc
+--- --replica--
 select * from mysqltest2.t1 order by a;
 a	b
 1	armscii8
@@ -70,15 +70,15 @@ insert into t1 (b) values(LEAST("Müller","Muffler"));
 set collation_connection=latin1_german2_ci;
 insert into t1 (b) values(@@collation_connection);
 insert into t1 (b) values(LEAST("Müller","Muffler"));
---- --master--
+--- --primary--
 select * from t1 order by a;
 a	b
 1	latin1_german1_ci
 2	Muffler
 3	latin1_german2_ci
 4	Müller
-include/sync_slave_sql_with_master.inc
---- --slave--
+include/sync_replica_sql_with_primary.inc
+--- --replica--
 select * from mysqltest2.t1 order by a;
 a	b
 1	latin1_german1_ci
@@ -88,18 +88,18 @@ a	b
 set @a= _cp850 'Müller' collate cp850_general_ci;
 truncate table t1;
 insert into t1 (b) values(collation(@a));
---- --master--
+--- --primary--
 select * from t1 order by a;
 a	b
 1	cp850_general_ci
-include/sync_slave_sql_with_master.inc
---- --slave--
+include/sync_replica_sql_with_primary.inc
+--- --replica--
 select * from mysqltest2.t1 order by a;
 a	b
 1	cp850_general_ci
 drop database mysqltest2;
 drop database mysqltest3;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 set global character_set_server=latin2;
 set global character_set_server=latin1;
 set global character_set_server=latin2;
@@ -117,12 +117,12 @@ INSERT INTO t1 (c1, c2) VALUES ('îÕ, ÚÁ ÒÙÂÁÌËÕ','îÕ, ÚÁ ÒÙÂÁÌËÕ');
 select hex(c1), hex(c2) from t1;
 hex(c1)	hex(c2)
 CDF32C20E7E020F0FBE1E0EBEAF3	CDF32C20E7E020F0FBE1E0EBEAF3
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select hex(c1), hex(c2) from t1;
 hex(c1)	hex(c2)
 CDF32C20E7E020F0FBE1E0EBEAF3	CDF32C20E7E020F0FBE1E0EBEAF3
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 create table `t1` (
 `pk` varchar(10) not null default '', 
 primary key (`pk`)

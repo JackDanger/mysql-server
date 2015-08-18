@@ -473,8 +473,8 @@ node_restart_status_int	int(10) unsigned	YES		NULL
 secs_to_complete_node_failure	int(10) unsigned	YES		NULL	
 secs_to_allocate_node_id	int(10) unsigned	YES		NULL	
 secs_to_include_in_heartbeat_protocol	int(10) unsigned	YES		NULL	
-secs_until_wait_for_ndbcntr_master	int(10) unsigned	YES		NULL	
-secs_wait_for_ndbcntr_master	int(10) unsigned	YES		NULL	
+secs_until_wait_for_ndbcntr_primary	int(10) unsigned	YES		NULL	
+secs_wait_for_ndbcntr_primary	int(10) unsigned	YES		NULL	
 secs_to_get_start_permitted	int(10) unsigned	YES		NULL	
 secs_to_wait_for_lcp_for_copy_meta_data	int(10) unsigned	YES		NULL	
 secs_to_copy_meta_data	int(10) unsigned	YES		NULL	
@@ -490,7 +490,7 @@ secs_wait_lcp_for_restart	int(10) unsigned	YES		NULL
 secs_wait_subscription_handover	int(10) unsigned	YES		NULL	
 total_restart_secs	int(10) unsigned	YES		NULL	
 select * from restart_info;
-node_id	node_restart_status	node_restart_status_int	secs_to_complete_node_failure	secs_to_allocate_node_id	secs_to_include_in_heartbeat_protocol	secs_until_wait_for_ndbcntr_master	secs_wait_for_ndbcntr_master	secs_to_get_start_permitted	secs_to_wait_for_lcp_for_copy_meta_data	secs_to_copy_meta_data	secs_to_include_node	secs_starting_node_to_request_local_recovery	secs_for_local_recovery	secs_restore_fragments	secs_undo_disk_data	secs_exec_redo_log	secs_index_rebuild	secs_to_synchronize_starting_node	secs_wait_lcp_for_restart	secs_wait_subscription_handover	total_restart_secs
+node_id	node_restart_status	node_restart_status_int	secs_to_complete_node_failure	secs_to_allocate_node_id	secs_to_include_in_heartbeat_protocol	secs_until_wait_for_ndbcntr_primary	secs_wait_for_ndbcntr_primary	secs_to_get_start_permitted	secs_to_wait_for_lcp_for_copy_meta_data	secs_to_copy_meta_data	secs_to_include_node	secs_starting_node_to_request_local_recovery	secs_for_local_recovery	secs_restore_fragments	secs_undo_disk_data	secs_exec_redo_log	secs_index_rebuild	secs_to_synchronize_starting_node	secs_wait_lcp_for_restart	secs_wait_subscription_handover	total_restart_secs
 
 desc cluster_transactions;
 Field	Type	Null	Key	Default	Extra

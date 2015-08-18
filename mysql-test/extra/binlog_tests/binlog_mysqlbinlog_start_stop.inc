@@ -9,7 +9,7 @@
 # TODO: Need to look at making row based version once new binlog client is complete.
 
 CREATE TABLE t1 (a INT);
-RESET MASTER;
+RESET PRIMARY;
 
 --source extra/binlog_tests/binlog_mysqlbinlog_fill.inc
 
@@ -40,7 +40,7 @@ RESET MASTER;
 
 --let $stop_position= $pos_2
 --let $stop_datetime= $datetime_2
---let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT $file_1
+--let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT $file_1
 --source extra/binlog_tests/mysqlbinlog_start_stop_1.inc
 
 --echo
@@ -48,13 +48,13 @@ RESET MASTER;
 
 --let $stop_position= $pos_3
 --let $stop_datetime= $datetime_3
---let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT $file_1 $file_2
+--let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT $file_1 $file_2
 --source extra/binlog_tests/mysqlbinlog_start_stop_1.inc
 
 
 # ==== to-last-log ====
 
---let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT $file_1
+--let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT $file_1
 --let $options= --to-last-log
 --source extra/binlog_tests/mysqlbinlog_start_stop_2.inc
 

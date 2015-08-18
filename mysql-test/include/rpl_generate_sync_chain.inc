@@ -11,7 +11,7 @@
 # characters, followed by a sequence of numbers, each number
 # whitespace-padded to $rpl_server_count_length characters. Each
 # number in the sequence denotes a server, and the N'th server is a
-# master of the (N+1)'th server. For example, if $rpl_topology is
+# primary of the (N+1)'th server. For example, if $rpl_topology is
 # '1->2,2->3,3->1,2->4,5->6', then $rpl_sync_chain is ' 56 123124'.
 #
 #
@@ -34,11 +34,11 @@
 # 1. Let S be a server that is marked unseen.
 # 2. Append S to the list of seen servers.
 # 3. Check how S is marked:
-#    3.1. If S has no master: append the list of seen servers (in
-#         order from grand-master to grand-slave) to the end of
+#    3.1. If S has no primary: append the list of seen servers (in
+#         order from grand-primary to grand-replica) to the end of
 #         $rpl_sync_chain. Go to 3.
 #    3.2. Elseif S is marked as synced: append the list of seen
-#         servers (in order from grand-master to grand-slave) to the
+#         servers (in order from grand-primary to grand-replica) to the
 #         end of $rpl_sync_chain. Go to 3.
 #    3.3. Elseif S is marked as unsynced but seen: This means that the
 #         graph of visited servers has a "6-shape": it is a loop with
@@ -48,15 +48,15 @@
 #         servers. For example, the loop 1->2->3->4->5->1 is fully
 #         synced by this sequence of 1-step synchronizations:
 #         1->2->3->4->5->1->2->3->4. Hence we do this: in the list of
-#         traversed servers (in order from grand-master to
-#         grand-slave), find the first occurrence of S. Take the
+#         traversed servers (in order from grand-primary to
+#         grand-replica), find the first occurrence of S. Take the
 #         sub-list starting at the 3rd server and ending at the first
 #         occurrence of S. Append this sub-list it to the end of
 #         $rpl_sync_chain. Then append the entire list of traversed
-#         servers (in order from grand-master to grand-slave) to
+#         servers (in order from grand-primary to grand-replica) to
 #         $rpl_sync_chain. Go to 3.
-#    3.4. Else (i.e., S has a master and is not marked as seen or
-#         synced): Mark S as seen. Set S=master(S) and go back to 2.
+#    3.4. Else (i.e., S has a primary and is not marked as seen or
+#         synced): Mark S as seen. Set S=primary(S) and go back to 2.
 # 4. For each server that is marked as seen, mark it as synced.
 # 5. If there are unseen servers, go back to 1.
 
@@ -73,17 +73,17 @@ while ($_rpl_start_server)
   --let $_rpl_continue_loop= 1
   while ($_rpl_continue_loop)
   {
-    # Set $_rpl_master to the master of $_rpl_server, or '' if it does
+    # Set $_rpl_primary to the primary of $_rpl_server, or '' if it does
     # not have one.
-    --let $_rpl_slave_position= LOCATE('s$_rpl_server ', '$rpl_connection_list')
-    --let $_rpl_master= `SELECT IF($_rpl_slave_position > 0, SUBSTRING('$rpl_connection_list', $_rpl_slave_position - 1 - $rpl_server_count_length, $rpl_server_count_length), '$_rpl_no_server')`
+    --let $_rpl_replica_position= LOCATE('s$_rpl_server ', '$rpl_connection_list')
+    --let $_rpl_primary= `SELECT IF($_rpl_replica_position > 0, SUBSTRING('$rpl_connection_list', $_rpl_replica_position - 1 - $rpl_server_count_length, $rpl_server_count_length), '$_rpl_no_server')`
 
     # We need to delimit elements of $_rpl_seen_list with commas, so
     # that LOCATE() below will not find spurious matches that begin in
     # the middle of one element and end in the middle of next element.
     --let $_rpl_seen_list= $_rpl_server,$_rpl_seen_list
-    # If server is marked seen or synced, or has no master
-    if (`SELECT SUBSTRING('$_rpl_server_marks', $_rpl_server, 1) != 0 OR '$_rpl_master' = ''`)
+    # If server is marked seen or synced, or has no primary
+    if (`SELECT SUBSTRING('$_rpl_server_marks', $_rpl_server, 1) != 0 OR '$_rpl_primary' = ''`)
     {
       # If server is marked seen but not synced.
       if (`SELECT SUBSTRING('$_rpl_server_marks', $_rpl_server, 1) = 1`)
@@ -106,7 +106,7 @@ while ($_rpl_start_server)
       --let $_rpl_continue_loop= 0
     }
     --let $_rpl_server_marks= `SELECT INSERT('$_rpl_server_marks', $_rpl_server, 1, '1')`
-    --let $_rpl_server= $_rpl_master
+    --let $_rpl_server= $_rpl_primary
   }
   # Mark seen servers as synced
   --let $_rpl_server_marks= `SELECT REPLACE('$_rpl_server_marks', '1', '2')`

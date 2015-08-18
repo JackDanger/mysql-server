@@ -31,7 +31,7 @@ size_t pack_row(TABLE* table, MY_BITMAP const* cols,
 int unpack_row(Relay_log_info const *rli,
                TABLE *table, uint const colcnt,
                uchar const *const row_data, MY_BITMAP const *cols,
-               uchar const **const curr_row_end, ulong *const master_reclength,
+               uchar const **const curr_row_end, ulong *const primary_reclength,
                uchar const *const row_end);
 
 // Fill table's record[0] with default values.

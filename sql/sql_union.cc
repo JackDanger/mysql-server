@@ -404,7 +404,7 @@ bool st_select_lex_unit::prepare_fake_select_lex(THD *thd_arg)
     fake_select_lex->n_child_sum_items+= fake_select_lex->n_sum_items;
 
   DBUG_ASSERT(fake_select_lex->with_wild == 0 &&
-              fake_select_lex->master_unit() == this &&
+              fake_select_lex->primary_unit() == this &&
               !fake_select_lex->group_list.elements &&
               fake_select_lex->where_cond() == NULL &&
               fake_select_lex->having_cond() == NULL);
@@ -693,7 +693,7 @@ bool st_select_lex_unit::optimize(THD *thd)
       to reset them back, we re-do all of the actions (yes it is ugly).
     */
     DBUG_ASSERT(fake_select_lex->with_wild == 0 &&
-                fake_select_lex->master_unit() == this &&
+                fake_select_lex->primary_unit() == this &&
                 !fake_select_lex->group_list.elements &&
                 fake_select_lex->get_table_list() == &result_table_list &&
                 fake_select_lex->where_cond() == NULL &&

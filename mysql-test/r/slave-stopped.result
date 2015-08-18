@@ -1,3 +1,3 @@
-show status like 'Slave_running';
+show status like 'Replica_running';
 Variable_name	Value
-Slave_running	OFF
+Replica_running	OFF

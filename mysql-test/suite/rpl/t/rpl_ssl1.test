@@ -1,174 +1,174 @@
 --source include/not_group_replication_plugin.inc
 source include/have_ssl_communication.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 # We don't test all types of ssl auth params here since it's a bit hard 
 # until problems with OpenSSL 0.9.7 are unresolved
 
 # creating replication user for whom ssl auth is required
 # preparing playground
-connection master;
+connection primary;
 SET SQL_LOG_BIN= 0;
 set @orig_sql_mode= @@sql_mode;
 set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
-grant replication slave on *.* to replssl@localhost require ssl;
+grant replication replica on *.* to replssl@localhost require ssl;
 set sql_mode= @orig_sql_mode;
 SET SQL_LOG_BIN= 1;
 create table t1 (t int);
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #trying to use this user without ssl
-stop slave;
---source include/wait_for_slave_to_stop.inc
+stop replica;
+--source include/wait_for_replica_to_stop.inc
 --replace_column 2 ####
-change master to master_user='replssl',master_password='';
-start slave;
+change primary to primary_user='replssl',primary_password='';
+start replica;
 
 #showing that replication don't work
-connection master;
+connection primary;
 insert into t1 values (1);
-#reasonable timeout for changes to propagate to slave
+#reasonable timeout for changes to propagate to replica
 let $wait_condition= SELECT COUNT(*) = 1 FROM t1;
 source include/wait_condition_or_abort.inc;
-connection slave;
+connection replica;
 select * from t1;
 
 #showing that replication could work with ssl params
-stop slave;
---source include/wait_for_slave_to_stop.inc
+stop replica;
+--source include/wait_for_replica_to_stop.inc
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
 --replace_column 2 ####
-eval change master to master_ssl=1 , master_ssl_ca ='$MYSQL_TEST_DIR/std_data/cacert.pem', master_ssl_cert='$MYSQL_TEST_DIR/std_data/client-cert.pem', master_ssl_key='$MYSQL_TEST_DIR/std_data/client-key.pem';
-start slave;
---source include/wait_for_slave_to_start.inc
+eval change primary to primary_ssl=1 , primary_ssl_ca ='$MYSQL_TEST_DIR/std_data/cacert.pem', primary_ssl_cert='$MYSQL_TEST_DIR/std_data/client-cert.pem', primary_ssl_key='$MYSQL_TEST_DIR/std_data/client-key.pem';
+start replica;
+--source include/wait_for_replica_to_start.inc
 
 #avoiding unneeded sleeps
-connection master;
---source include/sync_slave_sql_with_master.inc
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
 
 #checking that replication is ok
 select * from t1;
 
-#checking show slave status
-let $status_items= Master_SSL_Allowed, Master_SSL_CA_Path, Master_SSL_CA_File, Master_SSL_Cert, Master_SSL_Key;
-source include/show_slave_status.inc;
-source include/check_slave_is_running.inc;
+#checking show replica status
+let $status_items= Primary_SSL_Allowed, Primary_SSL_CA_Path, Primary_SSL_CA_File, Primary_SSL_Cert, Primary_SSL_Key;
+source include/show_replica_status.inc;
+source include/check_replica_is_running.inc;
 
 #checking if replication works without ssl also performing clean up
-stop slave;
---source include/wait_for_slave_to_stop.inc
+stop replica;
+--source include/wait_for_replica_to_stop.inc
 --replace_column 2 ####
-change master to master_user='root',master_password='', master_ssl=0;
-start slave;
---source include/wait_for_slave_to_start.inc
-connection master;
+change primary to primary_user='root',primary_password='', primary_ssl=0;
+start replica;
+--source include/wait_for_replica_to_start.inc
+connection primary;
 SET SQL_LOG_BIN= 0;
 drop user replssl@localhost;
 SET SQL_LOG_BIN= 1;
 drop table t1;
 
---source include/sync_slave_sql_with_master.inc
-source include/show_slave_status.inc;
-source include/check_slave_is_running.inc;
+--source include/sync_replica_sql_with_primary.inc
+source include/show_replica_status.inc;
+source include/check_replica_is_running.inc;
 # End of 4.1 tests
 
 # Start replication with ssl_verify_server_cert turned on
-connection slave;
-stop slave;
---source include/wait_for_slave_to_stop.inc
+connection replica;
+stop replica;
+--source include/wait_for_replica_to_stop.inc
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
 --replace_column 2 ####
-eval change master to
- master_host="localhost",
- master_ssl=1 ,
- master_ssl_ca ='$MYSQL_TEST_DIR/std_data/cacert.pem',
- master_ssl_cert='$MYSQL_TEST_DIR/std_data/client-cert.pem',
- master_ssl_key='$MYSQL_TEST_DIR/std_data/client-key.pem',
- master_ssl_verify_server_cert=1;
-start slave;
---source include/wait_for_slave_to_start.inc
+eval change primary to
+ primary_host="localhost",
+ primary_ssl=1 ,
+ primary_ssl_ca ='$MYSQL_TEST_DIR/std_data/cacert.pem',
+ primary_ssl_cert='$MYSQL_TEST_DIR/std_data/client-cert.pem',
+ primary_ssl_key='$MYSQL_TEST_DIR/std_data/client-key.pem',
+ primary_ssl_verify_server_cert=1;
+start replica;
+--source include/wait_for_replica_to_start.inc
 
-connection master;
+connection primary;
 create table t1 (t int);
 insert into t1 values (1);
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-echo on slave;
+echo on replica;
 #checking that replication is ok
 select * from t1;
 
-#checking show slave status
-source include/show_slave_status.inc;
---source include/check_slave_is_running.inc
+#checking show replica status
+source include/show_replica_status.inc;
+--source include/check_replica_is_running.inc
 
 # ==== Clean up ====
 
-connection master;
+connection primary;
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 ###############################################################################
-# BUG#18778485 SSL_VERIFY_SERVER_CERT AUTOMATICALLY SETS TO NO POST RESET SLAVE
+# BUG#18778485 SSL_VERIFY_SERVER_CERT AUTOMATICALLY SETS TO NO POST RESET REPLICA
 #              COMMAND
 #
-# Due to the buggy behaviour, a RESET SLAVE command on the slave server
-# reset ssl_verify_server_cert= 0. RESET SLAVE is generally expected to
-# delete slave logs and forget the replicaiton positions. This erroneous
+# Due to the buggy behaviour, a RESET REPLICA command on the replica server
+# reset ssl_verify_server_cert= 0. RESET REPLICA is generally expected to
+# delete replica logs and forget the replicaiton positions. This erroneous
 # behavior was therefore counterintuitive.
 #
 # We test the following:
-# - The behaviour of ssl_verify_server_cert with RESET SLAVE.
-# - Test that neither of STOP SLAVE or START SLAVE affects the value of
+# - The behaviour of ssl_verify_server_cert with RESET REPLICA.
+# - Test that neither of STOP REPLICA or START REPLICA affects the value of
 #   ssl_verify_server_cert.
-# - Test that CHANGE MASTER with no ssl_verify_server_cert option doesnt
+# - Test that CHANGE PRIMARY with no ssl_verify_server_cert option doesnt
 #   affect ssl_verify_server_cert value.
 ##############################################################################
 
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
---let $assert_cond= "[SHOW SLAVE STATUS, Master_SSL_Verify_Server_Cert, 1]" = "Yes"
---let $assert_text= Master_SSL_Verify_Server_Cert should NOT change on STOP SLAVE.
+--let $assert_cond= "[SHOW REPLICA STATUS, Primary_SSL_Verify_Server_Cert, 1]" = "Yes"
+--let $assert_text= Primary_SSL_Verify_Server_Cert should NOT change on STOP REPLICA.
 --source include/assert.inc
 
---let $log_file= query_get_value(SHOW SLAVE STATUS, Master_Log_File, 1)
---let $log_pos= query_get_value(SHOW SLAVE STATUS, Read_Master_Log_Pos, 1)
+--let $log_file= query_get_value(SHOW REPLICA STATUS, Primary_Log_File, 1)
+--let $log_pos= query_get_value(SHOW REPLICA STATUS, Read_Primary_Log_Pos, 1)
 
-RESET SLAVE;
+RESET REPLICA;
 
---let $assert_cond= "[SHOW SLAVE STATUS, Master_SSL_Verify_Server_Cert, 1]" = "Yes"
---let $assert_text= Master_SSL_Verify_Server_Cert should NOT change on RESET SLAVE.
+--let $assert_cond= "[SHOW REPLICA STATUS, Primary_SSL_Verify_Server_Cert, 1]" = "Yes"
+--let $assert_text= Primary_SSL_Verify_Server_Cert should NOT change on RESET REPLICA.
 --source include/assert.inc
 
---replace_result $MASTER_MYPORT MASTER_MYPORT
---eval CHANGE MASTER TO MASTER_PORT= $MASTER_MYPORT
+--replace_result $PRIMARY_MYPORT PRIMARY_MYPORT
+--eval CHANGE PRIMARY TO PRIMARY_PORT= $PRIMARY_MYPORT
 
---let $assert_cond= "[SHOW SLAVE STATUS, Master_SSL_Verify_Server_Cert, 1]" = "Yes"
---let $assert_text= Master_SSL_Verify_Server_Cert should NOT change on CHANGE MASTER.
+--let $assert_cond= "[SHOW REPLICA STATUS, Primary_SSL_Verify_Server_Cert, 1]" = "Yes"
+--let $assert_text= Primary_SSL_Verify_Server_Cert should NOT change on CHANGE PRIMARY.
 --source include/assert.inc
 
---source include/start_slave.inc
---let $assert_cond= "[SHOW SLAVE STATUS, Master_SSL_Verify_Server_Cert, 1]" = "Yes"
---let $assert_text= Master_SSL_Verify_Server_Cert should NOT change on START SLAVE.
+--source include/start_replica.inc
+--let $assert_cond= "[SHOW REPLICA STATUS, Primary_SSL_Verify_Server_Cert, 1]" = "Yes"
+--let $assert_text= Primary_SSL_Verify_Server_Cert should NOT change on START REPLICA.
 --source include/assert.inc
 
---connection master
+--connection primary
 --disable_warnings
 DROP TABLE IF EXISTS t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --enable_warnings
 
---source include/stop_slave.inc
-# Clean change master options.
+--source include/stop_replica.inc
+# Clean change primary options.
 --replace_column 2 ####
-CHANGE MASTER TO
- master_host="127.0.0.1",
- master_ssl_ca ='',
- master_ssl_cert='',
- master_ssl_key='',
- master_ssl_verify_server_cert=0,
- master_ssl=0;
+CHANGE PRIMARY TO
+ primary_host="127.0.0.1",
+ primary_ssl_ca ='',
+ primary_ssl_cert='',
+ primary_ssl_key='',
+ primary_ssl_verify_server_cert=0,
+ primary_ssl=0;
 
 --let $rpl_only_running_threads= 1
 --source include/rpl_end.inc

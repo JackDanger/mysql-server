@@ -46,7 +46,7 @@ Ndb* check_ndb_in_thd(THD* thd, bool validate_ndb)
       return NULL;
   }
 
-  DBUG_ASSERT(thd_ndb->is_slave_thread() == thd->slave_thread);
+  DBUG_ASSERT(thd_ndb->is_replica_thread() == thd->replica_thread);
 
   return thd_ndb->ndb;
 }
@@ -73,20 +73,20 @@ thd_print_warning_list(THD* thd, const char* prefix)
 bool
 applying_binlog(const THD* thd)
 {
-  if (thd->slave_thread)
+  if (thd->replica_thread)
   {
-    DBUG_PRINT("info", ("THD is slave thread"));
+    DBUG_PRINT("info", ("THD is replica thread"));
     return true;
   }
 
   if (thd->rli_fake)
   {
     /*
-      Thread is in "pseudo_slave_mode" which is entered implicitly when the
+      Thread is in "pseudo_replica_mode" which is entered implicitly when the
       first BINLOG statement is executed (see 'mysql_client_binlog_statement')
-      and explicitly ended when SET @pseudo_slave_mode=0 is finally executed.
+      and explicitly ended when SET @pseudo_replica_mode=0 is finally executed.
     */
-    DBUG_PRINT("info", ("THD is in pseduo slave mode"));
+    DBUG_PRINT("info", ("THD is in pseduo replica mode"));
     return true;
   }
 

@@ -3,61 +3,61 @@
 # Test that temporary tables are correctly replicated after switching to ROW format in MIX mode.
 # This test case will test the condition of the bug#40013.
 # The test step is:
-#   1: create temp table on connection 'master';
+#   1: create temp table on connection 'primary';
 #   2: switch to ROW format using 'INSERT INTO t1 VALUES (UUID());'
-#   3: disconnect 'master' and connect to a new connection 'master1';
-#   4: sync to slave and check the number of temp tables on slave.
+#   3: disconnect 'primary' and connect to a new connection 'primary1';
+#   4: sync to replica and check the number of temp tables on replica.
 #
 
 source include/not_gtid_enabled.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/have_binlog_format_mixed.inc;
 source include/have_innodb.inc;
 source include/have_myisam.inc;
 
 --echo ==== Initialize ====
 
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 
 CREATE TABLE t1 (a CHAR(48));
 CREATE TEMPORARY TABLE t1_tmp1(a INT);
 INSERT INTO t1 VALUES (UUID());
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 
---echo ==== Verify results on slave ====
-SHOW STATUS LIKE "Slave_open_temp_tables";
+--echo ==== Verify results on replica ====
+SHOW STATUS LIKE "Replica_open_temp_tables";
 
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 
-disconnect master;
---echo [on master1]
---connection master1
+disconnect primary;
+--echo [on primary1]
+--connection primary1
 
 # waiting DROP TEMPORARY TABLE event to be written into binlog
 let $wait_binlog_event= DROP;
 source include/wait_for_binlog_event.inc;
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 
---echo ==== Verify results on slave ====
-SHOW STATUS LIKE "Slave_open_temp_tables";
+--echo ==== Verify results on replica ====
+SHOW STATUS LIKE "Replica_open_temp_tables";
 
 --echo ==== Clean up ====
 
---echo [on master]
---let $rpl_connection_name= master
+--echo [on primary]
+--let $rpl_connection_name= primary
 --let $rpl_server_number= 1
 --source include/rpl_connect.inc
---connection master
+--connection primary
 DROP TABLE t1;
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # BUG#43046: mixed mode switch to row format with temp table lead to wrong
@@ -92,11 +92,11 @@ DROP TABLE t1;
 #        exists).
 #     9. drop t2_tmp and issue deterministic statement: should log drop and
 #        query in statement format (show switch back to STATEMENT format)
-#    10. in the end the slave should not have open temp tables.
+#    10. in the end the replica should not have open temp tables.
 #  
 
 --source include/rpl_reset.inc
--- connection master
+-- connection primary
 
 # action: setup environment
 CREATE TABLE t1 (a int);
@@ -119,16 +119,16 @@ CREATE TEMPORARY TABLE t2_tmp (a int);
 # assertion: assert that ALTER TABLE on t1_tmp will not make into the binlog
 ALTER TABLE t1_tmp ADD COLUMN c INT;
 
--- echo ### assertion: assert that there is one open temp table on slave
---source include/sync_slave_sql_with_master.inc
-SHOW STATUS LIKE 'Slave_open_temp_tables';
+-- echo ### assertion: assert that there is one open temp table on replica
+--source include/sync_replica_sql_with_primary.inc
+SHOW STATUS LIKE 'Replica_open_temp_tables';
 
--- connection master
+-- connection primary
 
 # assertion: assert that both drops are logged
 DROP TABLE t1_tmp, t2;
 
-# assertion: assert that statement is logged as row (master still has one
+# assertion: assert that statement is logged as row (primary still has one
 #            opened temporary table - t2_tmp.
 INSERT INTO t1 VALUES (1);
 
@@ -139,27 +139,27 @@ DROP TEMPORARY TABLE t2_tmp;
 #            back to STATEMENT).
 INSERT INTO t1 VALUES (2);
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
--- echo ### assertion: assert that slave has no temporary tables opened
-SHOW STATUS LIKE 'Slave_open_temp_tables';
+-- echo ### assertion: assert that replica has no temporary tables opened
+SHOW STATUS LIKE 'Replica_open_temp_tables';
 
--- connection master
+-- connection primary
 
 # action: drop remaining tables
 DROP TABLE t3, t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 -- source include/show_binlog_events.inc
 
 --echo
 --echo # Bug#55478 Row events wrongly apply on the temporary table of the same name
 --echo # ==========================================================================
-connection master;
+connection primary;
 
-let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 
 --echo # The statement should be binlogged
 CREATE TEMPORARY TABLE t1(c1 INT) ENGINE=InnoDB;
@@ -167,17 +167,17 @@ CREATE TEMPORARY TABLE t1(c1 INT) ENGINE=InnoDB;
 --echo
 --echo # Case 1: CREATE TABLE t1 ... SELECT
 --echo # ----------------------------------
-let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 
 --echo
 --echo # The statement generates row events on t1. And the rows events should
---echo # be inserted into the base table on slave.
+--echo # be inserted into the base table on replica.
 CREATE TABLE t1 ENGINE=MyISAM SELECT rand();
 
 source include/show_binlog_events.inc;
-let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 
 --echo
 --echo # Case 2: DROP TEMPORARY TABLE in a transacation
@@ -200,16 +200,16 @@ COMMIT;
 
 source include/show_binlog_events.inc;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo # Compare the base table.
---let $diff_tables= master:t1, slave:t1
+--let $diff_tables= primary:t1, replica:t1
 --source include/diff_tables.inc
 
 --echo
-connection master;
+connection primary;
 DROP TABLE t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

@@ -25,7 +25,7 @@
    --start-position.
    An important fact: the Format_desc event of the log is at most the 3rd event
    of the log; if it is the 3rd then there is this combination:
-   Format_desc_of_slave, Rotate_of_master, Format_desc_of_master.
+   Format_desc_of_replica, Rotate_of_primary, Format_desc_of_primary.
 */
 
 #define MYSQL_CLIENT
@@ -327,7 +327,7 @@ static my_bool force_if_open_opt= 1, raw_mode= 0;
 static my_bool to_last_remote_log= 0, stop_never= 0;
 static my_bool opt_verify_binlog_checksum= 1;
 static ulonglong offset = 0;
-static int64 stop_never_slave_server_id= -1;
+static int64 stop_never_replica_server_id= -1;
 static int64 connection_server_id= -1;
 static char* host = 0;
 static int port= 0;
@@ -959,7 +959,7 @@ static bool shall_skip_gtids(Log_event* ev)
 
     /*
       Never skip STOP, FD, ROTATE, IGNORABLE or INCIDENT events.
-      SLAVE_EVENT and START_EVENT_V3 are there for completion.
+      REPLICA_EVENT and START_EVENT_V3 are there for completion.
 
       Although in the binlog transactions do not span multiple
       log files, in the relay-log, that can happen. As such,
@@ -974,7 +974,7 @@ static bool shall_skip_gtids(Log_event* ev)
       outputted.
     */
     case binary_log::START_EVENT_V3: /* for completion */
-    case binary_log::SLAVE_EVENT: /* for completion */
+    case binary_log::REPLICA_EVENT: /* for completion */
     case binary_log::STOP_EVENT:
     case binary_log::FORMAT_DESCRIPTION_EVENT:
     case binary_log::ROTATE_EVENT:
@@ -1278,14 +1278,14 @@ Exit_status process_event(PRINT_EVENT_INFO *print_event_info, Log_event *ev,
         spawn across two binary log files, they are writen
         at once in binlog). When AUTO_POSITION is enabled
         and if IO thread stopped in between the GTID transaction,
-        upon IO thread restart, Master will send the GTID events
+        upon IO thread restart, Primary will send the GTID events
         again from the begin of the transaction. Hence, we should
         rollback the old transaction.
 
-        If you are reading FD event that came from Master
+        If you are reading FD event that came from Primary
         (first FD event is from the server that owns the relaylog
-        and second one is from Master) and if it's log_pos is > 0
-        then it represents the begin of a master's binary log
+        and second one is from Primary) and if it's log_pos is > 0
+        then it represents the begin of a primary's binary log
         (any unfinished transaction will not be finished) or that
         auto_position is enabled (any partial transaction left will
         not be finished but will be fully retrieved again). On both
@@ -1735,15 +1735,15 @@ static struct my_option my_long_options[] =
    "The protocol to use for connection (tcp, socket, pipe, memory).",
    0, 0, 0, GET_STR,  REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
   {"read-from-remote-server", 'R', "Read binary logs from a MySQL server. "
-   "This is an alias for read-from-remote-master=BINLOG-DUMP-NON-GTIDS.",
+   "This is an alias for read-from-remote-primary=BINLOG-DUMP-NON-GTIDS.",
    &opt_remote_alias, &opt_remote_alias, 0, GET_BOOL, NO_ARG,
    0, 0, 0, 0, 0, 0},
-  {"read-from-remote-master", OPT_REMOTE_PROTO,
+  {"read-from-remote-primary", OPT_REMOTE_PROTO,
    "Read binary logs from a MySQL server through the COM_BINLOG_DUMP or "
    "COM_BINLOG_DUMP_GTID commands by setting the option to either "
    "BINLOG-DUMP-NON-GTIDS or BINLOG-DUMP-GTIDS, respectively. If "
-   "--read-from-remote-master=BINLOG-DUMP-GTIDS is combined with "
-   "--exclude-gtids, transactions can be filtered out on the master "
+   "--read-from-remote-primary=BINLOG-DUMP-GTIDS is combined with "
+   "--exclude-gtids, transactions can be filtered out on the primary "
    "avoiding unnecessary network traffic.",
    &opt_remote_proto_str, &opt_remote_proto_str, 0, GET_STR, REQUIRED_ARG,
    0, 0, 0, 0, 0, 0},
@@ -1815,14 +1815,14 @@ static struct my_option my_long_options[] =
    "it continues to wait till the server disconnects.",
    &stop_never, &stop_never, 0,
    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
-  {"stop-never-slave-server-id", OPT_WAIT_SERVER_ID,
-   "The slave server_id used for --read-from-remote-server --stop-never."
+  {"stop-never-replica-server-id", OPT_WAIT_SERVER_ID,
+   "The replica server_id used for --read-from-remote-server --stop-never."
    " This option cannot be used together with connection-server-id.",
-   &stop_never_slave_server_id, &stop_never_slave_server_id, 0,
+   &stop_never_replica_server_id, &stop_never_replica_server_id, 0,
    GET_LL, REQUIRED_ARG, -1, -1, 0xFFFFFFFFLL, 0, 0, 0},
   {"connection-server-id", OPT_CONNECTION_SERVER_ID,
-   "The slave server_id used for --read-from-remote-server."
-   " This option cannot be used together with stop-never-slave-server-id.",
+   "The replica server_id used for --read-from-remote-server."
+   " This option cannot be used together with stop-never-replica-server-id.",
    &connection_server_id, &connection_server_id, 0,
    GET_LL, REQUIRED_ARG, -1, -1, 0xFFFFFFFFLL, 0, 0, 0},
   {"stop-position", OPT_STOP_POSITION,
@@ -2327,9 +2327,9 @@ static Exit_status dump_multiple_logs(int argc, char **argv)
   @retval ERROR_STOP An error occurred - the program should terminate.
   @retval OK_CONTINUE No error, the program should continue.
 */
-static Exit_status check_master_version()
+static Exit_status check_primary_version()
 {
-  DBUG_ENTER("check_master_version");
+  DBUG_ENTER("check_primary_version");
   MYSQL_RES* res = 0;
   MYSQL_ROW row;
   const char* version;
@@ -2338,20 +2338,20 @@ static Exit_status check_master_version()
       !(res = mysql_store_result(mysql)))
   {
     error("Could not find server version: "
-          "Query failed when checking master version: %s", mysql_error(mysql));
+          "Query failed when checking primary version: %s", mysql_error(mysql));
     DBUG_RETURN(ERROR_STOP);
   }
   if (!(row = mysql_fetch_row(res)))
   {
     error("Could not find server version: "
-          "Master returned no rows for SELECT VERSION().");
+          "Primary returned no rows for SELECT VERSION().");
     goto err;
   }
 
   if (!(version = row[0]))
   {
     error("Could not find server version: "
-          "Master reported NULL for the version.");
+          "Primary reported NULL for the version.");
     goto err;
   }
   /* 
@@ -2360,10 +2360,10 @@ static Exit_status check_master_version()
      necessary checksummed. 
      That preference is specified below.
   */
-  if (mysql_query(mysql, "SET @master_binlog_checksum='NONE'"))
+  if (mysql_query(mysql, "SET @primary_binlog_checksum='NONE'"))
   {
-    error("Could not notify master about checksum awareness."
-          "Master returned '%s'", mysql_error(mysql));
+    error("Could not notify primary about checksum awareness."
+          "Primary returned '%s'", mysql_error(mysql));
     goto err;
   }
   delete glob_description_event;
@@ -2386,7 +2386,7 @@ static Exit_status check_master_version()
   default:
     glob_description_event= NULL;
     error("Could not find server version: "
-          "Master reported unrecognized MySQL version '%s'.", version);
+          "Primary reported unrecognized MySQL version '%s'.", version);
     goto err;
   }
   if (!glob_description_event || !glob_description_event->is_valid())
@@ -2451,19 +2451,19 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
     DBUG_RETURN(retval);
   net= &mysql->net;
 
-  if ((retval= check_master_version()) != OK_CONTINUE)
+  if ((retval= check_primary_version()) != OK_CONTINUE)
     DBUG_RETURN(retval);
 
   /*
     Fake a server ID to log continously. This will show as a
-    slave on the mysql server.
+    replica on the mysql server.
   */
   if (to_last_remote_log && stop_never)
   {
-    if (stop_never_slave_server_id == -1)
+    if (stop_never_replica_server_id == -1)
       server_id= 1;
     else
-      server_id= static_cast<uint>(stop_never_slave_server_id);
+      server_id= static_cast<uint>(stop_never_replica_server_id);
   }
   else
     server_id= 0;
@@ -2588,11 +2588,11 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       running with:
 
         --read-from-remote-server
-        --read-from-remote-master=BINLOG-DUMP-GTIDS'
+        --read-from-remote-primary=BINLOG-DUMP-GTIDS'
         --stop-never
-        --stop-never-slave-server-id
+        --stop-never-replica-server-id
 
-      i.e., acting as a fake slave.
+      i.e., acting as a fake replica.
     */
     if (type == binary_log::HEARTBEAT_LOG_EVENT)
       continue;
@@ -2677,7 +2677,7 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       {
         /*
           This could be an fake Format_description_log_event that server
-          (5.0+) automatically sends to a slave on connect, before sending
+          (5.0+) automatically sends to a replica on connect, before sending
           a first event at the requested position.  If this is the case,
           don't increment old_off. Real Format_description_log_event always
           starts from BIN_LOG_HEADER_SIZE position.
@@ -3115,7 +3115,7 @@ static int args_post_process(void)
   if (opt_remote_alias && opt_remote_proto != BINLOG_DUMP_NON_GTID)
   {
     error("The option read-from-remote-server cannot be used when "
-          "read-from-remote-master is defined and is not equal to "
+          "read-from-remote-primary is defined and is not equal to "
           "BINLOG-DUMP-NON-GTIDS");
     DBUG_RETURN(ERROR_STOP);
   }
@@ -3127,7 +3127,7 @@ static int args_post_process(void)
 
     if (opt_remote_proto == BINLOG_LOCAL)
     {
-      error("The --raw flag requires one of --read-from-remote-master or --read-from-remote-server");
+      error("The --raw flag requires one of --read-from-remote-primary or --read-from-remote-server");
       DBUG_RETURN(ERROR_STOP);
     }
 
@@ -3142,7 +3142,7 @@ static int args_post_process(void)
     {
       error("You cannot use both of --exclude-gtids and --raw together "
             "with one of --read-from-remote-server or "
-            "--read-from-remote-master=BINLOG-DUMP-NON-GTID.");
+            "--read-from-remote-primary=BINLOG-DUMP-NON-GTID.");
       DBUG_RETURN(ERROR_STOP);
     }
 
@@ -3189,10 +3189,10 @@ static int args_post_process(void)
 
   if (connection_server_id == 0 && stop_never)
     error("Cannot set --server-id=0 when --stop-never is specified.");
-  if (connection_server_id != -1 && stop_never_slave_server_id != -1)
+  if (connection_server_id != -1 && stop_never_replica_server_id != -1)
     error("Cannot set --connection-server-id= %lld and"
-          "--stop-never-slave-server-id= %lld. ", connection_server_id,
-          stop_never_slave_server_id);
+          "--stop-never-replica-server-id= %lld. ", connection_server_id,
+          stop_never_replica_server_id);
 
   DBUG_RETURN(OK_CONTINUE);
 }
@@ -3304,7 +3304,7 @@ int main(int argc, char** argv)
 
   if (!raw_mode)
   {
-    fprintf(result_file, "/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;\n");
+    fprintf(result_file, "/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;\n");
 
     if (disable_log_bin)
       fprintf(result_file,
@@ -3353,7 +3353,7 @@ int main(int argc, char** argv)
               "/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;\n"
               "/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;\n");
 
-    fprintf(result_file, "/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;\n");
+    fprintf(result_file, "/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;\n");
   }
 
   /*

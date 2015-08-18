@@ -5,9 +5,9 @@
 
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
---connection master
+--connection primary
 create table t1(pk int not null primary key, i int) engine = ndb;
 
 #
@@ -22,19 +22,19 @@ while ($1)
 }
 enable_query_log;
 
---sync_slave_with_master
-# connect to slave and ensure data is there.
---connection slave
+--sync_replica_with_primary
+# connect to replica and ensure data is there.
+--connection replica
 select count(*) from t1;
 
 # Add suppression for the LOST_EVENTS error message
-# which will occur on slave when master is restarted while
-# slave is running
+# which will occur on replica when primary is restarted while
+# replica is running
 --disable_query_log
-call mtr.add_suppression("Slave.*: The incident LOST_EVENTS occured on the master");
+call mtr.add_suppression("Replica.*: The incident LOST_EVENTS occured on the primary");
 --enable_query_log
 
---connection master
+--connection primary
 
 --echo Restarting mysqld
  # Hack to allow using restart_mysqld.inc from rpl test
@@ -57,28 +57,28 @@ let $mysqld_name=mysqld.1.1;
 #
 # Show that the second log contains the LOST_EVENT incident
 # and that the binlog has been rotated(ie. flush, rotate and purge).
-let $binlog_file=master-bin.000002;
+let $binlog_file=primary-bin.000002;
 --source include/show_binlog_events.inc
 
 drop table if exists t1;
 
---echo Get IO thread to reconnect to Master
---connection slave
+--echo Get IO thread to reconnect to Primary
+--connection replica
 --disable_result_log
-start slave;
+start replica;
 --enable_result_log
 
-let $slave_sql_errno= 1590;
-let $show_slave_sql_error=1;
--- source include/wait_for_slave_sql_error.inc
+let $replica_sql_errno= 1590;
+let $show_replica_sql_error=1;
+-- source include/wait_for_replica_sql_error.inc
 
-let $status_items= Slave_IO_Running, Slave_SQL_Running, Last_Errno, Last_Error;	
--- source include/show_slave_status.inc
+let $status_items= Replica_IO_Running, Replica_SQL_Running, Last_Errno, Last_Error;	
+-- source include/show_replica_status.inc
 
 drop table if exists t1;
 
---source include/stop_slave_io.inc
-RESET SLAVE;
+--source include/stop_replica_io.inc
+RESET REPLICA;
 
 
 

@@ -1,4 +1,4 @@
-call mtr.add_suppression("You need to use --log-bin to make --log-slave-updates work.");
+call mtr.add_suppression("You need to use --log-bin to make --log-replica-updates work.");
 include/gtid_utils.inc
 CREATE VIEW v_processlist  as SELECT * FROM performance_schema.threads where type = 'FOREGROUND';
 call mtr.add_suppression("Found 10 prepared XA transactions");

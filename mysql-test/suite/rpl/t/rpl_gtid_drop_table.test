@@ -14,12 +14,12 @@
 # client session.
 #
 # In the second part, this test will verify an issue with inexistent temporary
-# tables being assumed as transactional on the slave side. This was making
-# the slave to split a DROP statement that the master logged as a single DROP
+# tables being assumed as transactional on the replica side. This was making
+# the replica to split a DROP statement that the primary logged as a single DROP
 # statement.
 #
-# In the third part, this test will verify that a slave having to drop
-# temporary tables because of the master have restarted will split the DROP
+# In the third part, this test will verify that a replica having to drop
+# temporary tables because of the primary have restarted will split the DROP
 # TABLE statement also based on table types (transactional or not).
 #
 # The details about the implementation of this test is in the beginning of
@@ -77,7 +77,7 @@
 # error.
 
 # Create two regular tables and two temporary tables with distinct storage engines
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 CREATE TABLE trans_t1 (c1 INT) ENGINE=InnoDB;
 CREATE TABLE non_trans_t1 (c1 INT) ENGINE=MyISAM;
 CREATE TEMPORARY TABLE temp_trans_t1 (c1 INT) ENGINE=InnoDB;
@@ -202,22 +202,22 @@ CREATE TABLE trans_t1 (c1 INT) ENGINE=InnoDB;
 #
 # This assumption could lead to a split if, for example, you issue a DROP
 # TEMPORARY TABLE for two existent non-transactional temporary tables in the
-# master (will binlog only one statement) but a filter made one of the
-# temporary tables inexistent on the slave side (will binlog two statements:
+# primary (will binlog only one statement) but a filter made one of the
+# temporary tables inexistent on the replica side (will binlog two statements:
 # one with the existent non-transactional table and other with the inexistent
 # table assumed to be transactional).
 #
-# As this test has a filter in its slave configuration like this:
+# As this test has a filter in its replica configuration like this:
 # '--replicate-ignore-table=test.temp_ignore', all statements containing the
-# 'test.temp_ignore' temporary table alone wont be executed by the SQL slave
+# 'test.temp_ignore' temporary table alone wont be executed by the SQL replica
 # thread. So, the CREATE TABLE statements for 'temp_ignore' table will be
-# executed only on the master.
+# executed only on the primary.
 #
-# Issuing a DROP TEMPORARY TABLE statement in the master containing the two
+# Issuing a DROP TEMPORARY TABLE statement in the primary containing the two
 # non-transaction temporary tables would result in a single binlog statement,
 # as the two tables are non-transactional ones.
 #
-# In the slave, because of the filter, the non-replicated table will be
+# In the replica, because of the filter, the non-replicated table will be
 # assumed unknown. With the fix for BUG#17620053, the unknown tables will
 # be assumed as transactional only if at least one transactional table is
 # dropped. If the DROP recognizes only non-transactional tables, the unknown
@@ -230,15 +230,15 @@ CREATE TEMPORARY TABLE temp_ignore (c1 INT) ENGINE=MyISAM;
 # Drop the two non-transactional temp tables
 DROP TEMPORARY TABLE IF EXISTS temp_ignore, temp_non_trans_t1;
 # Sync to know that everything was replicated
---source include/sync_slave_sql_with_master.inc
-# Back to the 'master' connection
---source include/rpl_connection_master.inc
+--source include/sync_replica_sql_with_primary.inc
+# Back to the 'primary' connection
+--source include/rpl_connection_primary.inc
 # Create temp_ignore table again, but with InnoDB storage engine
 CREATE TEMPORARY TABLE temp_ignore (c1 INT) ENGINE=InnoDB;
 # Drop the two transactional temp tables
 DROP TEMPORARY TABLE IF EXISTS temp_ignore, temp_trans_t1;
 # Sync to know that everything was replicated
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo #
 --echo # Third part
@@ -246,20 +246,20 @@ DROP TEMPORARY TABLE IF EXISTS temp_ignore, temp_trans_t1;
 #
 # This part was adapted from rpl_create_drop_temp_table.test
 #
-# As we use three server topology, when the slave (mysqld 2) detects the
-# master (mysqld 1) has restarted it will drop the temporary tables and
+# As we use three server topology, when the replica (mysqld 2) detects the
+# primary (mysqld 1) has restarted it will drop the temporary tables and
 # will binlog the DROP TABLE statements that will be replicated to
 # the third server (mysqld 3).
 #
-# As the DROP of temporary table in the slave side groups the tables
-# by pseudo-threadid and by database, we will use two sessions on master,
+# As the DROP of temporary table in the replica side groups the tables
+# by pseudo-threadid and by database, we will use two sessions on primary,
 # creating three sets of temporary tables, each set on a distinct database.
 #
 # The first set contains two tables with distinct storage engines, the
 # second set contains a single table and the third set contains two tables
 # with the same storage engine.
 #
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 SET SESSION sql_log_bin= 0;
 call mtr.add_suppression("InnoDB: Error: table .* does not exist in the InnoDB internal");
 SET SESSION sql_log_bin= 1;
@@ -284,7 +284,7 @@ CREATE TEMPORARY TABLE temp_trans_t2 (c1 INT) ENGINE=InnoDB;
 
 # Create two temporary tables with distinct storage engines in 'test'
 # in another client session. This should generate two DROP statements
---source include/rpl_connection_master1.inc
+--source include/rpl_connection_primary1.inc
 use test;
 CREATE TEMPORARY TABLE temp_trans_t1 (c1 INT) ENGINE=InnoDB;
 CREATE TEMPORARY TABLE temp_non_trans_t1 (c1 INT) ENGINE=MyISAM;
@@ -299,43 +299,43 @@ CREATE TEMPORARY TABLE temp_non_trans_t1 (c1 INT) ENGINE=MyISAM;
 CREATE TEMPORARY TABLE temp_non_trans_t2 (c1 INT) ENGINE=MyISAM;
 
 # Sync to know that everything was replicated
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# Stop slave io thread
+# Stop replica io thread
 --disable_warnings
---source include/stop_slave_io.inc
+--source include/stop_replica_io.inc
 --enable_warnings
 
-# Kill Master so that it does not go through THD::cleanup logic. Hence it does
+# Kill Primary so that it does not go through THD::cleanup logic. Hence it does
 # not generate "drop temporary" query for 'temp' tables.
 --let $rpl_server_number= 1
 --let $rpl_force_stop=1
 --source include/rpl_stop_server.inc
 
-# Restart Master (generates Format Description event which tells slave to
+# Restart Primary (generates Format Description event which tells replica to
 # drop all temporary tables)
 --source include/rpl_start_server.inc
 
-# Start and sync slave IO thread
---source include/rpl_connection_slave.inc
---source include/start_slave_io.inc
---source include/rpl_connection_master.inc
---source include/sync_slave_io_with_master.inc
+# Start and sync replica IO thread
+--source include/rpl_connection_replica.inc
+--source include/start_replica_io.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_io_with_primary.inc
 
-# Wait for slave thread to apply all events (including the newly generated
-# FormatDescription event which tells slave SQL thread to drop all temporary
+# Wait for replica thread to apply all events (including the newly generated
+# FormatDescription event which tells replica SQL thread to drop all temporary
 --let $show_statement= SHOW PROCESSLIST
 --let $field= State
---let $condition= 'Slave has read all relay log; waiting for the slave I/O thread to update it';
+--let $condition= 'Replica has read all relay log; waiting for the replica I/O thread to update it';
 --source include/wait_show_condition.inc
 
-# Now we verify slave_open_temp_tables, it should be '0'
---let $assert_text= Slave_open_temp_tables should be 0
---let $assert_cond= [SHOW STATUS LIKE "Slave_open_temp_tables", Value, 1] = 0
+# Now we verify replica_open_temp_tables, it should be '0'
+--let $assert_text= Replica_open_temp_tables should be 0
+--let $assert_cond= [SHOW STATUS LIKE "Replica_open_temp_tables", Value, 1] = 0
 --source include/assert.inc
 
 # Cleanup replication
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 USE test;
 DROP TABLE trans_t1;
 DROP DATABASE test2;

@@ -20,9 +20,9 @@
 #include "log_event.h"             // Log_event
 #include "rpl_group_replication.h" // set_group_replication_retrieved_certifi...
 #include "rpl_info_factory.h"      // Rpl_info_factory
-#include "rpl_mi.h"                // Master_info
+#include "rpl_mi.h"                // Primary_info
 #include "rpl_msr.h"               // msr_map
-#include "rpl_rli_pdb.h"           // Slave_worker
+#include "rpl_rli_pdb.h"           // Replica_worker
 #include "sql_base.h"              // close_thread_tables
 #include "strfunc.h"               // strconvert
 #include "transaction.h"           // trans_commit_stmt
@@ -44,15 +44,15 @@ const char* info_rli_fields[]=
   "number_of_lines",
   "group_relay_log_name",
   "group_relay_log_pos",
-  "group_master_log_name",
-  "group_master_log_pos",
+  "group_primary_log_name",
+  "group_primary_log_pos",
   "sql_delay",
   "number_of_workers",
   "id",
   "channel_name"
 };
 
-Relay_log_info::Relay_log_info(bool is_slave_recovery
+Relay_log_info::Relay_log_info(bool is_replica_recovery
 #ifdef HAVE_PSI_INTERFACE
                                ,PSI_mutex_key *param_key_info_run_lock,
                                PSI_mutex_key *param_key_info_data_lock,
@@ -77,18 +77,18 @@ Relay_log_info::Relay_log_info(bool is_slave_recovery
             ),
    replicate_same_server_id(::replicate_same_server_id),
    cur_log_fd(-1), relay_log(&sync_relaylog_period, SEQ_READ_APPEND),
-   is_relay_log_recovery(is_slave_recovery),
+   is_relay_log_recovery(is_replica_recovery),
    save_temporary_tables(0),
    cur_log_old_open_count(0), group_relay_log_pos(0), event_relay_log_number(0),
    event_relay_log_pos(0), event_start_pos(0),
-   group_master_log_pos(0),
+   group_primary_log_pos(0),
    gtid_set(global_sid_map, global_sid_lock),
    rli_fake(is_rli_fake),
    gtid_retrieved_initialized(false),
-   is_group_master_log_pos_invalid(false),
+   is_group_primary_log_pos_invalid(false),
    log_space_total(0), ignore_log_space_limit(0),
    sql_force_rotate_relay(false),
-   last_master_timestamp(0), slave_skip_counter(0),
+   last_primary_timestamp(0), replica_skip_counter(0),
    abort_pos_wait(0), until_condition(UNTIL_NONE),
    until_log_pos(0),
    until_sql_gtids(global_sid_map),
@@ -100,7 +100,7 @@ Relay_log_info::Relay_log_info(bool is_slave_recovery
    workers_array_initialized(false),
    curr_group_assigned_parts(PSI_NOT_INSTRUMENTED),
    curr_group_da(PSI_NOT_INSTRUMENTED),
-   slave_parallel_workers(0),
+   replica_parallel_workers(0),
    exit_counter(0),
    max_updated_index(0),
    recovery_parallel_workers(0), checkpoint_seqno(0),
@@ -138,8 +138,8 @@ Relay_log_info::Relay_log_info(bool is_slave_recovery
 #endif
 
   group_relay_log_name[0]= event_relay_log_name[0]=
-    group_master_log_name[0]= 0;
-  until_log_name[0]= ign_master_log_name_end[0]= 0;
+    group_primary_log_name[0]= 0;
+  until_log_name[0]= ign_primary_log_name_end[0]= 0;
   set_timespec_nsec(&last_clock, 0);
   memset(&cache_buf, 0, sizeof(cache_buf));
   cached_charset_invalidate();
@@ -150,10 +150,10 @@ Relay_log_info::Relay_log_info(bool is_slave_recovery
     mysql_mutex_init(key_relay_log_info_log_space_lock,
                      &log_space_lock, MY_MUTEX_INIT_FAST);
     mysql_cond_init(key_relay_log_info_log_space_cond, &log_space_cond);
-    mysql_mutex_init(key_mutex_slave_parallel_pend_jobs, &pending_jobs_lock,
+    mysql_mutex_init(key_mutex_replica_parallel_pend_jobs, &pending_jobs_lock,
                      MY_MUTEX_INIT_FAST);
-    mysql_cond_init(key_cond_slave_parallel_pend_jobs, &pending_jobs_cond);
-    mysql_mutex_init(key_mutex_slave_parallel_worker_count, &exit_count_lock,
+    mysql_cond_init(key_cond_replica_parallel_pend_jobs, &pending_jobs_cond);
+    mysql_mutex_init(key_mutex_replica_parallel_worker_count, &exit_count_lock,
                    MY_MUTEX_INIT_FAST);
     mysql_mutex_init(key_mts_temp_table_LOCK, &mts_temp_table_LOCK,
                      MY_MUTEX_INIT_FAST);
@@ -162,18 +162,18 @@ Relay_log_info::Relay_log_info(bool is_slave_recovery
     mysql_cond_init(key_cond_mts_gaq, &logical_clock_cond);
 
     relay_log.init_pthread_objects();
-    do_server_version_split(::server_version, slave_version_split);
+    do_server_version_split(::server_version, replica_version_split);
   }
   DBUG_VOID_RETURN;
 }
 
 /**
-   The method to invoke at slave threads start
+   The method to invoke at replica threads start
 */
 void Relay_log_info::init_workers(ulong n_workers)
 {
   /*
-    Parallel slave parameters initialization is done regardless
+    Parallel replica parameters initialization is done regardless
     whether the feature is or going to be active or not.
   */
   mts_groups_assigned= mts_events_assigned= pending_jobs= wq_size_waits_cnt= 0;
@@ -187,7 +187,7 @@ void Relay_log_info::init_workers(ulong n_workers)
 }
 
 /**
-   The method to invoke at slave threads stop
+   The method to invoke at replica threads stop
 */
 void Relay_log_info::deinit_workers()
 {
@@ -234,15 +234,15 @@ Relay_log_info::~Relay_log_info()
    at time it will distribute a terminal event of a group to the Worker.
 
    Worker receives the new name at the group commiting phase
-   @c Slave_worker::slave_worker_ends_group().
+   @c Replica_worker::replica_worker_ends_group().
 */
 void Relay_log_info::reset_notified_relay_log_change()
 {
   if (!is_parallel_exec())
     return;
-  for (Slave_worker **it= workers.begin(); it != workers.end(); ++it)
+  for (Replica_worker **it= workers.begin(); it != workers.end(); ++it)
   {
-    Slave_worker *w= *it;
+    Replica_worker *w= *it;
     w->relay_log_change_notified= FALSE;
   }
 }
@@ -256,11 +256,11 @@ void Relay_log_info::reset_notified_relay_log_change()
    the current bitmap and starts using the clean bitmap indexed from zero
    of being reset checkpoint_seqno. 
 
-    New seconds_behind_master timestamp is installed.
+    New seconds_behind_primary timestamp is installed.
 
    @param shift          number of bits to shift by Worker due to the
                          current checkpoint change.
-   @param new_ts         new seconds_behind_master timestamp value
+   @param new_ts         new seconds_behind_primary timestamp value
                          unless zero. Zero could be due to FD event.
    @param need_data_lock False if caller has locked @c data_lock
 */
@@ -273,9 +273,9 @@ void Relay_log_info::reset_notified_checkpoint(ulong shift, time_t new_ts,
   if (!is_parallel_exec())
     return;
 
-  for (Slave_worker **it= workers.begin(); it != workers.end(); ++it)
+  for (Replica_worker **it= workers.begin(); it != workers.end(); ++it)
   {
-    Slave_worker *w= *it;
+    Replica_worker *w= *it;
     /*
       Reseting the notification information in order to force workers to
       assign jobs with the new updated information.
@@ -288,12 +288,12 @@ void Relay_log_info::reset_notified_checkpoint(ulong shift, time_t new_ts,
     w->checkpoint_notified= FALSE;
     w->bitmap_shifted= w->bitmap_shifted + shift;
     /*
-      Zero shift indicates the caller rotates the master binlog.
+      Zero shift indicates the caller rotates the primary binlog.
       The new name will be passed to W through the group descriptor
       during the first post-rotation time scheduling.
     */
     if (shift == 0)
-      w->master_log_change_notified= false;
+      w->primary_log_change_notified= false;
 
     DBUG_PRINT("mts", ("reset_notified_checkpoint shift --> %lu, "
                        "worker->bitmap_shifted --> %lu, worker --> %u.",
@@ -317,7 +317,7 @@ void Relay_log_info::reset_notified_checkpoint(ulong shift, time_t new_ts,
       mysql_mutex_lock(&data_lock);
     else
       mysql_mutex_assert_owner(&data_lock);
-    last_master_timestamp= new_ts;
+    last_primary_timestamp= new_ts;
     if (need_data_lock)
       mysql_mutex_unlock(&data_lock);
   }
@@ -337,9 +337,9 @@ bool Relay_log_info::mts_finalize_recovery()
 
   DBUG_ENTER("Relay_log_info::mts_finalize_recovery");
 
-  for (Slave_worker **it= workers.begin(); !ret && it != workers.end(); ++it)
+  for (Replica_worker **it= workers.begin(); !ret && it != workers.end(); ++it)
   {
-    Slave_worker *w= *it;
+    Replica_worker *w= *it;
     ret= w->reset_recovery_info();
     DBUG_EXECUTE_IF("mts_debug_recovery_reset_fails", ret= true;);
   }
@@ -351,12 +351,12 @@ bool Relay_log_info::mts_finalize_recovery()
   */
   for (i= recovery_parallel_workers; i > workers.size() && !ret; i--)
   {
-    Slave_worker *w=
+    Replica_worker *w=
       Rpl_info_factory::create_worker(repo_type, i - 1, this, true);
     ret= w->remove_info();
     delete w;
   }
-  recovery_parallel_workers= slave_parallel_workers;
+  recovery_parallel_workers= replica_parallel_workers;
 
   DBUG_RETURN(ret);
 }
@@ -429,7 +429,7 @@ void Relay_log_info::clear_until_condition()
   - If not, opens the 'log' binary file.
 
   @todo check proper initialization of
-  group_master_log_name/group_master_log_pos. /alfranio
+  group_primary_log_name/group_primary_log_pos. /alfranio
 
   @param rli[in] Relay information (will be initialized)
   @param log[in] Name of relay log file to read from. NULL = First log
@@ -558,7 +558,7 @@ int Relay_log_info::init_relay_log_pos(const char* log,
       */
       if (!(ev= Log_event::read_log_event(cur_log, 0,
                                           rli_description_event,
-                                          opt_slave_sql_verify_checksum)))
+                                          opt_replica_sql_verify_checksum)))
       {
         DBUG_PRINT("info",("could not read event, cur_log->error=%d",
                            cur_log->error));
@@ -581,13 +581,13 @@ int Relay_log_info::init_relay_log_pos(const char* log,
           Ok, we found a Format_description event. But it is not sure that this
           describes the whole relay log; indeed, one can have this sequence
           (starting from position 4):
-          Format_desc (of slave)
-          Previous-GTIDs (of slave IO thread)
-          Rotate (of master)
-          Format_desc (of master)
+          Format_desc (of replica)
+          Previous-GTIDs (of replica IO thread)
+          Rotate (of primary)
+          Format_desc (of primary)
           So the Format_desc which really describes the rest of the relay log
           is the 4rd event (it can't be further than that, because we rotate
-          the relay log when we queue a Rotate event from the master).
+          the relay log when we queue a Rotate event from the primary).
           But what describes the Rotate is the first Format_desc.
           So what we do is:
           go on searching for Format_description events, until you exceed the
@@ -657,7 +657,7 @@ void Relay_log_info::fill_coord_err_buf(loglevel level, int err_code,
   if(level == ERROR_LEVEL)
   {
     m_last_error.number = err_code;
-    strncpy(m_last_error.message, buff_coord, MAX_SLAVE_ERRMSG);
+    strncpy(m_last_error.message, buff_coord, MAX_REPLICA_ERRMSG);
     m_last_error.update_timestamp();
   }
 
@@ -669,7 +669,7 @@ void Relay_log_info::fill_coord_err_buf(loglevel level, int err_code,
   log/position or timed out.
 
   SYNOPSIS
-  @param[in]  thd             client thread that sent @c SELECT @c MASTER_POS_WAIT,
+  @param[in]  thd             client thread that sent @c SELECT @c PRIMARY_POS_WAIT,
   @param[in]  log_name        log name to wait for,
   @param[in]  log_pos         position to wait for,
   @param[in]  timeout         @c timeout in seconds before giving up waiting.
@@ -677,7 +677,7 @@ void Relay_log_info::fill_coord_err_buf(loglevel level, int err_code,
                               to catch if the user submitted a negative timeout.
 
   @retval  -2   improper arguments (log_pos<0)
-                or slave not running, or master info changed
+                or replica not running, or primary info changed
                 during the function's execution,
                 or client thread killed. -2 is translated to NULL by caller,
   @retval  -1   timed out
@@ -705,20 +705,20 @@ int Relay_log_info::wait_for_pos(THD* thd, String* log_name,
   set_timespec(&abstime, timeout);
   mysql_mutex_lock(&data_lock);
   thd->ENTER_COND(&data_cond, &data_lock,
-                  &stage_waiting_for_the_slave_thread_to_advance_position,
+                  &stage_waiting_for_the_replica_thread_to_advance_position,
                   &old_stage);
   /*
-     This function will abort when it notices that some CHANGE MASTER or
-     RESET MASTER has changed the master info.
+     This function will abort when it notices that some CHANGE PRIMARY or
+     RESET PRIMARY has changed the primary info.
      To catch this, these commands modify abort_pos_wait ; We just monitor
      abort_pos_wait and see if it has changed.
-     Why do we have this mechanism instead of simply monitoring slave_running
-     in the loop (we do this too), as CHANGE MASTER/RESET SLAVE require that
+     Why do we have this mechanism instead of simply monitoring replica_running
+     in the loop (we do this too), as CHANGE PRIMARY/RESET REPLICA require that
      the SQL thread be stopped?
      This is becasue if someones does:
-     STOP SLAVE;CHANGE MASTER/RESET SLAVE; START SLAVE;
+     STOP REPLICA;CHANGE PRIMARY/RESET REPLICA; START REPLICA;
      the change may happen very quickly and we may not notice that
-     slave_running briefly switches between 1/0/1.
+     replica_running briefly switches between 1/0/1.
   */
   init_abort_pos_wait= abort_pos_wait;
 
@@ -758,7 +758,7 @@ int Relay_log_info::wait_for_pos(THD* thd, String* log_name,
   /* The "compare and wait" main loop */
   while (!thd->killed &&
          init_abort_pos_wait == abort_pos_wait &&
-         slave_running)
+         replica_running)
   {
     bool pos_reached;
     int cmp_result= 0;
@@ -766,32 +766,32 @@ int Relay_log_info::wait_for_pos(THD* thd, String* log_name,
     DBUG_PRINT("info",
                ("init_abort_pos_wait: %ld  abort_pos_wait: %ld",
                 init_abort_pos_wait, abort_pos_wait));
-    DBUG_PRINT("info",("group_master_log_name: '%s'  pos: %lu",
-                       group_master_log_name, (ulong) group_master_log_pos));
+    DBUG_PRINT("info",("group_primary_log_name: '%s'  pos: %lu",
+                       group_primary_log_name, (ulong) group_primary_log_pos));
 
     /*
-      group_master_log_name can be "", if we are just after a fresh
-      replication start or after a CHANGE MASTER TO MASTER_HOST/PORT
-      (before we have executed one Rotate event from the master) or
-      (rare) if the user is doing a weird slave setup (see next
-      paragraph).  If group_master_log_name is "", we assume we don't
+      group_primary_log_name can be "", if we are just after a fresh
+      replication start or after a CHANGE PRIMARY TO PRIMARY_HOST/PORT
+      (before we have executed one Rotate event from the primary) or
+      (rare) if the user is doing a weird replica setup (see next
+      paragraph).  If group_primary_log_name is "", we assume we don't
       have enough info to do the comparison yet, so we just wait until
-      more data. In this case master_log_pos is always 0 except if
-      somebody (wrongly) sets this slave to be a slave of itself
+      more data. In this case primary_log_pos is always 0 except if
+      somebody (wrongly) sets this replica to be a replica of itself
       without using --replicate-same-server-id (an unsupported
-      configuration which does nothing), then group_master_log_pos
-      will grow and group_master_log_name will stay "".
-      Also in case the group master log position is invalid (e.g. after
-      CHANGE MASTER TO RELAY_LOG_POS ), we will wait till the first event
+      configuration which does nothing), then group_primary_log_pos
+      will grow and group_primary_log_name will stay "".
+      Also in case the group primary log position is invalid (e.g. after
+      CHANGE PRIMARY TO RELAY_LOG_POS ), we will wait till the first event
       is read and the log position is valid again.
     */
-    if (*group_master_log_name && !is_group_master_log_pos_invalid)
+    if (*group_primary_log_name && !is_group_primary_log_pos_invalid)
     {
-      char *basename= (group_master_log_name +
-                       dirname_length(group_master_log_name));
+      char *basename= (group_primary_log_name +
+                       dirname_length(group_primary_log_name));
       /*
         First compare the parts before the extension.
-        Find the dot in the master's log basename,
+        Find the dot in the primary's log basename,
         and protect against user's input error :
         if the names do not match up to '.' included, return error
       */
@@ -803,21 +803,21 @@ int Relay_log_info::wait_for_pos(THD* thd, String* log_name,
       }
       // Now compare extensions.
       char *q_end;
-      ulong group_master_log_name_extension= strtoul(q, &q_end, 10);
-      if (group_master_log_name_extension < log_name_extension)
+      ulong group_primary_log_name_extension= strtoul(q, &q_end, 10);
+      if (group_primary_log_name_extension < log_name_extension)
         cmp_result= -1 ;
       else
-        cmp_result= (group_master_log_name_extension > log_name_extension) ? 1 : 0 ;
+        cmp_result= (group_primary_log_name_extension > log_name_extension) ? 1 : 0 ;
 
-      pos_reached= ((!cmp_result && group_master_log_pos >= (ulonglong)log_pos) ||
+      pos_reached= ((!cmp_result && group_primary_log_pos >= (ulonglong)log_pos) ||
                     cmp_result > 0);
       if (pos_reached || thd->killed)
         break;
     }
 
-    //wait for master update, with optional timeout.
+    //wait for primary update, with optional timeout.
 
-    DBUG_PRINT("info",("Waiting for master update"));
+    DBUG_PRINT("info",("Waiting for primary update"));
     /*
       We are going to mysql_cond_(timed)wait(); if the SQL thread stops it
       will wake us up.
@@ -834,14 +834,14 @@ int Relay_log_info::wait_for_pos(THD* thd, String* log_name,
         of the call.
         For that reason, mysql_cond_timedwait will do the "timeoutting" job
         even if its condition is always immediately signaled (case of a loaded
-        master).
+        primary).
       */
       error= mysql_cond_timedwait(&data_cond, &data_lock, &abstime);
     }
     else
       mysql_cond_wait(&data_cond, &data_lock);
     thd_wait_end(thd);
-    DBUG_PRINT("info",("Got signal of master update or timed out"));
+    DBUG_PRINT("info",("Got signal of primary update or timed out"));
     if (error == ETIMEDOUT || error == ETIME)
     {
 #ifndef DBUG_OFF
@@ -849,7 +849,7 @@ int Relay_log_info::wait_for_pos(THD* thd, String* log_name,
         Doing this to generate a stack trace and make debugging
         easier. 
       */
-      if (DBUG_EVALUATE_IF("debug_crash_slave_time_out", 1, 0))
+      if (DBUG_EVALUATE_IF("debug_crash_replica_time_out", 1, 0))
         DBUG_ASSERT(0);
 #endif
       error= -1;
@@ -863,15 +863,15 @@ int Relay_log_info::wait_for_pos(THD* thd, String* log_name,
 err:
   mysql_mutex_unlock(&data_lock);
   thd->EXIT_COND(&old_stage);
-  DBUG_PRINT("exit",("killed: %d  abort: %d  slave_running: %d \
+  DBUG_PRINT("exit",("killed: %d  abort: %d  replica_running: %d \
 improper_arguments: %d  timed_out: %d",
                      thd->killed_errno(),
                      (int) (init_abort_pos_wait != abort_pos_wait),
-                     (int) slave_running,
+                     (int) replica_running,
                      (int) (error == -2),
                      (int) (error == -1)));
   if (thd->killed || init_abort_pos_wait != abort_pos_wait ||
-      !slave_running)
+      !replica_running)
   {
     error= -2;
   }
@@ -924,33 +924,33 @@ int Relay_log_info::wait_for_gtid_set(THD* thd, const Gtid_set* wait_gtid_set,
   set_timespec(&abstime, timeout);
   mysql_mutex_lock(&data_lock);
   thd->ENTER_COND(&data_cond, &data_lock,
-                  &stage_waiting_for_the_slave_thread_to_advance_position,
+                  &stage_waiting_for_the_replica_thread_to_advance_position,
                   &old_stage);
   /*
-     This function will abort when it notices that some CHANGE MASTER or
-     RESET MASTER has changed the master info.
+     This function will abort when it notices that some CHANGE PRIMARY or
+     RESET PRIMARY has changed the primary info.
      To catch this, these commands modify abort_pos_wait ; We just monitor
      abort_pos_wait and see if it has changed.
-     Why do we have this mechanism instead of simply monitoring slave_running
-     in the loop (we do this too), as CHANGE MASTER/RESET SLAVE require that
+     Why do we have this mechanism instead of simply monitoring replica_running
+     in the loop (we do this too), as CHANGE PRIMARY/RESET REPLICA require that
      the SQL thread be stopped?
      This is becasue if someones does:
-     STOP SLAVE;CHANGE MASTER/RESET SLAVE; START SLAVE;
+     STOP REPLICA;CHANGE PRIMARY/RESET REPLICA; START REPLICA;
      the change may happen very quickly and we may not notice that
-     slave_running briefly switches between 1/0/1.
+     replica_running briefly switches between 1/0/1.
   */
   init_abort_pos_wait= abort_pos_wait;
 
   /* The "compare and wait" main loop */
   while (!thd->killed &&
          init_abort_pos_wait == abort_pos_wait &&
-         slave_running)
+         replica_running)
   {
     DBUG_PRINT("info",
                ("init_abort_pos_wait: %ld  abort_pos_wait: %ld",
                 init_abort_pos_wait, abort_pos_wait));
 
-    //wait for master update, with optional timeout.
+    //wait for primary update, with optional timeout.
 
     global_sid_lock->wrlock();
     const Gtid_set* executed_gtids= gtid_state->get_executed_gtids();
@@ -979,7 +979,7 @@ int Relay_log_info::wait_for_gtid_set(THD* thd, const Gtid_set* wait_gtid_set,
     }
     global_sid_lock->unlock();
 
-    DBUG_PRINT("info",("Waiting for master update"));
+    DBUG_PRINT("info",("Waiting for primary update"));
 
     /*
       We are going to mysql_cond_(timed)wait(); if the SQL thread stops it
@@ -997,14 +997,14 @@ int Relay_log_info::wait_for_gtid_set(THD* thd, const Gtid_set* wait_gtid_set,
         of the call.
         For that reason, mysql_cond_timedwait will do the "timeoutting" job
         even if its condition is always immediately signaled (case of a loaded
-        master).
+        primary).
       */
       error= mysql_cond_timedwait(&data_cond, &data_lock, &abstime);
     }
     else
       mysql_cond_wait(&data_cond, &data_lock);
     thd_wait_end(thd);
-    DBUG_PRINT("info",("Got signal of master update or timed out"));
+    DBUG_PRINT("info",("Got signal of primary update or timed out"));
     if (error == ETIMEDOUT || error == ETIME)
     {
 #ifndef DBUG_OFF
@@ -1012,7 +1012,7 @@ int Relay_log_info::wait_for_gtid_set(THD* thd, const Gtid_set* wait_gtid_set,
         Doing this to generate a stack trace and make debugging
         easier. 
       */
-      if (DBUG_EVALUATE_IF("debug_crash_slave_time_out", 1, 0))
+      if (DBUG_EVALUATE_IF("debug_crash_replica_time_out", 1, 0))
         DBUG_ASSERT(0);
 #endif
       error= -1;
@@ -1025,15 +1025,15 @@ int Relay_log_info::wait_for_gtid_set(THD* thd, const Gtid_set* wait_gtid_set,
 
   mysql_mutex_unlock(&data_lock);
   thd->EXIT_COND(&old_stage);
-  DBUG_PRINT("exit",("killed: %d  abort: %d  slave_running: %d \
+  DBUG_PRINT("exit",("killed: %d  abort: %d  replica_running: %d \
 improper_arguments: %d  timed_out: %d",
                      thd->killed_errno(),
                      (int) (init_abort_pos_wait != abort_pos_wait),
-                     (int) slave_running,
+                     (int) replica_running,
                      (int) (error == -2),
                      (int) (error == -1)));
   if (thd->killed || init_abort_pos_wait != abort_pos_wait ||
-      !slave_running)
+      !replica_running)
   {
     error= -2;
   }
@@ -1061,40 +1061,40 @@ int Relay_log_info::inc_group_relay_log_pos(ulonglong log_pos,
   /*
     In 4.x we used the event's len to compute the positions here. This is
     wrong if the event was 3.23/4.0 and has been converted to 5.0, because
-    then the event's len is not what is was in the master's binlog, so this
-    will make a wrong group_master_log_pos (yes it's a bug in 3.23->4.0
-    replication: Exec_master_log_pos is wrong). Only way to solve this is to
+    then the event's len is not what is was in the primary's binlog, so this
+    will make a wrong group_primary_log_pos (yes it's a bug in 3.23->4.0
+    replication: Exec_primary_log_pos is wrong). Only way to solve this is to
     have the original offset of the end of the event the relay log. This is
     what we do in 5.0: log_pos has become "end_log_pos" (because the real use
     of log_pos in 4.0 was to compute the end_log_pos; so better to store
     end_log_pos instead of begin_log_pos.
     If we had not done this fix here, the problem would also have appeared
-    when the slave and master are 5.0 but with different event length (for
-    example the slave is more recent than the master and features the event
-    UID). It would give false MASTER_POS_WAIT, false Exec_master_log_pos in
-    SHOW SLAVE STATUS, and so the user would do some CHANGE MASTER using this
+    when the replica and primary are 5.0 but with different event length (for
+    example the replica is more recent than the primary and features the event
+    UID). It would give false PRIMARY_POS_WAIT, false Exec_primary_log_pos in
+    SHOW REPLICA STATUS, and so the user would do some CHANGE PRIMARY using this
     value which would lead to badly broken replication.
     Even the relay_log_pos will be corrupted in this case, because the len is
     the relay log is not "val".
     With the end_log_pos solution, we avoid computations involving lengthes.
   */
-  DBUG_PRINT("info", ("log_pos: %lu  group_master_log_pos: %lu",
-                      (long) log_pos, (long) group_master_log_pos));
+  DBUG_PRINT("info", ("log_pos: %lu  group_primary_log_pos: %lu",
+                      (long) log_pos, (long) group_primary_log_pos));
 
   if (log_pos > 0)  // 3.23 binlogs don't have log_posx
-    group_master_log_pos= log_pos;
+    group_primary_log_pos= log_pos;
   /*
-    If the master log position was invalidiated by say, "CHANGE MASTER TO
+    If the primary log position was invalidiated by say, "CHANGE PRIMARY TO
     RELAY_LOG_POS=N", it is now valid,
    */
-  if (is_group_master_log_pos_invalid)
-    is_group_master_log_pos_invalid= false;
+  if (is_group_primary_log_pos_invalid)
+    is_group_primary_log_pos_invalid= false;
 
   /*
     In MTS mode FD or Rotate event commit their solitary group to
     Coordinator's info table. Callers make sure that Workers have been
     executed all assignements.
-    Broadcast to master_pos_wait() waiters should be done after
+    Broadcast to primary_pos_wait() waiters should be done after
     the table is updated.
   */
   DBUG_ASSERT(!is_parallel_exec() ||
@@ -1128,19 +1128,19 @@ void Relay_log_info::close_temporary_tables()
     next=table->next;
     /*
       Don't ask for disk deletion. For now, anyway they will be deleted when
-      slave restarts, but it is a better intention to not delete them.
+      replica restarts, but it is a better intention to not delete them.
     */
     DBUG_PRINT("info", ("table: 0x%lx", (long) table));
     close_temporary(table, 1, 0);
   }
   save_temporary_tables= 0;
-  slave_open_temp_tables= 0;
+  replica_open_temp_tables= 0;
   DBUG_VOID_RETURN;
 }
 
 /**
   Purges relay logs. It assumes to have a run lock on rli and that no
-  slave thread are running.
+  replica thread are running.
 
   @param[in]   THD         connection,
   @param[in]   just_reset  if false, it tells that logs should be purged
@@ -1158,30 +1158,30 @@ int Relay_log_info::purge_relay_logs(THD *thd, bool just_reset,
   DBUG_ENTER("Relay_log_info::purge_relay_logs");
 
   /*
-    Even if inited==0, we still try to empty master_log_* variables. Indeed,
+    Even if inited==0, we still try to empty primary_log_* variables. Indeed,
     inited==0 does not imply that they already are empty.
 
-    It could be that slave's info initialization partly succeeded: for example
+    It could be that replica's info initialization partly succeeded: for example
     if relay-log.info existed but *relay-bin*.* have been manually removed,
-    init_info reads the old relay-log.info and fills rli->master_log_*, then
+    init_info reads the old relay-log.info and fills rli->primary_log_*, then
     init_info checks for the existence of the relay log, this fails and 
     init_info leaves inited to 0.
-    In that pathological case, master_log_pos* will be properly reinited at
-    the next START SLAVE (as RESET SLAVE or CHANGE MASTER, the callers of
+    In that pathological case, primary_log_pos* will be properly reinited at
+    the next START REPLICA (as RESET REPLICA or CHANGE PRIMARY, the callers of
     purge_relay_logs, will delete bogus *.info files or replace them with
-    correct files), however if the user does SHOW SLAVE STATUS before START
-    SLAVE, he will see old, confusing master_log_*. In other words, we reinit
-    master_log_* for SHOW SLAVE STATUS to display fine in any case.
+    correct files), however if the user does SHOW REPLICA STATUS before START
+    REPLICA, he will see old, confusing primary_log_*. In other words, we reinit
+    primary_log_* for SHOW REPLICA STATUS to display fine in any case.
   */
-  group_master_log_name[0]= 0;
-  group_master_log_pos= 0;
+  group_primary_log_name[0]= 0;
+  group_primary_log_pos= 0;
 
   /*
-    Following the the relay log purge, the master_log_pos will be in sync
+    Following the the relay log purge, the primary_log_pos will be in sync
     with relay_log_pos, so the flag should be cleared. Refer bug#11766010.
   */
 
-  is_group_master_log_pos_invalid= false;
+  is_group_primary_log_pos_invalid= false;
 
   if (!inited)
   {
@@ -1189,19 +1189,19 @@ int Relay_log_info::purge_relay_logs(THD *thd, bool just_reset,
     DBUG_RETURN(0);
   }
 
-  DBUG_ASSERT(slave_running == 0);
-  DBUG_ASSERT(mi->slave_running == 0);
+  DBUG_ASSERT(replica_running == 0);
+  DBUG_ASSERT(mi->replica_running == 0);
 
   /* Reset the transaction boundary parser and clear the last GTID queued */
   mi->transaction_parser.reset();
   mi->clear_last_gtid_queued();
 
-  slave_skip_counter= 0;
+  replica_skip_counter= 0;
   mysql_mutex_lock(&data_lock);
 
   /*
-    we close the relay log fd possibly left open by the slave SQL thread,
-    to be able to delete it; the relay log fd possibly left open by the slave
+    we close the relay log fd possibly left open by the replica SQL thread,
+    to be able to delete it; the relay log fd possibly left open by the replica
     I/O thread will be closed naturally in reset_logs() by the
     close(LOG_CLOSE_TO_BE_OPENED) call
   */
@@ -1291,7 +1291,7 @@ Relay_log_info::add_channel_to_relay_log_name(char *buff, uint buff_size,
     /*
       Convert the channel name to the file names charset.
       Channel name is in system_charset which is UTF8_general_ci
-      as it was defined as utf8 in the mysql.slaveinfo tables.
+      as it was defined as utf8 in the mysql.replicainfo tables.
     */
     length= strconvert(system_charset_info, channel, &my_charset_filename,
                        channel_to_file, NAME_LEN, &errors);
@@ -1304,7 +1304,7 @@ Relay_log_info::add_channel_to_relay_log_name(char *buff, uint buff_size,
 
 
 /**
-     Checks if condition stated in UNTIL clause of START SLAVE is reached.
+     Checks if condition stated in UNTIL clause of START REPLICA is reached.
 
      Specifically, it checks if UNTIL condition is reached. Uses caching result
      of last comparison of current log file name and target log file name. So
@@ -1314,7 +1314,7 @@ Relay_log_info::add_channel_to_relay_log_name(char *buff, uint buff_size,
      This caching is needed to avoid of expensive string comparisons and
      @c strtol() conversions needed for log names comparison. We don't need to
      compare them each time this function is called, we only need to do this
-     when current log name changes. If we have @c UNTIL_MASTER_POS condition we
+     when current log name changes. If we have @c UNTIL_PRIMARY_POS condition we
      need to do this only after @c Rotate_log_event::do_apply_event() (which is
      rare, so caching gives real benifit), and if we have @c UNTIL_RELAY_POS
      condition then we should invalidate cached comarison value after
@@ -1324,7 +1324,7 @@ Relay_log_info::add_channel_to_relay_log_name(char *buff, uint buff_size,
 
      Should be called ONLY if @c until_condition @c != @c UNTIL_NONE !
 
-     @param master_beg_pos    position of the beginning of to be executed event
+     @param primary_beg_pos    position of the beginning of to be executed event
                               (not @c log_pos member of the event that points to
                               the beginning of the following event)
 
@@ -1335,34 +1335,34 @@ Relay_log_info::add_channel_to_relay_log_name(char *buff, uint buff_size,
 
 bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
 {
-  char error_msg[]= "Slave SQL thread is stopped because UNTIL "
+  char error_msg[]= "Replica SQL thread is stopped because UNTIL "
                     "condition is bad.";
   DBUG_ENTER("Relay_log_info::is_until_satisfied");
 
   switch (until_condition)
   {
-  case UNTIL_MASTER_POS:
+  case UNTIL_PRIMARY_POS:
   case UNTIL_RELAY_POS:
   {
     const char *log_name= NULL;
     ulonglong log_pos= 0;
 
-    if (until_condition == UNTIL_MASTER_POS)
+    if (until_condition == UNTIL_PRIMARY_POS)
     {
       if (ev && ev->server_id == (uint32) ::server_id && !replicate_same_server_id)
         DBUG_RETURN(false);
       /*
-        Rotate events originating from the slave have server_id==0,
-        and their log_pos is relative to the slave, so in case their
+        Rotate events originating from the replica have server_id==0,
+        and their log_pos is relative to the replica, so in case their
         log_pos is greater than the log_pos we are waiting for, they
-        can cause the slave to stop prematurely. So we ignore such
+        can cause the replica to stop prematurely. So we ignore such
         events.
       */
       if (ev && ev->server_id == 0)
         DBUG_RETURN(false);
-      log_name= group_master_log_name;
+      log_name= group_primary_log_name;
       if (!ev || is_in_group() || !ev->common_header->log_pos)
-        log_pos= group_master_log_pos;
+        log_pos= group_primary_log_pos;
       else
         log_pos= ev->common_header->log_pos - ev->common_header->data_written;
     }
@@ -1375,15 +1375,15 @@ bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
 #ifndef DBUG_OFF
     {
       char buf[32];
-      DBUG_PRINT("info", ("group_master_log_name='%s', group_master_log_pos=%s",
-                          group_master_log_name, llstr(group_master_log_pos, buf)));
+      DBUG_PRINT("info", ("group_primary_log_name='%s', group_primary_log_pos=%s",
+                          group_primary_log_name, llstr(group_primary_log_pos, buf)));
       DBUG_PRINT("info", ("group_relay_log_name='%s', group_relay_log_pos=%s",
                           group_relay_log_name, llstr(group_relay_log_pos, buf)));
       DBUG_PRINT("info", ("(%s) log_name='%s', log_pos=%s",
-                          until_condition == UNTIL_MASTER_POS ? "master" : "relay",
+                          until_condition == UNTIL_PRIMARY_POS ? "primary" : "relay",
                           log_name, llstr(log_pos, buf)));
       DBUG_PRINT("info", ("(%s) until_log_name='%s', until_log_pos=%s",
-                          until_condition == UNTIL_MASTER_POS ? "master" : "relay",
+                          until_condition == UNTIL_PRIMARY_POS ? "primary" : "relay",
                           until_log_name, llstr(until_log_pos, buf)));
     }
 #endif
@@ -1393,8 +1393,8 @@ bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
       /*
         We have no cached comparison results so we should compare log names
         and cache result.
-        If we are after RESET SLAVE, and the SQL slave thread has not processed
-        any event yet, it could be that group_master_log_name is "". In that case,
+        If we are after RESET REPLICA, and the SQL replica thread has not processed
+        any event yet, it could be that group_primary_log_name is "". In that case,
         just wait for more events (as there is no sensible comparison to do).
       */
 
@@ -1431,7 +1431,7 @@ bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
          until_log_names_cmp_result == UNTIL_LOG_NAMES_CMP_GREATER))
     {
       char buf[22];
-      sql_print_information("Slave SQL thread stopped because it reached its"
+      sql_print_information("Replica SQL thread stopped because it reached its"
                             " UNTIL position %s", llstr(until_pos(), buf));
       DBUG_RETURN(true);
     }
@@ -1454,7 +1454,7 @@ bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
         char *buffer;
         until_sql_gtids.to_string(&buffer);
         global_sid_lock->unlock();
-        sql_print_information("Slave SQL thread stopped because "
+        sql_print_information("Replica SQL thread stopped because "
                               "UNTIL SQL_BEFORE_GTIDS %s is already "
                               "applied", buffer);
         my_free(buffer);
@@ -1471,7 +1471,7 @@ bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
         char *buffer;
         until_sql_gtids.to_string(&buffer);
         global_sid_lock->unlock();
-        sql_print_information("Slave SQL thread stopped because it reached "
+        sql_print_information("Replica SQL thread stopped because it reached "
                               "UNTIL SQL_BEFORE_GTIDS %s", buffer);
         my_free(buffer);
         DBUG_RETURN(true);
@@ -1490,7 +1490,7 @@ bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
         char *buffer;
         until_sql_gtids.to_string(&buffer);
         global_sid_lock->unlock();
-        sql_print_information("Slave SQL thread stopped because it reached "
+        sql_print_information("Replica SQL thread stopped because it reached "
                               "UNTIL SQL_AFTER_GTIDS %s", buffer);
         my_free(buffer);
         DBUG_RETURN(true);
@@ -1514,10 +1514,10 @@ bool Relay_log_info::is_until_satisfied(THD *thd, Log_event *ev)
     */
     if (mts_recovery_group_cnt == 0)
     {
-      sql_print_information("Slave SQL thread stopped according to "
+      sql_print_information("Replica SQL thread stopped according to "
                             "UNTIL SQL_AFTER_MTS_GAPS as it has "
                             "processed all gap transactions left from "
-                            "the previous slave session.");
+                            "the previous replica session.");
 #ifndef DBUG_OFF
       until_condition= UNTIL_DONE;
 #endif
@@ -1588,7 +1588,7 @@ bool Relay_log_info::cached_charset_compare(char *charset) const
 }
 
 
-int Relay_log_info::stmt_done(my_off_t event_master_log_pos)
+int Relay_log_info::stmt_done(my_off_t event_primary_log_pos)
 {
   int error= 0;
 
@@ -1650,7 +1650,7 @@ int Relay_log_info::stmt_done(my_off_t event_master_log_pos)
                                     true/*need_data_lock=true*/);
     }
     if (!error)
-      error= inc_group_relay_log_pos(event_master_log_pos,
+      error= inc_group_relay_log_pos(event_primary_log_pos,
                                      true/*need_data_lock=true*/);
   }
 
@@ -1666,7 +1666,7 @@ void Relay_log_info::cleanup_context(THD *thd, bool error)
   /*
     1) Instances of Table_map_log_event, if ::do_apply_event() was called on them,
     may have opened tables, which we cannot be sure have been closed (because
-    maybe the Rows_log_event have not been found or will not be, because slave
+    maybe the Rows_log_event have not been found or will not be, because replica
     SQL thread is stopping, or relay log has a missing tail etc). So we close
     all thread's tables. And so the table mappings have to be cancelled.
     2) Rows_log_event::do_apply_event() may even have started statements or
@@ -1687,7 +1687,7 @@ void Relay_log_info::cleanup_context(THD *thd, bool error)
     info_thd->reset_query();
   }
   m_table_map.clear_tables();
-  slave_close_thread_tables(thd);
+  replica_close_thread_tables(thd);
   if (error)
     thd->mdl_context.release_transactional_locks();
   clear_flag(IN_STMT);
@@ -1700,7 +1700,7 @@ void Relay_log_info::cleanup_context(THD *thd, bool error)
   /*
     Reset state related to long_find_row notes in the error log:
     - timestamp
-    - flag that decides whether the slave prints or not
+    - flag that decides whether the replica prints or not
   */
   reset_row_stmt_start_timestamp();
   unset_long_find_row_note_printed();
@@ -1738,9 +1738,9 @@ void Relay_log_info::clear_tables_to_lock()
 
     /*
       If blob fields were used during conversion of field values 
-      from the master table into the slave table, then we need to 
+      from the primary table into the replica table, then we need to 
       free the memory used temporarily to store their values before
-      copying into the slave's table.
+      copying into the replica's table.
     */
     if (tables_to_lock->m_conv_table)
       free_blobs(tables_to_lock->m_conv_table);
@@ -1754,10 +1754,10 @@ void Relay_log_info::clear_tables_to_lock()
   DBUG_VOID_RETURN;
 }
 
-void Relay_log_info::slave_close_thread_tables(THD *thd)
+void Relay_log_info::replica_close_thread_tables(THD *thd)
 {
   thd->get_stmt_da()->set_overwrite_status(true);
-  DBUG_ENTER("Relay_log_info::slave_close_thread_tables(THD *thd)");
+  DBUG_ENTER("Relay_log_info::replica_close_thread_tables(THD *thd)");
   thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
   thd->get_stmt_da()->set_overwrite_status(false);
 
@@ -1792,7 +1792,7 @@ void Relay_log_info::slave_close_thread_tables(THD *thd)
 /**
   Execute a SHOW RELAYLOG EVENTS statement.
 
-  When multiple replication channels exist on this slave
+  When multiple replication channels exist on this replica
   and no channel name is specified through FOR CHANNEL clause
   this function errors out and exits.
 
@@ -1805,7 +1805,7 @@ void Relay_log_info::slave_close_thread_tables(THD *thd)
 bool mysql_show_relaylog_events(THD* thd)
 {
 
-  Master_info *mi =0;
+  Primary_info *mi =0;
   List<Item> field_list;
   bool res;
   DBUG_ENTER("mysql_show_relaylog_events");
@@ -1814,7 +1814,7 @@ bool mysql_show_relaylog_events(THD* thd)
 
   if (!thd->lex->mi.for_channel && msr_map.get_num_instances() > 1)
   {
-    my_error(ER_SLAVE_MULTIPLE_CHANNELS_CMD, MYF(0));
+    my_error(ER_REPLICA_MULTIPLE_CHANNELS_CMD, MYF(0));
     DBUG_RETURN(true);
   }
 
@@ -1829,14 +1829,14 @@ bool mysql_show_relaylog_events(THD* thd)
 
   if (!mi && strcmp(thd->lex->mi.channel, msr_map.get_default_channel()))
   {
-    my_error(ER_SLAVE_CHANNEL_DOES_NOT_EXIST, MYF(0), thd->lex->mi.channel);
+    my_error(ER_REPLICA_CHANNEL_DOES_NOT_EXIST, MYF(0), thd->lex->mi.channel);
     res= true;
     goto err;
   }
 
   if (mi == NULL)
   {
-    my_error(ER_SLAVE_CONFIGURATION, MYF(0));
+    my_error(ER_REPLICA_CONFIGURATION, MYF(0));
     res= true;
     goto err;
   }
@@ -1879,13 +1879,13 @@ int Relay_log_info::rli_init_info()
   {
     /*
       We have to reset read position of relay-log-bin as we may have
-      already been reading from 'hotlog' when the slave was stopped
+      already been reading from 'hotlog' when the replica was stopped
       last time. If this case pos_in_file would be set and we would
       get a crash when trying to read the signature for the binary
       relay log.
 
       We only rewind the read position if we are starting the SQL
-      thread. The handle_slave_sql thread assumes that the read
+      thread. The handle_replica_sql thread assumes that the read
       position is at the beginning of the file, and will read the
       "signature" and then fast-forward to the last position read.
     */
@@ -1916,7 +1916,7 @@ int Relay_log_info::rli_init_info()
   }
 
   cur_log_fd = -1;
-  slave_skip_counter= 0;
+  replica_skip_counter= 0;
   abort_pos_wait= 0;
   log_space_limit= relay_log_space_limit;
   log_space_total= 0;
@@ -1924,28 +1924,28 @@ int Relay_log_info::rli_init_info()
   tables_to_lock_count= 0;
 
   char pattern[FN_REFLEN];
-  (void) my_realpath(pattern, slave_load_tmpdir, 0);
+  (void) my_realpath(pattern, replica_load_tmpdir, 0);
   /*
    @TODO:
-    In MSR, sometimes slave fail with the following error:
-    Unable to use slave's temporary directory /tmp - 
+    In MSR, sometimes replica fail with the following error:
+    Unable to use replica's temporary directory /tmp - 
     Can't create/write to file '/tmp/SQL_LOAD-92d1eee0-9de4-11e3-8874-68730ad50fcb'    (Errcode: 17 - File exists), Error_code: 1
 
    */
   if (fn_format(pattern, PREFIX_SQL_LOAD, pattern, "",
                 MY_SAFE_PATH | MY_RETURN_REAL_PATH) == NullS)
   {
-    sql_print_error("Unable to use slave's temporary directory '%s'.",
-                    slave_load_tmpdir);
+    sql_print_error("Unable to use replica's temporary directory '%s'.",
+                    replica_load_tmpdir);
     DBUG_RETURN(1);
   }
-  unpack_filename(slave_patternload_file, pattern);
-  slave_patternload_file_size= strlen(slave_patternload_file);
+  unpack_filename(replica_patternload_file, pattern);
+  replica_patternload_file_size= strlen(replica_patternload_file);
 
   /*
     The relay log will now be opened, as a SEQ_READ_APPEND IO_CACHE.
     Note that the I/O thread flushes it to disk after writing every
-    event, in flush_info within the master info.
+    event, in flush_info within the primary info.
   */
   /*
     For the maximum log size, we choose max_relay_log_size if it is
@@ -2007,20 +2007,20 @@ a file name for --relay-log-index option.", opt_relaylog_index_name);
     ln= add_channel_to_relay_log_name(relay_bin_channel, FN_REFLEN,
                                       ln_without_channel_name);
 
-    /* We send the warning only at startup, not after every RESET SLAVE */
+    /* We send the warning only at startup, not after every RESET REPLICA */
     if (!opt_relay_logname && !opt_relaylog_index_name && !name_warning_sent)
     {
       /*
         User didn't give us info to name the relay log index file.
         Picking `hostname`-relay-bin.index like we do, causes replication to
-        fail if this slave's hostname is changed later. So, we would like to
+        fail if this replica's hostname is changed later. So, we would like to
         instead require a name. But as we don't want to break many existing
         setups, we only give warning, not error.
       */
       sql_print_warning("Neither --relay-log nor --relay-log-index were used;"
                         " so replication "
                         "may break when this MySQL server acts as a "
-                        "slave and has his hostname changed!! Please "
+                        "replica and has his hostname changed!! Please "
                         "use '--relay-log=%s' to avoid this problem.",
                         ln_without_channel_name);
       name_warning_sent= 1;
@@ -2068,7 +2068,7 @@ a file name for --relay-log-index option.", opt_relaylog_index_name);
     */
     if (!gtid_retrieved_initialized &&
         relay_log.init_gtid_sets(&gtid_set, NULL,
-                                 opt_slave_sql_verify_checksum,
+                                 opt_replica_sql_verify_checksum,
                                  true/*true=need lock*/,
                                  &mi->transaction_parser, &gtid_partial_trx))
     {
@@ -2155,8 +2155,8 @@ a file name for --relay-log-index option.", opt_relaylog_index_name);
       error= 1;
       goto err;
     }
-    group_master_log_name[0]= 0;
-    group_master_log_pos= 0;
+    group_primary_log_name[0]= 0;
+    group_primary_log_pos= 0;
   }
   else
   {
@@ -2248,9 +2248,9 @@ void Relay_log_info::end_info()
   relay_log.close(LOG_CLOSE_INDEX | LOG_CLOSE_STOP_EVENT);
   relay_log.harvest_bytes_written(&log_space_total);
   /*
-    Delete the slave's temporary tables from memory.
+    Delete the replica's temporary tables from memory.
     In the future there will be other actions than this, to ensure persistance
-    of slave's temp tables after shutdown.
+    of replica's temp tables after shutdown.
   */
   close_temporary_tables();
 
@@ -2271,17 +2271,17 @@ int Relay_log_info::flush_current_log()
   DBUG_RETURN(0);
 }
 
-void Relay_log_info::set_master_info(Master_info* info)
+void Relay_log_info::set_primary_info(Primary_info* info)
 {
   mi= info;
 }
 
 /**
-  Stores the file and position where the execute-slave thread are in the
+  Stores the file and position where the execute-replica thread are in the
   relay log:
 
-    - As this is only called by the slave thread or on STOP SLAVE, with the
-      log_lock grabbed and the slave thread stopped, we don't need to have
+    - As this is only called by the replica thread or on STOP REPLICA, with the
+      log_lock grabbed and the replica thread stopped, we don't need to have
       a lock here.
     - If there is an active transaction, then we don't update the position
       in the relay log.  This is to ensure that we re-execute statements
@@ -2297,16 +2297,16 @@ void Relay_log_info::set_master_info(Master_info* info)
 */
 
 /**
-  Store the file and position where the slave's SQL thread are in the
+  Store the file and position where the replica's SQL thread are in the
   relay log.
 
   Notes:
 
-  - This function should be called either from the slave SQL thread,
-    or when the slave thread is not running.  (It reads the
-    group_{relay|master}_log_{pos|name} and delay fields in the rli
-    object.  These may only be modified by the slave SQL thread or by
-    a client thread when the slave SQL thread is not running.)
+  - This function should be called either from the replica SQL thread,
+    or when the replica thread is not running.  (It reads the
+    group_{relay|primary}_log_{pos|name} and delay fields in the rli
+    object.  These may only be modified by the replica SQL thread or by
+    a client thread when the replica SQL thread is not running.)
 
   - If there is an active transaction, then we do not update the
     position in the relay log.  This is to ensure that we re-execute
@@ -2370,7 +2370,7 @@ bool Relay_log_info::read_info(Rpl_info_handler *from)
   int lines= 0;
   char *first_non_digit= NULL;
   ulong temp_group_relay_log_pos= 0;
-  ulong temp_group_master_log_pos= 0;
+  ulong temp_group_primary_log_pos= 0;
   int temp_sql_delay= 0;
   int temp_internal_id= internal_id;
 
@@ -2381,7 +2381,7 @@ bool Relay_log_info::read_info(Rpl_info_handler *from)
     only use RLI to execute BINLOG statements.
 
     @todo Uncomment the following assertion. Currently,
-    Relay_log_info::init() is called from init_master_info() before
+    Relay_log_info::init() is called from init_primary_info() before
     the THD object Relay_log_info::sql_thd is created. That means we
     cannot call belongs_to_client() since belongs_to_client()
     dereferences Relay_log_info::sql_thd. So we need to refactor
@@ -2394,13 +2394,13 @@ bool Relay_log_info::read_info(Rpl_info_handler *from)
   /*
     Starting from 5.1.x, relay-log.info has a new format. Now, its
     first line contains the number of lines in the file. By reading
-    this number we can determine which version our master.info comes
+    this number we can determine which version our primary.info comes
     from. We can't simply count the lines in the file, since
     versions before 5.1.x could generate files with more lines than
     needed. If first line doesn't contain a number, or if it
     contains a number less than LINES_IN_RELAY_LOG_INFO_WITH_DELAY,
     then the file is treated like a file from pre-5.1.x version.
-    There is no ambiguity when reading an old master.info: before
+    There is no ambiguity when reading an old primary.info: before
     5.1.x, the first line contained the binlog's name, which is
     either empty or has an extension (contains a '.'), so can't be
     confused with an integer.
@@ -2410,7 +2410,7 @@ bool Relay_log_info::read_info(Rpl_info_handler *from)
   */
 
   /*
-    The first row is temporarily stored in mi->master_log_name, if
+    The first row is temporarily stored in mi->primary_log_name, if
     it is line count and not binlog name (new format) it will be
     overwritten by the second row later.
   */
@@ -2434,10 +2434,10 @@ bool Relay_log_info::read_info(Rpl_info_handler *from)
 
   if (from->get_info(&temp_group_relay_log_pos,
                      (ulong) BIN_LOG_HEADER_SIZE) ||
-      from->get_info(group_master_log_name,
+      from->get_info(group_primary_log_name,
                      sizeof(group_relay_log_name),
                      (char *) "") ||
-      from->get_info(&temp_group_master_log_pos,
+      from->get_info(&temp_group_primary_log_pos,
                      0UL))
     DBUG_RETURN(TRUE);
 
@@ -2467,7 +2467,7 @@ bool Relay_log_info::read_info(Rpl_info_handler *from)
   }
 
   group_relay_log_pos=  temp_group_relay_log_pos;
-  group_master_log_pos= temp_group_master_log_pos;
+  group_primary_log_pos= temp_group_primary_log_pos;
   sql_delay= (int32) temp_sql_delay;
   internal_id= (uint) temp_internal_id;
 
@@ -2501,8 +2501,8 @@ bool Relay_log_info::write_info(Rpl_info_handler *to)
       to->set_info((int) LINES_IN_RELAY_LOG_INFO_WITH_ID) ||
       to->set_info(group_relay_log_name) ||
       to->set_info((ulong) group_relay_log_pos) ||
-      to->set_info(group_master_log_name) ||
-      to->set_info((ulong) group_master_log_pos) ||
+      to->set_info(group_primary_log_name) ||
+      to->set_info((ulong) group_primary_log_pos) ||
       to->set_info((int) sql_delay) ||
       to->set_info(recovery_parallel_workers) ||
       to->set_info((int) internal_id) ||
@@ -2515,13 +2515,13 @@ bool Relay_log_info::write_info(Rpl_info_handler *to)
 /**
    Delete the existing event and set a new one. This class is
    responsible for freeing the event, the caller should not do that.
-   When a new FD is from the master adaptation routine is invoked
-   to align the slave applier execution context with the master version.
+   When a new FD is from the primary adaptation routine is invoked
+   to align the replica applier execution context with the primary version.
 
    The method is run by SQL thread/MTS Coordinator.
    Although notice that MTS worker runs it, inefficiently (see assert),
    once at its destruction time.
-   todo: fix Slave_worker and Relay_log_info inheritance relation.
+   todo: fix Replica_worker and Relay_log_info inheritance relation.
 
    @param  a pointer to be installed into execution context 
            FormatDescriptor event
@@ -2534,14 +2534,14 @@ void Relay_log_info::set_rli_description_event(Format_description_log_event *fe)
 
   if (fe)
   {
-    adapt_to_master_version(fe);
+    adapt_to_primary_version(fe);
     if (info_thd)
     {
       /*
-        When the slave applier thread executes a
-        Format_description_log_event originating from a master
-        (corresponding to a new master binary log), set gtid_next to
-        NOT_YET_DETERMINED.  This tells the slave thread that:
+        When the replica applier thread executes a
+        Format_description_log_event originating from a primary
+        (corresponding to a new primary binary log), set gtid_next to
+        NOT_YET_DETERMINED.  This tells the replica thread that:
         - If a Gtid_log_event is read subsequently, gtid_next will be
           set to the given GTID (this is done in
           Gtid_log_event::do_apply_event().
@@ -2559,11 +2559,11 @@ void Relay_log_info::set_rli_description_event(Format_description_log_event *fe)
 
       if (is_parallel_exec())
       {
-        for (Slave_worker **it= workers.begin(); it != workers.end(); ++it)
+        for (Replica_worker **it= workers.begin(); it != workers.end(); ++it)
         {
-          Slave_worker *w= *it;
+          Replica_worker *w= *it;
           mysql_mutex_lock(&w->jobs_lock);
-          if (w->running_status == Slave_worker::RUNNING)
+          if (w->running_status == Replica_worker::RUNNING)
             w->set_rli_description_event(fe);
           mysql_mutex_unlock(&w->jobs_lock);
         }
@@ -2594,12 +2594,12 @@ struct st_feature_version
   */
   uchar version_split[3];
   /*
-    Action to perform when according to FormatDescriptor event Master 
+    Action to perform when according to FormatDescriptor event Primary 
     is found to be feature-aware while previously it has *not* been.
   */
   void (*upgrade) (THD*);
   /*
-    Action to perform when according to FormatDescriptor event Master 
+    Action to perform when according to FormatDescriptor event Primary 
     is found to be feature-*un*aware while previously it has been.
   */
   void (*downgrade) (THD*);
@@ -2623,7 +2623,7 @@ void wl6292_downgrade_func(THD *thd)
 }
 
 /**
-   Sensitive to Master-vs-Slave version difference features
+   Sensitive to Primary-vs-Replica version difference features
    should be listed in the version non-descending order.
 */
 static st_feature_version s_features[]=
@@ -2636,10 +2636,10 @@ static st_feature_version s_features[]=
 };
 
 /**
-   The method lists rules of adaptation for the slave applier 
-   to specific master versions.
-   It's executed right before a new master FD is set for
-   slave appliers execution context.
+   The method lists rules of adaptation for the replica applier 
+   to specific primary versions.
+   It's executed right before a new primary FD is set for
+   replica appliers execution context.
    Comparison of the old and new version yields the adaptive
    actions direction.
    Current execution FD's version, V_0, is compared with the new being set up
@@ -2649,25 +2649,25 @@ static st_feature_version s_features[]=
    In the upgrade case the featured defined in [V_0 + 1, V_1] range are
    "added" by running the upgrade actions.
 
-   Notice, that due to relay log may have two FD events, one the slave local
-   and the other from the Master. That can lead to extra
-   adapt_to_master_version() calls and in case Slave and Master are of different
+   Notice, that due to relay log may have two FD events, one the replica local
+   and the other from the Primary. That can lead to extra
+   adapt_to_primary_version() calls and in case Replica and Primary are of different
    versions the extra two calls should compensate each other.
 
    Also, at composing downgrade/upgrade actions keep in mind that
-   at initialization Slave sets up FD of version 4.0 and then transits to
+   at initialization Replica sets up FD of version 4.0 and then transits to
    the current server version. At transition all upgrading actions in 
    the range of [4.0..current] are run.
 
    @param fdle  a pointer to new Format Description event that is being set
                 up for execution context.
 */
-void Relay_log_info::adapt_to_master_version(Format_description_log_event *fdle)
+void Relay_log_info::adapt_to_primary_version(Format_description_log_event *fdle)
 {
   THD *thd=info_thd;
-  ulong master_version, current_version;
+  ulong primary_version, current_version;
   int changed= !fdle || ! rli_description_event ? 0 :
-    (master_version= fdle->get_product_version()) -
+    (primary_version= fdle->get_product_version()) -
     (current_version= rli_description_event->get_product_version());
 
   /* When the last version is not changed nothing to adapt for */
@@ -2686,10 +2686,10 @@ void Relay_log_info::adapt_to_master_version(Format_description_log_event *fdle)
   {
     ulong ver_f= version_product(s_features[i].version_split);
 
-    if ((downgrade ? master_version : current_version) < ver_f && 
+    if ((downgrade ? primary_version : current_version) < ver_f && 
         i_first == st_feature_version::_END_OF_LIST)
       i_first= i;
-    if ((downgrade ? current_version : master_version) < ver_f)
+    if ((downgrade ? current_version : primary_version) < ver_f)
     {
       i_last= i;
       DBUG_ASSERT(i_last >= i_first);
@@ -2707,9 +2707,9 @@ void Relay_log_info::adapt_to_master_version(Format_description_log_event *fdle)
                 version_product(s_features[i - 1].version_split) <=
                 version_product(s_features[i].version_split));
 
-    DBUG_ASSERT((downgrade ? master_version : current_version) <
+    DBUG_ASSERT((downgrade ? primary_version : current_version) <
                 version_product(s_features[i].version_split) &&
-                (downgrade ? current_version : master_version  >=
+                (downgrade ? current_version : primary_version  >=
                  version_product(s_features[i].version_split)));
 
     if (downgrade && s_features[i].downgrade)

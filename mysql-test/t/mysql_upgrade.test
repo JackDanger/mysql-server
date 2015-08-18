@@ -413,13 +413,13 @@ let SEARCH_FILE= $server_log;
 connect (con0,localhost,root,,);
 
 --echo #Connecting user with pre 4.1 hash and empty plugin- should fail
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (con1,localhost,user_old_pass_pn,lala,);
 
 --echo #Connecting user with pre 4.1 hash and mysql_old_password plugin set -
 --echo #should fail - the mysql_old_password was removed in 5.7
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_PLUGIN_IS_NOT_LOADED
 connect (con2,localhost,user_old_pass_wp,lala,);
 
@@ -477,7 +477,7 @@ UPDATE mysql.user SET authentication_string='' WHERE user='user_nat_pass_pn';
 --echo #now updating mysql_user to get all privileges on *.*
 connection con0;
 
-UPDATE mysql.user SET Select_priv='Y', Insert_priv='Y', Update_priv='Y', Delete_priv='Y', Create_priv='Y', Drop_priv='Y', Reload_priv='Y', Shutdown_priv='Y', Process_priv='Y', File_priv='Y', Grant_priv='Y', References_priv='Y', Index_priv='Y', Alter_priv='Y', Show_db_priv='Y', Super_priv='Y', Create_tmp_table_priv='Y', Lock_tables_priv='Y', Execute_priv='Y', Repl_slave_priv='Y', Repl_client_priv='Y', Create_view_priv='Y', Show_view_priv='Y', Create_routine_priv='Y', Alter_routine_priv='Y', Create_user_priv='Y', Event_priv='Y', Trigger_priv='Y', Create_tablespace_priv='Y' where user="user_nat_pass_pn";
+UPDATE mysql.user SET Select_priv='Y', Insert_priv='Y', Update_priv='Y', Delete_priv='Y', Create_priv='Y', Drop_priv='Y', Reload_priv='Y', Shutdown_priv='Y', Process_priv='Y', File_priv='Y', Grant_priv='Y', References_priv='Y', Index_priv='Y', Alter_priv='Y', Show_db_priv='Y', Super_priv='Y', Create_tmp_table_priv='Y', Lock_tables_priv='Y', Execute_priv='Y', Repl_replica_priv='Y', Repl_client_priv='Y', Create_view_priv='Y', Show_view_priv='Y', Create_routine_priv='Y', Alter_routine_priv='Y', Create_user_priv='Y', Event_priv='Y', Trigger_priv='Y', Create_tablespace_priv='Y' where user="user_nat_pass_pn";
 
 FLUSH PRIVILEGES;
 
@@ -529,7 +529,7 @@ SELECT account_locked FROM mysql.user WHERE user='user_nat_pass_wp';
 
 --echo #Connecting with user using mysql_old_password plugin should not be
 --echo #possible
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_PLUGIN_IS_NOT_LOADED
 connect (con5,localhost,user_old_pass_wp,lala,);
 

@@ -1,4 +1,4 @@
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 #
 # Bug#7100 relay_log_space_max missing from SHOW VARIABLES
@@ -18,9 +18,9 @@ INSERT INTO t1 SET name='Caleb', age=1;
 ALTER TABLE t1 ADD id int(8) ZEROFILL AUTO_INCREMENT PRIMARY KEY,
 ALGORITHM=COPY;
 SELECT * FROM t1 ORDER BY id;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY id;
-connection master;
+connection primary;
 DROP TABLE t1;
 
 --source include/rpl_end.inc

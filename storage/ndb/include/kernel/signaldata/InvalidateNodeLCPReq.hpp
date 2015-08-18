@@ -22,7 +22,7 @@
 
 
 /**
- * This signal is sent from the master DIH to all DIHs
+ * This signal is sent from the primary DIH to all DIHs
  * when a node is starting without filesystem.
  *
  * All DIHs must then "forgett" that the starting node has 

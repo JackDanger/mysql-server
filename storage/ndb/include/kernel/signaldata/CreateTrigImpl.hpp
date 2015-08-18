@@ -64,7 +64,7 @@ struct CreateTrigImplRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     TriggerNameTooLong = 4236,
     TooManyTriggers = 4237,
     TriggerNotFound = 4238,
@@ -86,7 +86,7 @@ struct CreateTrigImplRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 

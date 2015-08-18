@@ -438,7 +438,7 @@ private:
     0. In other words, "db", "db_length" must either be NULL, or contain a
     valid database name.
 
-    @note this attribute is set and alloced by the slave SQL thread (for
+    @note this attribute is set and alloced by the replica SQL thread (for
     the THD of that thread); that thread is (and must remain, for now) the
     only responsible for freeing this member.
   */

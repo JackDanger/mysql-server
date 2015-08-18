@@ -2043,37 +2043,37 @@ execute abc;
 deallocate prepare abc;
 
 
-create procedure proc_1() reset master;
+create procedure proc_1() reset primary;
 delimiter |;
 --error ER_STMT_NOT_ALLOWED_IN_SF_OR_TRG
-create function func_1() returns int begin reset master; return 1; end|
+create function func_1() returns int begin reset primary; return 1; end|
 create function func_1() returns int begin call proc_1(); return 1; end|
 delimiter ;|
 --error ER_STMT_NOT_ALLOWED_IN_SF_OR_TRG
 select func_1(), func_1(), func_1() from dual;
 drop function func_1;
 drop procedure proc_1;
-prepare abc from "reset master";
+prepare abc from "reset primary";
 execute abc;
 execute abc;
 execute abc;
 deallocate prepare abc;
 
 
-create procedure proc_1() reset slave;
+create procedure proc_1() reset replica;
 call proc_1();
 call proc_1();
 call proc_1();
 delimiter |;
 --error ER_STMT_NOT_ALLOWED_IN_SF_OR_TRG
-create function func_1() returns int begin reset slave; return 1; end|
+create function func_1() returns int begin reset replica; return 1; end|
 create function func_1() returns int begin call proc_1(); return 1; end|
 delimiter ;|
 --error ER_STMT_NOT_ALLOWED_IN_SF_OR_TRG
 select func_1(), func_1(), func_1() from dual;
 drop function func_1;
 drop procedure proc_1;
-prepare abc from "reset slave";
+prepare abc from "reset replica";
 execute abc;
 execute abc;
 execute abc;
@@ -2332,25 +2332,25 @@ execute abc;
 deallocate prepare abc;
 
 
-create procedure proc_1() start slave;
+create procedure proc_1() start replica;
 drop procedure proc_1;
 delimiter |;
 --error ER_COMMIT_NOT_ALLOWED_IN_SF_OR_TRG
-create function func_1() returns int begin start slave; return 1; end|
+create function func_1() returns int begin start replica; return 1; end|
 delimiter ;|
 
-prepare abc from "start slave";
+prepare abc from "start replica";
 deallocate prepare abc;
 
 
-create procedure proc_1() stop slave;
+create procedure proc_1() stop replica;
 drop procedure proc_1;
 delimiter |;
 --error ER_COMMIT_NOT_ALLOWED_IN_SF_OR_TRG
-create function func_1() returns int begin stop slave; return 1; end|
+create function func_1() returns int begin stop replica; return 1; end|
 delimiter ;|
 
-prepare abc from "stop slave";
+prepare abc from "stop replica";
 deallocate prepare abc;
 
 
@@ -2368,45 +2368,45 @@ prepare abc from "show binlog events";
 deallocate prepare abc;
 
 
-create procedure proc_1() show slave status;
+create procedure proc_1() show replica status;
 drop procedure proc_1;
 delimiter |;
 --error ER_SP_NO_RETSET
-create function func_1() returns int begin show slave status; return 1; end|
+create function func_1() returns int begin show replica status; return 1; end|
 delimiter ;|
 --error ER_SP_DOES_NOT_EXIST
 select func_1(), func_1(), func_1() from dual;
 --error ER_SP_DOES_NOT_EXIST
 drop function func_1;
-prepare abc from "show slave status";
+prepare abc from "show replica status";
 deallocate prepare abc;
 
 
-create procedure proc_1() show master status;
+create procedure proc_1() show primary status;
 drop procedure proc_1;
 delimiter |;
 --error ER_SP_NO_RETSET
-create function func_1() returns int begin show master status; return 1; end|
+create function func_1() returns int begin show primary status; return 1; end|
 delimiter ;|
 --error ER_SP_DOES_NOT_EXIST
 select func_1(), func_1(), func_1() from dual;
 --error ER_SP_DOES_NOT_EXIST
 drop function func_1;
-prepare abc from "show master status";
+prepare abc from "show primary status";
 deallocate prepare abc;
 
 
-create procedure proc_1() show master logs;
+create procedure proc_1() show primary logs;
 drop procedure proc_1;
 delimiter |;
 --error ER_SP_NO_RETSET
-create function func_1() returns int begin show master logs; return 1; end|
+create function func_1() returns int begin show primary logs; return 1; end|
 delimiter ;|
 --error ER_SP_DOES_NOT_EXIST
 select func_1(), func_1(), func_1() from dual;
 --error ER_SP_DOES_NOT_EXIST
 drop function func_1;
-prepare abc from "show master logs";
+prepare abc from "show primary logs";
 deallocate prepare abc;
 
 

@@ -24,7 +24,7 @@ SELECT 1;
 
 # Test ER_CANT_CREATE_THREAD
 SET GLOBAL debug= '+d,fail_thread_create';
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_CANT_CREATE_THREAD
 connect (con4, localhost, root,,mysql);
 
@@ -42,7 +42,7 @@ SET GLOBAL max_connections= 3;
 connect (con1, localhost, root,,mysql);
 connect (con2, localhost, root,,mysql);
 connect (con3, localhost, root,,mysql);
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_CON_COUNT_ERROR
 connect (con4, localhost, root,,mysql);
 
@@ -55,7 +55,7 @@ disconnect con3;
 # Test resource allocation failure like out of memory.
 SET GLOBAL debug= '+d,simulate_resource_failure';
 call mtr.add_suppression("Out of memory");
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --replace_regex /system error: [0-9]+/system error: NUM/
 --error 2013 
 connect (con1, localhost, root,,mysql);

@@ -16,7 +16,7 @@
 # --source ../include/stage_setup.inc
 # ... test specific payload ...
 # --source ../include/stage_cleanup.inc
-# and a t/stage_xxx-master.opt file
+# and a t/stage_xxx-primary.opt file
 #
 # ==============================
 # HELPER include/stage_setup.inc

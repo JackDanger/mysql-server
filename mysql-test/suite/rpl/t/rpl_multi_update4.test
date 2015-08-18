@@ -1,48 +1,48 @@
-# Let's verify that multi-update is not always skipped by slave if
+# Let's verify that multi-update is not always skipped by replica if
 # some replicate-* rules exist.
 # (BUG#15699)
 
 source include/not_gtid_enabled.inc;
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 ### Clean-up
 
-connection master;
+connection primary;
 --disable_warnings
 drop database if exists d1;
 drop database if exists d2;
 
-connection slave;
+connection replica;
 drop database if exists d2;
 --enable_warnings
 
-### Do on master
+### Do on primary
 
-connection master;
-create database d1;      # accepted by slave
+connection primary;
+create database d1;      # accepted by replica
 create table d1.t0 (id int);
-create database d2;      # ignored  by slave
+create database d2;      # ignored  by replica
 use d2;
 create table t1 (id int);
 create table t2 (id int);
 insert into t1 values (1), (2), (3), (4), (5);
 insert into t2 select id + 3 from t1;
-# a problematic query which must be filter out by slave
+# a problematic query which must be filter out by replica
 update t1 join t2 using (id) set t1.id = 0;
 insert into d1.t0 values (0); # replication works
 
-### Check on slave
+### Check on replica
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 use d1;
 select * from t0 where id=0;  # must find
 
 ### Clean-up
-connection master;
+connection primary;
 drop database d1;
 drop database d2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of test
 --source include/rpl_end.inc

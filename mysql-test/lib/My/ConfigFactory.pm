@@ -468,7 +468,7 @@ sub post_check_embedded_group {
   my @no_copy =
     (
      '#log-error', # Embedded server writes stderr to mysqltest's log file
-     'slave-net-timeout', # Embedded server are not build with replication
+     'replica-net-timeout', # Embedded server are not build with replication
      'shared-memory-base-name', # No shared memory for embedded
     );
 

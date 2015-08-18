@@ -11,8 +11,8 @@ dojo.require("dojox.drawing.plugins._Plugin");
 	//		Used for UI tooltips. Buttons in the toolbar.
 	// 		This file is not complete.
 	//
-	var master = null;
-	var MasterC = dojox.drawing.util.oo.declare(
+	var primary = null;
+	var PrimaryC = dojox.drawing.util.oo.declare(
 		
 		dojox.drawing.plugins._Plugin,
 		function(options){
@@ -87,8 +87,8 @@ dojo.require("dojox.drawing.plugins._Plugin");
 		
 		dojox.drawing.plugins._Plugin,
 		function(options){
-			if(!master){
-				master = new MasterC(options);
+			if(!primary){
+				primary = new PrimaryC(options);
 			}
 			if(options.stencil){
 				//todo
@@ -103,7 +103,7 @@ dojo.require("dojox.drawing.plugins._Plugin");
 			height:200,
 			onOver: function(){
 				//console.log("   tooltip over", this.data.text)
-				master.show(this.button, this.data.text);
+				primary.show(this.button, this.data.text);
 			},
 			
 			onOut: function(){

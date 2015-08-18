@@ -1,11 +1,11 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 create user test;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 create table t1(a int) engine=InnoDB;
 create table t2(a int) engine=MyISAM;
 insert into t1 values(1001);
@@ -20,7 +20,7 @@ a
 select * from t2;
 a
 2001
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select @@read_only;
 @@read_only
 0
@@ -65,7 +65,7 @@ a
 2001
 2002
 2004
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 1001
@@ -104,7 +104,7 @@ a
 2002
 2004
 2005
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 1001
@@ -124,6 +124,6 @@ ERROR HY000: The MySQL server is running with the --read-only option so it canno
 drop user test;
 drop table t1;
 drop table t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 set global read_only=0;
 include/rpl_end.inc

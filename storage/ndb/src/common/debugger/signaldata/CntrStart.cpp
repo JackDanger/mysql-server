@@ -33,7 +33,7 @@ printCNTR_START_REF(FILE * output, const Uint32 * theData,
 		    Uint32 len, Uint16 receiverBlockNo) {
   const CntrStartRef * const sig = (CntrStartRef *)theData;
   fprintf(output, " errorCode: %x\n", sig->errorCode);
-  fprintf(output, " masterNodeId: %x\n", sig->masterNodeId);
+  fprintf(output, " primaryNodeId: %x\n", sig->primaryNodeId);
   return true;
 }
 
@@ -43,7 +43,7 @@ printCNTR_START_CONF(FILE * output, const Uint32 * theData,
   const CntrStartConf * const sig = (CntrStartConf *)theData;
   fprintf(output, " startType: %x\n", sig->startType);
   fprintf(output, " startGci: %x\n", sig->startGci);
-  fprintf(output, " masterNodeId: %x\n", sig->masterNodeId);
+  fprintf(output, " primaryNodeId: %x\n", sig->primaryNodeId);
   fprintf(output, " noStartNodes: %x\n", sig->noStartNodes);
 
   char buf[32*NdbNodeBitmask::Size+1];

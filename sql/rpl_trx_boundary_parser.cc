@@ -58,7 +58,7 @@ void Transaction_boundary_parser::reset()
 
    @param buf            Pointer to the event buffer.
    @param length         The size of the event buffer.
-   @param fd_event       The description event of the master which logged
+   @param fd_event       The description event of the primary which logged
                          the event.
    @param throw_warnings If the function should throw warning messages while
                          updating the boundary parser state.
@@ -87,7 +87,7 @@ bool Transaction_boundary_parser::feed_event(const char *buf, size_t length,
 
    @param buf               Pointer to the event buffer.
    @param length            The size of the event buffer.
-   @param description_event The description event of the master which logged
+   @param description_event The description event of the primary which logged
                             the event.
    @param throw_warnings    If the function should throw warnings getting the
                             event boundary type.
@@ -217,7 +217,7 @@ Transaction_boundary_parser::get_event_boundary_type(
     case binary_log::START_EVENT_V3:
     case binary_log::STOP_EVENT:
     case binary_log::LOAD_EVENT:
-    case binary_log::SLAVE_EVENT:
+    case binary_log::REPLICA_EVENT:
     case binary_log::CREATE_FILE_EVENT:
     case binary_log::DELETE_FILE_EVENT:
     case binary_log::NEW_LOAD_EVENT:

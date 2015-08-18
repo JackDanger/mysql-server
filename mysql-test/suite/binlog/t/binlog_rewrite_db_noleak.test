@@ -15,7 +15,7 @@
 #
 
 --source include/have_binlog_format_row.inc
-RESET MASTER;
+RESET PRIMARY;
 CREATE DATABASE db1;
 USE db1;
 CREATE TABLE t1 (i INT);
@@ -40,8 +40,8 @@ DELETE FROM db2.t1 WHERE i=4;
 
 # Using the new option to apply the row event on some other database (from db1 -> db3 in the current case)
 
---exec $MYSQL_BINLOG --force-if-open --rewrite-db="db1->db3" $MYSQLD_DATADIR/master-bin.000001 > $MYSQLTEST_VARDIR/tmp/rewrite_noleak.sql
-call mtr.add_suppression("Slave SQL: Error executing row event:*");
+--exec $MYSQL_BINLOG --force-if-open --rewrite-db="db1->db3" $MYSQLD_DATADIR/primary-bin.000001 > $MYSQLTEST_VARDIR/tmp/rewrite_noleak.sql
+call mtr.add_suppression("Replica SQL: Error executing row event:*");
 
 --echo Dropping the database db1 creating the new database db3.
 DROP DATABASE db1;
@@ -53,7 +53,7 @@ DROP DATABASE db2;
 
 # With gtid-mode=on we need purge gtid_executed, if not transactions
 # replayed through mysqlbinlog will be skipped.
-RESET MASTER;
+RESET PRIMARY;
 --echo [The sql file will be applied on the current database]
 --exec $MYSQL --database=db3 --local-infile=1 < $MYSQLTEST_VARDIR/tmp/rewrite_noleak.sql
 

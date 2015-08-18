@@ -13,7 +13,7 @@
 #
 #   $rpl_server_number
 #     Number to identify the server that needs to reconnect.  1 is the
-#     master server, 2 the slave server, 3 the 3rd server, and so on.
+#     primary server, 2 the replica server, 3 the 3rd server, and so on.
 #     Cf. include/rpl_init.inc
 #
 #   $rpl_debug

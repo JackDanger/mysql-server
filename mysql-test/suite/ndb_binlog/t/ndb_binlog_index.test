@@ -7,7 +7,7 @@
 --source include/have_log_bin.inc
 
 --disable_query_log
-reset master;
+reset primary;
 --enable_query_log
 
 --echo -------------------------------------------------
@@ -25,18 +25,18 @@ show create table mysql.ndb_binlog_index;
 
 alter table mysql.ndb_binlog_index drop column next_file;
 alter table mysql.ndb_binlog_index drop column next_position;
-reset master;
+reset primary;
 show create table mysql.ndb_binlog_index;
 
 --source suite/ndb_binlog/t/ndb_binlog_index_test_schema_independent.inc
 
 --echo Now restore original schema
-reset master;
+reset primary;
 
 alter table mysql.ndb_binlog_index add column next_position bigint unsigned not null;
 alter table mysql.ndb_binlog_index add column next_file varchar(255) not null;
 
-reset master;
+reset primary;
 
 --echo --------------------------------------
 --echo Quick test of ndb-log-empty-epochs = 1

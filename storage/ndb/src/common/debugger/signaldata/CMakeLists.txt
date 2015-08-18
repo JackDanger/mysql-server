@@ -36,7 +36,7 @@ ADD_CONVENIENCE_LIBRARY(ndbsignaldata
         FsAppendReq.cpp ScanTab.cpp
         BackupImpl.cpp BackupSignalData.cpp
         UtilSequence.cpp UtilPrepare.cpp UtilDelete.cpp UtilExecute.cpp
-        LqhFrag.cpp DropTab.cpp PrepDropTab.cpp LCP.cpp MasterLCP.cpp
+        LqhFrag.cpp DropTab.cpp PrepDropTab.cpp LCP.cpp PrimaryLCP.cpp
         CopyGCI.cpp SystemError.cpp StartRec.cpp NFCompleteRep.cpp
         FailRep.cpp DisconnectRep.cpp SignalDroppedRep.cpp
         SumaImpl.cpp NdbSttor.cpp CreateFragmentation.cpp

@@ -462,7 +462,7 @@ bool Sql_cmd_truncate_table::truncate_table(THD *thd, TABLE_LIST *table_ref)
       No need to invalidate the query cache, queries with temporary
       tables are not in the cache. No need to write to the binary
       log a failed row-by-row delete even if under RBR as the table
-      might not exist on the slave.
+      might not exist on the replica.
     */
   }
   else /* It's not a temporary table. */

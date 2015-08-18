@@ -92,7 +92,7 @@ get_text_AllocNodeIdRef_ErrorCodes(Uint32 errorCode)
   case AllocNodeIdRef::Undefined: return "Undefined";
   case AllocNodeIdRef::NF_FakeErrorREF: return "NF_FakeErrorREF";
   case AllocNodeIdRef::Busy: return "Busy";
-  case AllocNodeIdRef::NotMaster: return "NotMaster";
+  case AllocNodeIdRef::NotPrimary: return "NotPrimary";
   case AllocNodeIdRef::NodeReserved: return "NodeReserved";
   case AllocNodeIdRef::NodeConnected: return "NodeConnected";
   case AllocNodeIdRef::NodeFailureHandlingNotCompleted: return "NodeFailureHandlingNotCompleted";
@@ -116,12 +116,12 @@ printALLOC_NODEID_REF(FILE * output,
             " senderData: %u\n"
             " nodeId: %u\n"
             " errorCode: %u %s\n"
-            " masterRef: (node: %d, block: %d)\n",
+            " primaryRef: (node: %d, block: %d)\n",
             refToNode(sig->senderRef), refToBlock(sig->senderRef),
             sig->senderData,
             sig->nodeId,
             sig->errorCode, get_text_AllocNodeIdRef_ErrorCodes(sig->errorCode),
-            refToNode(sig->masterRef), refToBlock(sig->masterRef));
+            refToNode(sig->primaryRef), refToBlock(sig->primaryRef));
     return true;
   }
   return false;

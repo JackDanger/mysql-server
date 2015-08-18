@@ -23,7 +23,7 @@ CREATE USER 'plug_dest'@'santa.claus.ipv4.example.com'
   IDENTIFIED BY 'plug_test_passwd';
 GRANT SELECT ON test.* TO 'plug_dest'@'santa.claus.ipv4.example.com';
 
-connect (con1,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con1,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 select "Con1 is alive";
 select current_user();
 disconnect con1;
@@ -34,7 +34,7 @@ uninstall plugin test_plugin_server;
 
 --disable_query_log
 --error ER_PLUGIN_IS_NOT_LOADED
-connect (con2,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin);
+connect (con2,"127.0.0.1",plug,plug_dest,test,$PRIMARY_MYPORT,,,auth_test_plugin);
 --enable_query_log
 
 --connection default
@@ -42,7 +42,7 @@ connect (con2,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin)
 
 --disable_query_log
 --error ER_PLUGIN_IS_NOT_LOADED
-connect (con3,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin);
+connect (con3,"127.0.0.1",plug,plug_dest,test,$PRIMARY_MYPORT,,,auth_test_plugin);
 --enable_query_log
 
 --connection default
@@ -53,7 +53,7 @@ eval install plugin test_plugin_server soname '$PLUGIN_AUTH';
 
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
-connect (con2,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin);
+connect (con2,"127.0.0.1",plug,plug_dest,test,$PRIMARY_MYPORT,,,auth_test_plugin);
 --enable_query_log
 
 --connection default
@@ -61,7 +61,7 @@ connect (con2,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin)
 
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
-connect (con3,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin);
+connect (con3,"127.0.0.1",plug,plug_dest,test,$PRIMARY_MYPORT,,,auth_test_plugin);
 --enable_query_log
 
 --connection default
@@ -70,7 +70,7 @@ connect (con3,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin)
 GRANT PROXY ON 'plug_dest'@'santa.claus.ipv4.example.com'
   TO 'plug'@'santa.claus.ipv4.example.com';
 
-connect (con4,"127.0.0.1",plug,plug_dest,test,$MASTER_MYPORT,,,auth_test_plugin);
+connect (con4,"127.0.0.1",plug,plug_dest,test,$PRIMARY_MYPORT,,,auth_test_plugin);
 select "Con4 is alive";
 select user();
 select current_user();

@@ -2,53 +2,53 @@
 source include/have_semisync_plugin.inc;
 source include/not_embedded.inc;
 source include/have_innodb.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 let $engine_type= InnoDB;
 
 # Suppress warnings that might be generated during the test
 disable_query_log;
-connection master;
+connection primary;
 call mtr.add_suppression("Timeout waiting for reply of binlog");
-call mtr.add_suppression("Semi-sync master .* waiting for slave reply");
+call mtr.add_suppression("Semi-sync primary .* waiting for replica reply");
 call mtr.add_suppression("Read semi-sync reply");
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.");
 call mtr.add_suppression(".*Got an error reading communication packets.*");
-connection slave;
-call mtr.add_suppression("Master server does not support semi-sync");
-call mtr.add_suppression("Semi-sync slave .* reply");
-call mtr.add_suppression("Slave SQL.*Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
+connection replica;
+call mtr.add_suppression("Primary server does not support semi-sync");
+call mtr.add_suppression("Semi-sync replica .* reply");
+call mtr.add_suppression("Replica SQL.*Request to stop replica SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
 enable_query_log;
 
-connection master;
+connection primary;
 disable_query_log;
-let $value = query_get_value(show variables like 'rpl_semi_sync_master_enabled', Value, 1);
+let $value = query_get_value(show variables like 'rpl_semi_sync_primary_enabled', Value, 1);
 if ($value == No such row)
 {
     set sql_log_bin=0;
-    eval INSTALL PLUGIN rpl_semi_sync_master SONAME '$SEMISYNC_MASTER_PLUGIN';
-    SET GLOBAL rpl_semi_sync_master_enabled = 1;
+    eval INSTALL PLUGIN rpl_semi_sync_primary SONAME '$SEMISYNC_PRIMARY_PLUGIN';
+    SET GLOBAL rpl_semi_sync_primary_enabled = 1;
     set sql_log_bin=1;
 }
 enable_query_log;
 
-connection slave;
-source include/stop_slave.inc;
+connection replica;
+source include/stop_replica.inc;
 
 disable_query_log;
-let $value= query_get_value(show variables like 'rpl_semi_sync_slave_enabled', Value, 1);
+let $value= query_get_value(show variables like 'rpl_semi_sync_replica_enabled', Value, 1);
 if ($value == No such row)
 {
     set sql_log_bin=0;
-    eval INSTALL PLUGIN rpl_semi_sync_slave SONAME '$SEMISYNC_SLAVE_PLUGIN';
-    SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+    eval INSTALL PLUGIN rpl_semi_sync_replica SONAME '$SEMISYNC_REPLICA_PLUGIN';
+    SET GLOBAL rpl_semi_sync_replica_enabled = 1;
     set sql_log_bin=1;
 }
 enable_query_log;
 
-source include/start_slave.inc;
+source include/start_replica.inc;
 
-connection master;
+connection primary;
 SET GLOBAL event_scheduler = ON;
 
 replace_result $engine_type ENGINE_TYPE;
@@ -63,10 +63,10 @@ DO INSERT INTO t1 VALUES (SLEEP(5),CONCAT('ev1_',CONNECTION_ID()));
 CREATE EVENT ev2 ON SCHEDULE EVERY 1 SECOND
 DO INSERT INTO t1 VALUES (SLEEP(5),CONCAT('ev2_',CONNECTION_ID()));
 
-connection slave;
-STOP SLAVE IO_THREAD;
+connection replica;
+STOP REPLICA IO_THREAD;
 
-connection master;
+connection primary;
 let $run = 20;
 while ($run)
 {
@@ -74,11 +74,11 @@ while ($run)
         connection m$run;
         send;
         eval UPDATE t1 SET f = CONCAT('up_',CONNECTION_ID()) WHERE i = $run;
-        connection master;
+        connection primary;
         dec $run;
 }
 
-connection master;
+connection primary;
 SET GLOBAL event_scheduler = OFF;
 
 let $run = 20;
@@ -93,22 +93,22 @@ while ($run)
 #
 # Clean up
 #
-connection slave;
-source include/stop_slave.inc;
+connection replica;
+source include/stop_replica.inc;
 
 disable_warnings;
-UNINSTALL PLUGIN rpl_semi_sync_slave;
+UNINSTALL PLUGIN rpl_semi_sync_replica;
 
-connection master;
-UNINSTALL PLUGIN rpl_semi_sync_master;
+connection primary;
+UNINSTALL PLUGIN rpl_semi_sync_primary;
 enable_warnings;
 
-connection slave;
-source include/start_slave.inc;
+connection replica;
+source include/start_replica.inc;
 
-connection master;
+connection primary;
 DROP EVENT ev1;
 DROP EVENT ev2;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --source include/rpl_end.inc

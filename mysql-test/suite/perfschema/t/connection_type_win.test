@@ -40,7 +40,7 @@ select NAME, PROCESSLIST_USER, PROCESSLIST_HOST, CONNECTION_TYPE
 
 --disconnect con1
 
-connect(con2, "127.0.0.1", root,,test,$MASTER_MYPORT,);
+connect(con2, "127.0.0.1", root,,test,$PRIMARY_MYPORT,);
 
 --echo "Connection con2"
 
@@ -50,7 +50,7 @@ select NAME, PROCESSLIST_USER, PROCESSLIST_HOST, CONNECTION_TYPE
 
 --disconnect con2
 
-connect(con3, "127.0.0.1", rootssl,,test,$MASTER_MYPORT,,SSL);
+connect(con3, "127.0.0.1", rootssl,,test,$PRIMARY_MYPORT,,SSL);
 
 --echo "Connection con3"
 

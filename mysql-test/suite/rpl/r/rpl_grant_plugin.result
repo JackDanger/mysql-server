@@ -1,15 +1,15 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 include/assert.inc [Logged query must match the one issued.]
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 Warnings:
 Warning	1287	Using GRANT for creating new user is deprecated and will be removed in future release. Create new user with CREATE USER statement.
 include/assert.inc [Logged query must match the one issued.]
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/assert.inc [Logged query must match the one issued but properly escaped.]
-include/sync_slave_sql_with_master.inc
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

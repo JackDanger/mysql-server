@@ -41,7 +41,7 @@ struct SchemaTransBeginRef {
   STATIC_CONST( SignalLength = 6 );
   enum ErrorCode {
     NoError = 0,
-    NotMaster = 702,
+    NotPrimary = 702,
     Busy = 701,
     BusyWithNR = 711,
     TooManySchemaTrans = 780,
@@ -54,7 +54,7 @@ struct SchemaTransBeginRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 // commit, abort
@@ -84,7 +84,7 @@ struct SchemaTransEndRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     InvalidTransKey = 781,
     InvalidTransId = 782,
     InvalidTransState = 784
@@ -95,7 +95,7 @@ struct SchemaTransEndRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 struct SchemaTransEndRep {
@@ -109,7 +109,7 @@ struct SchemaTransEndRep {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 

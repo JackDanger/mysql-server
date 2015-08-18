@@ -124,12 +124,12 @@ ORDER BY constraint_catalog, constraint_schema, constraint_name,
 eval $select;
 
 --echo # Establish connection testuser1 (user=testuser1)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser1, localhost, testuser1, , db_datadict);
 eval $select;
 
 --echo # Establish connection testuser2 (user=testuser2)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser2, localhost, testuser2, , db_datadict);
 eval $select;
 

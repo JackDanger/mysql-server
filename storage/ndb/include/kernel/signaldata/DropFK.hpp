@@ -76,14 +76,14 @@ struct DropFKRef
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     FKNotFound = 21040,
     InvalidFKVersion = 21041
   };
 
   Uint32 senderData;
   Uint32 senderRef;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;

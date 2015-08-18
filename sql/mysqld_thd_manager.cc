@@ -182,7 +182,7 @@ void Global_THD_manager::remove_thd(THD *thd)
     DBUG_ASSERT(thd->release_resources_done());
 
   /*
-    Used by binlog_reset_master.  It would be cleaner to use
+    Used by binlog_reset_primary.  It would be cleaner to use
     DEBUG_SYNC here, but that's not possible because the THD's debug
     sync feature has been shut down at this point.
   */

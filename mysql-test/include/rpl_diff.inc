@@ -1,7 +1,7 @@
 # ==== Purpose ====
 #
 # Diff the output of a statement on all configured servers (usually
-# master and slave).
+# primary and replica).
 #
 #
 # ==== Usage =====
@@ -33,7 +33,7 @@
 #     executed on the database named $rpl_diff_database instead.
 #
 #   $rpl_skip_sync
-#     By default, all slaves are synced using rpl_sync.inc. Set this
+#     By default, all replicas are synced using rpl_sync.inc. Set this
 #     option to 1 to disable this behavior (note that you must
 #     manually sync all servers in this case). Normally you want to
 #     sync, but you need to disable sync if you use multi-source.
@@ -41,7 +41,7 @@
 #   $rpl_only_running_threads
 #     If one or both of the IO and SQL threads is stopped, sync and
 #     stop only the threads that are running.  See
-#     include/rpl_sync.inc and include/stop_slave.inc for details.
+#     include/rpl_sync.inc and include/stop_replica.inc for details.
 
 
 --let $include_filename= rpl_diff.inc

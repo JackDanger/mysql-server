@@ -1285,9 +1285,9 @@ ConfigManager::execCONFIG_CHANGE_REQ(SignalSender& ss, SimpleSignal* sig)
     return;
   }
 
-  if (m_all_mgm.find(0) != m_facade->ownId()) // Not the master
+  if (m_all_mgm.find(0) != m_facade->ownId()) // Not the primary
   {
-    sendConfigChangeRef(ss, from, ConfigChangeRef::NotMaster);
+    sendConfigChangeRef(ss, from, ConfigChangeRef::NotPrimary);
     return;
   }
 

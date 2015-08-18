@@ -26,9 +26,9 @@ procs_priv
 proxies_priv
 server_cost
 servers
-slave_master_info
-slave_relay_log_info
-slave_worker_info
+replica_primary_info
+replica_relay_log_info
+replica_worker_info
 slow_log
 tables_priv
 time_zone

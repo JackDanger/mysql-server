@@ -1,21 +1,21 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-RESET SLAVE;
-CHANGE MASTER TO master_host='127.0.0.1',master_port=MASTER_PORT,master_user='root';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+RESET REPLICA;
+CHANGE PRIMARY TO primary_host='127.0.0.1',primary_port=PRIMARY_PORT,primary_user='root';
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-START SLAVE IO_THREAD;
-include/wait_for_slave_io_to_start.inc
-SHOW SLAVE HOSTS;
-Server_id	Host	Port	Master_id	Slave_UUID
-3	slave2	SLAVE_PORT	1	SLAVE_UUID
-2		SLAVE_PORT	1	SLAVE_UUID
-include/stop_slave_io.inc
-SHOW SLAVE HOSTS;
-Server_id	Host	Port	Master_id	Slave_UUID
-2		SLAVE_PORT	1	SLAVE_UUID
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+START REPLICA IO_THREAD;
+include/wait_for_replica_io_to_start.inc
+SHOW REPLICA HOSTS;
+Server_id	Host	Port	Primary_id	Replica_UUID
+3	replica2	REPLICA_PORT	1	REPLICA_UUID
+2		REPLICA_PORT	1	REPLICA_UUID
+include/stop_replica_io.inc
+SHOW REPLICA HOSTS;
+Server_id	Host	Port	Primary_id	Replica_UUID
+2		REPLICA_PORT	1	REPLICA_UUID
 include/rpl_end.inc

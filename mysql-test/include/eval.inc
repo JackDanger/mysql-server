@@ -19,8 +19,8 @@
 #     script.
 #
 #     It is also possible to nest sub-statements on this form, like:
-#       [master:SHOW BINLOG EVENTS FROM
-#        [slave:SHOW SLAVE STATUS, Master_Log_Pos, 1],
+#       [primary:SHOW BINLOG EVENTS FROM
+#        [replica:SHOW REPLICA STATUS, Primary_Log_Pos, 1],
 #        1, Position]
 #
 #   [SQL_STATEMENT]
@@ -34,7 +34,7 @@
 #
 # ==== Usage ====
 #
-# --let $eval_expr= [SHOW SLAVE STATUS, Relay_Log_Pos, 1] + 47
+# --let $eval_expr= [SHOW REPLICA STATUS, Relay_Log_Pos, 1] + 47
 # [--let $eval_no_result= 1]
 # [--let $rpl_debug= 1]
 # --source include/eval.inc

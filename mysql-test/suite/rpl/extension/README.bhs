@@ -1,13 +1,13 @@
-Blackhole slave testing
+Blackhole replica testing
 =======================
 
-Blackhole slave means intermediate server between master and slave by
+Blackhole replica means intermediate server between primary and replica by
 schema:
 
-master -> blackhole slave -> slave
+primary -> blackhole replica -> replica
 
 The script bhs.pl copies mysql-test/suite/rpl into mysql-test/suite/rpl_bhs 
-and updates some files there for adding blackhole slave. After that bhs.pl
+and updates some files there for adding blackhole replica. After that bhs.pl
 calls mysql-test-run.pl.
 The script bhs.pl requires one argument in command line: 
 --trans-test-list=<test list for update> (currently it is 

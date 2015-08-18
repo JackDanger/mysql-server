@@ -2,22 +2,22 @@
 # BUG#18985760 - "FAST" ALTER TABLE CHANGE ON ENUM COLUMN
 #                 TRIGGERS FULL TABLE REBUILD.
 # Test case below ensures that the columns with old temporal
-# format are not upgraded on the slave since the global variable
-# 'avoid_temporal_upgrade' is enabled on the slave.
-include/master-slave.inc
+# format are not upgraded on the replica since the global variable
+# 'avoid_temporal_upgrade' is enabled on the replica.
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 # Copy the table containing the old Mysql-5.5 temporal format
-# to the master and slave.
-# Enable the 'avoid_temporal_column' global variable on slave.
-STOP SLAVE;
+# to the primary and replica.
+# Enable the 'avoid_temporal_column' global variable on replica.
+STOP REPLICA;
 SET @@global.avoid_temporal_upgrade= ON;
 Warnings:
 Warning	1287	'@@avoid_temporal_upgrade' is deprecated and will be removed in a future release.
-START SLAVE;
-# ALTER TABLE on the master.
+START REPLICA;
+# ALTER TABLE on the primary.
 SELECT f_time, f_datetime, f_timestamp, HEX(WEIGHT_STRING(f_time)),
 HEX(WEIGHT_STRING(f_datetime)), HEX(WEIGHT_STRING(f_timestamp)) FROM t2;
 f_time	f_datetime	f_timestamp	HEX(WEIGHT_STRING(f_time))	HEX(WEIGHT_STRING(f_datetime))	HEX(WEIGHT_STRING(f_timestamp))
@@ -31,7 +31,7 @@ Warnings:
 Note	1880	TIME/TIMESTAMP/DATETIME columns of old format have been upgraded to the new format.
 INSERT INTO t2 VALUES ('22:22:22','2011-11-21 22:22:22','2011-11-21 22:22:22', 0);
 # Since the global variable 'avoid_temporal_upgrade' is disabled on 
-# the master, the temporal columns of old format are upgraded to the
+# the primary, the temporal columns of old format are upgraded to the
 # new format.
 SELECT f_time, f_datetime, f_timestamp, HEX(WEIGHT_STRING(f_time)),
 HEX(WEIGHT_STRING(f_datetime)), HEX(WEIGHT_STRING(f_timestamp)) FROM t2;
@@ -42,9 +42,9 @@ f_time	f_datetime	f_timestamp	HEX(WEIGHT_STRING(f_time))	HEX(WEIGHT_STRING(f_dat
 NULL	2000-01-01 01:01:01	2015-11-21 17:11:01	NULL	9964421041	56507B75
 00:00:00	NULL	2011-11-21 17:11:01	800000	NULL	4ECA5BF5
 22:22:22	2011-11-21 22:22:22	2011-11-21 22:22:22	816596	998AAB6596	4ECAA4EE
-include/sync_slave_sql_with_master.inc
-# Since 'avoid_temporal_upgrade' is enabled on the slave,
-# the old temporal will not be upgraded on the slave.
+include/sync_replica_sql_with_primary.inc
+# Since 'avoid_temporal_upgrade' is enabled on the replica,
+# the old temporal will not be upgraded on the replica.
 SET @saved_show_old_temporals= @@session.show_old_temporals;
 Warnings:
 Warning	1287	'@@show_old_temporals' is deprecated and will be removed in a future release.
@@ -79,19 +79,19 @@ Warnings:
 Warning	1287	'@@show_old_temporals' is deprecated and will be removed in a future release.
 #Cleanup
 DROP TABLE t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 # Testcase to ensure that the temporal columns of old format
-# are upgraded on the slave since 'avoid_temporal_column'
-# global variable is not enabled on the slave.
+# are upgraded on the replica since 'avoid_temporal_column'
+# global variable is not enabled on the replica.
 # Copy the table containing the old Mysql-5.5 temporal format
-# to the master and slave.
-# Disable the 'avoid_temporal_column' global variable on slave.
-STOP SLAVE;
+# to the primary and replica.
+# Disable the 'avoid_temporal_column' global variable on replica.
+STOP REPLICA;
 SET @@global.avoid_temporal_upgrade= 0;
 Warnings:
 Warning	1287	'@@avoid_temporal_upgrade' is deprecated and will be removed in a future release.
-START SLAVE;
-# ALTER TABLE on the master.
+START REPLICA;
+# ALTER TABLE on the primary.
 SELECT f_time, f_datetime, f_timestamp, HEX(WEIGHT_STRING(f_time)),
 HEX(WEIGHT_STRING(f_datetime)), HEX(WEIGHT_STRING(f_timestamp)) FROM t3;
 f_time	f_datetime	f_timestamp	HEX(WEIGHT_STRING(f_time))	HEX(WEIGHT_STRING(f_datetime))	HEX(WEIGHT_STRING(f_timestamp))
@@ -105,7 +105,7 @@ Warnings:
 Note	1880	TIME/TIMESTAMP/DATETIME columns of old format have been upgraded to the new format.
 INSERT INTO t3 VALUES ('22:22:22','2011-11-21 22:22:22','2011-11-21 22:22:22', 0);
 # Since the default value of 'avoid_temporal_upgrade' is FALSE,
-# the old temporal will be upgraded on the master.
+# the old temporal will be upgraded on the primary.
 SELECT f_time, f_datetime, f_timestamp, HEX(WEIGHT_STRING(f_time)),
 HEX(WEIGHT_STRING(f_datetime)), HEX(WEIGHT_STRING(f_timestamp)) FROM t3;
 f_time	f_datetime	f_timestamp	HEX(WEIGHT_STRING(f_time))	HEX(WEIGHT_STRING(f_datetime))	HEX(WEIGHT_STRING(f_timestamp))
@@ -129,9 +129,9 @@ time
 timestamp
 datetime
 int(11)
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 # Since the default value of 'avoid_temporal_upgrade' is FALSE,
-# the old temporal will be upgraded on the slave.
+# the old temporal will be upgraded on the replica.
 SET @saved_show_old_temporals= @@session.show_old_temporals;
 Warnings:
 Warning	1287	'@@show_old_temporals' is deprecated and will be removed in a future release.
@@ -166,5 +166,5 @@ Warnings:
 Warning	1287	'@@show_old_temporals' is deprecated and will be removed in a future release.
 # cleanup
 DROP TABLE t3;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

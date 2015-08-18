@@ -1,5 +1,5 @@
 # Test for BUG#1858 "OPTIMIZE TABLE done by a client
-# thread stops the slave SQL thread".
+# thread stops the replica SQL thread".
 # You can replace OPTIMIZE by REPAIR.
 #####################################
 # Change Author: JBM
@@ -18,7 +18,7 @@
 -- source include/have_myisam.inc
 
 -- source include/not_ndb_default.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 disable_query_log;
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
@@ -41,30 +41,30 @@ INSERT INTO t1 (a) SELECT null FROM t1;
 INSERT INTO t1 (a) SELECT null FROM t1;
 INSERT INTO t1 (a) SELECT null FROM t1;
 --enable_warnings
-save_master_pos;
+save_primary_pos;
 # a few updates to force OPTIMIZE to do something
 --disable_warnings
 update t1 set b=(a/2*rand());
 delete from t1 order by b limit 10000;
 --enable_warnings
 
-connection slave;
-sync_with_master;
+connection replica;
+sync_with_primary;
 --disable_result_log
 optimize table t1;
 --enable_result_log
-connection master;
-save_master_pos;
-connection slave;
-# Bug was that when the INSERT terminated on slave,
-# the slave SQL thread got killed by OPTIMIZE.
-sync_with_master; # won't work if slave SQL thread stopped
+connection primary;
+save_primary_pos;
+connection replica;
+# Bug was that when the INSERT terminated on replica,
+# the replica SQL thread got killed by OPTIMIZE.
+sync_with_primary; # won't work if replica SQL thread stopped
 
-connection master; # cleanup
+connection primary; # cleanup
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# If the machine is so fast that slave syncs before OPTIMIZE
+# If the machine is so fast that replica syncs before OPTIMIZE
 # starts, this test wil demonstrate nothing but will pass.
 
 # End of 4.1 tests

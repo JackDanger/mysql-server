@@ -187,8 +187,8 @@ bool Table_trigger_dispatcher::create_trigger(
     /*
       DEFINER-clause is missing.
 
-      If we are in slave thread, this means that we received CREATE TRIGGER
-      from the master, that does not support definer in triggers. So, we
+      If we are in replica thread, this means that we received CREATE TRIGGER
+      from the primary, that does not support definer in triggers. So, we
       should mark this trigger as non-SUID. Note that this does not happen
       when we parse triggers' definitions during opening .TRG file.
       LEX::definer is ignored in that case.
@@ -203,7 +203,7 @@ bool Table_trigger_dispatcher::create_trigger(
       copied into the base table mem-root to be used inside Trigger.
     */
 
-    if (!thd->slave_thread)
+    if (!thd->replica_thread)
     {
       if (!(lex->definer= create_default_definer(thd)))
         return true;

@@ -1,18 +1,18 @@
 #############################################################################
 # Original Author: JBM                                                      #
 # Original Date: Aug/18/2005                                                #
-# Update: 08/29/2005 remove sleep added master pos save and sync            #
+# Update: 08/29/2005 remove sleep added primary pos save and sync            #
 #############################################################################
 #TEST: Taken and modfied from http://bugs.mysql.com/bug.php?id=11126        #
 #############################################################################
 
 # Includes
 -- source include/have_binlog_format_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 
 # Begin clean up test section
-connection master;
+connection primary;
 --disable_warnings
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
@@ -39,10 +39,10 @@ delimiter ;|
 CALL test.p2();
 SELECT * FROM test.t1 ORDER BY a;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 show tables;
 
-connection master;
+connection primary;
 delimiter |;
 CREATE PROCEDURE test.p3()
 BEGIN
@@ -59,11 +59,11 @@ delimiter ;|
 CALL test.p4();
 SELECT * FROM test.t2 ORDER BY a;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t2 ORDER BY a;
 
 # Cleanup
-connection master;
+connection primary;
 #show binlog events;
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
@@ -71,7 +71,7 @@ DROP PROCEDURE IF EXISTS test.p3;
 DROP PROCEDURE IF EXISTS test.p4;
 DROP TABLE IF EXISTS test.t1;
 DROP TABLE IF EXISTS test.t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 5.0 test case
 --source include/rpl_end.inc

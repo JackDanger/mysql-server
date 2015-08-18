@@ -20,7 +20,7 @@
   @file rows_event.h
 
   @brief Contains the classes representing events which are used for row based
-  replication. In row-based replication, the master writes events to the binary
+  replication. In row-based replication, the primary writes events to the binary
   log that indicate how individual table rows are changed.
 */
 
@@ -807,8 +807,8 @@ public:
 
   RESPONSIBILITIES
 
-    - Act as a container for rows that has been deleted on the master
-      and should be deleted on the slave.
+    - Act as a container for rows that has been deleted on the primary
+      and should be deleted on the replica.
 
    @section Delete_rows_event_binary_format Binary Format
 */

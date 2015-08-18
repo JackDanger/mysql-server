@@ -1092,7 +1092,7 @@ static int mysql_register_view(THD *thd, TABLE_LIST *view,
     UNION
   */
   if (view->updatable_view &&
-      !lex->select_lex->master_unit()->is_union() &&
+      !lex->select_lex->primary_unit()->is_union() &&
       !(lex->select_lex->table_list.first)->next_local &&
       find_table_in_global_list(lex->query_tables->next_global,
 				lex->query_tables->db,

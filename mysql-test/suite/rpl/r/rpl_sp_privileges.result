@@ -1,14 +1,14 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[connection primary]
 CREATE TABLE t1 (f INT NOT NULL PRIMARY KEY);
 INSERT INTO t1 VALUES (10);
 INSERT INTO t1 VALUES (20);
-include/sync_slave_sql_with_master.inc
-[connection master]
+include/sync_replica_sql_with_primary.inc
+[connection primary]
 CREATE USER 'testuser'@'localhost';
 GRANT CREATE ROUTINE ON test.* TO 'testuser'@'localhost';
 GRANT REPLICATION CLIENT ON *.* TO 'testuser'@'localhost';
@@ -17,48 +17,48 @@ CREATE DEFINER='testuser'@'localhost' PROCEDURE row_cnt()
 BEGIN
 SELECT COUNT(*) as total_rows FROM test.t1;
 END|
-include/sync_slave_sql_with_master.inc
-[connection master]
+include/sync_replica_sql_with_primary.inc
+[connection primary]
 include/assert.inc [Assert that mysql.procs_priv table is empty]
-[connection slave]
+[connection replica]
 include/assert.inc [Assert that mysql.procs_priv table is empty]
-[connection master]
+[connection primary]
 DROP PROCEDURE row_cnt;
-include/sync_slave_sql_with_master.inc
-[connection master]
+include/sync_replica_sql_with_primary.inc
+[connection primary]
 CREATE  PROCEDURE row_cnt()
 BEGIN
 SELECT COUNT(*) as total_rows FROM test.t1;
 END|
-include/sync_slave_sql_with_master.inc
-[connection master]
+include/sync_replica_sql_with_primary.inc
+[connection primary]
 include/assert.inc [Assert that mysql.procs_priv table is empty]
-[connection slave]
+[connection replica]
 include/assert.inc [Assert that mysql.procs_priv table is empty]
-[connection master]
+[connection primary]
 DROP PROCEDURE row_cnt;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CREATE DEFINER='testuser'@'localhost' PROCEDURE row_cnt()
 BEGIN
 SELECT COUNT(*) as total_rows FROM test.t1;
 END|
-include/sync_slave_sql_with_master.inc
-[connection master]
+include/sync_replica_sql_with_primary.inc
+[connection primary]
 include/assert.inc [Assert that mysql.procs_priv table has one row for testuser]
-[connection slave]
+[connection replica]
 include/assert.inc [Assert that mysql.procs_priv table has one row for testuser]
 DROP PROCEDURE row_cnt;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CREATE PROCEDURE row_cnt()
 BEGIN
 SELECT COUNT(*) as total_rows FROM test.t1;
 END|
-include/sync_slave_sql_with_master.inc
-[connection master]
+include/sync_replica_sql_with_primary.inc
+[connection primary]
 include/assert.inc [Assert that mysql.procs_priv table has one row for testuser]
-[connection slave]
+[connection replica]
 include/assert.inc [Assert that mysql.procs_priv table has one row for testuser]
-[connection master]
+[connection primary]
 DROP TABLE t1;
 DROP PROCEDURE row_cnt;
 DROP USER 'testuser'@'localhost';

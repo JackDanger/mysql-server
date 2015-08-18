@@ -60,7 +60,7 @@ private:
     Uint32 rollback_op_state;
     Uint32 highest_op_state;
   };
-  // Highest/lowest op is needed if new master is missing one operation
+  // Highest/lowest op is needed if new primary is missing one operation
   union {
     Uint32 lowest_op_impl_req_gsn;
     Uint32 highest_op_impl_req_gsn;
@@ -72,7 +72,7 @@ struct DictTakeoverRef {
   STATIC_CONST( GSN = GSN_DICT_TAKEOVER_REF );
 
   Uint32 senderRef;
-  union { Uint32 masterRef, senderData; };
+  union { Uint32 primaryRef, senderData; };
   Uint32 errorCode;
   enum ErrorCode 
   {

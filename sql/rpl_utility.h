@@ -31,8 +31,8 @@ class Log_event;
 #ifndef MYSQL_CLIENT
 
 /**
-   Hash table used when applying row events on the slave and there is
-   no index on the slave's table.
+   Hash table used when applying row events on the replica and there is
+   no index on the replica's table.
  */
 
 typedef struct hash_row_pos_st
@@ -52,7 +52,7 @@ typedef struct hash_row_pos_st
    Internal structure that acts as a preamble for HASH_ROW_POS
    in memory structure. 
    
-   Allocation is done in Hash_slave_rows::make_entry as part of 
+   Allocation is done in Hash_replica_rows::make_entry as part of 
    the entry allocation.
  */
 typedef struct hash_row_preamble_st
@@ -86,7 +86,7 @@ typedef struct hash_row_entry_st
   HASH_ROW_POS *positions;
 } HASH_ROW_ENTRY;
 
-class Hash_slave_rows 
+class Hash_replica_rows 
 {
 public:
 
@@ -218,12 +218,12 @@ private:
 #endif
 
 /**
-  A table definition from the master.
+  A table definition from the primary.
 
   The responsibilities of this class is:
   - Extract and decode table definition data from the table map event
   - Check if table definition in table map is compatible with table
-    definition on slave
+    definition on replica
  */
 
 class table_def
@@ -315,7 +315,7 @@ public:
     that stores field metadata, that value is returned else zero (0) is 
     returned. This method is used in the unpack() methods of the 
     corresponding fields to properly extract the data from the binary log 
-    in the event that the master's field is smaller than the slave.
+    in the event that the primary's field is smaller than the replica.
   */
   uint16 field_metadata(uint index) const
   {
@@ -327,7 +327,7 @@ public:
   }
 
   /*
-    This function returns whether the field on the master can be null.
+    This function returns whether the field on the primary can be null.
     This value is derived from field->maybe_null().
   */
   my_bool maybe_null(uint index) const
@@ -339,12 +339,12 @@ public:
 
   /*
     This function returns the field size in raw bytes based on the type
-    and the encoded field data from the master's raw data. This method can 
-    be used for situations where the slave needs to skip a column (e.g., 
+    and the encoded field data from the primary's raw data. This method can 
+    be used for situations where the replica needs to skip a column (e.g., 
     WL#3915) or needs to advance the pointer for the fields in the raw 
-    data from the master to a specific column.
+    data from the primary to a specific column.
   */
-  uint32 calc_field_size(uint col, uchar *master_data) const;
+  uint32 calc_field_size(uint col, uchar *primary_data) const;
 
   /**
     Decide if the table definition is compatible with a table.
@@ -358,9 +358,9 @@ public:
 
       - The other way around.
 
-      - Each column on the master that also exists on the slave can be
+      - Each column on the primary that also exists on the replica can be
         converted according to the current settings of @c
-        SLAVE_TYPE_CONVERSIONS.
+        REPLICA_TYPE_CONVERSIONS.
 
     @param thd
     @param rli   Pointer to relay log info
@@ -416,7 +416,7 @@ private:
 #ifndef MYSQL_CLIENT
 /**
    Extend the normal table list with a few new fields needed by the
-   slave thread, but nowhere else.
+   replica thread, but nowhere else.
  */
 struct RPL_TABLE_LIST
   : public TABLE_LIST

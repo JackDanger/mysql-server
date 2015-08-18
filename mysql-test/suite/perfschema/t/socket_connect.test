@@ -20,12 +20,12 @@ let $my_socket_debug=0;
 --echo # Get hostname, port number
 --echo #==============================================================================
 SELECT @@hostname INTO @MY_HOSTNAME;
-SELECT @@port INTO @MY_MASTER_PORT;
+SELECT @@port INTO @MY_PRIMARY_PORT;
 
 if ($my_socket_debug)
 {
   SELECT @MY_HOSTNAME AS 'Hostname';
-  SELECT @MY_MASTER_PORT AS 'Master Port';
+  SELECT @MY_PRIMARY_PORT AS 'Primary Port';
 }
 #==============================================================================
 # Utility queries
@@ -96,7 +96,7 @@ if ($my_socket_debug)
 --echo #     Connect with IP = localhost (127.0.0.1 or ::1)
 --echo #==============================================================================
 --disable_query_log
---connect (con1,$my_localhost,root,,test,,$MASTER_MYPORT)
+--connect (con1,$my_localhost,root,,test,,$PRIMARY_MYPORT)
 --enable_query_log
 
 --echo
@@ -162,7 +162,7 @@ WHERE EVENT_NAME LIKE '%client_connection%'
 --echo #     Connect with IP = localhost (127.0.0.1 or ::1)
 --echo #==============================================================================
 --disable_query_log
---connect (con2,$my_localhost,root,,test,,$MASTER_MYPORT)
+--connect (con2,$my_localhost,root,,test,,$PRIMARY_MYPORT)
 --enable_query_log
 
 --echo

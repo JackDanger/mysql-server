@@ -177,7 +177,7 @@ static struct my_option my_long_options[] =
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "restore_epoch", 'e', 
     "Restore epoch info into the status table. Convenient on a MySQL Cluster "
-    "replication slave, for starting replication. The row in "
+    "replication replica, for starting replication. The row in "
     NDB_REP_DB "." NDB_APPLY_TABLE " with id 0 will be updated/inserted.", 
     (uchar**) &ga_restore_epoch, (uchar**) &ga_restore_epoch,  0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },

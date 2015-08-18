@@ -265,7 +265,7 @@ trx_assert_recovered(
 /*****************************************************************//**
 Updates the offset information about the end of the MySQL binlog entry
 which corresponds to the transaction just being committed. In a MySQL
-replication slave updates the latest master binlog position up to which
+replication replica updates the latest primary binlog position up to which
 replication has proceeded. */
 void
 trx_sys_update_mysql_binlog_offset(

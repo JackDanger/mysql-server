@@ -166,8 +166,8 @@ T min(T a, T b)
 // all length constants in bytes
 const int ID_LEN            =  32;  // session id length
 const int SUITE_LEN         =   2;  // cipher suite length
-const int SECRET_LEN        =  48;  // pre RSA and all master secret length
-const int MASTER_ROUNDS     =   3;  // master secret derivation rounds
+const int SECRET_LEN        =  48;  // pre RSA and all primary secret length
+const int PRIMARY_ROUNDS     =   3;  // primary secret derivation rounds
 const int RAN_LEN           =  32;  // client and server random length
 const int MAC_BLOCK_SZ      =  64;  // MAC block size, & padding
 const int MD5_LEN           =  16;  // MD5 digest length
@@ -211,7 +211,7 @@ const int AES_IV_SZ         = AES_BLOCK_SZ; // AES Init Vector length
 const int DSS_SIG_SZ        =  40;  // two 20 byte high byte first Integers
 const int DSS_ENCODED_EXTRA =   6;  // seqID + len(1) + (intID + len(1)) * 2
 const int EVP_SALT_SZ       =   8;
-const int MASTER_LABEL_SZ   =  13;  // TLS master secret label size
+const int PRIMARY_LABEL_SZ   =  13;  // TLS primary secret label size
 const int KEY_LABEL_SZ      =  13;  // TLS key block expansion size
 const int FINISHED_LABEL_SZ =  15;  // TLS finished lable length
 const int SEED_LEN          = RAN_LEN * 2; // TLS seed, client + server random
@@ -521,7 +521,7 @@ const opaque server[SIZEOF_SENDER] = { 0x53, 0x52, 0x56, 0x52 };
 const opaque tls_client[FINISHED_LABEL_SZ + 1] = "client finished";
 const opaque tls_server[FINISHED_LABEL_SZ + 1] = "server finished";
 
-const opaque master_label[MASTER_LABEL_SZ + 1] = "master secret";
+const opaque primary_label[PRIMARY_LABEL_SZ + 1] = "primary secret";
 const opaque key_label   [KEY_LABEL_SZ + 1]    = "key expansion";
 
 

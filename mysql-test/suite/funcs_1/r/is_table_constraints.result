@@ -79,9 +79,9 @@ def	mysql	PRIMARY	mysql	procs_priv
 def	mysql	PRIMARY	mysql	proxies_priv
 def	mysql	PRIMARY	mysql	server_cost
 def	mysql	PRIMARY	mysql	servers
-def	mysql	PRIMARY	mysql	slave_master_info
-def	mysql	PRIMARY	mysql	slave_relay_log_info
-def	mysql	PRIMARY	mysql	slave_worker_info
+def	mysql	PRIMARY	mysql	replica_primary_info
+def	mysql	PRIMARY	mysql	replica_relay_log_info
+def	mysql	PRIMARY	mysql	replica_worker_info
 def	mysql	PRIMARY	mysql	tables_priv
 def	mysql	PRIMARY	mysql	time_zone
 def	mysql	PRIMARY	mysql	time_zone_leap_second

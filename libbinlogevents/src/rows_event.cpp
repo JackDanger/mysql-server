@@ -90,7 +90,7 @@ Table_map_event::Table_map_event(const char *buf, unsigned int event_len,
   post_start+= TM_MAPID_OFFSET;
   if (post_header_len == 6)
   {
-    /* Master is of an intermediate source tree before 5.1.4. Id is 4 bytes */
+    /* Primary is of an intermediate source tree before 5.1.4. Id is 4 bytes */
     memcpy(&m_table_id, post_start, 4);
     m_table_id= le64toh(m_table_id);
     post_start+= 4;
@@ -182,7 +182,7 @@ Rows_event::Rows_event(const char *buf, unsigned int event_len,
   post_start+= ROWS_MAPID_OFFSET;
   if (post_header_len == 6)
   {
-    /* Master is of an intermediate source tree before 5.1.4. Id is 4 bytes */
+    /* Primary is of an intermediate source tree before 5.1.4. Id is 4 bytes */
     memcpy(&m_table_id, post_start, 4);
     m_table_id= le64toh(m_table_id);
     post_start+= 4;

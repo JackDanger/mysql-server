@@ -202,13 +202,13 @@ where `host` = @my_host;
 # COM counters appear in I_S.SESSION_STATUS, but not in P_S.SESSION_STATUS
 
 # STEP 2-15B
-# These slave status counters appear in I_S.SESSION_STATUS, but not in P_S.SESSION_STATUS
+# These replica status counters appear in I_S.SESSION_STATUS, but not in P_S.SESSION_STATUS
 insert into test.sanity values
-("JUNK: SLAVE-ONLY", "I_S.SESSION_STATUS", "SLAVE_HEARTBEAT_PERIOD"),
-("JUNK: SLAVE-ONLY", "I_S.SESSION_STATUS", "SLAVE_LAST_HEARTBEAT"),
-("JUNK: SLAVE-ONLY", "I_S.SESSION_STATUS", "SLAVE_RECEIVED_HEARTBEATS"),
-("JUNK: SLAVE-ONLY", "I_S.SESSION_STATUS", "SLAVE_RETRIED_TRANSACTIONS"),
-("JUNK: SLAVE-ONLY", "I_S.SESSION_STATUS", "SLAVE_RUNNING")
+("JUNK: REPLICA-ONLY", "I_S.SESSION_STATUS", "REPLICA_HEARTBEAT_PERIOD"),
+("JUNK: REPLICA-ONLY", "I_S.SESSION_STATUS", "REPLICA_LAST_HEARTBEAT"),
+("JUNK: REPLICA-ONLY", "I_S.SESSION_STATUS", "REPLICA_RECEIVED_HEARTBEATS"),
+("JUNK: REPLICA-ONLY", "I_S.SESSION_STATUS", "REPLICA_RETRIED_TRANSACTIONS"),
+("JUNK: REPLICA-ONLY", "I_S.SESSION_STATUS", "REPLICA_RUNNING")
 ;
 
 # STEP 2-16
@@ -223,13 +223,13 @@ insert into test.sanity values
 # COM counters appear in I_S.GLOBAL_STATUS but not in P_S.GLOBAL_STATUS
 
 # STEP 2-16B
-# These slave status counters appear in I_S.GLOBAL_STATUS, but not in P_S.GLOBAL_STATUS
+# These replica status counters appear in I_S.GLOBAL_STATUS, but not in P_S.GLOBAL_STATUS
 insert into test.sanity values
-("JUNK: SLAVE-ONLY", "I_S.GLOBAL_STATUS", "SLAVE_HEARTBEAT_PERIOD"),
-("JUNK: SLAVE-ONLY", "I_S.GLOBAL_STATUS", "SLAVE_LAST_HEARTBEAT"),
-("JUNK: SLAVE-ONLY", "I_S.GLOBAL_STATUS", "SLAVE_RECEIVED_HEARTBEATS"),
-("JUNK: SLAVE-ONLY", "I_S.GLOBAL_STATUS", "SLAVE_RETRIED_TRANSACTIONS"),
-("JUNK: SLAVE-ONLY", "I_S.GLOBAL_STATUS", "SLAVE_RUNNING")
+("JUNK: REPLICA-ONLY", "I_S.GLOBAL_STATUS", "REPLICA_HEARTBEAT_PERIOD"),
+("JUNK: REPLICA-ONLY", "I_S.GLOBAL_STATUS", "REPLICA_LAST_HEARTBEAT"),
+("JUNK: REPLICA-ONLY", "I_S.GLOBAL_STATUS", "REPLICA_RECEIVED_HEARTBEATS"),
+("JUNK: REPLICA-ONLY", "I_S.GLOBAL_STATUS", "REPLICA_RETRIED_TRANSACTIONS"),
+("JUNK: REPLICA-ONLY", "I_S.GLOBAL_STATUS", "REPLICA_RUNNING")
 ;
 
 # STEP 2-17
@@ -495,14 +495,14 @@ SHOW_MODE	SOURCE	VARIABLE_NAME
 TEST 7
 Present in 5.6 I_S.GLOBAL_STATUS (1-6)
 Missing in 5.7 P_S.GLOBAL_STATUS (2-8)
-EXPECT NOTHING AFTER REMOVING KNOWN SESSION-ONLY, COM COUNTERS AND SLAVE-ONLY (2-16 & 2-16A & 2-16B)
+EXPECT NOTHING AFTER REMOVING KNOWN SESSION-ONLY, COM COUNTERS AND REPLICA-ONLY (2-16 & 2-16A & 2-16B)
 ================================================================================
 select * from test.sanity
 where show_mode = "5.6"
   and source = "I_S.GLOBAL_STATUS"
   and upper(variable_name) not in (
 select upper(variable_name) from test.sanity
-where (show_mode = "JUNK: SESSION-ONLY" or show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: SLAVE-ONLY")
+where (show_mode = "JUNK: SESSION-ONLY" or show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: REPLICA-ONLY")
 and source = "I_S.GLOBAL_STATUS")
 and upper(variable_name) not in (
 select upper(variable_name) from test.sanity
@@ -515,7 +515,7 @@ SHOW_MODE	SOURCE	VARIABLE_NAME
 TEST 8
 KNOWN SESSION-ONLY (2-16)
 KNOWN COM COUNTERS (2-16A)
-KNOWN SLAVE-ONLY (2-16B)
+KNOWN REPLICA-ONLY (2-16B)
 Status variables that should NOT be present in 5.7 P_S.GLOBAL_STATUS (2-8)
 EXPECT NOTHING
 ================================================================================
@@ -524,7 +524,7 @@ where show_mode = "5.7"
   and source = "P_S.GLOBAL_STATUS"
   and upper(variable_name) in (
 select upper(variable_name) from test.sanity
-where (show_mode = "JUNK: SESSION-ONLY" or show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: SLAVE-ONLY")
+where (show_mode = "JUNK: SESSION-ONLY" or show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: REPLICA-ONLY")
 and source = "I_S.GLOBAL_STATUS")
 order by show_mode, source, variable_name;
 SHOW_MODE	SOURCE	VARIABLE_NAME
@@ -549,14 +549,14 @@ SHOW_MODE	SOURCE	VARIABLE_NAME
 TEST 10
 Present in 5.6 I_S.SESSION_STATUS (1-7)
 Missing in 5.7 P_S.SESSION_STATUS (2-10)
-EXPECT NOTHING AFTER REMOVING KNOWN COM COUNTERS AND SLAVE-ONLY (2-15A & 2-15B)
+EXPECT NOTHING AFTER REMOVING KNOWN COM COUNTERS AND REPLICA-ONLY (2-15A & 2-15B)
 ================================================================================
 select * from test.sanity
 where show_mode = "5.6"
   and source = "I_S.SESSION_STATUS"
   and upper(variable_name) not in (
 select upper(variable_name) from test.sanity
-where (show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: SLAVE-ONLY")
+where (show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: REPLICA-ONLY")
 and source = "I_S.SESSION_STATUS")
 and upper(variable_name) not in (
 select upper(variable_name) from test.sanity
@@ -568,7 +568,7 @@ SHOW_MODE	SOURCE	VARIABLE_NAME
 ================================================================================
 TEST 11
 KNOWN COM COUNTERS (2-15A)
-KNOWN SLAVE-ONLY (2-15B)
+KNOWN REPLICA-ONLY (2-15B)
 Status variables that should NOT be present in 5.7 P_S.SESSION_STATUS (2-10)
 EXPECT NOTHING
 ================================================================================
@@ -577,7 +577,7 @@ where show_mode = "5.7"
   and source = "P_S.SESSION_STATUS"
   and upper(variable_name) in (
 select upper(variable_name) from test.sanity
-where (show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: SLAVE-ONLY")
+where (show_mode = "JUNK: COM COUNTER" or show_mode = "JUNK: REPLICA-ONLY")
 and source = "I_S.SESSION_STATUS")
 order by show_mode, source, variable_name;
 SHOW_MODE	SOURCE	VARIABLE_NAME

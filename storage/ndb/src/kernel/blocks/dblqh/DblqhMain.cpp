@@ -1161,7 +1161,7 @@ void Dblqh::execREAD_NODESCONF(Signal* signal)
   ndbrequire(!(cnoOfNodes == 1 && cstartType == NodeState::ST_NODE_RESTART));
 
 #ifdef ERROR_INSERT
-  c_master_node_id = readNodes->masterNodeId;
+  c_primary_node_id = readNodes->primaryNodeId;
 #endif
   
   caddNodeState = ZFALSE;
@@ -2578,7 +2578,7 @@ Dblqh::execDROP_TAB_REQ(Signal* signal){
   {
     /**
      * This error insert simulates a situation where it takes a long time
-     * to execute DROP_TAB_REQ, such that we can crash the (dict) master
+     * to execute DROP_TAB_REQ, such that we can crash the (dict) primary
      * while there is an outstanding DROP_TAB_REQ.
      */
     jam();
@@ -9795,7 +9795,7 @@ void Dblqh::execNODE_FAILREP(Signal* signal)
   }//for
 
 #ifdef ERROR_INSERT
-  c_master_node_id = nodeFail->masterNodeId;
+  c_primary_node_id = nodeFail->primaryNodeId;
 #endif
   
   lcpPtr.i = 0;
@@ -9857,7 +9857,7 @@ Dblqh::ndbdFailBlockCleanupCallback(Signal* signal,
 /* ************************************************************************>>
  *  THIS SIGNAL IS RECEIVED AFTER A NODE CRASH. 
  *  THE NODE HAD A TC AND COORDINATED A NUMBER OF TRANSACTIONS. 
- *  NOW THE MASTER NODE IS PICKING UP THOSE TRANSACTIONS
+ *  NOW THE PRIMARY NODE IS PICKING UP THOSE TRANSACTIONS
  *  TO COMPLETE THEM. EITHER ABORT THEM OR COMMIT THEM.
  * ************************************************************************>> */
 void Dblqh::execLQH_TRANSREQ(Signal* signal) 
@@ -10009,8 +10009,8 @@ void Dblqh::lqhTransNextLab(Signal* signal,
 
       if (ERROR_INSERTED(5050))
       {
-        ndbout_c("send ZSCAN_MARKERS with 5s delay and killing master: %u",
-                 c_master_node_id);
+        ndbout_c("send ZSCAN_MARKERS with 5s delay and killing primary: %u",
+                 c_primary_node_id);
         CLEAR_ERROR_INSERT_VALUE;
         signal->theData[0] = ZSCAN_MARKERS;
         signal->theData[1] = tcNodeFailPtr.i;
@@ -14250,8 +14250,8 @@ void Dblqh::execCOPY_ACTIVEREQ(Signal* signal)
 
   const CopyActiveReq * const req = (CopyActiveReq *)&signal->theData[0];
   jamEntry();
-  Uint32 masterPtr = req->userPtr;
-  BlockReference masterRef = req->userRef;
+  Uint32 primaryPtr = req->userPtr;
+  BlockReference primaryRef = req->userRef;
   tabptr.i = req->tableId;
   ptrCheckGuard(tabptr, ctabrecFileSize, tablerec);
   Uint32 fragId = req->fragId;
@@ -14276,8 +14276,8 @@ void Dblqh::execCOPY_ACTIVEREQ(Signal* signal)
   ndbrequire(cnoActiveCopy < 3);
   cactiveCopy[cnoActiveCopy] = fragptr.i;
   cnoActiveCopy++;
-  fragptr.p->masterBlockref = masterRef;
-  fragptr.p->masterPtr = masterPtr;
+  fragptr.p->primaryBlockref = primaryRef;
+  fragptr.p->primaryPtr = primaryPtr;
 
   if (flags)
   {
@@ -14388,7 +14388,7 @@ void Dblqh::scanTcConnectLab(Signal* signal, Uint32 tstartTcConnect, Uint32 frag
 }//Dblqh::scanTcConnectLab()
 
 /*---------------------------------------------------------------------------*/
-/*   A NEW MASTER IS REQUESTING THE STATE IN LQH OF THE COPY FRAGMENT PARTS. */
+/*   A NEW PRIMARY IS REQUESTING THE STATE IN LQH OF THE COPY FRAGMENT PARTS. */
 /*---------------------------------------------------------------------------*/
 /* ***************>> */
 /*  COPY_STATEREQ  > */
@@ -14399,7 +14399,7 @@ void Dblqh::execCOPY_STATEREQ(Signal* signal)
   ndbrequire(0)
 #if 0
   Uint32* dataPtr = &signal->theData[2];
-  BlockReference tmasterBlockref = signal->theData[0];
+  BlockReference tprimaryBlockref = signal->theData[0];
   Uint32 tnoCopy = 0;
   do {
     jam();
@@ -14425,14 +14425,14 @@ void Dblqh::execCOPY_STATEREQ(Signal* signal)
         dataPtr[3 + (tnoCopy << 2)] = ZCOPY_ONGOING;
       }//if
       dataPtr[2 + (tnoCopy << 2)] = scanptr.p->scanSchemaVersion;
-      scanptr.p->scanApiBlockref = tmasterBlockref;
+      scanptr.p->scanApiBlockref = tprimaryBlockref;
     } else {
       ndbrequire(fragptr.p->activeTcCounter != 0);
 /*---------------------------------------------------------------------------*/
 /*   COPY FRAGMENT IS COMPLETED AND WE ARE CURRENTLY GETTING THE STARTING    */
 /*   GCI OF THE NEW REPLICA OF THIS FRAGMENT.                                */
 /*---------------------------------------------------------------------------*/
-      fragptr.p->masterBlockref = tmasterBlockref;
+      fragptr.p->primaryBlockref = tprimaryBlockref;
       dataPtr[3 + (tnoCopy << 2)] = ZCOPY_ACTIVATION;
     }//if
     dataPtr[tnoCopy << 2] = fragptr.p->tabRef;
@@ -14441,7 +14441,7 @@ void Dblqh::execCOPY_STATEREQ(Signal* signal)
   } while (tnoCopy < cnoActiveCopy);
   signal->theData[0] = cownNodeid;
   signal->theData[1] = tnoCopy;
-  sendSignal(tmasterBlockref, GSN_COPY_STATECONF, signal, 18, JBB);
+  sendSignal(tprimaryBlockref, GSN_COPY_STATECONF, signal, 18, JBB);
 #endif
   return;
 }//Dblqh::execCOPY_STATEREQ()
@@ -14482,19 +14482,19 @@ void Dblqh::initCopyTc(Signal* signal, Operation_t op)
 }//Dblqh::initCopyTc()
 
 /* ------------------------------------------------------------------------- */
-/* -------               SEND COPY_ACTIVECONF TO MASTER DIH          ------- */
+/* -------               SEND COPY_ACTIVECONF TO PRIMARY DIH          ------- */
 /*                                                                           */
 /* ------------------------------------------------------------------------- */
 void Dblqh::sendCopyActiveConf(Signal* signal, Uint32 tableId) 
 {
   releaseActiveCopy(signal);
   CopyActiveConf * const conf = (CopyActiveConf *)&signal->theData[0];
-  conf->userPtr = fragptr.p->masterPtr;
+  conf->userPtr = fragptr.p->primaryPtr;
   conf->tableId = tableId;
   conf->fragId = fragptr.p->fragId;
   conf->startingNodeId = cownNodeid;
   conf->startGci = fragptr.p->startGci;
-  sendSignal(fragptr.p->masterBlockref, GSN_COPY_ACTIVECONF, signal,
+  sendSignal(fragptr.p->primaryBlockref, GSN_COPY_ACTIVECONF, signal,
              CopyActiveConf::SignalLength, JBB);
 }//Dblqh::sendCopyActiveConf()
 
@@ -14652,7 +14652,7 @@ void Dblqh::execLCP_FRAG_ORD(Signal* signal)
       /**
        * Drop any message received after LCP_FRAG_ORD with last fragment
        * marker, must be ndbd we're running since Proxy should handle this.
-       * Can happen after a master takeover.
+       * Can happen after a primary takeover.
        *
        * DIH doesn't keep track of number of outstanding messages, so
        * no need to do anything when receiving multiple LCP_FRAG_ORDs
@@ -15205,7 +15205,7 @@ void Dblqh::sendEMPTY_LCP_CONF(Signal* signal, bool idle)
 
 /* --------------------------------------------------------------------------
  *       THE LOCAL CHECKPOINT ROUND IS NOW COMPLETED. SEND COMPLETED MESSAGE
- *       TO THE MASTER DIH.
+ *       TO THE PRIMARY DIH.
  * ------------------------------------------------------------------------- */
 void Dblqh::completeLcpRoundLab(Signal* signal, Uint32 lcpId)
 {
@@ -15678,13 +15678,13 @@ void Dblqh::execGCP_SAVEREQ(Signal* signal)
   {
 /*---------------------------------------------------------------------------*/
 /* GLOBAL CHECKPOINT HAVE ALREADY BEEN HANDLED. REQUEST MUST HAVE BEEN SENT  */
-/* FROM NEW MASTER DIH.                                                      */
+/* FROM NEW PRIMARY DIH.                                                      */
 /*---------------------------------------------------------------------------*/
     if (ccurrentGcprec == RNIL) {
       jam();
 /*---------------------------------------------------------------------------*/
-/* THIS INDICATES THAT WE HAVE ALREADY SENT GCP_SAVECONF TO PREVIOUS MASTER. */
-/* WE SIMPLY SEND IT ALSO TO THE NEW MASTER.                                 */
+/* THIS INDICATES THAT WE HAVE ALREADY SENT GCP_SAVECONF TO PREVIOUS PRIMARY. */
+/* WE SIMPLY SEND IT ALSO TO THE NEW PRIMARY.                                 */
 /*---------------------------------------------------------------------------*/
       GCPSaveConf * const saveConf = (GCPSaveConf*)&signal->theData[0];
       saveConf->dihPtr = dihPtr;
@@ -15696,7 +15696,7 @@ void Dblqh::execGCP_SAVEREQ(Signal* signal)
     }
     jam();
 /*---------------------------------------------------------------------------*/
-/* WE HAVE NOT YET SENT THE RESPONSE TO THE OLD MASTER. WE WILL SET THE NEW  */
+/* WE HAVE NOT YET SENT THE RESPONSE TO THE OLD PRIMARY. WE WILL SET THE NEW  */
 /* RECEIVER OF THE RESPONSE AND THEN EXIT SINCE THE PROCESS IS ALREADY       */
 /* STARTED.                                                                  */
 /*---------------------------------------------------------------------------*/
@@ -18323,7 +18323,7 @@ void Dblqh::execSTART_RECREQ(Signal* signal)
 
   jamEntry();
   StartRecReq * const req = (StartRecReq*)&signal->theData[0];
-  cmasterDihBlockref = req->senderRef;
+  cprimaryDihBlockref = req->senderRef;
 
   crestartOldestGci = req->keepGci;
   crestartNewestGci = req->lastCompletedGci;
@@ -18506,13 +18506,13 @@ void Dblqh::sendLOCAL_RECOVERY_COMPLETE_REP(Signal *signal,
   else
   {
     jam();
-    Uint32 master_node_id = refToNode(cmasterDihBlockref);
-    Uint32 master_version = getNodeInfo(master_node_id).m_version;
-    if (master_version >= NDBD_NODE_RECOVERY_STATUS_VERSION)
+    Uint32 primary_node_id = refToNode(cprimaryDihBlockref);
+    Uint32 primary_version = getNodeInfo(primary_node_id).m_version;
+    if (primary_version >= NDBD_NODE_RECOVERY_STATUS_VERSION)
     {
       jam();
-      sendSignal(cmasterDihBlockref, GSN_LOCAL_RECOVERY_COMP_REP, signal,
-                 LocalRecoveryCompleteRep::SignalLengthMaster, JBB);
+      sendSignal(cprimaryDihBlockref, GSN_LOCAL_RECOVERY_COMP_REP, signal,
+                 LocalRecoveryCompleteRep::SignalLengthPrimary, JBB);
     }
   }
 }
@@ -18576,7 +18576,7 @@ Dblqh::rebuildOrderedIndexes(Signal* signal, Uint32 tableId)
     StartRecConf * conf = (StartRecConf*)signal->getDataPtrSend();
     conf->startingNodeId = getOwnNodeId();
     conf->senderData = cstartRecReqData;
-    sendSignal(cmasterDihBlockref, GSN_START_RECCONF, signal,
+    sendSignal(cprimaryDihBlockref, GSN_START_RECCONF, signal,
                StartRecConf::SignalLength, JBB);
 
     g_eventLogger->info("LDM(%u): We have completed restoring our"
@@ -18878,7 +18878,7 @@ void Dblqh::execSrCompletedLab(Signal* signal)
     /* ----------------------------------------------------------------------
      *  THIS WAS THE LAST PHASE. WE HAVE NOW COMPLETED THE EXECUTION THE 
      *  FRAGMENT LOGS IN ALL NODES. BEFORE WE SEND START_RECCONF TO THE 
-     *  MASTER DIH TO INDICATE A COMPLETED SYSTEM RESTART IT IS NECESSARY 
+     *  PRIMARY DIH TO INDICATE A COMPLETED SYSTEM RESTART IT IS NECESSARY 
      *  TO FIND THE HEAD AND THE TAIL OF THE LOG WHEN NEW OPERATIONS START 
      *  TO COME AGAIN.
      * 
@@ -20755,7 +20755,7 @@ void Dblqh::srPhase3Comp(Signal* signal)
  *    THIS MODULE IS A SUB-MODULE OF THE FILE SYSTEM HANDLING.
  *
  *    THIS MODULE SETS UP THE HEAD AND TAIL POINTERS OF THE LOG PARTS IN THE
- *    FRAGMENT LOG. WHEN IT IS COMPLETED IT REPORTS TO THE MASTER DIH THAT
+ *    FRAGMENT LOG. WHEN IT IS COMPLETED IT REPORTS TO THE PRIMARY DIH THAT
  *    IT HAS COMPLETED THE PART OF THE SYSTEM RESTART WHERE THE DATABASE IS
  *    LOADED.
  *    IT ALSO OPENS THE CURRENT LOG FILE AND THE NEXT AND SETS UP THE FIRST 
@@ -20979,7 +20979,7 @@ void Dblqh::srFourthComp(Signal* signal)
   }//for
   /* ------------------------------------------------------------------------
    *  ALL LOG PARTS HAVE COMPLETED PHASE FOUR OF THE SYSTEM RESTART. 
-   *  WE CAN NOW SEND START_RECCONF TO THE MASTER DIH IF IT WAS A 
+   *  WE CAN NOW SEND START_RECCONF TO THE PRIMARY DIH IF IT WAS A 
    *  SYSTEM RESTART. OTHERWISE WE WILL CONTINUE WITH AN INITIAL START. 
    *  SET LOG PART STATE TO IDLE TO
    *  INDICATE THAT NOTHING IS GOING ON IN THE LOG PART.
@@ -22002,7 +22002,7 @@ void Dblqh::initialiseRecordsLab(Signal* signal, Uint32 data,
     crestartNewestGci = 0;
     csrPhaseStarted = ZSR_NO_PHASE_STARTED;
     csrPhasesCompleted = 0;
-    cmasterDihBlockref = 0;
+    cprimaryDihBlockref = 0;
     cnoFragmentsExecSr = 0;
     cnoOutstandingExecFragReq = 0;
     clcpCompletedState = LCP_IDLE;
@@ -24874,7 +24874,7 @@ Dblqh::execDUMP_STATE_ORD(Signal* signal)
   if (arg == 5050)
   {
 #ifdef ERROR_INSERT
-    SET_ERROR_INSERT_VALUE2(5050, c_master_node_id);
+    SET_ERROR_INSERT_VALUE2(5050, c_primary_node_id);
 #endif
   }
   

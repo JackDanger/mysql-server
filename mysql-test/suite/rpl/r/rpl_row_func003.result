@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET SESSION sql_log_bin= 0;
 CALL mtr.add_suppression('Statement may not be safe to log in statement format.');
 SET SESSION sql_log_bin= 1;
@@ -27,7 +27,7 @@ START TRANSACTION;
 INSERT INTO test.t1 VALUES (null,test.f1());
 ROLLBACK;
 SET AUTOCOMMIT=1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP FUNCTION test.f1;
 DROP TABLE test.t1;
 include/rpl_end.inc

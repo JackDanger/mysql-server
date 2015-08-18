@@ -23,13 +23,13 @@
 #
 #  So after assigning "a" transactions to each worker, waiting that "p"
 #  transactions are processed by each worker and "c" are processed by the
-#  checkpoint routine, the slave is rebooted thus executing the recovery
+#  checkpoint routine, the replica is rebooted thus executing the recovery
 #  routine with a mix of processed and unprocessed transactions.
 #
 #  Along with this, the relay log is rotated and during startup the relay
 #  log files are delete based on the option relay-log-recovery.
 #
-#  At the end, master and slave cannot diverge.
+#  At the end, primary and replica cannot diverge.
 ################################################################################
 #  Clean all configuration changes after running the test.
 --source include/force_restart.inc
@@ -51,7 +51,7 @@ if (`select '$crash_safe_small' = ''`)
   let $max_workers=3;
 }
 --let $verbose= 0
---connection master
+--connection primary
 --let $commands= configure
 --let $engine_type="Innodb"
 --source extra/rpl_tests/rpl_mts_crash_safe.inc
@@ -72,16 +72,16 @@ while ($count_debug_groups <= $max_groups)
       let $count_groups=$count_debug_groups;
       while ($count_groups <= $max_groups)
       {
-        --connection slave
-        --eval SET @@global.slave_parallel_workers= $count_workers
-        --eval SET @@global.slave_checkpoint_period= $count_checkpoint
+        --connection replica
+        --eval SET @@global.replica_parallel_workers= $count_workers
+        --eval SET @@global.replica_checkpoint_period= $count_checkpoint
         let $count_transactions=1;
         while ($count_transactions <= $count_groups)
         {
           let $count_database=1;
           while ($count_database <= $count_workers)
           {
-            --connection master
+            --connection primary
             --let $database_name=test_$count_database
             --echo Generating Number of Workers $count_workers --- Number of Groups per worker $count_groups --- Debugging Groups $count_debug_groups --- Database $database_name
             --let $commands= B T T C
@@ -106,32 +106,32 @@ while ($count_debug_groups <= $max_groups)
 --echo ########################################################################
 --echo #                          CHECK CONSISTENCY
 --echo ########################################################################
---connection slave
---source include/start_slave.inc
+--connection replica
+--source include/start_replica.inc
 
---connection master
---source include/sync_slave_sql_with_master.inc
+--connection primary
+--source include/sync_replica_sql_with_primary.inc
 
---connection master
+--connection primary
 
 let $MYSQLD_DATADIR= `SELECT @@datadir`;
 
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info --set-gtid-purged=off test > $MYSQLD_DATADIR/test-mts-crash-master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info --set-gtid-purged=off test > $MYSQLD_DATADIR/test-mts-crash-slave.sql
---diff_files $MYSQLD_DATADIR/test-mts-crash-master.sql $MYSQLD_DATADIR/test-mts-crash-slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info --set-gtid-purged=off test > $MYSQLD_DATADIR/test-mts-crash-primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info --set-gtid-purged=off test > $MYSQLD_DATADIR/test-mts-crash-replica.sql
+--diff_files $MYSQLD_DATADIR/test-mts-crash-primary.sql $MYSQLD_DATADIR/test-mts-crash-replica.sql
 
 
 --echo ########################################################################
 --echo #                             CLEAN UP
 --echo ########################################################################
---connection master
-# Resetting the slave's info repository type to its default (FILE)
+--connection primary
+# Resetting the replica's info repository type to its default (FILE)
 # should be done to any tests that starts the server with non-default (TABLE).
 # That prevents the following tests in a suite execution to hit
-# Bug #14827923 RPL TEST RPL_PARALLEL_CHANGE_MASTER FAILS WITH WARNING
+# Bug #14827923 RPL TEST RPL_PARALLEL_CHANGE_PRIMARY FAILS WITH WARNING
 # Technically resetting of the repo type is implemented through
-# one to slave_parallel_workers. Having it zero in the info table
-# at the following restart makes the slave server to quietly migrate
+# one to replica_parallel_workers. Having it zero in the info table
+# at the following restart makes the replica server to quietly migrate
 # the repository to the requested type.
 # Notice that Bug#15858271 of mtr does not allow effectiveness of
 # zeroing.
@@ -141,5 +141,5 @@ let $MYSQLD_DATADIR= `SELECT @@datadir`;
 --let $commands= clean
 --source extra/rpl_tests/rpl_mts_crash_safe.inc
 
---connection master
+--connection primary
 --source include/rpl_end.inc

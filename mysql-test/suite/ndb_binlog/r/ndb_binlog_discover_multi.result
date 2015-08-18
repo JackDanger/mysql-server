@@ -2,8 +2,8 @@ drop table if exists t1,dummy;
 drop table if exists t1,dummy;
 CREATE TABLE dummy (dummyk INT PRIMARY KEY) ENGINE = NDB;
 DROP TABLE dummy;
-reset master;
-reset master;
+reset primary;
+reset primary;
 create table t1 (a int unsigned auto_increment not null primary key)
 engine=ndbcluster;
 alter table t1 algorithm=inplace, add column b varchar(16);

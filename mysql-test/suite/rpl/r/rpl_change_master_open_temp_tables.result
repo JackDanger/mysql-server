@@ -1,62 +1,62 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 
-# create a temporary table, replicate at slave for all the tests below.
+# create a temporary table, replicate at replica for all the tests below.
 
 CREATE TEMPORARY TABLE t1(a int);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
-# Make sure STOP SLAVE generates a warning.
+# Make sure STOP REPLICA generates a warning.
 
-STOP SLAVE;
+STOP REPLICA;
 Warnings:
-Warning	3022	This operation may not be safe when the slave has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until slave_open_temp_tables = 0.
-include/wait_for_slave_to_stop.inc
+Warning	3022	This operation may not be safe when the replica has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until replica_open_temp_tables = 0.
+include/wait_for_replica_to_stop.inc
 
-# Make sure STOP SLAVE SQL_THREAD generates a warning.
+# Make sure STOP REPLICA SQL_THREAD generates a warning.
 
-STOP SLAVE SQL_THREAD;
-Warnings:
-Note	3084	Replication thread(s) for channel '' are already stopped.
-Warning	3022	This operation may not be safe when the slave has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until slave_open_temp_tables = 0.
-include/wait_for_slave_sql_to_stop.inc
-
-# Make sure STOP SLAVE IO_THREAD generates a warning.
-
-STOP SLAVE IO_THREAD;
+STOP REPLICA SQL_THREAD;
 Warnings:
 Note	3084	Replication thread(s) for channel '' are already stopped.
-Warning	3022	This operation may not be safe when the slave has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until slave_open_temp_tables = 0.
-include/wait_for_slave_io_to_stop.inc
+Warning	3022	This operation may not be safe when the replica has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until replica_open_temp_tables = 0.
+include/wait_for_replica_sql_to_stop.inc
+
+# Make sure STOP REPLICA IO_THREAD generates a warning.
+
+STOP REPLICA IO_THREAD;
+Warnings:
+Note	3084	Replication thread(s) for channel '' are already stopped.
+Warning	3022	This operation may not be safe when the replica has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until replica_open_temp_tables = 0.
+include/wait_for_replica_io_to_stop.inc
 
 # No warning here since we are changing a configuration parameter only.
 
-CHANGE MASTER TO MASTER_HEARTBEAT_PERIOD= 10;
+CHANGE PRIMARY TO PRIMARY_HEARTBEAT_PERIOD= 10;
 
-# Use of (master/relay)log_file/log_pos options should generate a warning.
+# Use of (primary/relay)log_file/log_pos options should generate a warning.
 
-CHANGE MASTER TO MASTER_AUTO_POSITION= 0;
-CHANGE MASTER TO MASTER_LOG_FILE= 'MASTER_LOG_FILE';
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 0;
+CHANGE PRIMARY TO PRIMARY_LOG_FILE= 'PRIMARY_LOG_FILE';
 Warnings:
-Warning	3022	This operation may not be safe when the slave has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until slave_open_temp_tables = 0.
-Warning	3023	CHANGE MASTER TO with a MASTER_LOG_FILE clause but no MASTER_LOG_POS clause may not be safe. The old position value may not be valid for the new binary log file.
-CHANGE MASTER TO MASTER_LOG_POS= MASTER_LOG_POS;
+Warning	3022	This operation may not be safe when the replica has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until replica_open_temp_tables = 0.
+Warning	3023	CHANGE PRIMARY TO with a PRIMARY_LOG_FILE clause but no PRIMARY_LOG_POS clause may not be safe. The old position value may not be valid for the new binary log file.
+CHANGE PRIMARY TO PRIMARY_LOG_POS= PRIMARY_LOG_POS;
 Warnings:
-Warning	3022	This operation may not be safe when the slave has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until slave_open_temp_tables = 0.
-CHANGE MASTER TO RELAY_LOG_FILE= 'RELAY_LOG_FILE';
+Warning	3022	This operation may not be safe when the replica has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until replica_open_temp_tables = 0.
+CHANGE PRIMARY TO RELAY_LOG_FILE= 'RELAY_LOG_FILE';
 Warnings:
-Warning	3022	This operation may not be safe when the slave has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until slave_open_temp_tables = 0.
-CHANGE MASTER TO RELAY_LOG_POS= RELAY_LOG_POS;
+Warning	3022	This operation may not be safe when the replica has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until replica_open_temp_tables = 0.
+CHANGE PRIMARY TO RELAY_LOG_POS= RELAY_LOG_POS;
 SHOW WARNINGS;
 Level	Code	Message
-Warning	3022	This operation may not be safe when the slave has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until slave_open_temp_tables = 0.
-CHANGE MASTER TO MASTER_AUTO_POSITION= SAVE_AUTOPOSITION;
+Warning	3022	This operation may not be safe when the replica has temporary tables. The tables will be kept open until the server restarts or until the tables are deleted by any replicated DROP statement. Suggest to wait until replica_open_temp_tables = 0.
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= SAVE_AUTOPOSITION;
 
 # cleanup
 
-include/start_slave.inc
+include/start_replica.inc
 DROP TEMPORARY TABLE t1;
 include/rpl_end.inc

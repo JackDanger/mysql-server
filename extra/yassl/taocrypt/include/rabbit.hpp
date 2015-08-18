@@ -35,7 +35,7 @@ public:
     typedef Rabbit Encryption;
     typedef Rabbit Decryption;
 
-    enum RabbitCtx { Master = 0, Work = 1 };
+    enum RabbitCtx { Primary = 0, Work = 1 };
 
     Rabbit() {}
 
@@ -48,7 +48,7 @@ private:
         word32 carry;
     };
 
-    Ctx masterCtx_;
+    Ctx primaryCtx_;
     Ctx workCtx_;
 
     void NextState(RabbitCtx);

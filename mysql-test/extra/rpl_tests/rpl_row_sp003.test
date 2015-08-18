@@ -4,7 +4,7 @@
 #############################################################################
 
 # Begin clean up test section
-connection master;
+connection primary;
 --disable_warnings
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
@@ -31,11 +31,11 @@ delimiter ;|
 
 SELECT get_lock("test", 200);
 
-connection master1;
+connection primary1;
 send CALL test.p1();
 
-connection master;
-# Make sure that the call on master1 arrived at the get_lock.
+connection primary;
+# Make sure that the call on primary1 arrived at the get_lock.
 let $wait_condition=
   select count(*) = 1 from information_schema.processlist
   where state = 'User lock' and
@@ -44,20 +44,20 @@ let $wait_condition=
 CALL test.p2();
 SELECT release_lock("test");
 
-connection master1;
+connection primary1;
 # Reap CALL test.p1() to ensure that it has fully completed
 # before doing any selects on test.t1.
 --reap
 # Release lock acquired by it.
 SELECT release_lock("test");
 
-connection master;
+connection primary;
 SELECT * FROM test.t1; 
 #show binlog events;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 
-connection master;
+connection primary;
 DROP TABLE IF EXISTS test.t1;
 eval CREATE TABLE test.t1(a INT,PRIMARY KEY(a))ENGINE=$engine_type;
 CALL test.p2();
@@ -65,14 +65,14 @@ CALL test.p1();
 SELECT release_lock("test");
 SELECT * FROM test.t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
-connection master;
+connection primary;
 #show binlog events from 720;
 
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
 DROP TABLE IF EXISTS test.t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 5.0 test case

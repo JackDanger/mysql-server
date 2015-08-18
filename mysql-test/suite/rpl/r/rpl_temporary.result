@@ -1,34 +1,34 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-call mtr.add_suppression("Slave: Can\'t find record in \'user\' Error_code: 1032");
-reset master;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+call mtr.add_suppression("Replica: Can\'t find record in \'user\' Error_code: 1032");
+reset primary;
 DROP TABLE IF EXISTS t1;
 CREATE TEMPORARY TABLE t1 (a char(1));
 INSERT INTO t1 VALUES ('a');
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-include/start_slave.inc
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+include/start_replica.inc
 INSERT INTO t1 VALUES ('b');
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP TABLE IF EXISTS t1;
 CREATE TEMPORARY TABLE `t1`(`a` tinyint,`b` char(1))engine=myisam;
 INSERT IGNORE INTO `t1` set `a`=128,`b`='128';
 Warnings:
 Warning	1264	Out of range value for column 'a' at row 1
 Warning	1265	Data truncated for column 'b' at row 1
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-include/start_slave.inc
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+include/start_replica.inc
 INSERT IGNORE INTO `t1` set `a`=128,`b`='128';
 Warnings:
 Warning	1264	Out of range value for column 'a' at row 1
 Warning	1265	Data truncated for column 'b' at row 1
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP TABLE t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET @save_select_limit=@@session.sql_select_limit;
 SET @@session.sql_select_limit=10, @@session.pseudo_thread_id=100;
 ERROR 42000: Access denied; you need (at least one of) the SUPER privilege(s) for this operation
@@ -103,13 +103,13 @@ f
 7
 drop table t1,t2;
 create temporary table t3 (f int);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 create temporary table t4 (f int);
 create table t5 (f int);
-include/sync_slave_sql_with_master.inc
-stop slave;
+include/sync_replica_sql_with_primary.inc
+stop replica;
 insert into t5 select * from t4;
-start slave;
+start replica;
 select * from t5 /* must be 1 after reconnection */;
 f
 drop temporary table t4;
@@ -127,31 +127,31 @@ create temporary table t302 (id int);
 create temporary table `#sql_not_user_table303` (id int);
 create table t1(f int);
 insert into t1 values (1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1 /* must be 1 */;
 f
 1
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a
 1
 drop table t1;
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
 include/rpl_reset.inc
 -- Bug#43748
--- make a user on the slave that can list but not kill system threads.
+-- make a user on the replica that can list but not kill system threads.
 FLUSH PRIVILEGES;
 GRANT USAGE   ON *.* TO user43748@127.0.0.1 IDENTIFIED BY 'meow';
 Warnings:
 Warning	1287	Using GRANT for creating new user is deprecated and will be removed in future release. Create new user with CREATE USER statement.
 GRANT PROCESS ON *.* TO user43748@127.0.0.1;
--- try to KILL system-thread as that non-privileged user (on slave).
+-- try to KILL system-thread as that non-privileged user (on replica).
 SELECT id INTO @id FROM information_schema.processlist WHERE user='system user' LIMIT 1;
 KILL @id;
 Got one of the listed errors
--- throw out test-user on slave.
+-- throw out test-user on replica.
 DROP USER user43748@127.0.0.1;
 End of 5.1 tests
 include/rpl_end.inc

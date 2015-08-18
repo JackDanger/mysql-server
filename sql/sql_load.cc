@@ -32,7 +32,7 @@
                         // LOG_EVENT_UPDATE_TABLE_MAP_VERSION_F
 #include <m_ctype.h>
 #include "rpl_mi.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "table_trigger_dispatcher.h"  // Table_trigger_dispatcher
 #include "sql_show.h"
 #include "item_timefunc.h"  // Item_func_now_local
@@ -440,23 +440,23 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
                        MY_RETURN_REAL_PATH);
     }
 
-    if (thd->slave_thread & ((SYSTEM_THREAD_SLAVE_SQL |
-                             (SYSTEM_THREAD_SLAVE_WORKER))!=0))
+    if (thd->replica_thread & ((SYSTEM_THREAD_REPLICA_SQL |
+                             (SYSTEM_THREAD_REPLICA_WORKER))!=0))
     {
 #if defined(HAVE_REPLICATION) && !defined(MYSQL_CLIENT)
-      Relay_log_info* rli= thd->rli_slave->get_c_rli();
+      Relay_log_info* rli= thd->rli_replica->get_c_rli();
 
-      if (strncmp(rli->slave_patternload_file, name,
-                  rli->slave_patternload_file_size))
+      if (strncmp(rli->replica_patternload_file, name,
+                  rli->replica_patternload_file_size))
       {
         /*
-          LOAD DATA INFILE in the slave SQL Thread can only read from 
-          --slave-load-tmpdir". This should never happen. Please, report a bug.
+          LOAD DATA INFILE in the replica SQL Thread can only read from 
+          --replica-load-tmpdir". This should never happen. Please, report a bug.
         */
 
-        sql_print_error("LOAD DATA INFILE in the slave SQL Thread can only read from --slave-load-tmpdir. " \
+        sql_print_error("LOAD DATA INFILE in the replica SQL Thread can only read from --replica-load-tmpdir. " \
                         "Please, report a bug.");
-        my_error(ER_OPTION_PREVENTS_STATEMENT, MYF(0), "--slave-load-tmpdir");
+        my_error(ER_OPTION_PREVENTS_STATEMENT, MYF(0), "--replica-load-tmpdir");
         DBUG_RETURN(TRUE);
       }
 #else
@@ -478,8 +478,8 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
     if (!my_stat(name, &stat_info, MYF(MY_WME)))
       DBUG_RETURN(TRUE);
 
-    // if we are not in slave thread, the file must be:
-    if (!thd->slave_thread &&
+    // if we are not in replica thread, the file must be:
+    if (!thd->replica_thread &&
         !((stat_info.st_mode & S_IFLNK) != S_IFLNK &&   // symlink
           ((stat_info.st_mode & S_IFREG) == S_IFREG ||  // regular file
            (stat_info.st_mode & S_IFIFO) == S_IFIFO)))  // named pipe

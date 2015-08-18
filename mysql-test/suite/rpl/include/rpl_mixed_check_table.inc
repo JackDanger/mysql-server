@@ -1,16 +1,16 @@
 #########################################
 # Author: Serge Kozlov skozlov@mysql.com
 # Date: 07/10/2006
-# Purpose: Checking created tables on master and same tables on slave 
+# Purpose: Checking created tables on primary and same tables on replica 
 # Requirements: 
 #########################################
 
---echo ==========MASTER==========
+--echo ==========PRIMARY==========
 SHOW CREATE TABLE t1;
 SHOW CREATE TABLE t2;
-sync_slave_with_master;
---echo ==========SLAVE===========
+sync_replica_with_primary;
+--echo ==========REPLICA===========
 USE test_rpl;
 SHOW CREATE TABLE t1;
 SHOW CREATE TABLE t2;
-connection master;
+connection primary;

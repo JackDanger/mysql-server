@@ -61,7 +61,7 @@ namespace strategy { namespace transform
 \details The strategy serves as a generic definition of affine transformation matrix
          and procedure of application it to given point.
 \see http://en.wikipedia.org/wiki/Affine_transformation
-     and http://www.devmaster.net/wiki/Transformation_matrices
+     and http://www.devprimary.net/wiki/Transformation_matrices
 \ingroup strategies
 \tparam Dimension1 number of dimensions to transform from
 \tparam Dimension2 number of dimensions to transform to

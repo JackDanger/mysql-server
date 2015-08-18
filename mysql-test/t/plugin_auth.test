@@ -429,16 +429,16 @@ FLUSH PRIVILEGES;
 --echo #
 
 --echo # Executing 'mysql'
---exec $MYSQL -u root -S $MASTER_MYSOCK -P $MASTER_MYPORT --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT -e "SELECT 1"
+--exec $MYSQL -u root -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT -e "SELECT 1"
 
 --echo # Executing 'mysqladmin'
---exec $MYSQLADMIN -u root -S $MASTER_MYSOCK -P $MASTER_MYPORT --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT ping
+--exec $MYSQLADMIN -u root -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT ping
 
 --echo # Executing 'mysqldump'
---exec $MYSQL_DUMP -u root -S $MASTER_MYSOCK -P $MASTER_MYPORT --compact --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT test
+--exec $MYSQL_DUMP -u root -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT --compact --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT test
 
 --echo # Executing 'mysql_upgrade'
---exec $MYSQL_UPGRADE -u root -S $MASTER_MYSOCK -P $MASTER_MYPORT --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT --skip-verbose --force --upgrade-system-tables
+--exec $MYSQL_UPGRADE -u root -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT --default-auth=auth_test_plugin $PLUGIN_AUTH_OPT --skip-verbose --force --upgrade-system-tables
 
 --echo #
 --echo # Bug #59657: Move the client authentication_pam plugin into the 
@@ -488,7 +488,7 @@ INSERT INTO mysql.user(
   Create_tmp_table_priv, 
   Lock_tables_priv,  
   Execute_priv,
-  Repl_slave_priv, 
+  Repl_replica_priv, 
   Repl_client_priv, 
   /*!50001 
   Create_view_priv, 
@@ -654,11 +654,11 @@ ALTER USER employee@localhost PASSWORD EXPIRE;
 --echo # Connecting with the proxied user and executing a query after the
 --echo # proxied user's password is expired
 --error 1, ER_MUST_CHANGE_PASSWORD
---exec $MYSQL -S $MASTER_MYSOCK -u employee --password=passkey -e "SELECT current_user();SELECT user();" 2>&1
+--exec $MYSQL -S $PRIMARY_MYSOCK -u employee --password=passkey -e "SELECT current_user();SELECT user();" 2>&1
 
 --echo # Connecting with the proxy user and executing a query after the proxied
 --echo # user's password is expired. Here we are not supposed to get error.
---exec $MYSQL -S $MASTER_MYSOCK -u empl_external $PLUGIN_AUTH_OPT --password=employee -e "SELECT current_user();SELECT user();" 2>&1
+--exec $MYSQL -S $PRIMARY_MYSOCK -u empl_external $PLUGIN_AUTH_OPT --password=employee -e "SELECT current_user();SELECT user();" 2>&1
 
 #Cleanup
 DROP USER 'empl_external'@'localhost', 'employee'@'localhost';

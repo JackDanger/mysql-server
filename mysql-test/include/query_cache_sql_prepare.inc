@@ -22,7 +22,7 @@
 -- source include/not_embedded.inc
 
 --echo ---- establish connection con1 (root) ----
-connect (con1,localhost,root,,test,$MASTER_MYPORT,);
+connect (con1,localhost,root,,test,$PRIMARY_MYPORT,);
 --echo ---- switch to connection default ----
 connection default;
 

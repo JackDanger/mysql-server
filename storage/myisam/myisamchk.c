@@ -1546,7 +1546,7 @@ static int mi_sort_records(MI_CHECK *param,
   sort_info.info=info;
   sort_info.new_data_file_type=share->data_file_type;
   sort_param.fix_datafile=1;
-  sort_param.master=1;
+  sort_param.primary=1;
   sort_param.filepos=share->pack.header_length;
   old_record_count=info->state->records;
   info->state->records=0;

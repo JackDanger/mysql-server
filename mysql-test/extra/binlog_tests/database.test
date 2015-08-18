@@ -4,7 +4,7 @@ source include/not_embedded.inc;
 # Checking that the drop of a database does not replicate anything in
 # addition to the drop of the database
 
-reset master;
+reset primary;
 create database testing_1;
 use testing_1;
 create table t1 (a int);
@@ -20,7 +20,7 @@ source include/show_binlog_events.inc;
 # temporary tables open
 
 use test;
-reset master;
+reset primary;
 create temporary table tt1 (a int);
 create table t1 (a int);
 insert into t1 values (1);
@@ -39,7 +39,7 @@ FLUSH STATUS;
 --echo # 'DROP TABLE IF EXISTS <deleted tables>' is binlogged
 --echo # when 'DROP DATABASE' fails and at least one table is deleted
 --echo # from the database.
-RESET MASTER;
+RESET PRIMARY;
 CREATE DATABASE testing_1;
 USE testing_1;
 CREATE TABLE t1(c1 INT);
@@ -86,7 +86,7 @@ CREATE TABLE db1.t1 (a INT);
 CREATE TABLE db1.t2 (b INT, KEY(b)) engine=innodb;
 CREATE TABLE t3 (a INT, KEY (a), FOREIGN KEY(a) REFERENCES db1.t2(b))
   engine=innodb;
-RESET MASTER;
+RESET PRIMARY;
 
 --error ER_ROW_IS_REFERENCED
 DROP DATABASE db1;                      # Fails because of the fk

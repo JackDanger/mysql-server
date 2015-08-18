@@ -241,7 +241,7 @@ extern "C" {
      *        NDB_MGM_NODE_STATUS_STARTING
      */
     int start_phase;
-    /** ID for heartbeats and master take-over (only valid for DB nodes)
+    /** ID for heartbeats and primary take-over (only valid for DB nodes)
      */
     int dynamic_id;
     /** Node group of node (only valid for DB nodes)*/

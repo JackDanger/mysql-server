@@ -6,11 +6,11 @@
 #############################################################################
 
 # Includes
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 # Begin clean up test section
 --disable_warnings
-connection master;
+connection primary;
 DROP TABLE IF EXISTS test.t1;
 --enable_warnings
 
@@ -23,15 +23,15 @@ LOAD DATA INFILE '../../std_data/words2.dat' INTO TABLE test.t1;
 
 
 SELECT * FROM test.t1 ORDER BY a DESC;
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 SELECT * FROM test.t1 ORDER BY a DESC;
 
 # Cleanup
 #show binlog events;
-connection master;
+connection primary;
 DROP TABLE test.t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 5.0 test case
 

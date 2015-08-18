@@ -297,7 +297,7 @@ srv_conc_force_exit_innodb(
 			thread */
 {
 	if ((trx->mysql_thd != NULL
-	     && thd_is_replication_slave_thread(trx->mysql_thd))
+	     && thd_is_replication_replica_thread(trx->mysql_thd))
 	    || trx->declared_to_be_inside_innodb == FALSE) {
 
 		return;

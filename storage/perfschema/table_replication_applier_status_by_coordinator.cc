@@ -25,7 +25,7 @@
 #include "table_replication_applier_status_by_coordinator.h"
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_info.h"
 #include  "rpl_rli.h"
 #include "rpl_mi.h"
@@ -121,7 +121,7 @@ ha_rows table_replication_applier_status_by_coordinator::get_row_count()
 
 int table_replication_applier_status_by_coordinator::rnd_next(void)
 {
-  Master_info *mi;
+  Primary_info *mi;
 
   mysql_mutex_lock(&LOCK_msr_map);
 
@@ -148,7 +148,7 @@ int table_replication_applier_status_by_coordinator::rnd_next(void)
 
 int table_replication_applier_status_by_coordinator::rnd_pos(const void *pos)
 {
-  Master_info *mi=NULL;
+  Primary_info *mi=NULL;
 
   set_position(pos);
 
@@ -167,7 +167,7 @@ int table_replication_applier_status_by_coordinator::rnd_pos(const void *pos)
 
 }
 
-void table_replication_applier_status_by_coordinator::make_row(Master_info *mi)
+void table_replication_applier_status_by_coordinator::make_row(Primary_info *mi)
 {
   m_row_exists= false;
 
@@ -179,7 +179,7 @@ void table_replication_applier_status_by_coordinator::make_row(Master_info *mi)
   m_row.channel_name_length= strlen(mi->get_channel());
   memcpy(m_row.channel_name, (char*)mi->get_channel(), m_row.channel_name_length);
 
-  if (mi->rli->slave_running)
+  if (mi->rli->replica_running)
   {
     PSI_thread *psi= thd_get_psi(mi->rli->info_thd);
     PFS_thread *pfs= reinterpret_cast<PFS_thread *> (psi);
@@ -194,7 +194,7 @@ void table_replication_applier_status_by_coordinator::make_row(Master_info *mi)
   else
     m_row.thread_id_is_null= true;
 
-  if (mi->rli->slave_running)
+  if (mi->rli->replica_running)
     m_row.service_state= PS_RPL_YES;
   else
     m_row.service_state= PS_RPL_NO;

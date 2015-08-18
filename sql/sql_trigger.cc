@@ -263,7 +263,7 @@ bool mysql_create_or_drop_trigger(THD *thd, TABLE_LIST *tables, bool create)
   /*
     Reopen the table if we were under LOCK TABLES.
     Ignore the return value for now. It's better to
-    keep master/slave in consistent state.
+    keep primary/replica in consistent state.
   */
   thd->locked_tables_list.reopen_tables(thd);
 

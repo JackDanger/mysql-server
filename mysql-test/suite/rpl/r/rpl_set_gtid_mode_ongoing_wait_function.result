@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET GLOBAL ENFORCE_GTID_CONSISTENCY = ON;
 SET GLOBAL ENFORCE_GTID_CONSISTENCY = ON;
 SET GLOBAL GTID_MODE = OFF_PERMISSIVE;
@@ -21,7 +21,7 @@ ERROR HY000: SET @@GLOBAL.GTID_MODE = OFF is not allowed because there are ongoi
 SET GTID_NEXT = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:10';
 COMMIT;
 SET GTID_NEXT = 'AUTOMATIC';
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:10') * 0
 0
 SET GLOBAL GTID_MODE = OFF;
@@ -43,7 +43,7 @@ ERROR HY000: SET @@GLOBAL.GTID_MODE = OFF is not allowed because there are ongoi
 SET GTID_NEXT = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:11';
 COMMIT;
 SET GTID_NEXT = 'AUTOMATIC';
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:11') * 0
 0
 SET GLOBAL GTID_MODE = OFF;
@@ -75,12 +75,12 @@ WAIT_FOR_EXECUTED_GTID_SET('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:22')
 0
 SET GLOBAL GTID_MODE = OFF;
 SET GLOBAL GTID_MODE = OFF;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 #
 # Test that SELECT WAIT_FOR_EXECUTED_GTID_SET() gives an error if
 # gtid-mode=off.
 #
-SELECT WAIT_FOR_EXECUTED_GTID_SET('master_uuid', 1-2);
+SELECT WAIT_FOR_EXECUTED_GTID_SET('primary_uuid', 1-2);
 ERROR HY000: Cannot use WAIT_FOR_EXECUTED_GTID_SET when GTID_MODE = OFF.
 SET GLOBAL ENFORCE_GTID_CONSISTENCY = OFF;
 SET GLOBAL ENFORCE_GTID_CONSISTENCY = OFF;

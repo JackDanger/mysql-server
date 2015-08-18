@@ -23,7 +23,7 @@ const char* Multisource_info::group_replication_channel_names[] = {
   "group_replication_recovery"
 };
 
-bool Multisource_info::add_mi(const char* channel_name, Master_info* mi,
+bool Multisource_info::add_mi(const char* channel_name, Primary_info* mi,
                               enum_channel_type type)
 {
   DBUG_ENTER("Multisource_info::add_mi");
@@ -65,7 +65,7 @@ bool Multisource_info::add_mi(const char* channel_name, Master_info* mi,
 
 }
 
-Master_info* Multisource_info::get_mi(const char* channel_name)
+Primary_info* Multisource_info::get_mi(const char* channel_name)
 {
   DBUG_ENTER("Multisource_info::get_mi");
 
@@ -74,13 +74,13 @@ Master_info* Multisource_info::get_mi(const char* channel_name)
   mi_map::iterator it;
   replication_channel_map::iterator map_it;
 
-  map_it= rep_channel_map.find(SLAVE_REPLICATION_CHANNEL);
+  map_it= rep_channel_map.find(REPLICA_REPLICATION_CHANNEL);
   if (map_it != rep_channel_map.end())
   {
     it= map_it->second.find(channel_name);
   }
 
-  if (map_it == rep_channel_map.end() || //If not a slave channel, maybe a group one
+  if (map_it == rep_channel_map.end() || //If not a replica channel, maybe a group one
       it == map_it->second.end())
   {
     map_it= rep_channel_map.find(GROUP_REPLICATION_CHANNEL);
@@ -102,19 +102,19 @@ void Multisource_info::delete_mi(const char* channel_name)
 {
   DBUG_ENTER("Multisource_info::delete_mi");
 
-  Master_info *mi= 0;
+  Primary_info *mi= 0;
   mi_map::iterator it;
 
   DBUG_ASSERT(channel_name != 0);
 
   replication_channel_map::iterator map_it;
-  map_it= rep_channel_map.find(SLAVE_REPLICATION_CHANNEL);
+  map_it= rep_channel_map.find(REPLICA_REPLICATION_CHANNEL);
 
   if (map_it != rep_channel_map.end())
   {
     it= map_it->second.find(channel_name);
   }
-  if (map_it == rep_channel_map.end() || //If not a slave channel, maybe a group one
+  if (map_it == rep_channel_map.end() || //If not a replica channel, maybe a group one
       it == map_it->second.end())
   {
     map_it= rep_channel_map.find(GROUP_REPLICATION_CHANNEL);
@@ -142,7 +142,7 @@ void Multisource_info::delete_mi(const char* channel_name)
   /* erase from the map */
   map_it->second.erase(it);
 
-  /* delete the master info */
+  /* delete the primary info */
   if (mi)
   {
     if(mi->rli)
@@ -169,7 +169,7 @@ bool Multisource_info::is_group_replication_channel_name(const char* channel,
 
 #ifdef WITH_PERFSCHEMA_STORAGE_ENGINE
 
-bool Multisource_info::add_mi_to_rpl_pfs_mi(Master_info *mi)
+bool Multisource_info::add_mi_to_rpl_pfs_mi(Primary_info *mi)
 {
   DBUG_ENTER("Multisource_info::add_mi_to_rpl_pfs_mi");
 
@@ -191,7 +191,7 @@ bool Multisource_info::add_mi_to_rpl_pfs_mi(Master_info *mi)
 
 int Multisource_info::get_index_from_rpl_pfs_mi(const char * channel_name)
 {
-  Master_info* mi= 0;
+  Primary_info* mi= 0;
   for (uint i= 0; i < MAX_CHANNELS; i++)
   {
     mi= rpl_pfs_mi[i];
@@ -205,7 +205,7 @@ int Multisource_info::get_index_from_rpl_pfs_mi(const char * channel_name)
 }
 
 
-Master_info*  Multisource_info::get_mi_at_pos(uint pos)
+Primary_info*  Multisource_info::get_mi_at_pos(uint pos)
 {
   DBUG_ENTER("Multisource_info::get_mi_at_pos");
 

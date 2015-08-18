@@ -241,7 +241,7 @@ MgmtSrvr::MgmtSrvr(const MgmtOpts& opts) :
   _isStopThread(false),
   _logLevelThreadSleep(500),
   m_event_listner(this),
-  m_master_node(0),
+  m_primary_node(0),
   _logLevelThread(NULL),
   m_version_string(ndbGetOwnVersionString())
 {
@@ -1350,12 +1350,12 @@ MgmtSrvr::sendall_STOP_REQ(NodeBitmask &stoppedNodes,
 }
 
 int
-MgmtSrvr::guess_master_node(SignalSender& ss)
+MgmtSrvr::guess_primary_node(SignalSender& ss)
 {
   /**
-   * First check if m_master_node is started
+   * First check if m_primary_node is started
    */
-  NodeId guess = m_master_node;
+  NodeId guess = m_primary_node;
   if (guess != 0)
   {
     trp_node node = ss.getNodeInfo(guess);
@@ -1510,12 +1510,12 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
   StopReq::setNoStart(stopReq->requestInfo, nostart);
   StopReq::setInitialStart(stopReq->requestInfo, initialStart);
 
-  int use_master_node = 0;
+  int use_primary_node = 0;
   int do_send = 0;
   if (ndb_nodes_to_stop.count() > 1)
   {
     do_send = 1;
-    use_master_node = 1;
+    use_primary_node = 1;
     ndb_nodes_to_stop.copyto(NdbNodeBitmask::Size, stopReq->nodes);
     StopReq::setStopNodes(stopReq->requestInfo, 1);
   }
@@ -1543,8 +1543,8 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
   {
     if (do_send)
     {
-      assert(use_master_node);
-      sendNodeId = guess_master_node(ss);
+      assert(use_primary_node);
+      sendNodeId = guess_primary_node(ss);
       if (okToSendTo(sendNodeId, true) != 0)
       {
         DBUG_RETURN(SEND_OR_RECEIVE_FAILED);
@@ -1564,10 +1564,10 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
       const StopRef * const ref = CAST_CONSTPTR(StopRef, signal->getDataPtr());
       const NodeId nodeId = refToNode(signal->header.theSendersBlockRef);
       require(nodeId == sendNodeId);
-      if (ref->errorCode == StopRef::MultiNodeShutdownNotMaster)
+      if (ref->errorCode == StopRef::MultiNodeShutdownNotPrimary)
       {
-        assert(use_master_node);
-        m_master_node= ref->masterNodeId;
+        assert(use_primary_node);
+        m_primary_node= ref->primaryNodeId;
         do_send = 1;
         continue;
       }
@@ -2524,8 +2524,8 @@ retry:
         CAST_CONSTPTR(SchemaTransBeginRef, signal->getDataPtr());
 
       switch(ref->errorCode){
-      case SchemaTransBeginRef::NotMaster:
-        nodeId = ref->masterNodeId;
+      case SchemaTransBeginRef::NotPrimary:
+        nodeId = ref->primaryNodeId;
         // Fall-through
       case SchemaTransBeginRef::Busy:
       case SchemaTransBeginRef::BusyWithNR:
@@ -3297,8 +3297,8 @@ MgmtSrvr::alloc_node_id_req(NodeId free_node_id,
     {
       const AllocNodeIdRef * const ref =
         CAST_CONSTPTR(AllocNodeIdRef, signal->getDataPtr());
-      if (ref->errorCode == AllocNodeIdRef::NotMaster &&
-          refToNode(ref->masterRef) == 0xFFFF)
+      if (ref->errorCode == AllocNodeIdRef::NotPrimary &&
+          refToNode(ref->primaryRef) == 0xFFFF)
       {
         /*
           The data nodes haven't decided who is the president (yet)
@@ -3309,15 +3309,15 @@ MgmtSrvr::alloc_node_id_req(NodeId free_node_id,
         return NO_CONTACT_WITH_DB_NODES;
       }
 
-      if (ref->errorCode == AllocNodeIdRef::NotMaster ||
+      if (ref->errorCode == AllocNodeIdRef::NotPrimary ||
           ref->errorCode == AllocNodeIdRef::Busy ||
           ref->errorCode == AllocNodeIdRef::NodeFailureHandlingNotCompleted)
       {
         do_send = 1;
-        nodeId = refToNode(ref->masterRef);
+        nodeId = refToNode(ref->primaryRef);
 	if (!getNodeInfo(nodeId).is_confirmed())
 	  nodeId = 0;
-        if (ref->errorCode != AllocNodeIdRef::NotMaster)
+        if (ref->errorCode != AllocNodeIdRef::NotPrimary)
         {
           if (first_attempt)
           {
@@ -3560,7 +3560,7 @@ MgmtSrvr::try_alloc(NodeId id,
       {
         /*
           Have waited long enough time for data nodes to
-          decide on a master, return error
+          decide on a primary, return error
         */
         g_eventLogger->debug("Failed to allocate nodeid %u for API node " \
                              "in cluster (retried during %u milliseconds)",
@@ -3889,11 +3889,11 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
   SignalSender ss(theFacade);
   ss.lock(); // lock will be released on exit
 
-  NodeId nodeId = m_master_node;
+  NodeId nodeId = m_primary_node;
   if (okToSendTo(nodeId, false) != 0)
   {
     bool next;
-    nodeId = m_master_node = 0;
+    nodeId = m_primary_node = 0;
     while((next = getNextNodeId(&nodeId, NDB_MGM_NODE_TYPE_NDB)) == true &&
           okToSendTo(nodeId, false) != 0);
     if(!next)
@@ -3943,7 +3943,7 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
       const BackupConf * const conf = 
 	CAST_CONSTPTR(BackupConf, signal->getDataPtr());
 #ifdef VM_TRACE
-      ndbout_c("Backup(%d) master is %d", conf->backupId,
+      ndbout_c("Backup(%d) primary is %d", conf->backupId,
 	       refToNode(signal->header.theSendersBlockRef));
 #endif
       backupId = conf->backupId;
@@ -3964,14 +3964,14 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
     case GSN_BACKUP_REF:{
       const BackupRef * const ref = 
 	CAST_CONSTPTR(BackupRef, signal->getDataPtr());
-      if(ref->errorCode == BackupRef::IAmNotMaster){
-	m_master_node = nodeId = refToNode(ref->masterRef);
+      if(ref->errorCode == BackupRef::IAmNotPrimary){
+	m_primary_node = nodeId = refToNode(ref->primaryRef);
 #ifdef VM_TRACE
-	ndbout_c("I'm not master resending to %d", nodeId);
+	ndbout_c("I'm not primary resending to %d", nodeId);
 #endif
 	do_send = 1; // try again
 	if (!getNodeInfo(nodeId).m_alive)
-	  m_master_node = nodeId = 0;
+	  m_primary_node = nodeId = 0;
 	continue;
       }
       return ref->errorCode;
@@ -3994,7 +3994,7 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
 	  waitCompleted == 1)
 	return 1326;
       // wait for next signal
-      // master node will report aborted backup
+      // primary node will report aborted backup
       break;
     }
     case GSN_NODE_FAILREP:{
@@ -4006,7 +4006,7 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
 	  waitCompleted == 1)
 	return 1326;
       // wait for next signal
-      // master node will report aborted backup
+      // primary node will report aborted backup
       break;
     }
     case GSN_API_REGCONF:
@@ -4323,7 +4323,7 @@ MgmtSrvr::change_config(Config& new_config, BaseString& msg)
       g_eventLogger->debug("Got CONFIG_CHANGE_REF, error: %d", ref->errorCode);
       switch(ref->errorCode)
       {
-      case ConfigChangeRef::NotMaster:{
+      case ConfigChangeRef::NotPrimary:{
         // Retry with next node if any
         NodeId nodeId= ss.find_confirmed_node(mgm_nodes);
         if (nodeId == 0)
@@ -4493,7 +4493,7 @@ MgmtSrvr::show_variables(NdbOut& out)
   out << "need_restart: " << m_need_restart << endl;
   out << "is_stop_thread: " << _isStopThread << endl;
   out << "log_level_thread_sleep: " << _logLevelThreadSleep << endl;
-  out << "master_node: " << m_master_node << endl;
+  out << "primary_node: " << m_primary_node << endl;
 }
 
 void

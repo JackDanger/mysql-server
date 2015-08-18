@@ -42,7 +42,7 @@ create server 'server_one' foreign data wrapper 'mysql' options
 DATABASE 'first_db',
 USER 'root',
 PASSWORD '',
-PORT SLAVE_PORT,
+PORT REPLICA_PORT,
 SOCKET '',
 OWNER 'root');
 drop server if exists 'server_two';
@@ -51,13 +51,13 @@ create server 'server_two' foreign data wrapper 'mysql' options
 DATABASE 'second_db',
 USER 'root',
 PASSWORD '',
-PORT SLAVE_PORT,
+PORT REPLICA_PORT,
 SOCKET '',
 OWNER 'root');
 select * from mysql.servers order by Server_name;
 Server_name	Host	Db	Username	Password	Port	Socket	Wrapper	Owner
-server_one	127.0.0.1	first_db	root		SLAVE_PORT		mysql	root
-server_two	127.0.0.1	second_db	root		SLAVE_PORT		mysql	root
+server_one	127.0.0.1	first_db	root		REPLICA_PORT		mysql	root
+server_two	127.0.0.1	second_db	root		REPLICA_PORT		mysql	root
 DROP TABLE IF EXISTS federated.old;
 Warnings:
 Note	1051	Unknown table 'federated.old'
@@ -66,7 +66,7 @@ CREATE TABLE federated.old (
 `name` varchar(64) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/first_db/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/first_db/t1';
 INSERT INTO federated.old (id, name) values (1, 'federated.old-> first_db.t1, url format');
 SELECT * FROM federated.old;
 id	name
@@ -79,7 +79,7 @@ CREATE TABLE federated.old2 (
 `name` varchar(64) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/first_db/t2';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/first_db/t2';
 INSERT INTO federated.old2 (id, name) values (1, 'federated.old2-> first_db.t2, url format');
 SELECT * FROM federated.old2;
 id	name
@@ -92,7 +92,7 @@ CREATE TABLE federated.urldb2t1 (
 `name` varchar(64) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/second_db/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/second_db/t1';
 INSERT INTO federated.urldb2t1 (id, name) values (1, 'federated.urldb2t1 -> second_db.t1, url format');
 SELECT * FROM federated.urldb2t1;
 id	name
@@ -105,7 +105,7 @@ CREATE TABLE federated.urldb2t2 (
 `name` varchar(64) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/second_db/t2';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/second_db/t2';
 INSERT INTO federated.urldb2t2 (id, name) values (1, 'federated.urldb2t2 -> second_db.t2, url format');
 SELECT * FROM federated.urldb2t2;
 id	name
@@ -180,7 +180,7 @@ create server 's1' foreign data wrapper 'mysql' options
 DATABASE 'db_legitimate',
 USER 'root',
 PASSWORD '',
-PORT SLAVE_PORT,
+PORT REPLICA_PORT,
 SOCKET '',
 OWNER 'root');
 create user guest_select@localhost;
@@ -220,7 +220,7 @@ create server 's1' foreign data wrapper 'mysql' options
 DATABASE 'db_legitimate',
 USER 'root',
 PASSWORD '',
-PORT SLAVE_PORT,
+PORT REPLICA_PORT,
 SOCKET '',
 OWNER 'root');
 ERROR 42000: Access denied; you need (at least one of) the SUPER privilege(s) for this operation
@@ -230,7 +230,7 @@ create server 's1' foreign data wrapper 'mysql' options
 DATABASE 'db_legitimate',
 USER 'root',
 PASSWORD '',
-PORT SLAVE_PORT,
+PORT REPLICA_PORT,
 SOCKET '',
 OWNER 'root');
 flush tables;
@@ -294,7 +294,7 @@ create server 's1' foreign data wrapper 'mysql' options
 DATABASE 'db_remote',
 USER 'очень_очень_очень_длинный_юзер__',
 PASSWORD 'auth_string',
-PORT SLAVE_PORT,
+PORT REPLICA_PORT,
 SOCKET '',
 OWNER 'очень_очень_очень_длинный_юзер__');
 create user user_name_len_32_012345678901234@localhost;

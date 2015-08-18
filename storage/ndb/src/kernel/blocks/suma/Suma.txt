@@ -161,7 +161,7 @@ SUB_REMOVE_CONF
 
 
 
-MASTER SUMA		  RESTARTING SUMA
+PRIMARY SUMA		  RESTARTING SUMA
 =========================================
 INCL_NODEREQ
 <---------------------------------------------------------

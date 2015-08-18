@@ -745,7 +745,7 @@ Cmvmi::execREAD_CONFIG_REQ(Signal* signal)
       NodeState newState(NodeState::SL_STARTING, 0,
                          NodeState::ST_ILLEGAL_TYPE);
       rep->nodeState = newState;
-      rep->nodeState.masterNodeId = 0;
+      rep->nodeState.primaryNodeId = 0;
       rep->nodeState.setNodeGroup(0);
       sendSignal(QMGR_REF, GSN_NODE_STATE_REP, signal,
                  NodeStateRep::SignalLength, JBB);
@@ -1275,11 +1275,11 @@ void Cmvmi::execTAMPER_ORD(Signal* signal)
   {
     jam();
     /*--------------------------------------------------------------------*/
-    // Redirect errors to master DIH in the 30000-range.
+    // Redirect errors to primary DIH in the 30000-range.
     /*--------------------------------------------------------------------*/
 
     /**
-     * since CMVMI doesnt keep track of master,
+     * since CMVMI doesnt keep track of primary,
      * send to local DIH
      */
     signal->theData[0] = 5;
@@ -1293,7 +1293,7 @@ void Cmvmi::execTAMPER_ORD(Signal* signal)
     jam();
 
     /**
-     * since CMVMI doesnt keep track of master,
+     * since CMVMI doesnt keep track of primary,
      * send to local DIH
      */
     signal->theData[0] = 5;

@@ -474,7 +474,7 @@ user_comment
 Separator	-----------------------------------------------------
 TABLE_CATALOG	def
 TABLE_SCHEMA	mysql
-TABLE_NAME	slave_master_info
+TABLE_NAME	replica_primary_info
 TABLE_TYPE	BASE TABLE
 ENGINE	TMP_TABLE_ENGINE
 VERSION	10
@@ -493,11 +493,11 @@ TABLE_COLLATION	utf8_general_ci
 CHECKSUM	NULL
 CREATE_OPTIONS	#CO#
 TABLE_COMMENT	#TC#
-user_comment	Master Information
+user_comment	Primary Information
 Separator	-----------------------------------------------------
 TABLE_CATALOG	def
 TABLE_SCHEMA	mysql
-TABLE_NAME	slave_relay_log_info
+TABLE_NAME	replica_relay_log_info
 TABLE_TYPE	BASE TABLE
 ENGINE	TMP_TABLE_ENGINE
 VERSION	10
@@ -520,7 +520,7 @@ user_comment	Relay Log Information
 Separator	-----------------------------------------------------
 TABLE_CATALOG	def
 TABLE_SCHEMA	mysql
-TABLE_NAME	slave_worker_info
+TABLE_NAME	replica_worker_info
 TABLE_TYPE	BASE TABLE
 ENGINE	TMP_TABLE_ENGINE
 VERSION	10
@@ -1203,7 +1203,7 @@ user_comment
 Separator	-----------------------------------------------------
 TABLE_CATALOG	def
 TABLE_SCHEMA	mysql
-TABLE_NAME	slave_master_info
+TABLE_NAME	replica_primary_info
 TABLE_TYPE	BASE TABLE
 ENGINE	TMP_TABLE_ENGINE
 VERSION	10
@@ -1222,11 +1222,11 @@ TABLE_COLLATION	utf8_general_ci
 CHECKSUM	NULL
 CREATE_OPTIONS	#CO#
 TABLE_COMMENT	#TC#
-user_comment	Master Information
+user_comment	Primary Information
 Separator	-----------------------------------------------------
 TABLE_CATALOG	def
 TABLE_SCHEMA	mysql
-TABLE_NAME	slave_relay_log_info
+TABLE_NAME	replica_relay_log_info
 TABLE_TYPE	BASE TABLE
 ENGINE	TMP_TABLE_ENGINE
 VERSION	10
@@ -1249,7 +1249,7 @@ user_comment	Relay Log Information
 Separator	-----------------------------------------------------
 TABLE_CATALOG	def
 TABLE_SCHEMA	mysql
-TABLE_NAME	slave_worker_info
+TABLE_NAME	replica_worker_info
 TABLE_TYPE	BASE TABLE
 ENGINE	TMP_TABLE_ENGINE
 VERSION	10

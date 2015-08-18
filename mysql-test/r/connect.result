@@ -21,9 +21,9 @@ procs_priv
 proxies_priv
 server_cost
 servers
-slave_master_info
-slave_relay_log_info
-slave_worker_info
+replica_primary_info
+replica_relay_log_info
+replica_worker_info
 slow_log
 tables_priv
 time_zone
@@ -34,9 +34,9 @@ time_zone_transition_type
 user
 show tables;
 Tables_in_test
-connect(localhost,root,z,test2,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,root,z,test2,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'root'@'localhost' (using password: YES)
-connect(localhost,root,z,test,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,root,z,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'root'@'localhost' (using password: YES)
 create user test@localhost identified by "gambling";
 grant ALL on *.* to test@localhost;
@@ -64,9 +64,9 @@ procs_priv
 proxies_priv
 server_cost
 servers
-slave_master_info
-slave_relay_log_info
-slave_worker_info
+replica_primary_info
+replica_relay_log_info
+replica_worker_info
 slow_log
 tables_priv
 time_zone
@@ -77,17 +77,17 @@ time_zone_transition_type
 user
 show tables;
 Tables_in_test
-connect(localhost,test,,test2,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,test,,test2,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'test'@'localhost' (using password: NO)
-connect(localhost,test,,"",MASTER_PORT,MASTER_SOCKET);
+connect(localhost,test,,"",PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'test'@'localhost' (using password: NO)
-connect(localhost,test,zorro,test2,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,test,zorro,test2,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'test'@'localhost' (using password: YES)
-connect(localhost,test,zorro,test,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,test,zorro,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'test'@'localhost' (using password: YES)
-connect(localhost,test,,test2,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,test,,test2,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'test'@'localhost' (using password: NO)
-connect(localhost,test,,test,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,test,,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'test'@'localhost' (using password: NO)
 delete from mysql.user where user=_binary"test";
 flush privileges;

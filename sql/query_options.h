@@ -95,21 +95,21 @@
 */
 #define SELECT_HIGH_PRIORITY            (1ULL << 34)     // SELECT, user
 /**
-  Is set in slave SQL thread when there was an
-  error on master, which, when is not reproducible
-  on slave (i.e. the query succeeds on slave),
+  Is set in replica SQL thread when there was an
+  error on primary, which, when is not reproducible
+  on replica (i.e. the query succeeds on replica),
   is not terminal to the state of repliation,
-  and should be ignored. The slave SQL thread,
+  and should be ignored. The replica SQL thread,
   however, needs to rollback the effects of the
   succeeded statement to keep replication consistent.
 */
-#define OPTION_MASTER_SQL_ERROR (1ULL << 35)
+#define OPTION_PRIMARY_SQL_ERROR (1ULL << 35)
 
 /*
   Dont report errors for individual rows,
   But just report error on commit (or read ofcourse)
   Note! Reserved for use in MySQL Cluster
 */
-#define OPTION_ALLOW_BATCH              (1ULL << 36) // THD, intern (slave)
+#define OPTION_ALLOW_BATCH              (1ULL << 36) // THD, intern (replica)
 
 #endif  /* QUERY_OPTIONS_INCLUDED */

@@ -1,4 +1,4 @@
-source include/master-slave.inc;
+source include/primary-replica.inc;
 create database mysqltest;
 
 create table mysqltest.t1 (n int PRIMARY KEY);
@@ -10,7 +10,7 @@ rename table mysqltest.t2 to mysqltest.t3, mysqltest.t1 to mysqltest.t2;
 --source include/rpl_sync.inc
 select * from mysqltest.t2;
 select * from mysqltest.t3;
-connection master;
+connection primary;
 drop database mysqltest;
 --source include/rpl_sync.inc
 

@@ -58,7 +58,7 @@ thd_print_warning_list(THD* thd, const char* prefix);
 
 /*
   Determine if THD is applying binlog. ie. either marked as
-  slave thread or being in "pseudo slave mode"
+  replica thread or being in "pseudo replica mode"
 */
 bool
 applying_binlog(const THD* thd);

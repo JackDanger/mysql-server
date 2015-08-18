@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP TABLE IF EXISTS t1;
 SET @@BINLOG_FORMAT = ROW;
 SELECT @@BINLOG_FORMAT;
@@ -20,7 +20,7 @@ PARTITION p2 VALUES LESS THAN (1966),
 PARTITION p3 VALUES LESS THAN (1986), 
 PARTITION p4 VALUES LESS THAN (2005), 
 PARTITION p5 VALUES LESS THAN MAXVALUE);
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -41,8 +41,8 @@ t1	CREATE TABLE `t1` (
  PARTITION p3 VALUES LESS THAN (1986) ENGINE = ENGINE,
  PARTITION p4 VALUES LESS THAN (2005) ENGINE = ENGINE,
  PARTITION p5 VALUES LESS THAN MAXVALUE ENGINE = ENGINE) */
---- On slave --
-include/sync_slave_sql_with_master.inc
+--- On replica --
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -64,7 +64,7 @@ t1	CREATE TABLE `t1` (
  PARTITION p4 VALUES LESS THAN (2005) ENGINE = ENGINE,
  PARTITION p5 VALUES LESS THAN MAXVALUE ENGINE = ENGINE) */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -72,7 +72,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -80,29 +80,29 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
 DELETE FROM t1;
 ALTER TABLE t1 MODIFY vc TEXT;
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -123,8 +123,8 @@ t1	CREATE TABLE `t1` (
  PARTITION p3 VALUES LESS THAN (1986) ENGINE = ENGINE,
  PARTITION p4 VALUES LESS THAN (2005) ENGINE = ENGINE,
  PARTITION p5 VALUES LESS THAN MAXVALUE ENGINE = ENGINE) */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -146,7 +146,7 @@ t1	CREATE TABLE `t1` (
  PARTITION p4 VALUES LESS THAN (2005) ENGINE = ENGINE,
  PARTITION p5 VALUES LESS THAN MAXVALUE ENGINE = ENGINE) */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -154,7 +154,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -162,23 +162,23 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
@@ -193,7 +193,7 @@ PARTITION BY LIST(id)
 (PARTITION p0 VALUES IN (2, 4), 
 PARTITION p1 VALUES IN (42, 142),
 PARTITION p2 VALUES IN (412));
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -211,8 +211,8 @@ t1	CREATE TABLE `t1` (
 (PARTITION p0 VALUES IN (2,4) ENGINE = ENGINE,
  PARTITION p1 VALUES IN (42,142) ENGINE = ENGINE,
  PARTITION p2 VALUES IN (412) ENGINE = ENGINE) */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -231,7 +231,7 @@ t1	CREATE TABLE `t1` (
  PARTITION p1 VALUES IN (42,142) ENGINE = ENGINE,
  PARTITION p2 VALUES IN (412) ENGINE = ENGINE) */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -239,7 +239,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -247,29 +247,29 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
 DELETE FROM t1;
 ALTER TABLE t1 MODIFY vc TEXT;
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -287,8 +287,8 @@ t1	CREATE TABLE `t1` (
 (PARTITION p0 VALUES IN (2,4) ENGINE = ENGINE,
  PARTITION p1 VALUES IN (42,142) ENGINE = ENGINE,
  PARTITION p2 VALUES IN (412) ENGINE = ENGINE) */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -307,7 +307,7 @@ t1	CREATE TABLE `t1` (
  PARTITION p1 VALUES IN (42,142) ENGINE = ENGINE,
  PARTITION p2 VALUES IN (412) ENGINE = ENGINE) */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -315,7 +315,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -323,23 +323,23 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
@@ -352,7 +352,7 @@ f FLOAT DEFAULT 0, total BIGINT UNSIGNED,
 y YEAR, t DATE)
 PARTITION BY HASH( YEAR(t) ) 
 PARTITIONS 4;
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -368,8 +368,8 @@ t1	CREATE TABLE `t1` (
 ) ENGINE=ENGINE DEFAULT CHARSET=latin1
 /*!50100 PARTITION BY HASH ( YEAR(t))
 PARTITIONS 4 */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -386,7 +386,7 @@ t1	CREATE TABLE `t1` (
 /*!50100 PARTITION BY HASH ( YEAR(t))
 PARTITIONS 4 */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -394,7 +394,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -402,29 +402,29 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
 DELETE FROM t1;
 ALTER TABLE t1 MODIFY vc TEXT;
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -440,8 +440,8 @@ t1	CREATE TABLE `t1` (
 ) ENGINE=ENGINE DEFAULT CHARSET=latin1
 /*!50100 PARTITION BY HASH ( YEAR(t))
 PARTITIONS 4 */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -458,7 +458,7 @@ t1	CREATE TABLE `t1` (
 /*!50100 PARTITION BY HASH ( YEAR(t))
 PARTITIONS 4 */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -466,7 +466,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -474,23 +474,23 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
@@ -503,7 +503,7 @@ f FLOAT DEFAULT 0, total BIGINT UNSIGNED,
 y YEAR, t DATE,PRIMARY KEY(id))
 PARTITION BY KEY() 
 PARTITIONS 4;
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -520,8 +520,8 @@ t1	CREATE TABLE `t1` (
 ) ENGINE=ENGINE DEFAULT CHARSET=latin1
 /*!50100 PARTITION BY KEY ()
 PARTITIONS 4 */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -539,7 +539,7 @@ t1	CREATE TABLE `t1` (
 /*!50100 PARTITION BY KEY ()
 PARTITIONS 4 */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -547,7 +547,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -555,29 +555,29 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
 DELETE FROM t1;
 ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY(id, total);
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -594,8 +594,8 @@ t1	CREATE TABLE `t1` (
 ) ENGINE=ENGINE DEFAULT CHARSET=latin1
 /*!50100 PARTITION BY KEY ()
 PARTITIONS 4 */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -613,7 +613,7 @@ t1	CREATE TABLE `t1` (
 /*!50100 PARTITION BY KEY ()
 PARTITIONS 4 */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -621,7 +621,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -629,29 +629,29 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
 DELETE FROM t1;
 ALTER TABLE t1 MODIFY vc TEXT;
---- On master ---
+--- On primary ---
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -668,8 +668,8 @@ t1	CREATE TABLE `t1` (
 ) ENGINE=ENGINE DEFAULT CHARSET=latin1
 /*!50100 PARTITION BY KEY ()
 PARTITIONS 4 */
---- On slave ---
-include/sync_slave_sql_with_master.inc
+--- On replica ---
+include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -687,7 +687,7 @@ t1	CREATE TABLE `t1` (
 /*!50100 PARTITION BY KEY ()
 PARTITIONS 4 */
 "--- Insert into t1 --" as "";
---- Select from t1 on master --- 
+--- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -695,7 +695,7 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Select from t1 on slave ---
+--- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 id	hex(b1)	vc	bc	d	f	total	y	t
 2	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1965-11-14
@@ -703,23 +703,23 @@ id	hex(b1)	vc	bc	d	f	total	y	t
 42	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1905-11-14
 142	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	1995-11-14
 412	1	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2005-11-14
---- Update t1 on master --
+--- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
---- Check the update on master --- 
+--- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Check Update on slave ---
+--- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 id	hex(b1)	vc	bc	d	f	total	y	t
 412	0	Testing MySQL databases is a cool 	Must make it bug free for the customer	654321.4321	15.21	0	1965	2006-02-22
---- Remove a record from t1 on master ---
+--- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
---- Show current count on master for t1 ---
+--- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4
---- Show current count on slave for t1 --- 
+--- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 4

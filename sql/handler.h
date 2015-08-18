@@ -236,7 +236,7 @@ enum enum_alter_inplace_result {
 
 /*
   Storage engine doesn't synchronize result set with expected table contents.
-  Used by replication slave to check if it is possible to retrieve rows from
+  Used by replication replica to check if it is possible to retrieve rows from
   the table when deciding whether to do a full table scan, index scan or hash
   scan while applying a row event.
  */
@@ -422,7 +422,7 @@ enum column_format_type {
 
 enum enum_binlog_func {
   BFN_RESET_LOGS=        1,
-  BFN_RESET_SLAVE=       2,
+  BFN_RESET_REPLICA=       2,
   BFN_BINLOG_WAIT=       3,
   BFN_BINLOG_END=        4,
   BFN_BINLOG_PURGE_FILE= 5
@@ -496,7 +496,7 @@ given at all. */
 #define HA_CREATE_USED_COMPRESS         (1L << 26)
 
 /*
-  This is master database for most of system tables. However there
+  This is primary database for most of system tables. However there
   can be other databases which can hold system tables. Respective
   storage engines define their own system database names.
 */
@@ -890,7 +890,7 @@ struct handlerton
     with @c new_trx_arg. The old value is returned through a buffer if non-null
     pointer is provided with @c ptr_trx_arg.
     The method is adapted by XA start and XA prepare handlers to
-    handle XA transaction that is logged as two parts by slave applier.
+    handle XA transaction that is logged as two parts by replica applier.
 
     This interface concerns engines that are aware of XA transaction.
   */
@@ -1870,7 +1870,7 @@ public:
   }
 
   /**
-    Set comparison operation type and and value for master MATCH function.
+    Set comparison operation type and and value for primary MATCH function.
 
      @param type   comparison operation type
      @param value  comparison operation value
@@ -2505,7 +2505,7 @@ public:
     @details This method is used to analyze the error to see whether the
     error is fatal or not. A fatal error is an error that will not be
     possible to handle with SP handlers and will not be subject to
-    retry attempts on the slave.
+    retry attempts on the replica.
 
     @param error  error code received from the handler interface (HA_ERR_...)
 
@@ -3920,7 +3920,7 @@ void trans_register_ha(THD *thd, bool all, handlerton *ht,
 
 int ha_reset_logs(THD *thd);
 int ha_binlog_index_purge_file(THD *thd, const char *file);
-void ha_reset_slave(THD *thd);
+void ha_reset_replica(THD *thd);
 void ha_binlog_log_query(THD *thd, handlerton *db_type,
                          enum_binlog_command binlog_command,
                          const char *query, size_t query_length,

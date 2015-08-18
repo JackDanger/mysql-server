@@ -5,13 +5,13 @@
 
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 #
 # Verifies replication of bit fields
 #
 
---connection master
+--connection primary
 create table t1 ( pk int not null auto_increment primary key, b0 bit(64) not null, b1 bit(64) not null, b2 bit(64) not null, b3
 bit(64) not null, b4 bit(64) not null, b5 bit(64) not null, b6 bit(64) not null, b7 bit(64) not null, b8 bit(64) not null, b9 bit(64) not null, b10
 bit(64) not null, b11 bit(64) not null, b12 bit(64) not null, b13 bit(64) not null, b14 bit(64) not null, b15 bit(64) not null, b16 bit(64),
@@ -65,7 +65,7 @@ X'00000000FFFFFFFF',X'00000000FFFFFFFF',X'00000000FFFFFFFF',X'00000000FFFFFFFF',
 )
 ;
 
---sync_slave_with_master
+--sync_replica_with_primary
 select pk,
 hex(b0),hex(b1),hex(b2),hex(b3),hex(b4),hex(b5),hex(b6),hex(b7),hex(b8),hex(b9),
 hex(b10),hex(b11),hex(b12),hex(b13),hex(b14),hex(b15),hex(b16),hex(b17),hex(b18),hex(b19),
@@ -75,10 +75,10 @@ hex(b40),hex(b41),hex(b42),hex(b43),hex(b44),hex(b45),hex(b46),hex(b47),hex(b48)
 hex(b50),hex(b51),hex(b52),hex(b53),hex(b54),hex(b55),hex(b56),hex(b57),hex(b58),hex(b59)
  from t1 order by pk;
 
---connection master
+--connection primary
 update t1 set b5 = X'0F0F0F0F0F0F0F0F', b15 = X'F0F0F0F0F0F0F0F0', b25 = X'0F0F0F0F0F0F0F0F', b35 = X'F0F0F0F0F0F0F0F0', b45 = X'0F0F0F0F0F0F0F0F', b55 = X'F0F0F0F0F0F0F0F0';
 
---sync_slave_with_master
+--sync_replica_with_primary
 select pk,
 hex(b0),hex(b1),hex(b2),hex(b3),hex(b4),hex(b5),hex(b6),hex(b7),hex(b8),hex(b9),
 hex(b10),hex(b11),hex(b12),hex(b13),hex(b14),hex(b15),hex(b16),hex(b17),hex(b18),hex(b19),
@@ -88,7 +88,7 @@ hex(b40),hex(b41),hex(b42),hex(b43),hex(b44),hex(b45),hex(b46),hex(b47),hex(b48)
 hex(b50),hex(b51),hex(b52),hex(b53),hex(b54),hex(b55),hex(b56),hex(b57),hex(b58),hex(b59)
  from t1 order by pk;
 
---connection master
+--connection primary
 DROP TABLE t1;
 
 -- source include/rpl_end.inc

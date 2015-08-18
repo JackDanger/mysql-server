@@ -3,7 +3,7 @@
 # Create a connection to a given numbered server.
 #
 # This script is normally used internally by rpl_init.inc and
-# master-slave.inc, but it can also be used in test cases that need to
+# primary-replica.inc, but it can also be used in test cases that need to
 # create more connections or re-create connections after disconnect.
 #
 #

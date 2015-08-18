@@ -2,7 +2,7 @@
 -- source include/have_binlog_format_mixed_or_row.inc
 
 --echo Reset binlog and show no state held
-reset master;
+reset primary;
 select count(1) from mysql.ndb_binlog_index;
 
 --echo Create table for experiments
@@ -51,7 +51,7 @@ delete from test.t1 where a=1;
 --source ndb_binlog_init_epoch_vals.inc
 let $server_epoch= query_get_value(select @init_server_epoch as e, e, 1);
 let $session_epoch= query_get_value(select @init_session_epoch as e, e, 1);
-connect('ExtraConn', '127.0.0.1', 'root',,,$MASTER_MYPORT);
+connect('ExtraConn', '127.0.0.1', 'root',,,$PRIMARY_MYPORT);
 --source ndb_binlog_init_epoch_vals.inc
 let $new_server_epoch= query_get_value(select @init_server_epoch as e, e, 1);
 let $new_session_epoch= query_get_value(select @init_session_epoch as e, e, 1);

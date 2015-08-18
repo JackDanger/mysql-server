@@ -25,7 +25,7 @@
 #include "log_event.h"         // Format_description_log_event
 #include "rpl_mts_submode.h"   // enum_mts_parallel_type
 #include "rpl_rli.h"           // Relay_log_info
-#include "rpl_slave.h"         // MTS_WORKER_UNDEF
+#include "rpl_replica.h"         // MTS_WORKER_UNDEF
 
 #ifndef DBUG_OFF
 extern ulong w_rr;
@@ -46,10 +46,10 @@ typedef struct st_db_worker_hash_entry
 {
   uint  db_len;
   const char *db;
-  Slave_worker *worker;
+  Replica_worker *worker;
   /*
     The number of transaction pending on this database.
-    This should only be modified under the lock slave_worker_hash_lock.
+    This should only be modified under the lock replica_worker_hash_lock.
    */
   long usage;
   /*
@@ -57,7 +57,7 @@ typedef struct st_db_worker_hash_entry
     attached to an assigned @c worker to become its thd->temporary_tables.
     The list is updated with every ddl incl CREATE, DROP.
     It is removed from the entry and merged to the coordinator's
-    thd->temporary_tables in case of events: slave stops, APH oversize.
+    thd->temporary_tables in case of events: replica stops, APH oversize.
   */
   TABLE* volatile temporary_tables;
 
@@ -71,24 +71,24 @@ typedef struct st_db_worker_hash_entry
 
 bool init_hash_workers(Relay_log_info *rli);
 void destroy_hash_workers(Relay_log_info*);
-Slave_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
+Replica_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
                                db_worker_hash_entry **ptr_entry,
-                               bool need_temp_tables, Slave_worker *w);
-Slave_worker *get_least_occupied_worker(Relay_log_info *rli,
-                                        Slave_worker_array *workers,
+                               bool need_temp_tables, Replica_worker *w);
+Replica_worker *get_least_occupied_worker(Relay_log_info *rli,
+                                        Replica_worker_array *workers,
                                         Log_event* ev);
 
-#define SLAVE_INIT_DBS_IN_GROUP 4     // initial allocation for CGEP dynarray
+#define REPLICA_INIT_DBS_IN_GROUP 4     // initial allocation for CGEP dynarray
 
 #define NUMBER_OF_FIELDS_TO_IDENTIFY_WORKER 2
 
-typedef struct st_slave_job_group
+typedef struct st_replica_job_group
 {
-  char *group_master_log_name;   // (actually redundant)
+  char *group_primary_log_name;   // (actually redundant)
   /*
     T-event lop_pos filled by Worker for CheckPoint (CP)
   */
-  my_off_t group_master_log_pos;
+  my_off_t group_primary_log_pos;
 
   /*
      When relay-log name changes  allocates and fill in a new name of relay-log,
@@ -102,10 +102,10 @@ typedef struct st_slave_job_group
   char     *group_relay_log_name; // The value is last seen relay-log
   my_off_t group_relay_log_pos;  // filled by W
   ulong worker_id;
-  Slave_worker *worker;
+  Replica_worker *worker;
   ulonglong total_seqno;
 
-  my_off_t master_log_pos;       // B-event log_pos
+  my_off_t primary_log_pos;       // B-event log_pos
   /* checkpoint coord are reset by periodical and special (Rotate event) CP:s */
   uint  checkpoint_seqno;
   my_off_t checkpoint_log_pos; // T-event lop_pos filled by W for CheckPoint
@@ -114,9 +114,9 @@ typedef struct st_slave_job_group
   char*    checkpoint_relay_log_name;
   int32    done;  // Flag raised by W,  read and reset by Coordinator
   ulong    shifted;     // shift the last CP bitmap at receiving a new CP
-  time_t   ts;          // Group's timestampt to update Seconds_behind_master
+  time_t   ts;          // Group's timestampt to update Seconds_behind_primary
 #ifndef DBUG_OFF
-  bool     notified;    // to debug group_master_log_name change notification
+  bool     notified;    // to debug group_primary_log_name change notification
 #endif
   /* Clock-based scheduler requirement: */
   longlong last_committed; // commit parent timestamp
@@ -126,11 +126,11 @@ typedef struct st_slave_job_group
     Coordinator fills the struct with defaults and options at starting of
     a group distribution.
   */
-  void reset(my_off_t master_pos, ulonglong seqno)
+  void reset(my_off_t primary_pos, ulonglong seqno)
   {
-    master_log_pos= master_pos;
-    group_master_log_pos= group_relay_log_pos= 0;
-    group_master_log_name= NULL; // todo: remove
+    primary_log_pos= primary_pos;
+    group_primary_log_pos= group_relay_log_pos= 0;
+    group_primary_log_name= NULL; // todo: remove
     group_relay_log_name= NULL;
     worker_id= MTS_WORKER_UNDEF;
     total_seqno= seqno;
@@ -146,7 +146,7 @@ typedef struct st_slave_job_group
     last_committed= SEQ_UNINIT;
     sequence_number= SEQ_UNINIT;
   }
-} Slave_job_group;
+} Replica_job_group;
 
 /**
    The class defines a type of queue with a predefined max size that is
@@ -219,19 +219,19 @@ public:
   in committed sequence. The head of the queue is therefore next to
   the low-water-mark.
 */
-class Slave_committed_queue : public circular_buffer_queue<Slave_job_group>
+class Replica_committed_queue : public circular_buffer_queue<Replica_job_group>
 {
 public:
 
   bool inited;
 
-  /* master's Rot-ev exec */
+  /* primary's Rot-ev exec */
   void update_current_binlog(const char *post_rotate);
 
   /*
      The last checkpoint time Low-Water-Mark
   */
-  Slave_job_group lwm;
+  Replica_job_group lwm;
 
   /* last time processed indexes for each worker */
   Prealloced_array<ulonglong, 1> last_done;
@@ -239,9 +239,9 @@ public:
   /* the being assigned group index in GAQ */
   ulong assigned_group_index;
 
-  Slave_committed_queue (const char *log, ulong max, uint n)
-    : circular_buffer_queue<Slave_job_group>(max), inited(false),
-      last_done(key_memory_Slave_job_group_group_relay_log_name)
+  Replica_committed_queue (const char *log, ulong max, uint n)
+    : circular_buffer_queue<Replica_job_group>(max), inited(false),
+      last_done(key_memory_Replica_job_group_group_relay_log_name)
   {
     if (max >= (ulong) -1 || !inited_queue)
       return;
@@ -251,13 +251,13 @@ public:
     last_done.resize(n);
 
     lwm.group_relay_log_name=
-      (char *) my_malloc(key_memory_Slave_job_group_group_relay_log_name,
+      (char *) my_malloc(key_memory_Replica_job_group_group_relay_log_name,
                          FN_REFLEN + 1, MYF(0));
     lwm.group_relay_log_name[0]= 0;
     lwm.sequence_number= SEQ_UNINIT;
   }
 
-  ~Slave_committed_queue ()
+  ~Replica_committed_queue ()
   {
     if (inited)
     {
@@ -271,14 +271,14 @@ public:
 #endif
 
   /* Checkpoint routine refreshes the queue */
-  ulong move_queue_head(Slave_worker_array *ws);
-  /* Method is for slave shutdown time cleanup */
+  ulong move_queue_head(Replica_worker_array *ws);
+  /* Method is for replica shutdown time cleanup */
   void free_dynamic_items();
   /*
-     returns a pointer to Slave_job_group struct instance as indexed by arg
+     returns a pointer to Replica_job_group struct instance as indexed by arg
      in the circular buffer dyn-array
   */
-  Slave_job_group* get_job_group(ulong ind)
+  Replica_job_group* get_job_group(ulong ind)
   {
     DBUG_ASSERT(ind < size);
     return &m_Q[ind];
@@ -288,13 +288,13 @@ public:
      Assignes @c assigned_group_index to an index of enqueued item
      and returns it.
   */
-  ulong en_queue(Slave_job_group *item)
+  ulong en_queue(Replica_job_group *item)
   {
     return assigned_group_index=
-      circular_buffer_queue<Slave_job_group>::en_queue(item);
+      circular_buffer_queue<Replica_job_group>::en_queue(item);
   }
 
-  ulong find_lwm(Slave_job_group**, ulong);
+  ulong find_lwm(Replica_job_group**, ulong);
 };
 
 
@@ -338,10 +338,10 @@ ulong circular_buffer_queue<Element_type>::en_queue(Element_type *item)
 
 
 
-class Slave_jobs_queue : public circular_buffer_queue<Slave_job_item>
+class Replica_jobs_queue : public circular_buffer_queue<Replica_job_item>
 {
 public:
-  Slave_jobs_queue() : circular_buffer_queue<Slave_job_item>() {}
+  Replica_jobs_queue() : circular_buffer_queue<Replica_job_item>() {}
   /*
      Coordinator marks with true, Worker signals back at queue back to
      available
@@ -350,10 +350,10 @@ public:
   ulonglong waited_overfill;
 };
 
-class Slave_worker : public Relay_log_info
+class Replica_worker : public Relay_log_info
 {
 public:
-  Slave_worker(Relay_log_info *rli
+  Replica_worker(Relay_log_info *rli
 #ifdef HAVE_PSI_INTERFACE
                ,PSI_mutex_key *param_key_info_run_lock,
                PSI_mutex_key *param_key_info_data_lock,
@@ -367,20 +367,20 @@ public:
                , uint param_id, const char *param_channel
               );
 
-  virtual ~Slave_worker();
+  virtual ~Replica_worker();
 
   /*
-    index value of some outstanding slots of info_slave_worker_fields
+    index value of some outstanding slots of info_replica_worker_fields
   */
   enum {
     LINE_FOR_CHANNEL= 12
   };
-  Slave_jobs_queue jobs;   // assignment queue containing events to execute
+  Replica_jobs_queue jobs;   // assignment queue containing events to execute
   mysql_mutex_t jobs_lock; // mutex for the jobs queue
   mysql_cond_t  jobs_cond; // condition variable for the jobs queue
   Relay_log_info *c_rli;   // pointer to Coordinator's rli
 
-  Prealloced_array<db_worker_hash_entry*, SLAVE_INIT_DBS_IN_GROUP>
+  Prealloced_array<db_worker_hash_entry*, REPLICA_INIT_DBS_IN_GROUP>
   curr_group_exec_parts; // Current Group Executed Partitions
 
   bool curr_group_seen_begin; // is set to TRUE with explicit B-event
@@ -406,7 +406,7 @@ public:
 
   volatile bool relay_log_change_notified; // Coord sets and resets, W can read
   volatile bool checkpoint_notified; // Coord sets and resets, W can read
-  volatile bool master_log_change_notified; // Coord sets and resets, W can read
+  volatile bool primary_log_change_notified; // Coord sets and resets, W can read
   ulong bitmap_shifted;  // shift the last bitmap at receiving new CP
   // WQ current excess above the overrun level
   long wq_overrun_cnt;
@@ -432,8 +432,8 @@ public:
   */
   char checkpoint_relay_log_name[FN_REFLEN];
   ulonglong checkpoint_relay_log_pos;
-  char checkpoint_master_log_name[FN_REFLEN];
-  ulonglong checkpoint_master_log_pos;
+  char checkpoint_primary_log_name[FN_REFLEN];
+  ulonglong checkpoint_primary_log_pos;
   MY_BITMAP group_executed; // bitmap describes groups executed after last CP
   MY_BITMAP group_shifted;  // temporary bitmap to compute group_executed
   ulong checkpoint_seqno;   // the most significant ON bit in group_executed
@@ -443,13 +443,13 @@ public:
     RUNNING= 1,
     ERROR_LEAVING= 2,         // is set by Worker
     STOP= 3,                  // is set by Coordinator upon reciving STOP
-    STOP_ACCEPTED= 4          // is set by worker upon completing job when STOP SLAVE is issued
+    STOP_ACCEPTED= 4          // is set by worker upon completing job when STOP REPLICA is issued
   };
 
   /*
     This function is used to make a copy of the worker object before we
-    destroy it on STOP SLAVE. This new object is then used to report the
-    worker status until next START SLAVE following which the new worker objetcs
+    destroy it on STOP REPLICA. This new object is then used to report the
+    worker status until next START REPLICA following which the new worker objetcs
     will be used.
   */
   void copy_values_for_PFS(ulong worker_id, en_running_state running_status,
@@ -480,19 +480,19 @@ public:
   int rli_init_info(bool);
   int flush_info(bool force= FALSE);
   static size_t get_number_worker_fields();
-  void slave_worker_ends_group(Log_event*, int);
-  const char *get_master_log_name();
-  ulonglong get_master_log_pos() { return master_log_pos; };
-  ulonglong set_master_log_pos(ulong val) { return master_log_pos= val; };
-  bool commit_positions(Log_event *evt, Slave_job_group *ptr_g, bool force);
+  void replica_worker_ends_group(Log_event*, int);
+  const char *get_primary_log_name();
+  ulonglong get_primary_log_pos() { return primary_log_pos; };
+  ulonglong set_primary_log_pos(ulong val) { return primary_log_pos= val; };
+  bool commit_positions(Log_event *evt, Replica_job_group *ptr_g, bool force);
   /*
     When commit fails clear bitmap for executed worker group. Revert back the
     positions to the old positions that existed before commit using the checkpoint.
 
-    @param Slave_job_group a pointer to Slave_job_group struct instance which
-    holds group master log pos, group relay log pos and checkpoint positions.
+    @param Replica_job_group a pointer to Replica_job_group struct instance which
+    holds group primary log pos, group relay log pos and checkpoint positions.
   */
-  void rollback_positions(Slave_job_group *ptr_g);
+  void rollback_positions(Replica_job_group *ptr_g);
   bool reset_recovery_info();
   /**
      Different from the parent method in that this does not delete
@@ -502,16 +502,16 @@ public:
   */
   void set_rli_description_event(Format_description_log_event *fdle)
   {
-    DBUG_ENTER("Slave_worker::set_rli_description_event");
-    DBUG_ASSERT(!fdle || (running_status == Slave_worker::RUNNING && info_thd));
+    DBUG_ENTER("Replica_worker::set_rli_description_event");
+    DBUG_ASSERT(!fdle || (running_status == Replica_worker::RUNNING && info_thd));
 
     if (fdle)
     {
       mysql_mutex_assert_owner(&jobs_lock);
 
       /*
-        When the master rotates its binary log, set gtid_next to
-        NOT_YET_DETERMINED.  This tells the slave thread that:
+        When the primary rotates its binary log, set gtid_next to
+        NOT_YET_DETERMINED.  This tells the replica thread that:
 
         - If a Gtid_log_event is read subsequently, gtid_next will be
           set to the given GTID (this is done in
@@ -529,7 +529,7 @@ public:
         info_thd->variables.gtid_next.set_not_yet_determined();
       }
 
-      adapt_to_master_version(fdle);
+      adapt_to_primary_version(fdle);
     }
 
     rli_description_event= fdle;
@@ -544,7 +544,7 @@ public:
       gaq_index= val;
   };
 
-  int slave_worker_exec_event(Log_event *ev);
+  int replica_worker_exec_event(Log_event *ev);
   bool retry_transaction(uint start_relay_number, my_off_t start_relay_pos,
                          uint end_relay_number, my_off_t end_relay_pos);
 
@@ -553,7 +553,7 @@ public:
 
   /**
     Get coordinator's RLI. Especially used get the rli from
-    a slave thread, like this: thd->rli_slave->get_c_rli();
+    a replica thread, like this: thd->rli_replica->get_c_rli();
     thd could be a SQL thread or a worker thread.
   */
    virtual Relay_log_info* get_c_rli()
@@ -569,7 +569,7 @@ public:
 
   longlong sequence_number()
   {
-    Slave_job_group* ptr_g= c_rli->gaq->get_job_group(gaq_index);
+    Replica_job_group* ptr_g= c_rli->gaq->get_job_group(gaq_index);
     return ptr_g->sequence_number;
   }
 
@@ -583,14 +583,14 @@ protected:
 
 private:
   ulong gaq_index;          // GAQ index of the current assignment 
-  ulonglong master_log_pos; // event's cached log_pos for possibile error report
+  ulonglong primary_log_pos; // event's cached log_pos for possibile error report
   void end_info();
   bool read_info(Rpl_info_handler *from);
   bool write_info(Rpl_info_handler *to);
   bool m_order_commit_deadlock;
 
-  Slave_worker& operator=(const Slave_worker& info);
-  Slave_worker(const Slave_worker& info);
+  Replica_worker& operator=(const Replica_worker& info);
+  Replica_worker(const Replica_worker& info);
   bool worker_sleep(ulong seconds);
   bool read_and_apply_events(uint start_relay_number, my_off_t start_relay_pos,
                              uint end_relay_number, my_off_t end_relay_pos);
@@ -599,23 +599,23 @@ private:
   void reset_order_commit_deadlock() { m_order_commit_deadlock= false; }
 };
 
-void * head_queue(Slave_jobs_queue *jobs, Slave_job_item *ret);
-bool handle_slave_worker_stop(Slave_worker *worker, Slave_job_item *job_item);
-bool set_max_updated_index_on_stop(Slave_worker *worker,
-                                   Slave_job_item *job_item);
+void * head_queue(Replica_jobs_queue *jobs, Replica_job_item *ret);
+bool handle_replica_worker_stop(Replica_worker *worker, Replica_job_item *job_item);
+bool set_max_updated_index_on_stop(Replica_worker *worker,
+                                   Replica_job_item *job_item);
 
 TABLE* mts_move_temp_table_to_entry(TABLE*, THD*, db_worker_hash_entry*);
 TABLE* mts_move_temp_tables_to_thd(THD*, TABLE*);
 // Auxiliary function
 TABLE* mts_move_temp_tables_to_thd(THD*, TABLE*, enum_mts_parallel_type);
 
-bool append_item_to_jobs(slave_job_item *job_item,
-                         Slave_worker *w, Relay_log_info *rli);
-Slave_job_item* de_queue(Slave_jobs_queue *jobs, Slave_job_item *ret);
+bool append_item_to_jobs(replica_job_item *job_item,
+                         Replica_worker *w, Relay_log_info *rli);
+Replica_job_item* de_queue(Replica_jobs_queue *jobs, Replica_job_item *ret);
 
-inline Slave_worker* get_thd_worker(THD *thd)
+inline Replica_worker* get_thd_worker(THD *thd)
 {
-  return static_cast<Slave_worker *>(thd->rli_slave);
+  return static_cast<Replica_worker *>(thd->rli_replica);
 }
 
 #endif // HAVE_REPLICATION

@@ -24,7 +24,7 @@ let $ssl_crlpath = $ssl_base --ssl-crlpath=$MYSQL_TEST_DIR/std_data/crldir;
 
 --echo ############ Test mysqladmin ##############
 let $admin_prefix = --no-defaults;
-let $admin_suffix = --default-character-set=latin1 -S $MASTER_MYSOCK -P $MASTER_MYPORT -u root --password= ping;
+let $admin_suffix = --default-character-set=latin1 -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT -u root --password= ping;
 
 --echo # Test mysqladmin connecting to a server with an empty crl
 --exec $MYSQLADMIN $admin_prefix $ssl_crl $admin_suffix 2>&1

@@ -902,7 +902,7 @@ do_select(JOIN *join)
         reevaluate constant fields. @see save_const_null_info
         and restore_const_null_info
       */
-      if (join->select_lex->master_unit()->item && join->const_tables)
+      if (join->select_lex->primary_unit()->item && join->const_tables)
         save_const_null_info(join, &save_nullinfo);
 
       // Calculate aggregate functions for no rows
@@ -3003,7 +3003,7 @@ end_send_group(JOIN *join, QEP_TAB *qep_tab, bool end_of_records)
               reevaluate constant fields. @see save_const_null_info
               and restore_const_null_info
             */
-            if (join->select_lex->master_unit()->item && join->const_tables)
+            if (join->select_lex->primary_unit()->item && join->const_tables)
               save_const_null_info(join, &save_nullinfo);
 
             // Calculate aggregate functions for no rows
@@ -3542,7 +3542,7 @@ end_write_group(JOIN *join, QEP_TAB *const qep_tab, bool end_of_records)
             reevaluate constant fields. @see save_const_null_info
             and restore_const_null_info
           */
-          if (join->select_lex->master_unit()->item && join->const_tables)
+          if (join->select_lex->primary_unit()->item && join->const_tables)
             save_const_null_info(join, &save_nullinfo);
 
           // Calculate aggregate functions for no rows

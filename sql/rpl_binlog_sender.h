@@ -62,7 +62,7 @@ private:
   LOG_INFO m_linfo;
 
   binary_log::enum_binlog_checksum_alg m_event_checksum_alg;
-  binary_log::enum_binlog_checksum_alg m_slave_checksum_alg;
+  binary_log::enum_binlog_checksum_alg m_replica_checksum_alg;
   ulonglong m_heartbeat_period;
   time_t m_last_event_sent_ts;
   /*
@@ -172,7 +172,7 @@ private:
     the active log file.
 
     @param[in] log_cache  IO_CACHE of the binlog will be sent
-    @param[in] start_pos  Position requested by the slave's IO thread.
+    @param[in] start_pos  Position requested by the replica's IO thread.
                           Only the events after the position are sent.
 
     @return It returns 0 if succeeds, otherwise 1 is returned.
@@ -214,22 +214,22 @@ private:
 
   /**
     It sends a faked rotate event which does not exist physically in any
-    binlog to the slave. It contains the name of the binlog we are going to
-    send to the slave.
+    binlog to the replica. It contains the name of the binlog we are going to
+    send to the replica.
 
-    Faked rotate event is required in a few cases, so slave can know which
+    Faked rotate event is required in a few cases, so replica can know which
     binlog the following events are from.
 
-  - The binlog file slave requested is Empty. E.g.
-    "CHANGE MASTER TO MASTER_LOG_FILE='', MASTER_LOG_POS=4", etc.
+  - The binlog file replica requested is Empty. E.g.
+    "CHANGE PRIMARY TO PRIMARY_LOG_FILE='', PRIMARY_LOG_POS=4", etc.
 
-  - The position slave requested is exactly the end of a binlog file.
+  - The position replica requested is exactly the end of a binlog file.
 
   - Previous binlog file does not include a rotate event.
     It happens when server is shutdown and restarted.
 
   - The previous binary log was GTID-free (does not contain a
-    Previous_gtids_log_event) and the slave is connecting using
+    Previous_gtids_log_event) and the replica is connecting using
     the GTID protocol.
 
     @param[in] packet         The buffer used to store the faked event.
@@ -245,11 +245,11 @@ private:
      When starting to dump a binlog file, Format_description_log_event
      is read and sent first. If the requested position is after
      Format_description_log_event, log_pos field in the first
-     Format_description_log_event has to be set to 0. So the slave
-     will not increment its master's binlog position.
+     Format_description_log_event has to be set to 0. So the replica
+     will not increment its primary's binlog position.
 
      @param[in] log_cache IO_CACHE of the binlog will be dumpped
-     @param[in] start_pos Position requested by the slave's IO thread.
+     @param[in] start_pos Position requested by the replica's IO thread.
                           Only the events after the position are sent.
 
      @return It returns 0 if succeeds, otherwise 1 is returned.
@@ -381,12 +381,12 @@ private:
 
   void set_fatal_error(const char *errmsg)
   {
-    set_error(ER_MASTER_FATAL_ERROR_READING_BINLOG, errmsg);
+    set_error(ER_PRIMARY_FATAL_ERROR_READING_BINLOG, errmsg);
   }
 
   bool is_fatal_error()
   {
-    return m_errno == ER_MASTER_FATAL_ERROR_READING_BINLOG;
+    return m_errno == ER_PRIMARY_FATAL_ERROR_READING_BINLOG;
   }
 
   bool event_checksum_on()

@@ -62,7 +62,7 @@ Old_rows_log_event::do_apply_event(Old_rows_log_event *ev, const Relay_log_info 
      */
     DBUG_ASSERT(ev->get_flags(Old_rows_log_event::STMT_END_F));
 
-    const_cast<Relay_log_info*>(rli)->slave_close_thread_tables(ev_thd);
+    const_cast<Relay_log_info*>(rli)->replica_close_thread_tables(ev_thd);
     ev_thd->clear_error();
     DBUG_RETURN(0);
   }
@@ -96,7 +96,7 @@ Old_rows_log_event::do_apply_event(Old_rows_log_event *ev, const Relay_log_info 
 
     /*
       This is a row injection, so we flag the "statement" as
-      such. Note that this code is called both when the slave does row
+      such. Note that this code is called both when the replica does row
       injections and when the BINLOG statement is used to do row
       injections.
     */
@@ -105,19 +105,19 @@ Old_rows_log_event::do_apply_event(Old_rows_log_event *ev, const Relay_log_info 
     if (open_and_lock_tables(ev_thd, rli->tables_to_lock, 0))
     {
       uint actual_error= ev_thd->get_stmt_da()->mysql_errno();
-      if (ev_thd->is_slave_error || ev_thd->is_fatal_error)
+      if (ev_thd->is_replica_error || ev_thd->is_fatal_error)
       {
         /*
           Error reporting borrowed from Query_log_event with many excessive
-          simplifications (we don't honour --slave-skip-errors)
+          simplifications (we don't honour --replica-skip-errors)
         */
         rli->report(ERROR_LEVEL, actual_error,
                     "Error '%s' on opening tables",
                     (actual_error ? ev_thd->get_stmt_da()->message_text() :
                      "unexpected success or fatal error"));
-        ev_thd->is_slave_error= 1;
+        ev_thd->is_replica_error= 1;
       }
-      const_cast<Relay_log_info*>(rli)->slave_close_thread_tables(thd);
+      const_cast<Relay_log_info*>(rli)->replica_close_thread_tables(thd);
       DBUG_RETURN(actual_error);
     }
 
@@ -139,11 +139,11 @@ Old_rows_log_event::do_apply_event(Old_rows_log_event *ev, const Relay_log_info 
         if (!ptr->m_tabledef.compatible_with(thd, const_cast<Relay_log_info*>(rli),
                                              ptr->table, &conv_table))
         {
-          ev_thd->is_slave_error= 1;
-          const_cast<Relay_log_info*>(rli)->slave_close_thread_tables(ev_thd);
+          ev_thd->is_replica_error= 1;
+          const_cast<Relay_log_info*>(rli)->replica_close_thread_tables(ev_thd);
           DBUG_RETURN(Old_rows_log_event::ERR_BAD_TABLE_DEF);
         }
-        DBUG_PRINT("debug", ("Table: %s.%s is compatible with master"
+        DBUG_PRINT("debug", ("Table: %s.%s is compatible with primary"
                              " - conv_table: %p",
                              ptr->table->s->db.str,
                              ptr->table->s->table_name.str, conv_table));
@@ -184,7 +184,7 @@ Old_rows_log_event::do_apply_event(Old_rows_log_event *ev, const Relay_log_info 
     /*
       It's not needed to set_time() but
       1) it continues the property that "Time" in SHOW PROCESSLIST shows how
-      much slave is behind
+      much replica is behind
       2) it will be needed when we allow replication from a table with no
       TIMESTAMP column to a table with one.
       So we call set_time(), like in SBR. Presently it changes nothing.
@@ -252,14 +252,14 @@ Old_rows_log_event::do_apply_event(Old_rows_log_event *ev, const Relay_log_info 
                     (ev_thd->is_error() ?
                      ev_thd->get_stmt_da()->message_text() :
                      ""));
-  thd->is_slave_error= 1;
+  thd->is_replica_error= 1;
   break;
       }
 
       row_start= row_end;
     }
-    DBUG_EXECUTE_IF("stop_slave_middle_group",
-                    const_cast<Relay_log_info*>(rli)->abort_slave= 1;);
+    DBUG_EXECUTE_IF("stop_replica_middle_group",
+                    const_cast<Relay_log_info*>(rli)->abort_replica= 1;);
     error= do_after_row_operations(table, error);
   }
 
@@ -273,19 +273,19 @@ Old_rows_log_event::do_apply_event(Old_rows_log_event *ev, const Relay_log_info 
                 ev_thd->is_error() ? ev_thd->get_stmt_da()->message_text() : "");
 
     /*
-      If one day we honour --skip-slave-errors in row-based replication, and
+      If one day we honour --skip-replica-errors in row-based replication, and
       the error should be skipped, then we would clear mappings, rollback,
-      close tables, but the slave SQL thread would not stop and then may
+      close tables, but the replica SQL thread would not stop and then may
       assume the mapping is still available, the tables are still open...
       So then we should clear mappings/rollback/close here only if this is a
       STMT_END_F.
-      For now we code, knowing that error is not skippable and so slave SQL
+      For now we code, knowing that error is not skippable and so replica SQL
       thread is certainly going to stop.
       rollback at the caller along with sbr.
     */
     ev_thd->reset_current_stmt_binlog_format_row();
     const_cast<Relay_log_info*>(rli)->cleanup_context(ev_thd, error);
-    ev_thd->is_slave_error= 1;
+    ev_thd->is_replica_error= 1;
     DBUG_RETURN(error);
   }
 
@@ -411,36 +411,36 @@ record_compare_exit:
 /*
   Copy "extra" columns from record[1] to record[0].
 
-  Copy the extra fields that are not present on the master but are
-  present on the slave from record[1] to record[0].  This is used
+  Copy the extra fields that are not present on the primary but are
+  present on the replica from record[1] to record[0].  This is used
   after fetching a record that are to be updated, either inside
   replace_record() or as part of executing an update_row().
  */
 static int
 copy_extra_record_fields(TABLE *table,
-                         size_t master_reclength,
-                         my_ptrdiff_t master_fields)
+                         size_t primary_reclength,
+                         my_ptrdiff_t primary_fields)
 {
-  DBUG_ENTER("copy_extra_record_fields(table, master_reclen, master_fields)");
+  DBUG_ENTER("copy_extra_record_fields(table, primary_reclen, primary_fields)");
   DBUG_PRINT("info", ("Copying to 0x%lx "
                       "from field %lu at offset %lu "
                       "to field %d at offset %lu",
                       (long) table->record[0],
-                      (ulong) master_fields, (ulong) master_reclength,
+                      (ulong) primary_fields, (ulong) primary_reclength,
                       table->s->fields, table->s->reclength));
   /*
-    Copying the extra fields of the slave that does not exist on
-    master into record[0] (which are basically the default values).
+    Copying the extra fields of the replica that does not exist on
+    primary into record[0] (which are basically the default values).
   */
 
-  if (table->s->fields < (uint) master_fields)
+  if (table->s->fields < (uint) primary_fields)
     DBUG_RETURN(0);
 
- DBUG_ASSERT(master_reclength <= table->s->reclength);
-  if (master_reclength < table->s->reclength)
-    memcpy(table->record[0] + master_reclength,
-                table->record[1] + master_reclength,
-                table->s->reclength - master_reclength);
+ DBUG_ASSERT(primary_reclength <= table->s->reclength);
+  if (primary_reclength < table->s->reclength)
+    memcpy(table->record[0] + primary_reclength,
+                table->record[1] + primary_reclength,
+                table->s->reclength - primary_reclength);
     
   /*
     Bit columns are special.  We iterate over all the remaining
@@ -459,7 +459,7 @@ copy_extra_record_fields(TABLE *table,
     fields efficiently.
   */
   {
-    Field **field_ptr= table->field + master_fields;
+    Field **field_ptr= table->field + primary_fields;
     for ( ; *field_ptr ; ++field_ptr)
     {
       /*
@@ -504,9 +504,9 @@ copy_extra_record_fields(TABLE *table,
       replace_record()
       thd    Thread context for writing the record.
       table  Table to which record should be written.
-      master_reclength
-             Offset to first column that is not present on the master,
-             alternatively the length of the record on the master
+      primary_reclength
+             Offset to first column that is not present on the primary,
+             alternatively the length of the record on the primary
              side.
 
   RETURN VALUE
@@ -519,8 +519,8 @@ copy_extra_record_fields(TABLE *table,
  */
 static int
 replace_record(THD *thd, TABLE *table,
-               ulong const master_reclength,
-               uint const master_fields)
+               ulong const primary_reclength,
+               uint const primary_fields)
 {
   DBUG_ENTER("replace_record");
   DBUG_ASSERT(table != NULL && thd != NULL);
@@ -635,9 +635,9 @@ replace_record(THD *thd, TABLE *table,
        that we can insert the new row afterwards).
 
        First we copy the columns into table->record[0] that are not
-       present on the master from table->record[1], if there are any.
+       present on the primary from table->record[1], if there are any.
     */
-    copy_extra_record_fields(table, master_reclength, master_fields);
+    copy_extra_record_fields(table, primary_reclength, primary_fields);
 
     /*
        REPLACE is defined as either INSERT or DELETE + INSERT.  If
@@ -726,7 +726,7 @@ static int find_and_fetch_row(TABLE *table, uchar *key)
 
       TODO: Add a check that the correct record has been fetched by
       comparing with the original record. Take into account that the
-      record on the master and slave can be of different
+      record on the primary and replica can be of different
       length. Something along these lines should work:
 
       ADD>>>  store_record(table,record[1]);
@@ -930,14 +930,14 @@ int Write_rows_log_event_old::do_before_row_operations(TABLE *table)
   */
   table->file->extra(HA_EXTRA_IGNORE_DUP_KEY);
   /* 
-     NDB specific: update from ndb master wrapped as Write_rows
+     NDB specific: update from ndb primary wrapped as Write_rows
   */
   /*
-    so that the event should be applied to replace slave's row
+    so that the event should be applied to replace replica's row
   */
   table->file->extra(HA_EXTRA_WRITE_CAN_REPLACE);
   /* 
-     NDB specific: if update from ndb master wrapped as Write_rows
+     NDB specific: if update from ndb primary wrapped as Write_rows
      does not find the row it's assumed idempotent binlog applying
      is taking place; don't raise the error.
   */
@@ -984,7 +984,7 @@ Write_rows_log_event_old::do_prepare_row(THD *thd_arg,
   int error;
   error= unpack_row_old(const_cast<Relay_log_info*>(rli),
                         table, m_width, table->record[0],
-                        row_start, &m_cols, row_end, &m_master_reclength,
+                        row_start, &m_cols, row_end, &m_primary_reclength,
                         table->write_set, binary_log::PRE_GA_WRITE_ROWS_EVENT);
   bitmap_copy(table->read_set, table->write_set);
   return error;
@@ -994,7 +994,7 @@ Write_rows_log_event_old::do_prepare_row(THD *thd_arg,
 int Write_rows_log_event_old::do_exec_row(TABLE *table)
 {
   DBUG_ASSERT(table != NULL);
-  int error= replace_record(thd, table, m_master_reclength, m_width);
+  int error= replace_record(thd, table, m_primary_reclength, m_width);
   return error;
 }
 
@@ -1067,13 +1067,13 @@ Delete_rows_log_event_old::do_prepare_row(THD *thd_arg,
   DBUG_ASSERT(row_start && row_end);
   /*
     This assertion actually checks that there is at least as many
-    columns on the slave as on the master.
+    columns on the replica as on the primary.
   */
   DBUG_ASSERT(table->s->fields >= m_width);
 
   error= unpack_row_old(const_cast<Relay_log_info*>(rli),
                         table, m_width, table->record[0],
-                        row_start, &m_cols, row_end, &m_master_reclength,
+                        row_start, &m_cols, row_end, &m_primary_reclength,
                         table->read_set, binary_log::PRE_GA_DELETE_ROWS_EVENT);
   /*
     If we will access rows using the random access method, m_key will
@@ -1165,20 +1165,20 @@ int Update_rows_log_event_old::do_prepare_row(THD *thd_arg,
   DBUG_ASSERT(row_start && row_end);
   /*
     This assertion actually checks that there is at least as many
-    columns on the slave as on the master.
+    columns on the replica as on the primary.
   */
   DBUG_ASSERT(table->s->fields >= m_width);
 
   /* record[0] is the before image for the update */
   error= unpack_row_old(const_cast<Relay_log_info*>(rli),
                         table, m_width, table->record[0],
-                        row_start, &m_cols, row_end, &m_master_reclength,
+                        row_start, &m_cols, row_end, &m_primary_reclength,
                         table->read_set, binary_log::PRE_GA_UPDATE_ROWS_EVENT);
   row_start = *row_end;
   /* m_after_image is the after image for the update */
   error= unpack_row_old(const_cast<Relay_log_info*>(rli),
                         table, m_width, m_after_image,
-                        row_start, &m_cols, row_end, &m_master_reclength,
+                        row_start, &m_cols, row_end, &m_primary_reclength,
                         table->write_set, binary_log::PRE_GA_UPDATE_ROWS_EVENT);
 
   DBUG_DUMP("record[0]", table->record[0], table->s->reclength);
@@ -1216,18 +1216,18 @@ int Update_rows_log_event_old::do_exec_row(TABLE *table)
     Since find_and_fetch_row() puts the fetched record (i.e., the old
     record) in record[1], we can keep it there. We put the new record
     (i.e., the after image) into record[0], and copy the fields that
-    are on the slave (i.e., in record[1]) into record[0], effectively
+    are on the replica (i.e., in record[1]) into record[0], effectively
     overwriting the default values that where put there by the
     unpack_row() function.
   */
   memcpy(table->record[0], m_after_image, table->s->reclength);
-  copy_extra_record_fields(table, m_master_reclength, m_width);
+  copy_extra_record_fields(table, m_primary_reclength, m_width);
 
   /*
     Now we have the right row to update.  The old row (the one we're
     looking for) is in record[1] and the new row has is in record[0].
-    We also have copied the original values already in the slave's
-    database into the after image delivered from the master.
+    We also have copied the original values already in the replica's
+    database into the after image delivered from the primary.
   */
   error= table->file->ha_update_row(table->record[1], table->record[0]);
   if (error == HA_ERR_RECORD_IS_THE_SAME)
@@ -1341,7 +1341,7 @@ Old_rows_log_event(const char *buf, uint event_len, Log_event_type event_type,
   post_start+= ROWS_MAPID_OFFSET;
   if (post_header_len == 6)
   {
-    /* Master is of an intermediate source tree before 5.1.4. Id is 4 bytes */
+    /* Primary is of an intermediate source tree before 5.1.4. Id is 4 bytes */
     m_table_id= uint4korr(post_start);
     post_start+= 4;
   }
@@ -1417,7 +1417,7 @@ size_t Old_rows_log_event::get_data_size()
   uchar buf[sizeof(m_width)+1];
   uchar *end= net_store_length(buf, (m_width + 7) / 8);
 
-  DBUG_EXECUTE_IF("old_row_based_repl_4_byte_map_id_master",
+  DBUG_EXECUTE_IF("old_row_based_repl_4_byte_map_id_primary",
                   return 6 + no_bytes_in_map(&m_cols) + (end - buf) +
                   (m_rows_cur - m_rows_buf););
   int data_size= Binary_log_event::ROWS_HEADER_LEN;
@@ -1504,7 +1504,7 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
      */
     DBUG_ASSERT(get_flags(STMT_END_F));
 
-    const_cast<Relay_log_info*>(rli)->slave_close_thread_tables(thd);
+    const_cast<Relay_log_info*>(rli)->replica_close_thread_tables(thd);
     thd->clear_error();
     DBUG_RETURN(0);
   }
@@ -1535,11 +1535,11 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
     if ((error= lock_tables(thd, rli->tables_to_lock,
                                rli->tables_to_lock_count, 0)))
     {
-      if (thd->is_slave_error || thd->is_fatal_error)
+      if (thd->is_replica_error || thd->is_fatal_error)
       {
         /*
           Error reporting borrowed from Query_log_event with many excessive
-          simplifications (we don't honour --slave-skip-errors)
+          simplifications (we don't honour --replica-skip-errors)
         */
         uint actual_error= thd->get_protocol_classic()->get_last_errno();
         rli->report(ERROR_LEVEL, actual_error,
@@ -1556,7 +1556,7 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
                     "Error in %s event: when locking tables",
                     get_type_str());
       }
-      const_cast<Relay_log_info*>(rli)->slave_close_thread_tables(thd);
+      const_cast<Relay_log_info*>(rli)->replica_close_thread_tables(thd);
       DBUG_RETURN(error);
     }
 
@@ -1577,8 +1577,8 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
         if (ptr->m_tabledef.compatible_with(thd, const_cast<Relay_log_info*>(rli),
                                             ptr->table, &conv_table))
         {
-          thd->is_slave_error= 1;
-          const_cast<Relay_log_info*>(rli)->slave_close_thread_tables(thd);
+          thd->is_replica_error= 1;
+          const_cast<Relay_log_info*>(rli)->replica_close_thread_tables(thd);
           DBUG_RETURN(ERR_BAD_TABLE_DEF);
         }
         ptr->m_conv_table= conv_table;
@@ -1622,7 +1622,7 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
     /*
       It's not needed to set_time() but
       1) it continues the property that "Time" in SHOW PROCESSLIST shows how
-      much slave is behind
+      much replica is behind
       2) it will be needed when we allow replication from a table with no
       TIMESTAMP column to a table with one.
       So we call set_time(), like in SBR. Presently it changes nothing.
@@ -1662,11 +1662,11 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
     /* 
       Set tables write and read sets.
       
-      Read_set contains all slave columns (in case we are going to fetch
-      a complete record from slave)
+      Read_set contains all replica columns (in case we are going to fetch
+      a complete record from replica)
       
-      Write_set equals the m_cols bitmap sent from master but it can be 
-      longer if slave has extra columns. 
+      Write_set equals the m_cols bitmap sent from primary but it can be 
+      longer if replica has extra columns. 
      */ 
 
     DBUG_PRINT_BITSET("debug", "Setting table's write_set from: %s", &m_cols);
@@ -1712,7 +1712,7 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
           thd->get_protocol_classic()->get_last_errno(),
           "Error in %s event: row application failed. %s",
           get_type_str(), thd->get_protocol_classic()->get_last_error());
-        thd->is_slave_error= 1;
+        thd->is_replica_error= 1;
         break;
       }
 
@@ -1739,8 +1739,8 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
  
     } // row processing loop
 
-    DBUG_EXECUTE_IF("stop_slave_middle_group",
-                    const_cast<Relay_log_info*>(rli)->abort_slave= 1;);
+    DBUG_EXECUTE_IF("stop_replica_middle_group",
+                    const_cast<Relay_log_info*>(rli)->abort_replica= 1;);
     error= do_after_row_operations(rli, error);
   } // if (table)
 
@@ -1754,19 +1754,19 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
                 thd->get_protocol_classic()->get_last_error());
 
     /*
-      If one day we honour --skip-slave-errors in row-based replication, and
+      If one day we honour --skip-replica-errors in row-based replication, and
       the error should be skipped, then we would clear mappings, rollback,
-      close tables, but the slave SQL thread would not stop and then may
+      close tables, but the replica SQL thread would not stop and then may
       assume the mapping is still available, the tables are still open...
       So then we should clear mappings/rollback/close here only if this is a
       STMT_END_F.
-      For now we code, knowing that error is not skippable and so slave SQL
+      For now we code, knowing that error is not skippable and so replica SQL
       thread is certainly going to stop.
       rollback at the caller along with sbr.
     */
     thd->reset_current_stmt_binlog_format_row();
     const_cast<Relay_log_info*>(rli)->cleanup_context(thd, error);
-    thd->is_slave_error= 1;
+    thd->is_replica_error= 1;
     DBUG_RETURN(error);
   }
 
@@ -1782,7 +1782,7 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
       ------------ Temporary fix until WL#2975 is implemented ---------
 
       This event is not the last one (no STMT_END_F). If we stop now
-      (in case of terminate_slave_thread()), how will we restart? We
+      (in case of terminate_replica_thread()), how will we restart? We
       have to restart from Table_map_log_event, but as this table is
       not transactional, the rows already inserted will still be
       present, and idempotency is not guaranteed (no PK) so we risk
@@ -1811,7 +1811,7 @@ int Old_rows_log_event::do_apply_event(Relay_log_info const *rli)
       NOTE. Even if we have no table ('table' == 0) we still need to be
       here, so that we increase the group relay log position. If we didn't, we
       could have a group relay log position which lags behind "forever"
-      (assume the last master's transaction is ignored by the slave because of
+      (assume the last primary's transaction is ignored by the replica because of
       replicate-ignore rules).
     */
     int binlog_error= thd->binlog_flush_pending_rows_event(TRUE);
@@ -1858,11 +1858,11 @@ Log_event::enum_skip_reason
 Old_rows_log_event::do_shall_skip(Relay_log_info *rli)
 {
   /*
-    If the slave skip counter is 1 and this event does not end a
+    If the replica skip counter is 1 and this event does not end a
     statement, then we should not start executing on the next event.
     Otherwise, we defer the decision to the normal skipping logic.
   */
-  if (rli->slave_skip_counter == 1 && !get_flags(STMT_END_F))
+  if (rli->replica_skip_counter == 1 && !get_flags(STMT_END_F))
     return Log_event::EVENT_SKIP_IGNORE;
   else
     return Log_event::do_shall_skip(rli);
@@ -2285,7 +2285,7 @@ int Old_rows_log_event::find_row(const Relay_log_info *rli)
 
       TODO: Add a check that the correct record has been fetched by
       comparing with the original record. Take into account that the
-      record on the master and slave can be of different
+      record on the primary and replica can be of different
       length. Something along these lines should work:
 
       ADD>>>  store_record(table,record[1]);
@@ -2550,7 +2550,7 @@ Write_rows_log_event_old::Write_rows_log_event_old(THD *thd_arg,
 
 
 /*
-  Constructor used by slave to read the event from the binary log.
+  Constructor used by replica to read the event from the binary log.
  */
 #ifdef HAVE_REPLICATION
 Write_rows_log_event_old::
@@ -2565,7 +2565,7 @@ Write_rows_log_event_old(const char *buf, uint event_len,
 
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
 int 
-Write_rows_log_event_old::do_before_row_operations(const Slave_reporting_capability *const)
+Write_rows_log_event_old::do_before_row_operations(const Replica_reporting_capability *const)
 {
   int error= 0;
 
@@ -2589,14 +2589,14 @@ Write_rows_log_event_old::do_before_row_operations(const Slave_reporting_capabil
   */
   m_table->file->extra(HA_EXTRA_IGNORE_DUP_KEY);
   /* 
-     NDB specific: update from ndb master wrapped as Write_rows
+     NDB specific: update from ndb primary wrapped as Write_rows
   */
   /*
-    so that the event should be applied to replace slave's row
+    so that the event should be applied to replace replica's row
   */
   m_table->file->extra(HA_EXTRA_WRITE_CAN_REPLACE);
   /* 
-     NDB specific: if update from ndb master wrapped as Write_rows
+     NDB specific: if update from ndb primary wrapped as Write_rows
      does not find the row it's assumed idempotent binlog applying
      is taking place; don't raise the error.
   */
@@ -2612,7 +2612,7 @@ Write_rows_log_event_old::do_before_row_operations(const Slave_reporting_capabil
 
 
 int 
-Write_rows_log_event_old::do_after_row_operations(const Slave_reporting_capability *const,
+Write_rows_log_event_old::do_after_row_operations(const Replica_reporting_capability *const,
                                                   int error)
 {
   int local_error= 0;
@@ -2682,7 +2682,7 @@ Delete_rows_log_event_old::Delete_rows_log_event_old(THD *thd_arg,
 
 
 /*
-  Constructor used by slave to read the event from the binary log.
+  Constructor used by replica to read the event from the binary log.
  */
 #ifdef HAVE_REPLICATION
 Delete_rows_log_event_old::
@@ -2699,7 +2699,7 @@ Delete_rows_log_event_old(const char *buf, uint event_len,
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
 
 int 
-Delete_rows_log_event_old::do_before_row_operations(const Slave_reporting_capability *const)
+Delete_rows_log_event_old::do_before_row_operations(const Replica_reporting_capability *const)
 {
   if ((m_table->file->ha_table_flags() & HA_PRIMARY_KEY_REQUIRED_FOR_POSITION) &&
       m_table->s->primary_key < MAX_KEY)
@@ -2723,7 +2723,7 @@ Delete_rows_log_event_old::do_before_row_operations(const Slave_reporting_capabi
 
 
 int 
-Delete_rows_log_event_old::do_after_row_operations(const Slave_reporting_capability *const,
+Delete_rows_log_event_old::do_after_row_operations(const Replica_reporting_capability *const,
                                                    int error)
 {
   /*error= ToDo:find out what this should really be, this triggers close_scan in nbd, returning error?*/
@@ -2786,7 +2786,7 @@ Update_rows_log_event_old::Update_rows_log_event_old(THD *thd_arg,
 
 
 /*
-  Constructor used by slave to read the event from the binary log.
+  Constructor used by replica to read the event from the binary log.
  */
 #ifdef HAVE_REPLICATION
 Update_rows_log_event_old::
@@ -2804,7 +2804,7 @@ Update_rows_log_event_old(const char *buf, uint event_len,
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
 
 int 
-Update_rows_log_event_old::do_before_row_operations(const Slave_reporting_capability *const)
+Update_rows_log_event_old::do_before_row_operations(const Replica_reporting_capability *const)
 {
   if (m_table->s->keys > 0)
   {
@@ -2820,7 +2820,7 @@ Update_rows_log_event_old::do_before_row_operations(const Slave_reporting_capabi
 
 
 int 
-Update_rows_log_event_old::do_after_row_operations(const Slave_reporting_capability *const,
+Update_rows_log_event_old::do_after_row_operations(const Replica_reporting_capability *const,
                                                    int error)
 {
   /*error= ToDo:find out what this should really be, this triggers close_scan in nbd, returning error?*/

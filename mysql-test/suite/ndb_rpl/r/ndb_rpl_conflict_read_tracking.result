@@ -1,17 +1,17 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 Setup circular replication
-RESET MASTER;
-SLAVE_SERVER_ID: 3
-CHANGE MASTER TO master_host="127.0.0.1",master_port=SLAVE_PORT,master_user="root";
+RESET PRIMARY;
+REPLICA_SERVER_ID: 3
+CHANGE PRIMARY TO primary_host="127.0.0.1",primary_port=REPLICA_PORT,primary_user="root";
 Warnings:
 Note	1759	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	1760	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-START SLAVE;
-MASTER_SERVER_ID: 1
+Note	1760	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+START REPLICA;
+PRIMARY_SERVER_ID: 1
 Setup ndb_replication and t1 exceptions table
 Populate ndb_replication table as necessary
 replace into mysql.ndb_replication values
@@ -51,10 +51,10 @@ insert into test.t2 values
 Sync all changes
 ---------------------------------------
 Test 1, read-update conflict without read tracking
-Stopping secondary slave
-stop slave;
-Stopping primary slave
-stop slave;
+Stopping secondary replica
+stop replica;
+Stopping primary replica
+stop replica;
 begin;
 update test.t1 set b="Primary first change 1" where a=1;
 update test.t1 set b="Primary first change 2" where a=2;
@@ -93,8 +93,8 @@ a	b
 8	Initial data 8
 9	Initial data 9
 10	Initial data 10
-Starting primary slave
-start slave;
+Starting primary replica
+start replica;
 **** Secondary ****
 select * from test.t1 order by a;
 a	b
@@ -167,8 +167,8 @@ NDB$OP_TYPE	b$old	b$new	NDB$CFT_CAUSE
 select NDB$OP_TYPE, b$old, b$new, NDB$CFT_CAUSE from test.t2$EX
 order by a;
 NDB$OP_TYPE	b$old	b$new	NDB$CFT_CAUSE
-starting secondary slave
-start slave;
+starting secondary replica
+start replica;
 Secondary should not have been realigned to Primary
 **** Primary ****
 select * from test.t1 order by a;
@@ -227,10 +227,10 @@ Sync all changes
 ---------------------------------------
 delete from test.t2$EX;
 Test 2, read-update conflict with read tracking
-Stopping secondary slave
-stop slave;
-Stopping primary slave
-stop slave;
+Stopping secondary replica
+stop replica;
+Stopping primary replica
+stop replica;
 begin;
 update test.t1 set b="Primary first change 1" where a=1;
 update test.t1 set b="Primary first change 2" where a=2;
@@ -269,8 +269,8 @@ a	b
 8	Initial data 8
 9	Initial data 9
 10	Initial data 10
-Starting primary slave
-start slave;
+Starting primary replica
+start replica;
 **** Secondary ****
 select * from test.t1 order by a;
 a	b
@@ -345,8 +345,8 @@ select NDB$OP_TYPE, b$old, b$new, NDB$CFT_CAUSE from test.t2$EX
 order by a;
 NDB$OP_TYPE	b$old	b$new	NDB$CFT_CAUSE
 UPDATE_ROW	Initial data 3	Secondary first change 3	TRANS_IN_CONFLICT
-starting secondary slave
-start slave;
+starting secondary replica
+start replica;
 Secondary should have been realigned to Primary
 **** Primary ****
 select * from test.t1 order by a;
@@ -406,10 +406,10 @@ Sync all changes
 delete from test.t1$EX;
 delete from test.t2$EX;
 Test 3, read-read conflict without read tracking
-Stopping secondary slave
-stop slave;
-Stopping primary slave
-stop slave;
+Stopping secondary replica
+stop replica;
+Stopping primary replica
+stop replica;
 SET ndb_log_exclusive_reads= 0;
 begin;
 select * from test.t1 where a = 1 for update;
@@ -451,8 +451,8 @@ a	b
 8	Initial data 8
 9	Initial data 9
 10	Initial data 10
-Starting primary slave
-start slave;
+Starting primary replica
+start replica;
 **** Secondary ****
 select * from test.t1 order by a;
 a	b
@@ -525,8 +525,8 @@ NDB$OP_TYPE	b$old	b$new	NDB$CFT_CAUSE
 select NDB$OP_TYPE, b$old, b$new, NDB$CFT_CAUSE from test.t2$EX
 order by a;
 NDB$OP_TYPE	b$old	b$new	NDB$CFT_CAUSE
-starting secondary slave
-start slave;
+starting secondary replica
+start replica;
 Secondary should not have been realigned to Primary
 **** Primary ****
 select * from test.t1 order by a;
@@ -582,10 +582,10 @@ update test.t1 set b="Initial data 1" where a=1;
 update test.t1 set b="Initial data 2" where a=2;
 update test.t2 set b="Initial data 3" where a=3;
 Test 4, read-read conflict with read tracking
-Stopping secondary slave
-stop slave;
-Stopping primary slave
-stop slave;
+Stopping secondary replica
+stop replica;
+Stopping primary replica
+stop replica;
 SET ndb_log_exclusive_reads= 1;
 begin;
 select * from test.t1 where a = 1 for update;
@@ -627,8 +627,8 @@ a	b
 8	Initial data 8
 9	Initial data 9
 10	Initial data 10
-Starting primary slave
-start slave;
+Starting primary replica
+start replica;
 **** Secondary ****
 select * from test.t1 order by a;
 a	b
@@ -703,8 +703,8 @@ select NDB$OP_TYPE, b$old, b$new, NDB$CFT_CAUSE from test.t2$EX
 order by a;
 NDB$OP_TYPE	b$old	b$new	NDB$CFT_CAUSE
 UPDATE_ROW	Secondary first change 3	Secondary first change 3	TRANS_IN_CONFLICT
-starting secondary slave
-start slave;
+starting secondary replica
+start replica;
 Secondary should have been realigned to Primary
 **** Primary ****
 select * from test.t1 order by a;
@@ -766,8 +766,8 @@ delete from test.t2$EX;
 Test 5, read-update conflict with read tracking on unique secondary index
 create table test.t3$EX
 (NDB$SERVER_ID         int unsigned,
-NDB$MASTER_SERVER_ID  int unsigned,
-NDB$MASTER_EPOCH      bigint unsigned,
+NDB$PRIMARY_SERVER_ID  int unsigned,
+NDB$PRIMARY_EPOCH      bigint unsigned,
 NDB$COUNT             int unsigned,
 a                     int not null,
 b$old                 varchar(2000),
@@ -779,7 +779,7 @@ d$new                 int,
 NDB$OP_TYPE           ENUM('WRITE_ROW','UPDATE_ROW','DELETE_ROW','REFRESH_ROW','READ_ROW') NOT NULL,
 NDB$CFT_CAUSE         ENUM('ROW_DOES_NOT_EXIST','ROW_ALREADY_EXISTS','DATA_IN_CONFLICT','TRANS_IN_CONFLICT') NOT NULL,
 NDB$ORIG_TRANSID      BIGINT UNSIGNED NOT NULL,
-primary key(NDB$SERVER_ID, NDB$MASTER_SERVER_ID, NDB$MASTER_EPOCH, NDB$COUNT))
+primary key(NDB$SERVER_ID, NDB$PRIMARY_SERVER_ID, NDB$PRIMARY_EPOCH, NDB$COUNT))
 ENGINE=NDB;
 Populate ndb_replication table as necessary
 replace into mysql.ndb_replication values
@@ -805,10 +805,10 @@ insert into test.t3 values
 (10, "Initial data 10", 10, 10);
 Show basic read tracking
 ---------------------------------------
-Stopping secondary slave
-stop slave;
-Stopping primary slave
-stop slave;
+Stopping secondary replica
+stop replica;
+Stopping primary replica
+stop replica;
 begin;
 update test.t3 set b="Primary first change 1" where a=1;
 update test.t3 set b="Primary first change 2" where a=2;
@@ -847,8 +847,8 @@ a	b	c	d
 8	Initial data 8	8	8
 9	Initial data 9	9	9
 10	Initial data 10	10	10
-Starting primary slave
-start slave;
+Starting primary replica
+start replica;
 **** Secondary ****
 select * from test.t2 order by a;
 a	b
@@ -919,8 +919,8 @@ select NDB$OP_TYPE, b$old, b$new, c$old, c$new, NDB$CFT_CAUSE from test.t3$EX
 order by a;
 NDB$OP_TYPE	b$old	b$new	c$old	c$new	NDB$CFT_CAUSE
 READ_ROW	Initial data 1	Initial data 1	1	1	TRANS_IN_CONFLICT
-starting secondary slave
-start slave;
+starting secondary replica
+start replica;
 Secondary should have been realigned to Primary
 **** Primary ****
 select * from test.t2 order by a;
@@ -982,10 +982,10 @@ delete from test.t3$EX;
 Test 6, read-update conflict with read tracking on ordered secondary index
 Show basic read tracking
 ---------------------------------------
-Stopping secondary slave
-stop slave;
-Stopping primary slave
-stop slave;
+Stopping secondary replica
+stop replica;
+Stopping primary replica
+stop replica;
 begin;
 update test.t3 set b="Primary first change 1" where a=1;
 update test.t3 set b="Primary first change 2" where a=2;
@@ -1024,8 +1024,8 @@ a	b	c	d
 8	Initial data 8	8	8
 9	Initial data 9	9	9
 10	Initial data 10	10	10
-Starting primary slave
-start slave;
+Starting primary replica
+start replica;
 **** Secondary ****
 select * from test.t2 order by a;
 a	b
@@ -1096,8 +1096,8 @@ select NDB$OP_TYPE, b$old, b$new, c$old, c$new, NDB$CFT_CAUSE from test.t3$EX
 order by a;
 NDB$OP_TYPE	b$old	b$new	c$old	c$new	NDB$CFT_CAUSE
 READ_ROW	Initial data 1	Initial data 1	1	1	TRANS_IN_CONFLICT
-starting secondary slave
-start slave;
+starting secondary replica
+start replica;
 Secondary should have been realigned to Primary
 **** Primary ****
 select * from test.t2 order by a;
@@ -1159,10 +1159,10 @@ delete from test.t3$EX;
 Test 7, read-update conflict with read tracking on table scan
 Show basic read tracking
 ---------------------------------------
-Stopping secondary slave
-stop slave;
-Stopping primary slave
-stop slave;
+Stopping secondary replica
+stop replica;
+Stopping primary replica
+stop replica;
 begin;
 update test.t3 set b="Primary first change 1" where a=1;
 update test.t3 set b="Primary first change 2" where a=2;
@@ -1201,8 +1201,8 @@ a	b	c	d
 8	Initial data 8	8	8
 9	Initial data 9	9	9
 10	Initial data 10	10	10
-Starting primary slave
-start slave;
+Starting primary replica
+start replica;
 **** Secondary ****
 select * from test.t2 order by a;
 a	b
@@ -1273,8 +1273,8 @@ select NDB$OP_TYPE, b$old, b$new, c$old, c$new, NDB$CFT_CAUSE from test.t3$EX
 order by a;
 NDB$OP_TYPE	b$old	b$new	c$old	c$new	NDB$CFT_CAUSE
 READ_ROW	Initial data 1	Initial data 1	1	1	TRANS_IN_CONFLICT
-starting secondary slave
-start slave;
+starting secondary replica
+start replica;
 Secondary should have been realigned to Primary
 **** Primary ****
 select * from test.t2 order by a;
@@ -1338,6 +1338,6 @@ drop table test.t1, test.t2, test.t3;
 drop table test.t1$EX, test.t2$EX, test.t3$EX;
 SET ndb_log_exclusive_reads= 0;
 flush logs;
-stop slave;
-reset slave;
+stop replica;
+reset replica;
 include/rpl_end.inc

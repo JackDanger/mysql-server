@@ -5,49 +5,49 @@
 # invalid memory access.
 --source include/not_group_replication_plugin.inc
 --source include/have_innodb.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_semisync_plugin.inc
 --source include/install_semisync.inc
 
-call mtr.add_suppression(".*Semi-sync master failed on net_flush.*before waiting for slave reply.*");
+call mtr.add_suppression(".*Semi-sync primary failed on net_flush.*before waiting for replica reply.*");
 call mtr.add_suppression(".*Timeout waiting for reply of binlog .* semi-sync up to file .*");
 
---source include/sync_slave_sql_with_master.inc
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
+--source include/sync_replica_sql_with_primary.inc
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
 
-CHANGE MASTER TO MASTER_SSL = 1;
---source include/start_slave.inc
+CHANGE PRIMARY TO PRIMARY_SSL = 1;
+--source include/start_replica.inc
 
 --echo
 --echo # Try replicating CREATE TABLE and verify that everything is fine.
 --echo
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 USE test;
 CREATE TABLE table1 (a INT);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo
---echo # STOP SLAVE and verify that replication works fine when slave resumes.
+--echo # STOP REPLICA and verify that replication works fine when replica resumes.
 --echo
 
---source include/stop_slave_io.inc
---source include/rpl_connection_master.inc
+--source include/stop_replica_io.inc
+--source include/rpl_connection_primary.inc
 INSERT INTO table1 VALUES(1);
 
---source include/rpl_connection_slave.inc
---source include/start_slave_io.inc
+--source include/rpl_connection_replica.inc
+--source include/start_replica_io.inc
 
 --echo
---echo # RE-START SLAVE and execute on master, verify that replication works fine.
+--echo # RE-START REPLICA and execute on primary, verify that replication works fine.
 --echo
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 INSERT INTO table1 VALUES(2);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---let $assert_text= Slave should have 2 rows(1,2)
+--let $assert_text= Replica should have 2 rows(1,2)
 --let $assert_cond= `SELECT COUNT(*)=2 from table1`
 --source include/assert.inc
 
@@ -55,13 +55,13 @@ INSERT INTO table1 VALUES(2);
 --echo # Clean-up
 --echo
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 DROP TABLE table1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/uninstall_semisync.inc
---source include/stop_slave.inc
-CHANGE MASTER TO MASTER_SSL = 0;
+--source include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_SSL = 0;
 
 --let $rpl_only_running_threads= 1
 --source include/rpl_end.inc

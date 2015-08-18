@@ -13,7 +13,7 @@
 # need debug build to be able to set a deterministic server uuid
 --source include/have_debug.inc
 
-RESET MASTER;
+RESET PRIMARY;
 
 CREATE TABLE t1 (c1 INT) ENGINE=InnoDB;
 --echo

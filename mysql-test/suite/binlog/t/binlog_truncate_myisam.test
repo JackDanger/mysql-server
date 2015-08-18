@@ -6,12 +6,12 @@ SET @old_binlog_format=@@binlog_format;
 let $engine = MyISAM;
 
 SET BINLOG_FORMAT=ROW;
-RESET MASTER;
+RESET PRIMARY;
 
 source extra/binlog_tests/binlog_truncate.test;
 
 SET BINLOG_FORMAT=STATEMENT;
-RESET MASTER;
+RESET PRIMARY;
 
 source extra/binlog_tests/binlog_truncate.test;
 

@@ -1,5 +1,5 @@
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 --disable_warnings
 drop database if exists mysqltest1;
 # 4.1 bases its conversion on the db's charset,
@@ -19,15 +19,15 @@ INSERT INTO t1 VALUES ('ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ','C0');
 INSERT INTO t1 VALUES ('ĞÑÒÓÔÕÖ×ØÙÚÛÜİŞß','D0');
 INSERT INTO t1 VALUES ('àáâãäåæçèéêëìíîï','E0');
 INSERT INTO t1 VALUES ('ğñòóôõö÷øùúûüışÿ','F0');
-select "--- on master ---";
+select "--- on primary ---";
 select hex(a),b from t1 order by b;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 use mysqltest1;
-select "--- on slave ---";
+select "--- on replica ---";
 select hex(a),b from t1 order by b;
-connection master;
+connection primary;
 drop database mysqltest1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 4.1 tests
 --source include/rpl_end.inc

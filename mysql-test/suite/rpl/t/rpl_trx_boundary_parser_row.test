@@ -3,7 +3,7 @@
 # Test the behavior of mysql server replication with the transaction boundary
 # parser.
 #
-# This test will insert data in the master while the slave will have some debug
+# This test will insert data in the primary while the replica will have some debug
 # sync points activated to stop the IO thread in the middle of the transaction
 # what will cause the transactions to be spanned along distinct relay log files.
 #
@@ -12,7 +12,7 @@
 #
 # ==== Related Bugs and Worklogs ====
 #
-# BUG#17943188: SHOW SLAVE STATUS/RETRIEVED_GTID_SET MAY HAVE PARTIAL TRX OR
+# BUG#17943188: SHOW REPLICA STATUS/RETRIEVED_GTID_SET MAY HAVE PARTIAL TRX OR
 #               MISS COMPLETE TRX
 #
 
@@ -28,7 +28,7 @@
 --let $rpl_gtid_utils= 1
 --source include/have_gtid.inc
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo # Using MyISAM storage engine
 --let $storage_engine= MyISAM
@@ -40,23 +40,23 @@
 
 #
 # As we are going to use GTID related checks for the IO thread after
-# a CHANGE MASTER, we will first reset both slave and master to avoid
+# a CHANGE PRIMARY, we will first reset both replica and primary to avoid
 # problems with the gtid related mtr includes.
 #
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
-RESET MASTER;
-RESET SLAVE;
---source include/rpl_connection_master.inc
-RESET MASTER;
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
+RESET PRIMARY;
+RESET REPLICA;
+--source include/rpl_connection_primary.inc
+RESET PRIMARY;
 
 #
-# Disabling slave's auto positioning
+# Disabling replica's auto positioning
 #
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
-CHANGE MASTER TO MASTER_AUTO_POSITION= 0;
---source include/start_slave.inc
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 0;
+--source include/start_replica.inc
 
 --echo # Using MyISAM storage engine without auto positioning
 --let $storage_engine= MyISAM
@@ -67,11 +67,11 @@ CHANGE MASTER TO MASTER_AUTO_POSITION= 0;
 --source extra/rpl_tests/rpl_trx_boundary_parser.inc
 
 #
-# Enabling slave's auto positioning again
+# Enabling replica's auto positioning again
 #
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
-CHANGE MASTER TO MASTER_AUTO_POSITION= 1;
---source include/start_slave.inc
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 1;
+--source include/start_replica.inc
 
 --source include/rpl_end.inc

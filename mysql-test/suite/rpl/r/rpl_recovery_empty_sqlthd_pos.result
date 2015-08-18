@@ -1,25 +1,25 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[connection slave]
-call mtr.add_suppression("Recovery from master pos .*");
-[connection slave]
-include/stop_slave.inc
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[connection replica]
+call mtr.add_suppression("Recovery from primary pos .*");
+[connection replica]
+include/stop_replica.inc
+[connection primary]
 CREATE DATABASE test_jfg;
-[connection slave]
-CHANGE MASTER TO master_host='127.0.0.1',master_port=MASTER_PORT,master_user='root';
+[connection replica]
+CHANGE PRIMARY TO primary_host='127.0.0.1',primary_port=PRIMARY_PORT,primary_user='root';
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-START SLAVE IO_THREAD;
-include/wait_for_slave_io_to_start.inc
-[connection master]
-include/sync_slave_io_with_master.inc
-include/rpl_restart_server.inc [server_number=2 parameters: --skip_slave_start=FALSE --master-info-repository=TABLE --relay-log-info-repository=TABLE --relay-log-recovery=1]
-include/wait_for_slave_sql_to_start.inc
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+START REPLICA IO_THREAD;
+include/wait_for_replica_io_to_start.inc
+[connection primary]
+include/sync_replica_io_with_primary.inc
+include/rpl_restart_server.inc [server_number=2 parameters: --skip_replica_start=FALSE --primary-info-repository=TABLE --relay-log-info-repository=TABLE --relay-log-recovery=1]
+include/wait_for_replica_sql_to_start.inc
+[connection primary]
 DROP DATABASE test_jfg;
 include/rpl_end.inc

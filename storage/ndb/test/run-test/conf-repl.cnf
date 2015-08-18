@@ -1,8 +1,8 @@
 [atrt]
 basedir=CHOOSE_dir
 baseport=15000
-clusters= .master,.slave
-replicate= 1.master:1.slave
+clusters= .primary,.replica
+replicate= 1.primary:1.replica
 
 [ndb_mgmd]
 
@@ -14,14 +14,14 @@ skip-bdb
 MaxNoOfSavedMessages= 5
 DataMemory = 100M
 
-[cluster_config.master]
+[cluster_config.primary]
 NoOfReplicas = 2
 ndb_mgmd = CHOOSE_host1
 ndbd = CHOOSE_host2,CHOOSE_host3
 mysqld = CHOOSE_host1
 ndbapi=  CHOOSE_host1
 
-[cluster_config.slave]
+[cluster_config.replica]
 NoOfReplicas = 1
 ndb_mgmd = CHOOSE_host4
 ndbd = CHOOSE_host4

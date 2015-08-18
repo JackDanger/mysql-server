@@ -12,7 +12,7 @@
 
 # The table might already have been created by mysqld -> ignore error
 --error 0,1
-copy_file $MYSQL_TEST_DIR/suite/ndb_rpl/t/ndb_apply_status.frm $MYSQLTEST_VARDIR/master-data/mysql/ndb_apply_status.frm;
+copy_file $MYSQL_TEST_DIR/suite/ndb_rpl/t/ndb_apply_status.frm $MYSQLTEST_VARDIR/primary-data/mysql/ndb_apply_status.frm;
 --disable_result_log
 --disable_abort_on_error
 select * from mysql.ndb_apply_status;
@@ -22,29 +22,29 @@ select * from mysql.ndb_apply_status;
 
 -- source include/have_ndb.inc
 -- source include/have_binlog_format_mixed_or_row.inc
--- source suite/ndb_rpl/ndb_master-slave.inc
+-- source suite/ndb_rpl/ndb_primary-replica.inc
 
 #
 # Bug#28170 replicate-ignore-db=mysql should not ignore mysql.ndb_apply_status
 #
-# Slave is started with --replicate-ignore-db=mysql
+# Replica is started with --replicate-ignore-db=mysql
 #
-sync_slave_with_master;
-echo *** on slave there should be zero rows ***;
+sync_replica_with_primary;
+echo *** on replica there should be zero rows ***;
 select count(*) from mysql.ndb_apply_status;
 
-connection master;
+connection primary;
 create table t1 (a int key, b int) engine ndb;
 insert into t1 values (1,1);
-echo *** on master it should be empty ***;
+echo *** on primary it should be empty ***;
 #filter away stuff put there with server_id = 0 (from ndb_restore)
 select * from mysql.ndb_apply_status where server_id <> 0;
 
-sync_slave_with_master;
-echo *** on slave there should be one row ***;
+sync_replica_with_primary;
+echo *** on replica there should be one row ***;
 select count(*) from mysql.ndb_apply_status;
 
-connection master;
+connection primary;
 drop table t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 --source include/rpl_end.inc

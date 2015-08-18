@@ -61,7 +61,7 @@ printALTER_TABLE_REF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
   fprintf(output, " errorCode: %u", sig->errorCode);
   fprintf(output, " errorLine: %u", sig-> errorLine);
   fprintf(output, " errorNodeId: %u", sig->errorNodeId);
-  fprintf(output, " masterNodeId: %u", sig->masterNodeId);
+  fprintf(output, " primaryNodeId: %u", sig->primaryNodeId);
   fprintf(output, "\n");
   fprintf(output, " errorStatus: %u", sig->errorStatus);
   fprintf(output, " errorKey: %u", sig->errorKey);

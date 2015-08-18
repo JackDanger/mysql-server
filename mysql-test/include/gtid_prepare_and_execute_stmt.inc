@@ -17,9 +17,9 @@
 
 --connection default
 SET GTID_NEXT = 'AUTOMATIC';
---replace_result $master_uuid MASTER_UUID
+--replace_result $primary_uuid PRIMARY_UUID
 --let $number = `SELECT GTID_NEXT_GENERATED(@@GLOBAL.GTID_EXECUTED, @@GLOBAL.SERVER_UUID)`
---eval SET SESSION GTID_NEXT='$master_uuid:$number'
+--eval SET SESSION GTID_NEXT='$primary_uuid:$number'
 --eval PREPARE stmt FROM '$statement'
 EXECUTE stmt;
 

@@ -105,7 +105,7 @@ void set_auto_increment_offset(ulong auto_increment_offset);
 
 /**
   Returns a struct containing all server startup information needed to evaluate
-  if one has conditions to proceed executing master-master replication.
+  if one has conditions to proceed executing primary-primary replication.
 
   @param[out] requirements
 
@@ -156,11 +156,11 @@ rpl_sidno get_sidno_from_global_sid_map(rpl_sid sid);
 
 
 /**
-  Set slave thread default options.
+  Set replica thread default options.
 
   @param[in] thd  The thread
 */
-void set_slave_thread_options(THD* thd);
+void set_replica_thread_options(THD* thd);
 
 
 /**

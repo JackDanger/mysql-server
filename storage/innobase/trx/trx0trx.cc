@@ -509,7 +509,7 @@ trx_free(trx_t*& trx)
 }
 
 /********************************************************************//**
-Creates a transaction object for background operations by the master thread.
+Creates a transaction object for background operations by the primary thread.
 @return own: transaction object */
 trx_t*
 trx_allocate_for_background(void)
@@ -1684,7 +1684,7 @@ trx_write_serialisation_history(
 
 	/* Update the latest MySQL binlog name and offset info
 	in trx sys header if MySQL binlogging is on or the database
-	server is a MySQL replication slave */
+	server is a MySQL replication replica */
 
 	if (trx->mysql_log_file_name != NULL
 	    && trx->mysql_log_file_name[0] != '\0') {
@@ -2054,9 +2054,9 @@ trx_commit_in_memory(
 
 		/* Tell server some activity has happened, since the trx
 		does changes something. Background utility threads like
-		master thread, purge thread or page_cleaner thread might
+		primary thread, purge thread or page_cleaner thread might
 		have some work to do. */
-		srv_active_wake_master_thread();
+		srv_active_wake_primary_thread();
 	}
 
 	/* Free all savepoints, starting from the first. */

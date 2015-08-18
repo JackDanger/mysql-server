@@ -1,9 +1,9 @@
 # Test of partitioning features with replication for InnoDB
 --source include/have_innodb.inc
 --source include/have_partition.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-# Set the default connection to 'master'
+# Set the default connection to 'primary'
 
 let $engine_type= 'InnoDB';
 

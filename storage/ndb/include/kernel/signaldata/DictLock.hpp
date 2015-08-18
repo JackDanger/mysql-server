@@ -69,7 +69,7 @@ class DictLockRef {
 public:
   STATIC_CONST( SignalLength = 3 );
   enum ErrorCode {
-    NotMaster = 1,
+    NotPrimary = 1,
     InvalidLockType = 2,
     BadUserRef = 3,
     TooLate = 4,

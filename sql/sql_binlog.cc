@@ -93,8 +93,8 @@ static int check_event_type(int type, Relay_log_info *rli)
       It is not meaningful to execute other events than row-events and
       FD events. It would even be dangerous to execute Stop_log_event
       and Rotate_log_event since they call flush_relay_log_info, which
-      is not allowed to call by other threads than the slave SQL
-      thread when the slave SQL thread is running.
+      is not allowed to call by other threads than the replica SQL
+      thread when the replica SQL thread is running.
     */
     my_error(ER_ONLY_FD_AND_RBR_EVENTS_ALLOWED_IN_BINLOG_STATEMENT,
              MYF(0), Log_event::get_type_str((Log_event_type)type));
@@ -311,7 +311,7 @@ end:
       delete rli->rows_query_ev;
       rli->rows_query_ev= NULL;
     }
-    rli->slave_close_thread_tables(thd);
+    rli->replica_close_thread_tables(thd);
   }
   thd->variables.option_bits= thd_options;
   my_free(buf);

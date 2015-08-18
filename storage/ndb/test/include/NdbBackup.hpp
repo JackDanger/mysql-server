@@ -36,15 +36,15 @@ public:
   int start() { unsigned unused =0; return start(unused); }
   int restore(unsigned _backup_id, bool restore_meta = true, bool restore_data = true, unsigned error_insert = 0);
 
-  int NFMaster(NdbRestarter& _restarter);
-  int NFMasterAsSlave(NdbRestarter& _restarter);
-  int NFSlave(NdbRestarter& _restarter);
-  int NF(NdbRestarter& _restarter, int *NFDuringBackup_codes, const int sz, bool onMaster);
+  int NFPrimary(NdbRestarter& _restarter);
+  int NFPrimaryAsReplica(NdbRestarter& _restarter);
+  int NFReplica(NdbRestarter& _restarter);
+  int NF(NdbRestarter& _restarter, int *NFDuringBackup_codes, const int sz, bool onPrimary);
 
-  int FailMaster(NdbRestarter& _restarter);
-  int FailMasterAsSlave(NdbRestarter& _restarter);
-  int FailSlave(NdbRestarter& _restarter);
-  int Fail(NdbRestarter& _restarter, int *Fail_codes, const int sz, bool onMaster);
+  int FailPrimary(NdbRestarter& _restarter);
+  int FailPrimaryAsReplica(NdbRestarter& _restarter);
+  int FailReplica(NdbRestarter& _restarter);
+  int Fail(NdbRestarter& _restarter, int *Fail_codes, const int sz, bool onPrimary);
   int startLogEvent();
   int checkBackupStatus();
 

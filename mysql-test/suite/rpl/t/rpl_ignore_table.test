@@ -1,20 +1,20 @@
 --source include/not_gtid_enabled.inc
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 #
 # BUG#16487
 #  
 # Requirement:
-# Multi-updates on ignored tables should not fail even if the slave does 
+# Multi-updates on ignored tables should not fail even if the replica does 
 # not have the ignored tables.
 #
 # Note table t1, t2, and t3 are ignored in the option file to this test.
 #
 
 --echo **** Test case for BUG#16487 ****
---echo **** Master ****
-connection master;
+--echo **** Primary ****
+connection primary;
 
 #
 # Remove NO_AUTO_CREATE_USER sql mode (default since 5.7).
@@ -25,19 +25,19 @@ set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 CREATE TABLE test.t4 (a int);
 CREATE TABLE test.t1 (a int);
 
-# Expect: The row must *not* by updated on slave, since t1 is ignored
+# Expect: The row must *not* by updated on replica, since t1 is ignored
 UPDATE test.t4 NATURAL JOIN test.t1 SET t1.a=5;
 
---echo **** Slave ****
-sync_slave_with_master;
+--echo **** Replica ****
+sync_replica_with_primary;
 SELECT * FROM t4;
 
 # Cleanup
-connection master;
+connection primary;
 DROP TABLE t1;
 DROP TABLE t4;
 
-sync_slave_with_master;
+sync_replica_with_primary;
 
 
 #
@@ -46,9 +46,9 @@ sync_slave_with_master;
 #
 
 --echo **** Test case for BUG#25482 ****
---echo **** Adding GRANTS on master ****
+--echo **** Adding GRANTS on primary ****
 
-connection master;
+connection primary;
 create table test.t1(a int);
 create table test.t4(a int);
 
@@ -91,23 +91,23 @@ flush privileges;
 show grants for mysqltest5@somehost;
 
 
-sync_slave_with_master;
+sync_replica_with_primary;
 
---echo **** Checking grants on slave ****
+--echo **** Checking grants on replica ****
 
-# Check that grants are replicated to slave
+# Check that grants are replicated to replica
 show grants for mysqltest2@localhost;
 show grants for mysqltest3@localhost;
 show grants for mysqltest4@localhost;
 show grants for mysqltest5@somehost;
 show grants for mysqltest6@localhost;
 
-# mysqltest1 should not be on slave
+# mysqltest1 should not be on replica
 --error 1141
 show grants for mysqltest1@localhost;
 
---echo **** Revoking grants on master ****
-connection master;
+--echo **** Revoking grants on primary ****
+connection primary;
 REVOKE SELECT ON test.t1 FROM mysqltest1@localhost;
 REVOKE SELECT ON mysqltest2.t2 FROM mysqltest4@localhost;
 REVOKE select(a) on t4
@@ -117,26 +117,26 @@ show grants for mysqltest1@localhost;
 show grants for mysqltest3@localhost;
 show grants for mysqltest4@localhost;
 
-sync_slave_with_master;
+sync_replica_with_primary;
 
---echo **** Checking grants on slave ****
+--echo **** Checking grants on replica ****
 
-# mysqltest1 should not be on slave
+# mysqltest1 should not be on replica
 --error 1141
 show grants for mysqltest1@localhost;
 show grants for mysqltest3@localhost;
 show grants for mysqltest4@localhost;
 
 # Cleanup
-# connection slave;
+# connection replica;
 # BUG31552 changes idempotency is not default any longer
 # In order the following `delete from mysql.user',
-# where mysqltest1 does not exist on slave,
-# to succeed on slave the mode is temporarily changed
-set global slave_exec_mode='IDEMPOTENT';
-call mtr.add_suppression("Slave SQL.*Could not execute Delete_rows event on table mysql.* Error_code: 1032");
+# where mysqltest1 does not exist on replica,
+# to succeed on replica the mode is temporarily changed
+set global replica_exec_mode='IDEMPOTENT';
+call mtr.add_suppression("Replica SQL.*Could not execute Delete_rows event on table mysql.* Error_code: 1032");
 
-connection master;
+connection primary;
 drop table t1, mysqltest2.t2;
 drop table t4;
 drop database mysqltest2;
@@ -144,18 +144,18 @@ delete from mysql.user where user like "mysqltest%";
 delete from mysql.db where user like "mysqltest%";
 #
 # BUG 27606 causes failure to replicate this statement
-# move it to slave instead
+# move it to replica instead
 #delete from mysql.tables_priv where user like "mysqltest%";
 delete from mysql.columns_priv where user like "mysqltest%";
 
-sync_slave_with_master;
+sync_replica_with_primary;
 # bug#31552: do not restore the mode here but later in order
 # to succeed with yet the following delete from mysql.tables_priv
 
 #BUG27606
 delete from mysql.tables_priv where user like "mysqltest%";
 
-connection master;
+connection primary;
 
 #BUG27606
 delete from mysql.tables_priv where user like "mysqltest%";
@@ -164,7 +164,7 @@ delete from mysql.tables_priv where user like "mysqltest%";
 # bug#22877 replication character sets get out of sync
 # using replicate-wild-ignore-table
 #
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS t5;
 --enable_warnings
@@ -175,15 +175,15 @@ SET @@session.character_set_client=33,@@session.collation_connection=192;
 CREATE TEMPORARY TABLE tmptbl504451f4258$1 (id INT NOT NULL) ENGINE=MEMORY;
 INSERT INTO t5 (word)  VALUES ('TEST’');
 SELECT HEX(word) FROM t5;
-sync_slave_with_master;
-set @@global.slave_exec_mode= default; # bug#31552 comments above
-connection slave;
+sync_replica_with_primary;
+set @@global.replica_exec_mode= default; # bug#31552 comments above
+connection replica;
 SELECT HEX(word) FROM t5;
 --error 1146
 SELECT * FROM tmptbl504451f4258$1;
-connection master;
+connection primary;
 DROP TABLE t5;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 --source include/rpl_end.inc
 --source include/force_restart.inc

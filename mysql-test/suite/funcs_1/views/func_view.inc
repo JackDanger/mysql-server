@@ -90,7 +90,7 @@
 #          This preserves the content of the table t1_values, which
 #          might be needed for replaying the situation.
 #          Example:
-#            ./mysql-test-run.pl   --socket=var/tmp/master.sock --start-dirty
+#            ./mysql-test-run.pl   --socket=var/tmp/primary.sock --start-dirty
 #       3. Issue the statements needed by using "mysql" or "mysqltest".
 #
 #       Maybe an internal routine of this test fails. Please ask me (mleich) or

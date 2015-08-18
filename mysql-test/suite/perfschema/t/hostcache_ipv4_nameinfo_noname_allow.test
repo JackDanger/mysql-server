@@ -23,7 +23,7 @@ set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 grant select on test.* to 'root'@'192.0.2.4';
 set sql_mode= @orig_sql_mode;
 
-connect (con1,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con1,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 select "Con1 is alive";
 select current_user();
 disconnect con1;
@@ -31,7 +31,7 @@ disconnect con1;
 --connection default
 set global debug= "+d,vio_peer_addr_fake_ipv4,getnameinfo_error_noname";
 
-connect (con2,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con2,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 select "Con2 is alive";
 select current_user();
 disconnect con2;
@@ -39,7 +39,7 @@ disconnect con2;
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con3,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con3,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 select "Con3 is alive";
 select current_user();
 disconnect con3;

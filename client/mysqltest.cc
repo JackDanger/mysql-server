@@ -298,11 +298,11 @@ struct Parser
   int read_lines,current_line;
 } parser;
 
-struct MasterPos
+struct PrimaryPos
 {
   char file[FN_REFLEN];
   ulong pos;
-} master_pos;
+} primary_pos;
 
 /* if set, all results are concated and compared against this file */
 const char *result_file_name= 0;
@@ -366,9 +366,9 @@ enum enum_commands {
   Q_LET,		    Q_ECHO,
   Q_WHILE,	    Q_END_BLOCK,
   Q_SYSTEM,	    Q_RESULT,
-  Q_REQUIRE,	    Q_SAVE_MASTER_POS,
-  Q_SYNC_WITH_MASTER,
-  Q_SYNC_SLAVE_WITH_MASTER,
+  Q_REQUIRE,	    Q_SAVE_PRIMARY_POS,
+  Q_SYNC_WITH_PRIMARY,
+  Q_SYNC_REPLICA_WITH_PRIMARY,
   Q_ERROR,
   Q_SEND,		    Q_REAP,
   Q_DIRTY_CLOSE,	    Q_REPLACE, Q_REPLACE_COLUMN,
@@ -377,7 +377,7 @@ enum enum_commands {
   Q_ENABLE_QUERY_LOG, Q_DISABLE_QUERY_LOG,
   Q_ENABLE_RESULT_LOG, Q_DISABLE_RESULT_LOG,
   Q_ENABLE_CONNECT_LOG, Q_DISABLE_CONNECT_LOG,
-  Q_WAIT_FOR_SLAVE_TO_STOP,
+  Q_WAIT_FOR_REPLICA_TO_STOP,
   Q_ENABLE_WARNINGS, Q_DISABLE_WARNINGS,
   Q_ENABLE_INFO, Q_DISABLE_INFO,
   Q_ENABLE_SESSION_TRACK_INFO, Q_DISABLE_SESSION_TRACK_INFO,
@@ -427,9 +427,9 @@ const char *command_names[]=
   "system",
   "result",
   "require",
-  "save_master_pos",
-  "sync_with_master",
-  "sync_slave_with_master",
+  "save_primary_pos",
+  "sync_with_primary",
+  "sync_replica_with_primary",
   "error",
   "send",
   "reap",
@@ -447,7 +447,7 @@ const char *command_names[]=
   "disable_result_log",
   "enable_connect_log",
   "disable_connect_log",
-  "wait_for_slave_to_stop",
+  "wait_for_replica_to_stop",
   "enable_warnings",
   "disable_warnings",
   "enable_info",
@@ -4427,9 +4427,9 @@ int do_echo(struct st_command *command)
 }
 
 
-void do_wait_for_slave_to_stop(struct st_command *c __attribute__((unused)))
+void do_wait_for_replica_to_stop(struct st_command *c __attribute__((unused)))
 {
-  static int SLAVE_POLL_INTERVAL= 300000;
+  static int REPLICA_POLL_INTERVAL= 300000;
   MYSQL* mysql = &cur_con->mysql;
   for (;;)
   {
@@ -4437,26 +4437,26 @@ void do_wait_for_slave_to_stop(struct st_command *c __attribute__((unused)))
     MYSQL_ROW row;
     int done;
 
-    if (mysql_query(mysql,"show status like 'Slave_running'") ||
+    if (mysql_query(mysql,"show status like 'Replica_running'") ||
 	!(res=mysql_store_result(mysql)))
-      die("Query failed while probing slave for stop: %s",
+      die("Query failed while probing replica for stop: %s",
 	  mysql_error(mysql));
     if (!(row=mysql_fetch_row(res)) || !row[1])
     {
       mysql_free_result(res);
-      die("Strange result from query while probing slave for stop");
+      die("Strange result from query while probing replica for stop");
     }
     done = !strcmp(row[1],"OFF");
     mysql_free_result(res);
     if (done)
       break;
-    my_sleep(SLAVE_POLL_INTERVAL);
+    my_sleep(REPLICA_POLL_INTERVAL);
   }
   return;
 }
 
 
-void do_sync_with_master2(struct st_command *command, long offset)
+void do_sync_with_primary2(struct st_command *command, long offset)
 {
   MYSQL_RES *res;
   MYSQL_ROW row;
@@ -4464,11 +4464,11 @@ void do_sync_with_master2(struct st_command *command, long offset)
   char query_buf[FN_REFLEN+128];
   int timeout= 300; /* seconds */
 
-  if (!master_pos.file[0])
-    die("Calling 'sync_with_master' without calling 'save_master_pos'");
+  if (!primary_pos.file[0])
+    die("Calling 'sync_with_primary' without calling 'save_primary_pos'");
 
-  sprintf(query_buf, "select master_pos_wait('%s', %ld, %d)",
-          master_pos.file, master_pos.pos + offset, timeout);
+  sprintf(query_buf, "select primary_pos_wait('%s', %ld, %d)",
+          primary_pos.file, primary_pos.pos + offset, timeout);
 
   if (mysql_query(mysql, query_buf))
     die("failed in '%s': %d: %s", query_buf, mysql_errno(mysql),
@@ -4491,22 +4491,22 @@ void do_sync_with_master2(struct st_command *command, long offset)
 
   if (!result_str || result < 0)
   {
-    /* master_pos_wait returned NULL or < 0 */
-    show_query(mysql, "SHOW MASTER STATUS");
-    show_query(mysql, "SHOW SLAVE STATUS");
+    /* primary_pos_wait returned NULL or < 0 */
+    show_query(mysql, "SHOW PRIMARY STATUS");
+    show_query(mysql, "SHOW REPLICA STATUS");
     show_query(mysql, "SHOW PROCESSLIST");
-    fprintf(stderr, "analyze: sync_with_master\n");
+    fprintf(stderr, "analyze: sync_with_primary\n");
 
     if (!result_str)
     {
       /*
-        master_pos_wait returned NULL. This indicates that
-        slave SQL thread is not started, the slave's master
+        primary_pos_wait returned NULL. This indicates that
+        replica SQL thread is not started, the replica's primary
         information is not initialized, the arguments are
         incorrect, or an error has occured
       */
       die("%.*s failed: '%s' returned NULL "\
-          "indicating slave SQL thread failure",
+          "indicating replica SQL thread failure",
           static_cast<int>(command->first_word_len), command->query, query_buf);
 
     }
@@ -4525,7 +4525,7 @@ void do_sync_with_master2(struct st_command *command, long offset)
   return;
 }
 
-void do_sync_with_master(struct st_command *command)
+void do_sync_with_primary(struct st_command *command)
 {
   long offset= 0;
   char *p= command->first_argument;
@@ -4539,7 +4539,7 @@ void do_sync_with_master(struct st_command *command)
       die("Invalid integer argument \"%s\"", offset_start);
     command->last_argument= p;
   }
-  do_sync_with_master2(command, offset);
+  do_sync_with_primary2(command, offset);
   return;
 }
 
@@ -4652,7 +4652,7 @@ ndb_wait_for_binlog_injector(void)
       do_continue= 0;
     else if (count > (WaitSeconds * 10))
     {
-      die("do_save_master_pos() timed out after %u s waiting for "
+      die("do_save_primary_pos() timed out after %u s waiting for "
           "last committed epoch to be applied by the "
           "Ndb binlog injector.  "
           "Ndb epoch %llu/%llu to be handled.  "
@@ -4672,29 +4672,29 @@ ndb_wait_for_binlog_injector(void)
 }
 
 
-int do_save_master_pos()
+int do_save_primary_pos()
 {
   MYSQL_RES *res;
   MYSQL_ROW row;
   MYSQL *mysql = &cur_con->mysql;
   const char *query;
-  DBUG_ENTER("do_save_master_pos");
+  DBUG_ENTER("do_save_primary_pos");
   /*
     when ndb binlog is on, this call will wait until last updated epoch
     (locally in the mysqld) has been received into the binlog
   */
   ndb_wait_for_binlog_injector();
 
-  if (mysql_query(mysql, query= "show master status"))
-    die("failed in 'show master status': %d %s",
+  if (mysql_query(mysql, query= "show primary status"))
+    die("failed in 'show primary status': %d %s",
 	mysql_errno(mysql), mysql_error(mysql));
 
   if (!(res = mysql_store_result(mysql)))
     die("mysql_store_result() retuned NULL for '%s'", query);
   if (!(row = mysql_fetch_row(res)))
-    die("empty result in show master status");
-  my_stpnmov(master_pos.file, row[0], sizeof(master_pos.file)-1);
-  master_pos.pos = strtoul(row[1], (char**) 0, 10);
+    die("empty result in show primary status");
+  my_stpnmov(primary_pos.file, row[0], sizeof(primary_pos.file)-1);
+  primary_pos.pos = strtoul(row[1], (char**) 0, 10);
   mysql_free_result(res);
   DBUG_RETURN(0);
 }
@@ -7288,7 +7288,7 @@ void init_win_path_patterns()
   const char* paths[] = { "$MYSQL_TEST_DIR",
                           "$MYSQL_TMP_DIR",
                           "$MYSQLTEST_VARDIR",
-                          "$MASTER_MYSOCK",
+                          "$PRIMARY_MYSOCK",
                           "$MYSQL_SHAREDIR",
                           "$MYSQL_LIBDIR",
                           "./test/",
@@ -9024,7 +9024,7 @@ int main(int argc, char **argv)
     var_set_string("MYSQL_SYSTEM_ARCHITECTURE", "32");
   }
 
-  memset(&master_pos, 0, sizeof(master_pos));
+  memset(&primary_pos, 0, sizeof(primary_pos));
 
   parser.current_line= parser.read_lines= 0;
   memset(&var_reg, 0, sizeof(var_reg));
@@ -9277,7 +9277,7 @@ int main(int argc, char **argv)
       case Q_SOURCE: do_source(command); break;
       case Q_SLEEP: do_sleep(command, 0); break;
       case Q_REAL_SLEEP: do_sleep(command, 1); break;
-      case Q_WAIT_FOR_SLAVE_TO_STOP: do_wait_for_slave_to_stop(command); break;
+      case Q_WAIT_FOR_REPLICA_TO_STOP: do_wait_for_replica_to_stop(command); break;
       case Q_INC: do_modify_var(command, DO_INC); break;
       case Q_DEC: do_modify_var(command, DO_DEC); break;
       case Q_ECHO: do_echo(command); command_executed++; break;
@@ -9437,16 +9437,16 @@ int main(int argc, char **argv)
       case Q_REPLACE_COLUMN:
 	do_get_replace_column(command);
 	break;
-      case Q_SAVE_MASTER_POS: do_save_master_pos(); break;
-      case Q_SYNC_WITH_MASTER: do_sync_with_master(command); break;
-      case Q_SYNC_SLAVE_WITH_MASTER:
+      case Q_SAVE_PRIMARY_POS: do_save_primary_pos(); break;
+      case Q_SYNC_WITH_PRIMARY: do_sync_with_primary(command); break;
+      case Q_SYNC_REPLICA_WITH_PRIMARY:
       {
-	do_save_master_pos();
+	do_save_primary_pos();
 	if (*command->first_argument)
 	  select_connection(command);
 	else
-	  select_connection_name("slave");
-	do_sync_with_master2(command, 0);
+	  select_connection_name("replica");
+	do_sync_with_primary2(command, 0);
 	break;
       }
       case Q_COMMENT:

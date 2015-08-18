@@ -22,20 +22,20 @@
 -- source include/have_innodb.inc
 -- source include/have_myisam.inc
 -- source include/have_debug.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 -- source include/have_binlog_format_statement.inc
 
 -- echo #######################################################################
--- echo ####################### PART 1: MASTER TESTS ##########################
+-- echo ####################### PART 1: PRIMARY TESTS ##########################
 -- echo #######################################################################
 
 
-### ACTION: stopping slave as it is not needed for the first part of
+### ACTION: stopping replica as it is not needed for the first part of
 ###         the test
 
--- connection slave
--- source include/stop_slave.inc
--- connection master
+-- connection replica
+-- source include/stop_replica.inc
+-- connection primary
 
 --disable_query_log
 call mtr.add_suppression("Can't generate a unique log-filename");
@@ -44,7 +44,7 @@ call mtr.add_suppression("Warning: [+-]?\d+ files and [+-]?\d+ streams is left o
 call mtr.add_suppression("Error writing file .*");
 call mtr.add_suppression("The server was unable to create a new log file. "
                          "An incident event has been written to the "
-                         "binary log which will stop the slaves.");
+                         "binary log which will stop the replicas.");
 --enable_query_log
 
 --let $old_debug = `select @@global.debug`
@@ -66,7 +66,7 @@ call mtr.add_suppression("The server was unable to create a new log file. "
 -- replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 -- eval SELECT repeat('x',10) INTO OUTFILE '$load_file2'
 
-RESET MASTER;
+RESET PRIMARY;
 
 -- echo ###################### TEST #1
 
@@ -81,7 +81,7 @@ FLUSH LOGS;
 ###            failure back to the user if find_uniq_filename fails
 ###            (should show just one binlog)
 
-RESET MASTER;
+RESET PRIMARY;
 --disable_query_log
 eval SET GLOBAL debug=IF(LENGTH('$old_debug') > 0, CONCAT('$old_debug', ":d,error_unique_log_filename"), 'd,error_unique_log_filename');
 --enable_query_log
@@ -94,7 +94,7 @@ FLUSH LOGS;
 --disable_query_log
 eval SET GLOBAL debug='$old_debug';
 --enable_query_log
-RESET MASTER;
+RESET PRIMARY;
 
 -- echo ###################### TEST #3
 
@@ -104,7 +104,7 @@ CREATE TABLE t1 (a INT);
 CREATE TABLE t2 (a VARCHAR(16384)) Engine=InnoDB;
 CREATE TABLE t4 (a VARCHAR(16384)) Engine=MyISAM;
 INSERT INTO t1 VALUES (1);
-RESET MASTER;
+RESET PRIMARY;
 
 ### ASSERTION: we force rotation of the binary log because it exceeds
 ###            the max_binlog_size option (should show three binary
@@ -122,7 +122,7 @@ RESET MASTER;
 eval SET GLOBAL debug='$old_debug';
 --enable_query_log
 DELETE FROM t2;
-RESET MASTER;
+RESET PRIMARY;
 
 -- echo ###################### TEST #4
 
@@ -149,7 +149,7 @@ SELECT count(*) FROM t2;
 eval SET GLOBAL debug='$old_debug';
 --enable_query_log
 DELETE FROM t2;
-RESET MASTER;
+RESET PRIMARY;
 
 -- echo ###################### TEST #5
 
@@ -171,7 +171,7 @@ SELECT count(*) FROM t2;
 eval SET GLOBAL debug='$old_debug';
 --enable_query_log
 DELETE FROM t2;
-RESET MASTER;
+RESET PRIMARY;
 
 -- echo ###################### TEST #6
 
@@ -203,7 +203,7 @@ SET AUTOCOMMIT= 1;
 eval SET GLOBAL debug='$old_debug';
 --enable_query_log
 DELETE FROM t2;
-RESET MASTER;
+RESET PRIMARY;
 
 -- echo ###################### TEST #7
 
@@ -235,7 +235,7 @@ eval SET GLOBAL debug='$old_debug';
 
 # clean up and move to next test
 DELETE FROM t4;
-RESET MASTER;
+RESET PRIMARY;
 
 -- echo ###################### TEST #8
 
@@ -328,7 +328,7 @@ eval SET GLOBAL debug='$old_debug';
 call mtr.add_suppression("MYSQL_BIN_LOG::open failed to sync the index file.");
 call mtr.add_suppression("Could not open .*");
 
-RESET MASTER;
+RESET PRIMARY;
 SHOW WARNINGS;
 
 # +d,fault_injection_registering_index => injects fault on MYSQL_BIN_LOG::open
@@ -337,7 +337,7 @@ SHOW WARNINGS;
 eval SET GLOBAL debug=IF(LENGTH('$old_debug') > 0, CONCAT('$old_debug', ":d,fault_injection_registering_index"), 'd,fault_injection_registering_index');
 SET GLOBAL binlog_error_action= IGNORE_ERROR;
 --enable_query_log
--- replace_regex /\.[\\\/]master/master/ /errno: 1 - .*\)/errno: 1 - Operation not permitted)/
+-- replace_regex /\.[\\\/]primary/primary/ /errno: 1 - .*\)/errno: 1 - Operation not permitted)/
 -- error ER_CANT_OPEN_FILE
 FLUSH LOGS;
 --disable_query_log
@@ -371,14 +371,14 @@ eval SET GLOBAL debug=IF(LENGTH('$old_debug') > 0, CONCAT('$old_debug', ":d,faul
 SET GLOBAL binlog_error_action= IGNORE_ERROR;
 --enable_query_log
 # normalize strerror message for solaris10-sparc-64bit as long as errno is OK
--- replace_regex /\.[\\\/]master/master/ /errno: 1 - .*\)/errno: 1 - Operation not permitted)/
+-- replace_regex /\.[\\\/]primary/primary/ /errno: 1 - .*\)/errno: 1 - Operation not permitted)/
 -- error ER_CANT_OPEN_FILE
 FLUSH LOGS;
 --disable_query_log
 eval SET GLOBAL debug='$old_debug';
 --enable_query_log
 
-RESET MASTER;
+RESET PRIMARY;
 
 # issue some statements and check that they don't fail
 CREATE TABLE t5 (a INT);
@@ -409,7 +409,7 @@ FLUSH LOGS;
 eval SET GLOBAL debug='$old_debug';
 --enable_query_log
 
-RESET MASTER;
+RESET PRIMARY;
 # issue some statements and check that they don't fail
 CREATE TABLE t5 (a INT);
 INSERT INTO t4 VALUES ('bbbbb');
@@ -428,24 +428,24 @@ eval SET GLOBAL debug= '$old_debug';
 --eval SET GLOBAL binlog_error_action= $saved_binlog_error_action
 --enable_query_log
 DROP TABLE t1, t2, t4;
-RESET MASTER;
+RESET PRIMARY;
 
-# restart slave again
--- connection slave
--- source include/start_slave.inc
--- connection master
+# restart replica again
+-- connection replica
+-- source include/start_replica.inc
+-- connection primary
 
 -- echo #######################################################################
--- echo ####################### PART 2: SLAVE TESTS ###########################
+-- echo ####################### PART 2: REPLICA TESTS ###########################
 -- echo #######################################################################
 
 ### setup
 --source include/rpl_reset.inc
--- connection slave
+-- connection replica
 
-# slave suppressions
+# replica suppressions
 
-call mtr.add_suppression("Slave I/O for channel '': Relay log write failure: could not queue event from master.*");
+call mtr.add_suppression("Replica I/O for channel '': Relay log write failure: could not queue event from primary.*");
 call mtr.add_suppression("Error writing file .*");
 call mtr.add_suppression("Could not open .*");
 call mtr.add_suppression("MYSQL_BIN_LOG::open failed to sync the index file.");
@@ -455,8 +455,8 @@ SET GLOBAL binlog_error_action= IGNORE_ERROR;
 
 #### ASSERTION: check against unique log filename error
 -- let $io_thd_injection_fault_flag= error_unique_log_filename
--- let $slave_io_errno= 1595
--- let $show_slave_io_error= 1
+-- let $replica_io_errno= 1595
+-- let $show_replica_io_error= 1
 -- source include/io_thd_fault_injection.inc
 
 -- echo ###################### TEST #14
@@ -464,8 +464,8 @@ SET GLOBAL binlog_error_action= IGNORE_ERROR;
 
 #### ASSERTION: check against rotate failing
 -- let $io_thd_injection_fault_flag= fault_injection_new_file_rotate_event
--- let $slave_io_errno= 1595
--- let $show_slave_io_error= 1
+-- let $replica_io_errno= 1595
+-- let $show_replica_io_error= 1
 -- source include/io_thd_fault_injection.inc
 
 -- echo ###################### TEST #15
@@ -473,8 +473,8 @@ SET GLOBAL binlog_error_action= IGNORE_ERROR;
 
 #### ASSERTION: check against relay log open failure
 -- let $io_thd_injection_fault_flag= fault_injection_registering_index
--- let $slave_io_errno= 1595
--- let $show_slave_io_error= 1
+-- let $replica_io_errno= 1595
+-- let $show_replica_io_error= 1
 -- source include/io_thd_fault_injection.inc
 
 -- echo ###################### TEST #16
@@ -482,17 +482,17 @@ SET GLOBAL binlog_error_action= IGNORE_ERROR;
 
 #### ASSERTION: check against relay log index open failure
 -- let $io_thd_injection_fault_flag= fault_injection_openning_index
--- let $slave_io_errno= 1595
--- let $show_slave_io_error= 1
+-- let $replica_io_errno= 1595
+-- let $show_replica_io_error= 1
 -- source include/io_thd_fault_injection.inc
 
 ### clean up
--- source include/stop_slave_sql.inc
+-- source include/stop_replica_sql.inc
 --disable_query_log
 eval SET GLOBAL debug='$old_debug';
 --eval SET GLOBAL binlog_error_action= $saved_binlog_error_action
 --enable_query_log
-RESET SLAVE;
-RESET MASTER;
+RESET REPLICA;
+RESET PRIMARY;
 --let $rpl_only_running_threads= 1
 --source include/rpl_end.inc

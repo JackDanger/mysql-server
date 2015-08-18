@@ -2094,43 +2094,43 @@ static bool mysql_uninstall_plugin(THD *thd, const LEX_STRING *name)
   }
 
 #ifdef HAVE_REPLICATION
-  /* Block Uninstallation of semi_sync plugins (Master/Slave)
+  /* Block Uninstallation of semi_sync plugins (Primary/Replica)
      when they are busy
    */
   char buff[20];
   size_t buff_length;
   /*
-    Master: If there are active semi sync slaves for this Master,
-    then that means it is busy and rpl_semi_sync_master plugin
-    cannot be uninstalled. To check whether the master
-    has any semi sync slaves or not, check Rpl_semi_sync_master_cliens
+    Primary: If there are active semi sync replicas for this Primary,
+    then that means it is busy and rpl_semi_sync_primary plugin
+    cannot be uninstalled. To check whether the primary
+    has any semi sync replicas or not, check Rpl_semi_sync_primary_cliens
     status variable value, if it is not 0, that means it is busy.
   */
-  if (!strcmp(name->str, "rpl_semi_sync_master") &&
+  if (!strcmp(name->str, "rpl_semi_sync_primary") &&
       get_status_var(thd,
                      plugin->plugin->status_vars,
-                     "Rpl_semi_sync_master_clients",
+                     "Rpl_semi_sync_primary_clients",
                      buff, OPT_DEFAULT, &buff_length) &&
       strcmp(buff,"0") )
   {
     my_error(ER_PLUGIN_CANNOT_BE_UNINSTALLED, MYF(0), name->str,
-             "Stop any active semisynchronous slaves of this master first.");
+             "Stop any active semisynchronous replicas of this primary first.");
     goto err;
   }
-  /* Slave: If there is semi sync enabled IO thread active on this Slave,
-    then that means plugin is busy and rpl_semi_sync_slave plugin
+  /* Replica: If there is semi sync enabled IO thread active on this Replica,
+    then that means plugin is busy and rpl_semi_sync_replica plugin
     cannot be uninstalled. To check whether semi sync
-    IO thread is active or not, check Rpl_semi_sync_slave_status status
+    IO thread is active or not, check Rpl_semi_sync_replica_status status
     variable value, if it is ON, that means it is busy.
   */
-  if (!strcmp(name->str, "rpl_semi_sync_slave") &&
+  if (!strcmp(name->str, "rpl_semi_sync_replica") &&
       get_status_var(thd, plugin->plugin->status_vars,
-                     "Rpl_semi_sync_slave_status",
+                     "Rpl_semi_sync_replica_status",
                      buff, OPT_DEFAULT, &buff_length) &&
       !strcmp(buff,"ON") )
   {
     my_error(ER_PLUGIN_CANNOT_BE_UNINSTALLED, MYF(0), name->str,
-             "Stop any active semisynchronous I/O threads on this slave first.");
+             "Stop any active semisynchronous I/O threads on this replica first.");
     goto err;
   }
 #endif

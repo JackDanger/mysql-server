@@ -1,6 +1,6 @@
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 CREATE TABLE mysql.ndb_replication
   (db VARBINARY(63),
@@ -15,7 +15,7 @@ CREATE TABLE mysql.ndb_replication
 insert into mysql.ndb_replication values ("test", "t1", 0, 7, NULL);
 
 
---echo Create table with one row missing on slave
+--echo Create table with one row missing on replica
 
 create table test.t1 (a int primary key, b int) engine=ndb;
 
@@ -23,22 +23,22 @@ insert into test.t1 values (3,3), (4,4);
 
 select * from test.t1 order by a;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
+--connection replica
 
 delete from test.t1 where a=4;
 
 select * from test.t1 order by a;
 
---echo Now create epoch transaction at master with 1 applicable and
+--echo Now create epoch transaction at primary with 1 applicable and
 --echo n unapplicable operations
 --echo We hope that at least some of the unapplicable operations
 --echo will run in the same batch as the applicable one (so attempting
 --echo to get a COMMIT_ACK_MARKER), but will have their error handling
 --echo run afterwards.
 
---connection master
+--connection primary
 
 let $update_count=100;
 
@@ -56,9 +56,9 @@ while ($update_count)
 }
 --enable_query_log
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
+--connection replica
 
 select * from test.t1 order by a;
 
@@ -90,10 +90,10 @@ commit;
 
 --echo Cleanup
 
---connection master
+--connection primary
 drop table test.t1;
 drop table mysql.ndb_replication;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
 --source include/rpl_end.inc

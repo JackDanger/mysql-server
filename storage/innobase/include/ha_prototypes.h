@@ -124,14 +124,14 @@ innobase_convert_name(
 	THD*		thd);	/*!< in: MySQL connection thread, or NULL */
 
 /******************************************************************//**
-Returns true if the thread is the replication thread on the slave
+Returns true if the thread is the replication thread on the replica
 server. Used in srv_conc_enter_innodb() to determine if the thread
 should be allowed to enter InnoDB - the replication thread is treated
 differently than other threads. Also used in
 srv_conc_force_exit_innodb().
 @return true if thd is the replication thread */
 ibool
-thd_is_replication_slave_thread(
+thd_is_replication_replica_thread(
 /*============================*/
 	THD*	thd);	/*!< in: thread handle */
 

@@ -328,7 +328,7 @@ void *thr_find_all_keys(void *arg)
 
   { /* Add extra block since DBUG_ENTER declare variables */
     DBUG_ENTER("thr_find_all_keys");
-    DBUG_PRINT("enter", ("master: %d", sort_param->master));
+    DBUG_PRINT("enter", ("primary: %d", sort_param->primary));
     if (sort_param->sort_info->got_error)
       goto err;
 
@@ -481,7 +481,7 @@ ok:
       because of an error it may reach this earlier - don't allow it
       to detach the writer thread.
     */
-    if (sort_param->master && sort_param->sort_info->info->rec_cache.share)
+    if (sort_param->primary && sort_param->sort_info->info->rec_cache.share)
       remove_io_thread(&sort_param->sort_info->info->rec_cache);
 
     /* Readers detach from the share if any. Avoid others to be blocked. */

@@ -152,7 +152,7 @@ our $opt_suites_default= "main,binlog,rpl"; # Default suites to run
 our $opt_script_debug= 0;  # Script debugging, enable with --script-debug
 our $opt_verbose= 0;  # Verbose output, enable with --verbose
 
-our $exe_master_mysqld;
+our $exe_primary_mysqld;
 our $exe_mysql;
 our $exe_mysqladmin;
 our $exe_mysql_upgrade;
@@ -170,7 +170,7 @@ our $file_mysql_fix_privilege_tables;
 our $exe_mysqltest;
 our $exe_ndbd;
 our $exe_ndb_mgmd;
-our $exe_slave_mysqld;
+our $exe_replica_mysqld;
 our $exe_my_print_defaults;
 our $exe_perror;
 our $lib_udf_example;
@@ -227,24 +227,24 @@ our $opt_client_debugger;
 
 our $opt_gprof;
 our $opt_gprof_dir;
-our $opt_gprof_master;
-our $opt_gprof_slave;
+our $opt_gprof_primary;
+our $opt_gprof_replica;
 
-our $master;
-our $slave;
+our $primary;
+our $replica;
 our $clusters;
 
 our $instance_manager;
 
-our $opt_master_myport;
-our $opt_slave_myport;
+our $opt_primary_myport;
+our $opt_replica_myport;
 our $im_port;
 our $im_mysqld1_port;
 our $im_mysqld2_port;
 our $opt_ndbcluster_port;
 our $opt_ndbconnectstring;
-our $opt_ndbcluster_port_slave;
-our $opt_ndbconnectstring_slave;
+our $opt_ndbcluster_port_replica;
+our $opt_ndbconnectstring_replica;
 
 our $opt_record;
 my $opt_report_features;
@@ -252,8 +252,8 @@ our $opt_check_testcases;
 our $opt_mark_progress;
 
 our $opt_skip_rpl;
-our $max_slave_num= 0;
-our $max_master_num= 1;
+our $max_replica_num= 0;
+our $max_primary_num= 1;
 our $use_innodb;
 our $opt_skip_test;
 our $opt_skip_im;
@@ -296,13 +296,13 @@ our $opt_stress_test_file=     "";
 our $opt_warnings;
 
 our $opt_skip_ndbcluster= 0;
-our $opt_skip_ndbcluster_slave= 0;
+our $opt_skip_ndbcluster_replica= 0;
 our $opt_with_ndbcluster= 0;
 our $opt_with_ndbcluster_only= 0;
 our $glob_ndbcluster_supported= 0;
 our $opt_ndb_extra_test= 0;
-our $opt_skip_master_binlog= 0;
-our $opt_skip_slave_binlog= 0;
+our $opt_skip_primary_binlog= 0;
+our $opt_skip_replica_binlog= 0;
 
 our $exe_ndb_mgm;
 our $exe_ndb_waiter;
@@ -360,8 +360,8 @@ sub run_testcase_stop_servers ($$$);
 sub run_testcase_start_servers ($);
 sub run_testcase_check_skip_test($);
 sub report_failure_and_restart ($);
-sub do_before_start_master ($);
-sub do_before_start_slave ($);
+sub do_before_start_primary ($);
+sub do_before_start_replica ($);
 sub ndbd_start ($$$);
 sub ndb_mgmd_start ($);
 sub mysqld_start ($$$);
@@ -454,17 +454,17 @@ sub main () {
 	$need_ndbcluster||= $test->{ndb_test};
 	$need_im||= $test->{component_id} eq 'im';
 
-	# Count max number of slaves used by a test case
-	if ( $test->{slave_num} > $max_slave_num) {
-	  $max_slave_num= $test->{slave_num};
-	  mtr_error("Too many slaves") if $max_slave_num > 3;
+	# Count max number of replicas used by a test case
+	if ( $test->{replica_num} > $max_replica_num) {
+	  $max_replica_num= $test->{replica_num};
+	  mtr_error("Too many replicas") if $max_replica_num > 3;
 	}
 
-	# Count max number of masters used by a test case
-	if ( $test->{master_num} > $max_master_num) {
-	  $max_master_num= $test->{master_num};
-	  mtr_error("Too many masters") if $max_master_num > 2;
-	  mtr_error("Too few masters") if $max_master_num < 1;
+	# Count max number of primarys used by a test case
+	if ( $test->{primary_num} > $max_primary_num) {
+	  $max_primary_num= $test->{primary_num};
+	  mtr_error("Too many primarys") if $max_primary_num > 2;
+	  mtr_error("Too few primarys") if $max_primary_num < 1;
 	}
       }
       $use_innodb||= $test->{'innodb_test'};
@@ -474,13 +474,13 @@ sub main () {
     if ( !$need_ndbcluster )
     {
       $opt_skip_ndbcluster= 1;
-      $opt_skip_ndbcluster_slave= 1;
+      $opt_skip_ndbcluster_replica= 1;
     }
 
-    # Check if slave cluster can be skipped
-    if ($max_slave_num == 0)
+    # Check if replica cluster can be skipped
+    if ($max_replica_num == 0)
     {
-      $opt_skip_ndbcluster_slave= 1;
+      $opt_skip_ndbcluster_replica= 1;
     }
 
     # Check if im can be skipped
@@ -580,11 +580,11 @@ sub command_line_setup () {
              'force'                    => \$opt_force,
              'with-ndbcluster-only'     => \$opt_with_ndbcluster_only,
              'skip-ndbcluster|skip-ndb' => \$opt_skip_ndbcluster,
-             'skip-ndbcluster-slave|skip-ndb-slave'
-                                        => \$opt_skip_ndbcluster_slave,
+             'skip-ndbcluster-replica|skip-ndb-replica'
+                                        => \$opt_skip_ndbcluster_replica,
              'ndb-extra-test'           => \$opt_ndb_extra_test,
-             'skip-master-binlog'       => \$opt_skip_master_binlog,
-             'skip-slave-binlog'        => \$opt_skip_slave_binlog,
+             'skip-primary-binlog'       => \$opt_skip_primary_binlog,
+             'skip-replica-binlog'        => \$opt_skip_replica_binlog,
              'do-test=s'                => \$opt_do_test,
              'start-from=s'             => \$opt_start_from,
              'suite|suites=s'           => \$opt_suites,
@@ -596,10 +596,10 @@ sub command_line_setup () {
              'skip-combination'         => \$opt_skip_combination,
 
              # Specify ports
-             'master_port=i'            => \$opt_master_myport,
-             'slave_port=i'             => \$opt_slave_myport,
+             'primary_port=i'            => \$opt_primary_myport,
+             'replica_port=i'             => \$opt_replica_myport,
              'ndbcluster-port|ndbcluster_port=i' => \$opt_ndbcluster_port,
-             'ndbcluster-port-slave=i'  => \$opt_ndbcluster_port_slave,
+             'ndbcluster-port-replica=i'  => \$opt_ndbcluster_port_replica,
              'im-port=i'                => \$im_port, # Instance Manager port.
              'im-mysqld1-port=i'        => \$im_mysqld1_port, # Port of mysqld, controlled by IM
              'im-mysqld2-port=i'        => \$im_mysqld2_port, # Port of mysqld, controlled by IM
@@ -616,7 +616,7 @@ sub command_line_setup () {
              # Run test on running server
              'extern'                   => \$opt_extern,
              'ndb-connectstring=s'       => \$opt_ndbconnectstring,
-             'ndb-connectstring-slave=s' => \$opt_ndbconnectstring_slave,
+             'ndb-connectstring-replica=s' => \$opt_ndbconnectstring_replica,
 
              # Debugging
              'gdb'                      => \$opt_gdb,
@@ -629,8 +629,8 @@ sub command_line_setup () {
 	     'debugger=s'               => \$opt_debugger,
 	     'client-debugger=s'        => \$opt_client_debugger,
              'strace-client'            => \$opt_strace_client,
-             'master-binary=s'          => \$exe_master_mysqld,
-             'slave-binary=s'           => \$exe_slave_mysqld,
+             'primary-binary=s'          => \$exe_primary_mysqld,
+             'replica-binary=s'           => \$exe_replica_mysqld,
              'max-save-core=i'          => \$opt_max_save_core,
 
              # Coverage, profiling etc
@@ -849,7 +849,7 @@ sub command_line_setup () {
   else
   {
     $mysqld_variables{'port'}= 3306;
-    $mysqld_variables{'master-port'}= 3306;
+    $mysqld_variables{'primary-port'}= 3306;
   }
 
   if ( $opt_comment )
@@ -1077,10 +1077,10 @@ sub command_line_setup () {
   }
 
   # --------------------------------------------------------------------------
-  # Check if special exe was selected for master or slave
+  # Check if special exe was selected for primary or replica
   # --------------------------------------------------------------------------
-  $exe_master_mysqld= $exe_master_mysqld || $exe_mysqld;
-  $exe_slave_mysqld=  $exe_slave_mysqld  || $exe_mysqld;
+  $exe_primary_mysqld= $exe_primary_mysqld || $exe_mysqld;
+  $exe_replica_mysqld=  $exe_replica_mysqld  || $exe_mysqld;
 
   # --------------------------------------------------------------------------
   # Check valgrind arguments
@@ -1152,7 +1152,7 @@ sub command_line_setup () {
     }
   }
 
-  # On QNX, /tmp/dir/master.sock and /tmp/dir//master.sock seem to be
+  # On QNX, /tmp/dir/primary.sock and /tmp/dir//primary.sock seem to be
   # considered different, so avoid the extra slash (/) in the socket
   # paths.
   my $sockdir = $opt_tmpdir;
@@ -1163,77 +1163,77 @@ sub command_line_setup () {
   # socket path names.
   $sockdir = tempdir(CLEANUP => 0) if ( length($sockdir) >= 70 );
 
-  $master->[0]=
+  $primary->[0]=
   {
    pid           => 0,
-   type          => "master",
+   type          => "primary",
    idx           => 0,
-   path_myddir   => "$opt_vardir/master-data",
-   path_myerr    => "$opt_vardir/log/master.err",
-   path_pid    => "$opt_vardir/run/master.pid",
-   path_sock   => "$sockdir/master.sock",
-   port   =>  $opt_master_myport,
+   path_myddir   => "$opt_vardir/primary-data",
+   path_myerr    => "$opt_vardir/log/primary.err",
+   path_pid    => "$opt_vardir/run/primary.pid",
+   path_sock   => "$sockdir/primary.sock",
+   port   =>  $opt_primary_myport,
    start_timeout =>  400, # enough time create innodb tables
    cluster       =>  0, # index in clusters list
    start_opts    => [],
   };
 
-  $master->[1]=
+  $primary->[1]=
   {
    pid           => 0,
-   type          => "master",
+   type          => "primary",
    idx           => 1,
-   path_myddir   => "$opt_vardir/master1-data",
-   path_myerr    => "$opt_vardir/log/master1.err",
-   path_pid    => "$opt_vardir/run/master1.pid",
-   path_sock   => "$sockdir/master1.sock",
-   port   => $opt_master_myport + 1,
+   path_myddir   => "$opt_vardir/primary1-data",
+   path_myerr    => "$opt_vardir/log/primary1.err",
+   path_pid    => "$opt_vardir/run/primary1.pid",
+   path_sock   => "$sockdir/primary1.sock",
+   port   => $opt_primary_myport + 1,
    start_timeout => 400, # enough time create innodb tables
    cluster       =>  0, # index in clusters list
    start_opts    => [],
   };
 
-  $slave->[0]=
+  $replica->[0]=
   {
    pid           => 0,
-   type          => "slave",
+   type          => "replica",
    idx           => 0,
-   path_myddir   => "$opt_vardir/slave-data",
-   path_myerr    => "$opt_vardir/log/slave.err",
-   path_pid    => "$opt_vardir/run/slave.pid",
-   path_sock   => "$sockdir/slave.sock",
-   port   => $opt_slave_myport,
+   path_myddir   => "$opt_vardir/replica-data",
+   path_myerr    => "$opt_vardir/log/replica.err",
+   path_pid    => "$opt_vardir/run/replica.pid",
+   path_sock   => "$sockdir/replica.sock",
+   port   => $opt_replica_myport,
    start_timeout => 400,
 
    cluster       =>  1, # index in clusters list
    start_opts    => [],
   };
 
-  $slave->[1]=
+  $replica->[1]=
   {
    pid           => 0,
-   type          => "slave",
+   type          => "replica",
    idx           => 1,
-   path_myddir   => "$opt_vardir/slave1-data",
-   path_myerr    => "$opt_vardir/log/slave1.err",
-   path_pid    => "$opt_vardir/run/slave1.pid",
-   path_sock   => "$sockdir/slave1.sock",
-   port   => $opt_slave_myport + 1,
+   path_myddir   => "$opt_vardir/replica1-data",
+   path_myerr    => "$opt_vardir/log/replica1.err",
+   path_pid    => "$opt_vardir/run/replica1.pid",
+   path_sock   => "$sockdir/replica1.sock",
+   port   => $opt_replica_myport + 1,
    start_timeout => 300,
    cluster       =>  -1, # index in clusters list
    start_opts    => [],
   };
 
-  $slave->[2]=
+  $replica->[2]=
   {
    pid           => 0,
-   type          => "slave",
+   type          => "replica",
    idx           => 2,
-   path_myddir   => "$opt_vardir/slave2-data",
-   path_myerr    => "$opt_vardir/log/slave2.err",
-   path_pid    => "$opt_vardir/run/slave2.pid",
-   path_sock   => "$sockdir/slave2.sock",
-   port   => $opt_slave_myport + 2,
+   path_myddir   => "$opt_vardir/replica2-data",
+   path_myerr    => "$opt_vardir/log/replica2.err",
+   path_pid    => "$opt_vardir/run/replica2.pid",
+   path_sock   => "$sockdir/replica2.sock",
+   port   => $opt_replica_myport + 2,
    start_timeout => 300,
    cluster       =>  -1, # index in clusters list
    start_opts    => [],
@@ -1247,7 +1247,7 @@ sub command_line_setup () {
    path_angel_pid =>  "$opt_vardir/run/im.angel.pid",
    path_sock =>       "$sockdir/im.sock",
    port =>            $im_port,
-   start_timeout =>   $master->[0]->{'start_timeout'},
+   start_timeout =>   $primary->[0]->{'start_timeout'},
    admin_login =>     'im_admin',
    admin_password =>  'im_admin_secret',
    admin_sha1 =>      '*598D51AD2DFF7792045D6DF3DDF9AA1AF737B295',
@@ -1281,7 +1281,7 @@ sub command_line_setup () {
   my $data_dir= "$opt_vardir/ndbcluster-$opt_ndbcluster_port";
   $clusters->[0]=
   {
-   name            => "Master",
+   name            => "Primary",
    nodes           => 2,
    port            => "$opt_ndbcluster_port",
    data_dir        => "$data_dir",
@@ -1291,14 +1291,14 @@ sub command_line_setup () {
    installed_ok    => 0,
   };
 
-  $data_dir= "$opt_vardir/ndbcluster-$opt_ndbcluster_port_slave";
+  $data_dir= "$opt_vardir/ndbcluster-$opt_ndbcluster_port_replica";
   $clusters->[1]=
   {
-   name            => "Slave",
+   name            => "Replica",
    nodes           => 1,
-   port            => "$opt_ndbcluster_port_slave",
+   port            => "$opt_ndbcluster_port_replica",
    data_dir        => "$data_dir",
-   connect_string  => "host=localhost:$opt_ndbcluster_port_slave",
+   connect_string  => "host=localhost:$opt_ndbcluster_port_replica",
    path_pid        => "$data_dir/ndb_2.pid", # Nodes + 1
    pid             => 0, # pid of ndb_mgmd
    installed_ok    => 0,
@@ -1329,9 +1329,9 @@ sub command_line_setup () {
     $opt_skip_rpl= 1;
     $opt_skip_ndbcluster= 1;
 
-    # Setup master->[0] with the settings for the extern server
-    $master->[0]->{'path_sock'}=  $opt_socket ? $opt_socket : "/tmp/mysql.sock";
-    mtr_report("Using extern server at '$master->[0]->{path_sock}'");
+    # Setup primary->[0] with the settings for the extern server
+    $primary->[0]->{'path_sock'}=  $opt_socket ? $opt_socket : "/tmp/mysql.sock";
+    mtr_report("Using extern server at '$primary->[0]->{path_sock}'");
   }
   else
   {
@@ -1341,13 +1341,13 @@ sub command_line_setup () {
 
 
   # --------------------------------------------------------------------------
-  # ndbconnectstring and ndbconnectstring_slave
+  # ndbconnectstring and ndbconnectstring_replica
   # --------------------------------------------------------------------------
   if ( $opt_ndbconnectstring )
   {
     # ndbconnectstring was supplied by user, the tests shoudl be run
     # against an already started cluster, change settings
-    my $cluster= $clusters->[0]; # Master cluster
+    my $cluster= $clusters->[0]; # Primary cluster
     $cluster->{'connect_string'}= $opt_ndbconnectstring;
     $cluster->{'use_running'}= 1;
 
@@ -1357,17 +1357,17 @@ sub command_line_setup () {
   $ENV{'NDB_CONNECTSTRING'}= $clusters->[0]->{'connect_string'};
 
 
-  if ( $opt_ndbconnectstring_slave )
+  if ( $opt_ndbconnectstring_replica )
   {
-    # ndbconnectstring-slave was supplied by user, the tests should be run
-    # agains an already started slave cluster, change settings
-    my $cluster= $clusters->[1]; # Slave cluster
-    $cluster->{'connect_string'}= $opt_ndbconnectstring_slave;
+    # ndbconnectstring-replica was supplied by user, the tests should be run
+    # agains an already started replica cluster, change settings
+    my $cluster= $clusters->[1]; # Replica cluster
+    $cluster->{'connect_string'}= $opt_ndbconnectstring_replica;
     $cluster->{'use_running'}= 1;
 
-    mtr_error("Can't specify ndb-connectstring_slave and " .
-	      "--skip-ndbcluster-slave")
-      if $opt_skip_ndbcluster_slave;
+    mtr_error("Can't specify ndb-connectstring_replica and " .
+	      "--skip-ndbcluster-replica")
+      if $opt_skip_ndbcluster_replica;
   }
 
 
@@ -1376,14 +1376,14 @@ sub command_line_setup () {
   $path_current_test_log= "$opt_vardir/log/current_test";
   $path_ndb_testrun_log= "$opt_vardir/log/ndb_testrun.log";
 
-  $path_snapshot= "$opt_tmpdir/snapshot_$opt_master_myport/";
+  $path_snapshot= "$opt_tmpdir/snapshot_$opt_primary_myport/";
 
   if ( $opt_valgrind and $opt_debug )
   {
     # When both --valgrind and --debug is selected, send
     # all output to the trace file, making it possible to
     # see the exact location where valgrind complains
-    foreach my $mysqld (@{$master}, @{$slave})
+    foreach my $mysqld (@{$primary}, @{$replica})
     {
       my $sidx= $mysqld->{idx} ? "$mysqld->{idx}" : "";
       $mysqld->{path_myerr}=
@@ -1397,7 +1397,7 @@ sub command_line_setup () {
 # an environment variable can be used to control all ports. A small
 # number is to be used, 0 - 16 or similar.
 #
-# Note the MASTER_MYPORT has to be set the same in all 4.x and 5.x
+# Note the PRIMARY_MYPORT has to be set the same in all 4.x and 5.x
 # versions of this script, else a 4.0 test run might conflict with a
 # 5.1 test run, even if different MTR_BUILD_THREAD is used. This means
 # all port numbers might not be used in this version of the script.
@@ -1417,21 +1417,21 @@ sub set_mtr_build_thread_ports($) {
     print "got ".$mtr_build_thread."\n";
   }
 
-  # Up to two masters, up to three slaves
+  # Up to two primarys, up to three replicas
   # A magic value in command_line_setup depends on these equations.
-  $opt_master_myport=         $mtr_build_thread * 10 + 10000; # and 1
-  $opt_slave_myport=          $opt_master_myport + 2;  # and 3 4
-  $opt_ndbcluster_port=       $opt_master_myport + 5;
-  $opt_ndbcluster_port_slave= $opt_master_myport + 6;
-  $im_port=                   $opt_master_myport + 7;
-  $im_mysqld1_port=           $opt_master_myport + 8;
-  $im_mysqld2_port=           $opt_master_myport + 9;
+  $opt_primary_myport=         $mtr_build_thread * 10 + 10000; # and 1
+  $opt_replica_myport=          $opt_primary_myport + 2;  # and 3 4
+  $opt_ndbcluster_port=       $opt_primary_myport + 5;
+  $opt_ndbcluster_port_replica= $opt_primary_myport + 6;
+  $im_port=                   $opt_primary_myport + 7;
+  $im_mysqld1_port=           $opt_primary_myport + 8;
+  $im_mysqld2_port=           $opt_primary_myport + 9;
 
-  if ( $opt_master_myport < 5001 or $opt_master_myport + 10 >= 32767 )
+  if ( $opt_primary_myport < 5001 or $opt_primary_myport + 10 >= 32767 )
   {
     mtr_error("MTR_BUILD_THREAD number results in a port",
               "outside 5001 - 32767",
-              "($opt_master_myport - $opt_master_myport + 10)");
+              "($opt_primary_myport - $opt_primary_myport + 10)");
   }
 }
 
@@ -1439,14 +1439,14 @@ sub set_mtr_build_thread_ports($) {
 sub datadir_list_setup () {
 
   # Make a list of all data_dirs
-  for (my $idx= 0; $idx < $max_master_num; $idx++)
+  for (my $idx= 0; $idx < $max_primary_num; $idx++)
   {
-    push(@data_dir_lst, $master->[$idx]->{'path_myddir'});
+    push(@data_dir_lst, $primary->[$idx]->{'path_myddir'});
   }
 
-  for (my $idx= 0; $idx < $max_slave_num; $idx++)
+  for (my $idx= 0; $idx < $max_replica_num; $idx++)
   {
-    push(@data_dir_lst, $slave->[$idx]->{'path_myddir'});
+    push(@data_dir_lst, $replica->[$idx]->{'path_myddir'});
   }
 
   unless ($opt_skip_im)
@@ -1570,7 +1570,7 @@ sub run_query($$) {
 
 sub collect_mysqld_features_from_running_server ()
 {
-  my $list= run_query($master->[0], "use mysql; SHOW VARIABLES");
+  my $list= run_query($primary->[0], "use mysql; SHOW VARIABLES");
 
   foreach my $line (split('\n', $list))
   {
@@ -1787,8 +1787,8 @@ sub mysql_client_test_arguments()
   mtr_add_arg($args, "--no-defaults");
   mtr_add_arg($args, "--testcase");
   mtr_add_arg($args, "--user=root");
-  mtr_add_arg($args, "--port=$master->[0]->{'port'}");
-  mtr_add_arg($args, "--socket=$master->[0]->{'path_sock'}");
+  mtr_add_arg($args, "--port=$primary->[0]->{'port'}");
+  mtr_add_arg($args, "--socket=$primary->[0]->{'path_sock'}");
 
   if ( $opt_extern || $mysql_version_id >= 50000 )
   {
@@ -1806,7 +1806,7 @@ sub mysql_client_test_arguments()
     mtr_add_arg($args,
       " -A --lc-messages-dir=$path_language");
     mtr_add_arg($args,
-      " -A --datadir=$slave->[0]->{'path_myddir'}");
+      " -A --datadir=$replica->[0]->{'path_myddir'}");
     mtr_add_arg($args,
       " -A --character-sets-dir=$path_charsetsdir");
   }
@@ -1827,9 +1827,9 @@ sub mysql_upgrade_arguments()
 
   mtr_add_arg($args, "--no-defaults");
   mtr_add_arg($args, "--user=root");
-  mtr_add_arg($args, "--port=$master->[0]->{'port'}");
-  mtr_add_arg($args, "--socket=$master->[0]->{'path_sock'}");
-  mtr_add_arg($args, "--datadir=$master->[0]->{'path_myddir'}");
+  mtr_add_arg($args, "--port=$primary->[0]->{'port'}");
+  mtr_add_arg($args, "--socket=$primary->[0]->{'path_sock'}");
+  mtr_add_arg($args, "--datadir=$primary->[0]->{'path_myddir'}");
   mtr_add_arg($args, "--basedir=$glob_basedir");
   mtr_add_arg($args, "--tmpdir=$opt_tmpdir");
 
@@ -1933,16 +1933,16 @@ sub environment_setup () {
   $ENV{'MYSQL_TEST_DIR'}=     $glob_mysql_test_dir;
   $ENV{'MYSQLTEST_VARDIR'}=   $opt_vardir;
   $ENV{'MYSQL_TMP_DIR'}=      $opt_tmpdir;
-  $ENV{'MASTER_MYSOCK'}=      $master->[0]->{'path_sock'};
-  $ENV{'MASTER_MYSOCK1'}=     $master->[1]->{'path_sock'};
-  $ENV{'MASTER_MYPORT'}=      $master->[0]->{'port'};
-  $ENV{'MASTER_MYPORT1'}=     $master->[1]->{'port'};
-  $ENV{'SLAVE_MYSOCK'}=       $slave->[0]->{'path_sock'};
-  $ENV{'SLAVE_MYPORT'}=       $slave->[0]->{'port'};
-  $ENV{'SLAVE_MYPORT1'}=      $slave->[1]->{'port'};
-  $ENV{'SLAVE_MYPORT2'}=      $slave->[2]->{'port'};
+  $ENV{'PRIMARY_MYSOCK'}=      $primary->[0]->{'path_sock'};
+  $ENV{'PRIMARY_MYSOCK1'}=     $primary->[1]->{'path_sock'};
+  $ENV{'PRIMARY_MYPORT'}=      $primary->[0]->{'port'};
+  $ENV{'PRIMARY_MYPORT1'}=     $primary->[1]->{'port'};
+  $ENV{'REPLICA_MYSOCK'}=       $replica->[0]->{'path_sock'};
+  $ENV{'REPLICA_MYPORT'}=       $replica->[0]->{'port'};
+  $ENV{'REPLICA_MYPORT1'}=      $replica->[1]->{'port'};
+  $ENV{'REPLICA_MYPORT2'}=      $replica->[2]->{'port'};
   $ENV{'MYSQL_TCP_PORT'}=     $mysqld_variables{'port'};
-  $ENV{'DEFAULT_MASTER_PORT'}= $mysqld_variables{'master-port'};
+  $ENV{'DEFAULT_PRIMARY_PORT'}= $mysqld_variables{'primary-port'};
 
   $ENV{'IM_PATH_SOCK'}=       $instance_manager->{path_sock};
   $ENV{'IM_USERNAME'}=        $instance_manager->{admin_login};
@@ -1960,7 +1960,7 @@ sub environment_setup () {
     $ENV{'NDB_MGM'}=                  $exe_ndb_mgm;
 
     $ENV{'NDBCLUSTER_PORT'}=          $opt_ndbcluster_port;
-    $ENV{'NDBCLUSTER_PORT_SLAVE'}=    $opt_ndbcluster_port_slave;
+    $ENV{'NDBCLUSTER_PORT_REPLICA'}=    $opt_ndbcluster_port_replica;
 
     $ENV{'NDB_EXTRA_TEST'}=           $opt_ndb_extra_test;
 
@@ -2008,8 +2008,8 @@ sub environment_setup () {
   my $cmdline_mysqlcheck=
     mtr_native_path($exe_mysqlcheck) .
     " --no-defaults --debug-check -uroot " .
-    "--port=$master->[0]->{'port'} " .
-    "--socket=$master->[0]->{'path_sock'} --password=";
+    "--port=$primary->[0]->{'port'} " .
+    "--socket=$primary->[0]->{'path_sock'} --password=";
 
   if ( $opt_debug )
   {
@@ -2021,18 +2021,18 @@ sub environment_setup () {
   # ----------------------------------------------------
   # Setup env to childs can execute myqldump
   # ----------------------------------------------------
-  my $cmdline_mysqldump= generate_cmdline_mysqldump($master->[0]);
-  my $cmdline_mysqldumpslave= generate_cmdline_mysqldump($slave->[0]);
+  my $cmdline_mysqldump= generate_cmdline_mysqldump($primary->[0]);
+  my $cmdline_mysqldumpreplica= generate_cmdline_mysqldump($replica->[0]);
 
   if ( $opt_debug )
   {
     $cmdline_mysqldump .=
-      " --debug=d:t:A,$path_vardir_trace/log/mysqldump-master.trace";
-    $cmdline_mysqldumpslave .=
-      " --debug=d:t:A,$path_vardir_trace/log/mysqldump-slave.trace";
+      " --debug=d:t:A,$path_vardir_trace/log/mysqldump-primary.trace";
+    $cmdline_mysqldumpreplica .=
+      " --debug=d:t:A,$path_vardir_trace/log/mysqldump-replica.trace";
   }
   $ENV{'MYSQL_DUMP'}= $cmdline_mysqldump;
-  $ENV{'MYSQL_DUMP_SLAVE'}= $cmdline_mysqldumpslave;
+  $ENV{'MYSQL_DUMP_REPLICA'}= $cmdline_mysqldumpreplica;
 
 
   # ----------------------------------------------------
@@ -2043,8 +2043,8 @@ sub environment_setup () {
     my $cmdline_mysqlslap=
       mtr_native_path($exe_mysqlslap) .
       " -uroot " .
-      "--port=$master->[0]->{'port'} " .
-      "--socket=$master->[0]->{'path_sock'} --password= ";
+      "--port=$primary->[0]->{'port'} " .
+      "--socket=$primary->[0]->{'path_sock'} --password= ";
 
     if ( $opt_debug )
    {
@@ -2060,8 +2060,8 @@ sub environment_setup () {
   my $cmdline_mysqlimport=
     mtr_native_path($exe_mysqlimport) .
     " -uroot --debug-check " .
-    "--port=$master->[0]->{'port'} " .
-    "--socket=$master->[0]->{'path_sock'} --password=";
+    "--port=$primary->[0]->{'port'} " .
+    "--socket=$primary->[0]->{'path_sock'} --password=";
 
   if ( $opt_debug )
   {
@@ -2077,8 +2077,8 @@ sub environment_setup () {
   my $cmdline_mysqlshow=
     mtr_native_path($exe_mysqlshow) .
     " -uroot --debug-check " .
-    "--port=$master->[0]->{'port'} " .
-    "--socket=$master->[0]->{'path_sock'} --password=";
+    "--port=$primary->[0]->{'port'} " .
+    "--socket=$primary->[0]->{'path_sock'} --password=";
 
   if ( $opt_debug )
   {
@@ -2128,8 +2128,8 @@ sub environment_setup () {
   my $cmdline_mysql=
     mtr_native_path($exe_mysql) .
     " --no-defaults --debug-check --host=localhost  --user=root --password= " .
-    "--port=$master->[0]->{'port'} " .
-    "--socket=$master->[0]->{'path_sock'} ".
+    "--port=$primary->[0]->{'port'} " .
+    "--socket=$primary->[0]->{'path_sock'} ".
     "--character-sets-dir=$path_charsetsdir";
 
   $ENV{'MYSQL'}= $cmdline_mysql;
@@ -2217,17 +2217,17 @@ sub environment_setup () {
   if (!$opt_extern)
   {
     print "Using MTR_BUILD_THREAD      = $ENV{MTR_BUILD_THREAD}\n";
-    print "Using MASTER_MYPORT         = $ENV{MASTER_MYPORT}\n";
-    print "Using MASTER_MYPORT1        = $ENV{MASTER_MYPORT1}\n";
-    print "Using SLAVE_MYPORT          = $ENV{SLAVE_MYPORT}\n";
-    print "Using SLAVE_MYPORT1         = $ENV{SLAVE_MYPORT1}\n";
-    print "Using SLAVE_MYPORT2         = $ENV{SLAVE_MYPORT2}\n";
+    print "Using PRIMARY_MYPORT         = $ENV{PRIMARY_MYPORT}\n";
+    print "Using PRIMARY_MYPORT1        = $ENV{PRIMARY_MYPORT1}\n";
+    print "Using REPLICA_MYPORT          = $ENV{REPLICA_MYPORT}\n";
+    print "Using REPLICA_MYPORT1         = $ENV{REPLICA_MYPORT1}\n";
+    print "Using REPLICA_MYPORT2         = $ENV{REPLICA_MYPORT2}\n";
     if ( ! $opt_skip_ndbcluster )
     {
       print "Using NDBCLUSTER_PORT       = $ENV{NDBCLUSTER_PORT}\n";
-      if ( ! $opt_skip_ndbcluster_slave )
+      if ( ! $opt_skip_ndbcluster_replica )
       {
-	print "Using NDBCLUSTER_PORT_SLAVE = $ENV{NDBCLUSTER_PORT_SLAVE}\n";
+	print "Using NDBCLUSTER_PORT_REPLICA = $ENV{NDBCLUSTER_PORT_REPLICA}\n";
       }
     }
     if ( ! $opt_skip_im )
@@ -2276,11 +2276,11 @@ sub kill_running_servers () {
   if ( $opt_fast or $glob_use_embedded_server )
   {
     # FIXME is embedded server really using PID files?!
-    unlink($master->[0]->{'path_pid'});
-    unlink($master->[1]->{'path_pid'});
-    unlink($slave->[0]->{'path_pid'});
-    unlink($slave->[1]->{'path_pid'});
-    unlink($slave->[2]->{'path_pid'});
+    unlink($primary->[0]->{'path_pid'});
+    unlink($primary->[1]->{'path_pid'});
+    unlink($replica->[0]->{'path_pid'});
+    unlink($replica->[1]->{'path_pid'});
+    unlink($replica->[2]->{'path_pid'});
   }
   else
   {
@@ -2583,7 +2583,7 @@ sub check_ndbcluster_support ($) {
     {
       mtr_report("Skipping ndbcluster");
     }
-    $opt_skip_ndbcluster_slave= 1;
+    $opt_skip_ndbcluster_replica= 1;
     return;
   }
 
@@ -2591,7 +2591,7 @@ sub check_ndbcluster_support ($) {
   {
     mtr_report("Skipping ndbcluster, mysqld not compiled with ndbcluster");
     $opt_skip_ndbcluster= 1;
-    $opt_skip_ndbcluster_slave= 1;
+    $opt_skip_ndbcluster_replica= 1;
     return;
   }
   $glob_ndbcluster_supported= 1;
@@ -2599,8 +2599,8 @@ sub check_ndbcluster_support ($) {
 
   if ( $mysql_version_id < 50100 )
   {
-    # Slave cluster is not supported until 5.1
-    $opt_skip_ndbcluster_slave= 1;
+    # Replica cluster is not supported until 5.1
+    $opt_skip_ndbcluster_replica= 1;
 
   }
 
@@ -2880,8 +2880,8 @@ sub run_benchmarks ($) {
 
   if ( ! $glob_use_embedded_server )
   {
-    mysqld_start($master->[0],[],[]);
-    if ( ! $master->[0]->{'pid'} )
+    mysqld_start($primary->[0],[],[]);
+    if ( ! $primary->[0]->{'pid'} )
     {
       mtr_error("Can't start the mysqld server");
     }
@@ -2889,7 +2889,7 @@ sub run_benchmarks ($) {
 
   mtr_init_args(\$args);
 
-  mtr_add_arg($args, "--socket=%s", $master->[0]->{'path_sock'});
+  mtr_add_arg($args, "--socket=%s", $primary->[0]->{'path_sock'});
   mtr_add_arg($args, "--user=%s", $opt_user);
 
   if ( $opt_small_bench )
@@ -2926,7 +2926,7 @@ sub run_benchmarks ($) {
 
   if ( ! $glob_use_embedded_server )
   {
-    stop_masters();
+    stop_primarys();
   }
 }
 
@@ -3034,17 +3034,17 @@ sub initialize_servers () {
 
 sub mysql_install_db () {
 
-  install_db('master', $master->[0]->{'path_myddir'});
+  install_db('primary', $primary->[0]->{'path_myddir'});
 
-  if ($max_master_num > 1)
+  if ($max_primary_num > 1)
   {
-    copy_install_db('master', $master->[1]->{'path_myddir'});
+    copy_install_db('primary', $primary->[1]->{'path_myddir'});
   }
 
-  # Install the number of slave databses needed
-  for (my $idx= 0; $idx < $max_slave_num; $idx++)
+  # Install the number of replica databses needed
+  for (my $idx= 0; $idx < $max_replica_num; $idx++)
   {
-    copy_install_db("slave".($idx+1), $slave->[$idx]->{'path_myddir'});
+    copy_install_db("replica".($idx+1), $replica->[$idx]->{'path_myddir'});
   }
 
   if ( ! $opt_skip_im )
@@ -3054,12 +3054,12 @@ sub mysql_install_db () {
 
   my $cluster_started_ok= 1; # Assume it can be started
 
-  my $cluster= $clusters->[0]; # Master cluster
+  my $cluster= $clusters->[0]; # Primary cluster
   if ($opt_skip_ndbcluster ||
       $cluster->{'use_running'} ||
       $cluster->{executable_setup_failed})
   {
-    # Don't install master cluster
+    # Don't install primary cluster
   }
   elsif (ndbcluster_start_install($cluster))
   {
@@ -3067,13 +3067,13 @@ sub mysql_install_db () {
     $cluster_started_ok= 0;
   }
 
-  $cluster= $clusters->[1]; # Slave cluster
-  if ($max_slave_num == 0 ||
-      $opt_skip_ndbcluster_slave ||
+  $cluster= $clusters->[1]; # Replica cluster
+  if ($max_replica_num == 0 ||
+      $opt_skip_ndbcluster_replica ||
       $cluster->{'use_running'} ||
       $cluster->{executable_setup_failed})
   {
-    # Don't install slave cluster
+    # Don't install replica cluster
   }
   elsif (ndbcluster_start_install($cluster))
   {
@@ -3120,8 +3120,8 @@ sub copy_install_db ($$) {
 
   mtr_report("Installing \u$type Database");
 
-  # Just copy the installed db from first master
-  mtr_copy_dir($master->[0]->{'path_myddir'}, $data_dir);
+  # Just copy the installed db from first primary
+  mtr_copy_dir($primary->[0]->{'path_myddir'}, $data_dir);
 
 }
 
@@ -3322,17 +3322,17 @@ sub im_prepare_data_dir($) {
 
 
 #
-# Restore snapshot of the installed slave databases
+# Restore snapshot of the installed replica databases
 # if the snapshot exists
 #
-sub restore_slave_databases ($) {
-  my ($num_slaves)= @_;
+sub restore_replica_databases ($) {
+  my ($num_replicas)= @_;
 
   if ( -d $path_snapshot)
   {
-    for (my $idx= 0; $idx < $num_slaves; $idx++)
+    for (my $idx= 0; $idx < $num_replicas; $idx++)
     {
-      my $data_dir= $slave->[$idx]->{'path_myddir'};
+      my $data_dir= $replica->[$idx]->{'path_myddir'};
       my $name= basename($data_dir);
       mtr_rmtree($data_dir);
       mtr_copy_dir("$path_snapshot/$name", $data_dir);
@@ -3363,10 +3363,10 @@ sub run_testcase_check_skip_test($)
   {
     foreach my $cluster (@{$clusters})
     {
-      # Slave cluster is skipped and thus not
+      # Replica cluster is skipped and thus not
       # installed, no need to perform checks
-      last if ($opt_skip_ndbcluster_slave and
-	       $cluster->{'name'} eq 'Slave');
+      last if ($opt_skip_ndbcluster_replica and
+	       $cluster->{'name'} eq 'Replica');
 
       # Using running cluster - no need
       # to check if test should be skipped
@@ -3440,8 +3440,8 @@ sub do_before_run_mysqltest($)
     if (defined $tinfo->{binlog_format} and  $mysql_version_id > 50100 )
     {
       # Dynamically switch binlog format of
-      # master, slave is always restarted
-      foreach my $server ( @$master )
+      # primary, replica is always restarted
+      foreach my $server ( @$primary )
       {
         next unless ($server->{'pid'});
 
@@ -3484,7 +3484,7 @@ sub run_testcase_mark_logs($$)
   mtr_tonewfile($path_current_test_log, $log_msg);
 
   # each mysqld's .err file
-  foreach my $mysqld (@{$master}, @{$slave})
+  foreach my $mysqld (@{$primary}, @{$replica})
   {
     mtr_tofile($mysqld->{path_myerr}, $log_msg);
   }
@@ -3556,10 +3556,10 @@ sub run_testcase ($) {
   $ENV{'TZ'}= $tinfo->{'timezone'};
   mtr_verbose("Setting timezone: $tinfo->{'timezone'}");
 
-  my $master_restart= run_testcase_need_master_restart($tinfo);
-  my $slave_restart= run_testcase_need_slave_restart($tinfo);
+  my $primary_restart= run_testcase_need_primary_restart($tinfo);
+  my $replica_restart= run_testcase_need_replica_restart($tinfo);
 
-  if ($master_restart or $slave_restart)
+  if ($primary_restart or $replica_restart)
   {
     # Can't restart a running server that may be in use
     if ( $opt_extern )
@@ -3570,14 +3570,14 @@ sub run_testcase ($) {
       return;
     }
 
-    run_testcase_stop_servers($tinfo, $master_restart, $slave_restart);
+    run_testcase_stop_servers($tinfo, $primary_restart, $replica_restart);
   }
 
   # Write to all log files to indicate start of testcase
   run_testcase_mark_logs($tinfo, "CURRENT_TEST: $tinfo->{name}\n");
 
   my $died= mtr_record_dead_children();
-  if ($died or $master_restart or $slave_restart)
+  if ($died or $primary_restart or $replica_restart)
   {
     if (run_testcase_start_servers($tinfo))
     {
@@ -3588,7 +3588,7 @@ sub run_testcase ($) {
   }
   elsif ($glob_use_embedded_server)
   {
-    run_master_init_script($tinfo);
+    run_primary_init_script($tinfo);
   }
 
   # ----------------------------------------------------------------------
@@ -3769,11 +3769,11 @@ sub report_failure_and_restart ($) {
 }
 
 
-sub run_master_init_script ($) {
+sub run_primary_init_script ($) {
   my ($tinfo)= @_;
-  my $init_script= $tinfo->{'master_sh'};
+  my $init_script= $tinfo->{'primary_sh'};
 
-  # Run master initialization shell script if one exists
+  # Run primary initialization shell script if one exists
   if ( $init_script )
   {
     my $ret= mtr_run("/bin/sh", [$init_script], "", "", "", "");
@@ -3793,50 +3793,50 @@ sub run_master_init_script ($) {
 ##############################################################################
 
 
-sub do_before_start_master ($) {
+sub do_before_start_primary ($) {
   my ($tinfo)= @_;
 
   my $tname= $tinfo->{'name'};
 
-  # FIXME what about second master.....
+  # FIXME what about second primary.....
 
   # Don't delete anything if starting dirty
   return if ($opt_start_dirty);
 
-  foreach my $bin ( glob("$opt_vardir/log/master*-bin*") )
+  foreach my $bin ( glob("$opt_vardir/log/primary*-bin*") )
   {
     unlink($bin);
   }
 
-  # FIXME only remove the ones that are tied to this master
-  # Remove old master.info and relay-log.info files
-  unlink("$master->[0]->{'path_myddir'}/master.info");
-  unlink("$master->[0]->{'path_myddir'}/relay-log.info");
-  unlink("$master->[1]->{'path_myddir'}/master.info");
-  unlink("$master->[1]->{'path_myddir'}/relay-log.info");
+  # FIXME only remove the ones that are tied to this primary
+  # Remove old primary.info and relay-log.info files
+  unlink("$primary->[0]->{'path_myddir'}/primary.info");
+  unlink("$primary->[0]->{'path_myddir'}/relay-log.info");
+  unlink("$primary->[1]->{'path_myddir'}/primary.info");
+  unlink("$primary->[1]->{'path_myddir'}/relay-log.info");
 
-  run_master_init_script($tinfo);
+  run_primary_init_script($tinfo);
 }
 
 
-sub do_before_start_slave ($) {
+sub do_before_start_replica ($) {
   my ($tinfo)= @_;
 
   my $tname= $tinfo->{'name'};
-  my $init_script= $tinfo->{'master_sh'};
+  my $init_script= $tinfo->{'primary_sh'};
 
   # Don't delete anything if starting dirty
   return if ($opt_start_dirty);
 
-  foreach my $bin ( glob("$opt_vardir/log/slave*-bin*") )
+  foreach my $bin ( glob("$opt_vardir/log/replica*-bin*") )
   {
     unlink($bin);
   }
 
-  unlink("$slave->[0]->{'path_myddir'}/master.info");
-  unlink("$slave->[0]->{'path_myddir'}/relay-log.info");
+  unlink("$replica->[0]->{'path_myddir'}/primary.info");
+  unlink("$replica->[0]->{'path_myddir'}/relay-log.info");
 
-  # Run slave initialization shell script if one exists
+  # Run replica initialization shell script if one exists
   if ( $init_script )
   {
     my $ret= mtr_run("/bin/sh", [$init_script], "", "", "", "");
@@ -3847,7 +3847,7 @@ sub do_before_start_slave ($) {
     }
   }
 
-  foreach my $bin ( glob("$slave->[0]->{'path_myddir'}/log.*") )
+  foreach my $bin ( glob("$replica->[0]->{'path_myddir'}/log.*") )
   {
     unlink($bin);
   }
@@ -3858,7 +3858,7 @@ sub mysqld_arguments ($$$$) {
   my $args=              shift;
   my $mysqld=            shift;
   my $extra_opt=         shift;
-  my $slave_master_info= shift;
+  my $replica_primary_info= shift;
 
   my $idx= $mysqld->{'idx'};
   my $sidx= "";                 # Index as string, 0 is empty string
@@ -3943,11 +3943,11 @@ sub mysqld_arguments ($$$$) {
               "%s--slow-query-log-file=%s-slow.log", $prefix, $log_base_path);
   # Check if "extra_opt" contains --skip-log-bin
   my $skip_binlog= grep(/^--skip-log-bin/, @$extra_opt, @opt_extra_mysqld_opt);
-  if ( $mysqld->{'type'} eq 'master' )
+  if ( $mysqld->{'type'} eq 'primary' )
   {
-    if (! ($opt_skip_master_binlog || $skip_binlog) )
+    if (! ($opt_skip_primary_binlog || $skip_binlog) )
     {
-      mtr_add_arg($args, "%s--log-bin=%s/log/master-bin%s", $prefix,
+      mtr_add_arg($args, "%s--log-bin=%s/log/primary-bin%s", $prefix,
                   $opt_vardir, $sidx);
     }
 
@@ -3979,37 +3979,37 @@ sub mysqld_arguments ($$$$) {
   else
   {
     mtr_error("unknown mysqld type")
-      unless $mysqld->{'type'} eq 'slave';
+      unless $mysqld->{'type'} eq 'replica';
 
-    if (! ( $opt_skip_slave_binlog || $skip_binlog ))
+    if (! ( $opt_skip_replica_binlog || $skip_binlog ))
     {
-      mtr_add_arg($args, "%s--log-bin=%s/log/slave%s-bin", $prefix,
+      mtr_add_arg($args, "%s--log-bin=%s/log/replica%s-bin", $prefix,
                   $opt_vardir, $sidx); # FIXME use own dir for binlogs
-      mtr_add_arg($args, "%s--log-slave-updates", $prefix);
+      mtr_add_arg($args, "%s--log-replica-updates", $prefix);
     }
 
-    mtr_add_arg($args, "%s--master-retry-count=10", $prefix);
+    mtr_add_arg($args, "%s--primary-retry-count=10", $prefix);
 
-    mtr_add_arg($args, "%s--relay-log=%s/log/slave%s-relay-bin", $prefix,
+    mtr_add_arg($args, "%s--relay-log=%s/log/replica%s-relay-bin", $prefix,
                 $opt_vardir, $sidx);
     mtr_add_arg($args, "%s--report-host=127.0.0.1", $prefix);
     mtr_add_arg($args, "%s--report-port=%d", $prefix,
                 $mysqld->{'port'});
     mtr_add_arg($args, "%s--report-user=root", $prefix);
     mtr_add_arg($args, "%s--loose-skip-innodb", $prefix);
-    mtr_add_arg($args, "%s--skip-slave-start", $prefix);
+    mtr_add_arg($args, "%s--skip-replica-start", $prefix);
 
-    # Directory where slaves find the dumps generated by "load data"
+    # Directory where replicas find the dumps generated by "load data"
     # on the server. The path need to have constant length otherwise
     # test results will vary, thus a relative path is used.
-    my $slave_load_path= "../tmp";
-    mtr_add_arg($args, "%s--slave-load-tmpdir=%s", $prefix,
-                $slave_load_path);
-    mtr_add_arg($args, "%s--slave_net_timeout=120", $prefix);
+    my $replica_load_path= "../tmp";
+    mtr_add_arg($args, "%s--replica-load-tmpdir=%s", $prefix,
+                $replica_load_path);
+    mtr_add_arg($args, "%s--replica_net_timeout=120", $prefix);
 
-    if ( @$slave_master_info )
+    if ( @$replica_primary_info )
     {
-      foreach my $arg ( @$slave_master_info )
+      foreach my $arg ( @$replica_primary_info )
       {
         mtr_add_arg($args, "%s%s", $prefix, $arg);
       }
@@ -4025,24 +4025,24 @@ sub mysqld_arguments ($$$$) {
 #            should be safe to uncomment them when merging up to 5.5.
 #
 #            RQG semisync test runs on the 5.1 GA tree and needs MTR v1.
-#            This was causing the test to fail (slave would not start
+#            This was causing the test to fail (replica would not start
 #            due to unrecognized option(s)).
 #      if ($mysql_version_id < 50200)
 #      {
-#        mtr_add_arg($args, "%s--master-user=root", $prefix);
-#        mtr_add_arg($args, "%s--master-connect-retry=1", $prefix);
-#        mtr_add_arg($args, "%s--master-host=127.0.0.1", $prefix);
-#        mtr_add_arg($args, "%s--master-password=", $prefix);
-#        mtr_add_arg($args, "%s--master-port=%d", $prefix,
-#    	            $master->[0]->{'port'}); # First master
+#        mtr_add_arg($args, "%s--primary-user=root", $prefix);
+#        mtr_add_arg($args, "%s--primary-connect-retry=1", $prefix);
+#        mtr_add_arg($args, "%s--primary-host=127.0.0.1", $prefix);
+#        mtr_add_arg($args, "%s--primary-password=", $prefix);
+#        mtr_add_arg($args, "%s--primary-port=%d", $prefix,
+#    	            $primary->[0]->{'port'}); # First primary
 #      }
-      my $slave_server_id=  2 + $idx;
-      mtr_add_arg($args, "%s--server-id=%d", $prefix, $slave_server_id);
+      my $replica_server_id=  2 + $idx;
+      mtr_add_arg($args, "%s--server-id=%d", $prefix, $replica_server_id);
     }
 
     my $cluster= $clusters->[$mysqld->{'cluster'}];
-    if ( $cluster->{'pid'} ||         # Slave cluster is started
-	 $cluster->{'use_running'} )  # Using running slave cluster
+    if ( $cluster->{'pid'} ||         # Replica cluster is started
+	 $cluster->{'use_running'} )  # Using running replica cluster
     {
       mtr_add_arg($args, "%s--ndbcluster", $prefix);
       mtr_add_arg($args, "%s--ndb-connectstring=%s", $prefix,
@@ -4058,7 +4058,7 @@ sub mysqld_arguments ($$$$) {
       mtr_add_arg($args, "%s--loose-skip-ndbcluster", $prefix);
     }
 
-  } # end slave
+  } # end replica
 
   if ( $opt_debug )
   {
@@ -4094,7 +4094,7 @@ sub mysqld_arguments ($$$$) {
   my $found_skip_core= 0;
   foreach my $arg ( @opt_extra_mysqld_opt, @$extra_opt )
   {
-    # Allow --skip-core-file to be set in <testname>-[master|slave].opt file
+    # Allow --skip-core-file to be set in <testname>-[primary|replica].opt file
     if ($arg eq "--skip-core-file")
     {
       $found_skip_core= 1;
@@ -4113,7 +4113,7 @@ sub mysqld_arguments ($$$$) {
     mtr_add_arg($args, "%s%s", $prefix, "--core-file");
   }
 
-  if ( !$opt_bench and $mysqld->{'type'} eq 'master' )
+  if ( !$opt_bench and $mysqld->{'type'} eq 'primary' )
   {
     mtr_add_arg($args, "%s--open-files-limit=1024", $prefix);
   }
@@ -4131,7 +4131,7 @@ sub mysqld_arguments ($$$$) {
 sub mysqld_start ($$$) {
   my $mysqld=            shift;
   my $extra_opt=         shift;
-  my $slave_master_info= shift;
+  my $replica_primary_info= shift;
 
   my $args;                             # Arg vector
   my $exe;
@@ -4144,13 +4144,13 @@ sub mysqld_start ($$$) {
   mtr_error("Internal error: mysqld should never be started for embedded")
     if $glob_use_embedded_server;
 
-  if ( $type eq 'master' )
+  if ( $type eq 'primary' )
   {
-    $exe= $exe_master_mysqld;
+    $exe= $exe_primary_mysqld;
   }
-  elsif ( $type eq 'slave' )
+  elsif ( $type eq 'replica' )
   {
-    $exe= $exe_slave_mysqld;
+    $exe= $exe_replica_mysqld;
   }
   else
   {
@@ -4164,7 +4164,7 @@ sub mysqld_start ($$$) {
     valgrind_arguments($args, \$exe);
   }
 
-  mysqld_arguments($args,$mysqld,$extra_opt,$slave_master_info);
+  mysqld_arguments($args,$mysqld,$extra_opt,$replica_primary_info);
 
   if ( $opt_gdb || $opt_manual_gdb)
   {
@@ -4222,7 +4222,7 @@ sub mysqld_start ($$$) {
 
   # Remember options used when starting
   $mysqld->{'start_opts'}= $extra_opt;
-  $mysqld->{'start_slave_master_info'}= $slave_master_info;
+  $mysqld->{'start_replica_primary_info'}= $replica_primary_info;
 
   mtr_verbose("mysqld pid: $pid");
   return $pid;
@@ -4246,8 +4246,8 @@ sub stop_all_servers () {
   my @kill_pids;  # list of processes to shutdown/kill
   my $pid;
 
-  # Start shutdown of all started masters
-  foreach my $mysqld (@{$slave}, @{$master})
+  # Start shutdown of all started primarys
+  foreach my $mysqld (@{$replica}, @{$primary})
   {
     if ( $mysqld->{'pid'} )
     {
@@ -4302,18 +4302,18 @@ sub stop_all_servers () {
   # Make sure that process has shutdown else try to kill them
   mtr_check_stop_servers(\@kill_pids);
 
-  foreach my $mysqld (@{$master}, @{$slave})
+  foreach my $mysqld (@{$primary}, @{$replica})
   {
     rm_ndbcluster_tables($mysqld->{'path_myddir'});
   }
 }
 
 
-sub run_testcase_need_master_restart($)
+sub run_testcase_need_primary_restart($)
 {
   my ($tinfo)= @_;
 
-  # We try to find out if we are to restart the master(s)
+  # We try to find out if we are to restart the primary(s)
   my $do_restart= 0;          # Assumes we don't have to
 
   if ( $glob_use_embedded_server )
@@ -4321,111 +4321,111 @@ sub run_testcase_need_master_restart($)
     mtr_verbose("Never start or restart for embedded server");
     return $do_restart;
   }
-  elsif ( $tinfo->{'master_sh'} )
+  elsif ( $tinfo->{'primary_sh'} )
   {
     $do_restart= 1;           # Always restart if script to run
-    mtr_verbose("Restart master: Always restart if script to run");
+    mtr_verbose("Restart primary: Always restart if script to run");
   }
   if ( $tinfo->{'force_restart'} )
   {
     $do_restart= 1; # Always restart if --force-restart in -opt file
-    mtr_verbose("Restart master: Restart forced with --force-restart");
+    mtr_verbose("Restart primary: Restart forced with --force-restart");
   }
   elsif ( ! $opt_skip_ndbcluster and
 	  !$tinfo->{'ndb_test'} and
 	  $clusters->[0]->{'pid'} != 0 )
   {
     $do_restart= 1;           # Restart without cluster
-    mtr_verbose("Restart master: Test does not need cluster");
+    mtr_verbose("Restart primary: Test does not need cluster");
   }
   elsif ( ! $opt_skip_ndbcluster and
 	  $tinfo->{'ndb_test'} and
 	  $clusters->[0]->{'pid'} == 0 )
   {
     $do_restart= 1;           # Restart with cluster
-    mtr_verbose("Restart master: Test need cluster");
+    mtr_verbose("Restart primary: Test need cluster");
   }
   elsif( $tinfo->{'component_id'} eq 'im' )
   {
     $do_restart= 1;
-    mtr_verbose("Restart master: Always restart for im tests");
+    mtr_verbose("Restart primary: Always restart for im tests");
   }
-  elsif ( $master->[0]->{'running_master_options'} and
-	  $master->[0]->{'running_master_options'}->{'timezone'} ne
+  elsif ( $primary->[0]->{'running_primary_options'} and
+	  $primary->[0]->{'running_primary_options'}->{'timezone'} ne
 	  $tinfo->{'timezone'})
   {
     $do_restart= 1;
-    mtr_verbose("Restart master: Different timezone");
+    mtr_verbose("Restart primary: Different timezone");
   }
-  # Check that running master was started with same options
+  # Check that running primary was started with same options
   # as the current test requires
-  elsif (! mtr_same_opts($master->[0]->{'start_opts'},
-                         $tinfo->{'master_opt'}) )
+  elsif (! mtr_same_opts($primary->[0]->{'start_opts'},
+                         $tinfo->{'primary_opt'}) )
   {
     $do_restart= 1;
-    mtr_verbose("Restart master: running with different options '" .
-		join(" ", @{$tinfo->{'master_opt'}}) . "' != '" .
-	  	join(" ", @{$master->[0]->{'start_opts'}}) . "'" );
+    mtr_verbose("Restart primary: running with different options '" .
+		join(" ", @{$tinfo->{'primary_opt'}}) . "' != '" .
+	  	join(" ", @{$primary->[0]->{'start_opts'}}) . "'" );
   }
-  elsif( ! $master->[0]->{'pid'} )
+  elsif( ! $primary->[0]->{'pid'} )
   {
     if ( $opt_extern )
     {
       $do_restart= 0;
-      mtr_verbose("No restart: using extern master");
+      mtr_verbose("No restart: using extern primary");
     }
     else
     {
       $do_restart= 1;
-      mtr_verbose("Restart master: master is not started");
+      mtr_verbose("Restart primary: primary is not started");
     }
   }
   return $do_restart;
 }
 
-sub run_testcase_need_slave_restart($)
+sub run_testcase_need_replica_restart($)
 {
   my ($tinfo)= @_;
 
-  # We try to find out if we are to restart the slaves
-  my $do_slave_restart= 0;     # Assumes we don't have to
+  # We try to find out if we are to restart the replicas
+  my $do_replica_restart= 0;     # Assumes we don't have to
 
   if ( $glob_use_embedded_server )
   {
     mtr_verbose("Never start or restart for embedded server");
-    return $do_slave_restart;
+    return $do_replica_restart;
   }
-  elsif ( $max_slave_num == 0)
+  elsif ( $max_replica_num == 0)
   {
-    mtr_verbose("Skip slave restart: No testcase use slaves");
+    mtr_verbose("Skip replica restart: No testcase use replicas");
   }
   else
   {
 
-    # Check if any slave is currently started
-    my $any_slave_started= 0;
-    foreach my $mysqld (@{$slave})
+    # Check if any replica is currently started
+    my $any_replica_started= 0;
+    foreach my $mysqld (@{$replica})
     {
       if ( $mysqld->{'pid'} )
       {
-	$any_slave_started= 1;
+	$any_replica_started= 1;
 	last;
       }
     }
 
-    if ($any_slave_started)
+    if ($any_replica_started)
     {
-      mtr_verbose("Restart slave: Slave is started, always restart");
-      $do_slave_restart= 1;
+      mtr_verbose("Restart replica: Replica is started, always restart");
+      $do_replica_restart= 1;
     }
-    elsif ( $tinfo->{'slave_num'} )
+    elsif ( $tinfo->{'replica_num'} )
     {
-      mtr_verbose("Restart slave: Test need slave");
-      $do_slave_restart= 1;
+      mtr_verbose("Restart replica: Test need replica");
+      $do_replica_restart= 1;
     }
   }
 
-  return $do_slave_restart;
+  return $do_replica_restart;
 
 }
 
@@ -4441,7 +4441,7 @@ sub run_testcase_need_slave_restart($)
 # ----------------------------------------------------------------------
 
 sub run_testcase_stop_servers($$$) {
-  my ($tinfo, $do_restart, $do_slave_restart)= @_;
+  my ($tinfo, $do_restart, $do_replica_restart)= @_;
   my $pid;
   my %admin_pids; # hash of admin processes that requests shutdown
   my @kill_pids;  # list of processes to shutdown/kill
@@ -4451,10 +4451,10 @@ sub run_testcase_stop_servers($$$) {
 
   if ( $do_restart )
   {
-    delete $master->[0]->{'running_master_options'}; # Forget history
+    delete $primary->[0]->{'running_primary_options'}; # Forget history
 
-    # Start shutdown of all started masters
-    foreach my $mysqld (@{$master})
+    # Start shutdown of all started primarys
+    foreach my $mysqld (@{$primary})
     {
       if ( $mysqld->{'pid'} )
       {
@@ -4475,7 +4475,7 @@ sub run_testcase_stop_servers($$$) {
       }
     }
 
-    # Start shutdown of master cluster
+    # Start shutdown of primary cluster
     my $cluster= $clusters->[0];
     if ( $cluster->{'pid'} )
     {
@@ -4500,13 +4500,13 @@ sub run_testcase_stop_servers($$$) {
     }
   }
 
-  if ( $do_restart || $do_slave_restart )
+  if ( $do_restart || $do_replica_restart )
   {
 
-    delete $slave->[0]->{'running_slave_options'}; # Forget history
+    delete $replica->[0]->{'running_replica_options'}; # Forget history
 
-    # Start shutdown of all started slaves
-    foreach my $mysqld (@{$slave})
+    # Start shutdown of all started replicas
+    foreach my $mysqld (@{$replica})
     {
       if ( $mysqld->{'pid'} )
       {
@@ -4528,7 +4528,7 @@ sub run_testcase_stop_servers($$$) {
       }
     }
 
-    # Start shutdown of slave cluster
+    # Start shutdown of replica cluster
     my $cluster= $clusters->[1];
     if ( $cluster->{'pid'} )
     {
@@ -4566,7 +4566,7 @@ sub run_testcase_stop_servers($$$) {
   # Make sure that process has shutdown else try to kill them
   mtr_check_stop_servers(\@kill_pids);
 
-  foreach my $mysqld (@{$master}, @{$slave})
+  foreach my $mysqld (@{$primary}, @{$replica})
   {
     if ( ! $mysqld->{'pid'} )
     {
@@ -4601,18 +4601,18 @@ sub run_testcase_start_servers($) {
       ndbcluster_start($clusters->[0], "");
     }
 
-    if ( !$master->[0]->{'pid'} )
+    if ( !$primary->[0]->{'pid'} )
     {
-      # Master mysqld is not started
-      do_before_start_master($tinfo);
+      # Primary mysqld is not started
+      do_before_start_primary($tinfo);
 
-      mysqld_start($master->[0],$tinfo->{'master_opt'},[]);
+      mysqld_start($primary->[0],$tinfo->{'primary_opt'},[]);
 
     }
 
     if ( $clusters->[0]->{'pid'} || $clusters->[0]->{'use_running'}
-	 and ! $master->[1]->{'pid'} and
-	 $tinfo->{'master_num'} > 1 )
+	 and ! $primary->[1]->{'pid'} and
+	 $tinfo->{'primary_num'} > 1 )
     {
       # Test needs cluster, start an extra mysqld connected to cluster
 
@@ -4622,20 +4622,20 @@ sub run_testcase_start_servers($) {
 	# tables ok FIXME This is a workaround so that only one mysqld
 	# create the tables
 	if ( ! sleep_until_file_created(
-		  "$master->[0]->{'path_myddir'}/mysql/ndb_apply_status.ndb",
-					$master->[0]->{'start_timeout'},
-					$master->[0]->{'pid'}))
+		  "$primary->[0]->{'path_myddir'}/mysql/ndb_apply_status.ndb",
+					$primary->[0]->{'start_timeout'},
+					$primary->[0]->{'pid'}))
 	{
 
 	  $tinfo->{'comment'}= "Failed to create 'mysql/ndb_apply_status' table";
 	  return 1;
 	}
       }
-      mysqld_start($master->[1],$tinfo->{'master_opt'},[]);
+      mysqld_start($primary->[1],$tinfo->{'primary_opt'},[]);
     }
 
     # Save this test case information, so next can examine it
-    $master->[0]->{'running_master_options'}= $tinfo;
+    $primary->[0]->{'running_primary_options'}= $tinfo;
   }
   elsif ( ! $opt_skip_im and $tinfo->{'component_id'} eq 'im' )
   {
@@ -4654,34 +4654,34 @@ sub run_testcase_start_servers($) {
   }
 
   # ----------------------------------------------------------------------
-  # Start slaves - if needed
+  # Start replicas - if needed
   # ----------------------------------------------------------------------
-  if ( $tinfo->{'slave_num'} )
+  if ( $tinfo->{'replica_num'} )
   {
-    restore_slave_databases($tinfo->{'slave_num'});
+    restore_replica_databases($tinfo->{'replica_num'});
 
-    do_before_start_slave($tinfo);
+    do_before_start_replica($tinfo);
 
-    if ( ! $opt_skip_ndbcluster_slave and
+    if ( ! $opt_skip_ndbcluster_replica and
 	 !$clusters->[1]->{'pid'} and
 	 $tinfo->{'ndb_test'} )
     {
-      # Test need slave cluster, cluster is not started, start it
+      # Test need replica cluster, cluster is not started, start it
       ndbcluster_start($clusters->[1], "");
     }
 
-    for ( my $idx= 0; $idx <  $tinfo->{'slave_num'}; $idx++ )
+    for ( my $idx= 0; $idx <  $tinfo->{'replica_num'}; $idx++ )
     {
-      if ( ! $slave->[$idx]->{'pid'} )
+      if ( ! $replica->[$idx]->{'pid'} )
       {
-	mysqld_start($slave->[$idx],$tinfo->{'slave_opt'},
-		     $tinfo->{'slave_mi'});
+	mysqld_start($replica->[$idx],$tinfo->{'replica_opt'},
+		     $tinfo->{'replica_mi'});
 
       }
     }
 
     # Save this test case information, so next can examine it
-    $slave->[0]->{'running_slave_options'}= $tinfo;
+    $replica->[0]->{'running_replica_options'}= $tinfo;
   }
 
   # Wait for clusters to start
@@ -4699,7 +4699,7 @@ sub run_testcase_start_servers($) {
   }
 
   # Wait for mysqld's to start
-  foreach my $mysqld (@{$master},@{$slave})
+  foreach my $mysqld (@{$primary},@{$replica})
   {
 
     next if !$mysqld->{'pid'};
@@ -4781,12 +4781,12 @@ sub run_report_features () {
 
   if ( ! $glob_use_embedded_server )
   {
-    mysqld_start($master->[0],[],[]);
-    if ( ! $master->[0]->{'pid'} )
+    mysqld_start($primary->[0],[],[]);
+    if ( ! $primary->[0]->{'pid'} )
     {
       mtr_error("Can't start the mysqld server");
     }
-    mysqld_wait_started($master->[0]);
+    mysqld_wait_started($primary->[0]);
   }
 
   my $tinfo = {};
@@ -4795,10 +4795,10 @@ sub run_report_features () {
   $tinfo->{'component_id'} = 'mysqld';
   $tinfo->{'path'} = 'include/report-features.test';
   $tinfo->{'timezone'}=  "GMT-3";
-  $tinfo->{'slave_num'} = 0;
-  $tinfo->{'master_opt'} = [];
-  $tinfo->{'slave_opt'} = [];
-  $tinfo->{'slave_mi'} = [];
+  $tinfo->{'replica_num'} = 0;
+  $tinfo->{'primary_opt'} = [];
+  $tinfo->{'replica_opt'} = [];
+  $tinfo->{'replica_mi'} = [];
   $tinfo->{'comment'} = 'report server features';
   run_mysqltest($tinfo);
 
@@ -4835,8 +4835,8 @@ sub run_mysqltest ($) {
   }
   else # component_id == mysqld
   {
-    mtr_add_arg($args, "--socket=%s", $master->[0]->{'path_sock'});
-    mtr_add_arg($args, "--port=%d", $master->[0]->{'port'});
+    mtr_add_arg($args, "--socket=%s", $primary->[0]->{'path_sock'});
+    mtr_add_arg($args, "--port=%d", $primary->[0]->{'port'});
     mtr_add_arg($args, "--database=test");
     mtr_add_arg($args, "--user=%s", $opt_user);
     mtr_add_arg($args, "--password=");
@@ -4917,7 +4917,7 @@ sub run_mysqltest ($) {
 
   if ( $glob_use_embedded_server )
   {
-    mysqld_arguments($args,$master->[0],$tinfo->{'master_opt'},[]);
+    mysqld_arguments($args,$primary->[0],$tinfo->{'primary_opt'},[]);
   }
 
   # ----------------------------------------------------------------------
@@ -4970,7 +4970,7 @@ sub run_mysqltest ($) {
 
   if ( $opt_check_testcases )
   {
-    foreach my $mysqld (@{$master}, @{$slave})
+    foreach my $mysqld (@{$primary}, @{$replica})
     {
       if ($mysqld->{'pid'})
       {
@@ -4983,7 +4983,7 @@ sub run_mysqltest ($) {
 
   if ( $opt_check_testcases )
   {
-    foreach my $mysqld (@{$master}, @{$slave})
+    foreach my $mysqld (@{$primary}, @{$replica})
     {
       if ($mysqld->{'pid'})
       {
@@ -5269,7 +5269,7 @@ Options to control what test suites or cases to run
   force                 Continue to run the suite after failure
   with-ndbcluster-only  Run only tests that include "ndb" in the filename
   skip-ndb[cluster]     Skip all tests that need cluster
-  skip-ndb[cluster]-slave Skip all tests that need a slave cluster
+  skip-ndb[cluster]-replica Skip all tests that need a replica cluster
   ndb-extra             Run extra tests from ndb directory
   do-test=PREFIX or REGEX
                         Run test cases which name are prefixed with PREFIX
@@ -5291,10 +5291,10 @@ Options to control what test suites or cases to run
 
 Options that specify ports
 
-  master_port=PORT      Specify the port number used by the first master
-  slave_port=PORT       Specify the port number used by the first slave
+  primary_port=PORT      Specify the port number used by the first primary
+  replica_port=PORT       Specify the port number used by the first replica
   ndbcluster-port=PORT  Specify the port number used by cluster
-  ndbcluster-port-slave=PORT  Specify the port number used by slave cluster
+  ndbcluster-port-replica=PORT  Specify the port number used by replica cluster
   mtr-build-thread=#    Specify unique collection of ports. Can also be set by
                         setting the environment variable MTR_BUILD_THREAD.
 
@@ -5312,7 +5312,7 @@ Options to run test on running server
 
   extern                Use running server for tests
   ndb-connectstring=STR Use running cluster, and connect using STR
-  ndb-connectstring-slave=STR Use running slave cluster, and connect using STR
+  ndb-connectstring-replica=STR Use running replica cluster, and connect using STR
   user=USER             User for connection to extern server
   socket=PATH           Socket for connection to extern server
 
@@ -5331,8 +5331,8 @@ Options for debugging the product
                         test(s)
   manual-ddd            Let user manually start mysqld in ddd, before running
                         test(s)
-  master-binary=PATH    Specify the master "mysqld" to use
-  slave-binary=PATH     Specify the slave "mysqld" to use
+  primary-binary=PATH    Specify the primary "mysqld" to use
+  replica-binary=PATH     Specify the replica "mysqld" to use
   strace-client         Create strace output for mysqltest client
   max-save-core         Limit the number of core files saved (to avoid filling
                         up disks for heavily crashing server). Defaults to

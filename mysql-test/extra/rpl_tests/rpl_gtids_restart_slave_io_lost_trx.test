@@ -1,12 +1,12 @@
 #
-# This test will verify if the slave SQL thread and the slave IO thread behave
+# This test will verify if the replica SQL thread and the replica IO thread behave
 # correctly when the IO thread is restarted in the middle of a transaction.
 #
 # It is expected that the IO thread will retrieve again the partial transaction
 # from the beginning and that the SQL thread will rollback the partially
 # retrieved transaction before applying the fully retrieved one.
 #
-# This test will insert some data in the master and then will stop the slave
+# This test will insert some data in the primary and then will stop the replica
 # IO thread right after queuing an event of a given type, starting the IO
 # thread again to fully retrieve the partially received transaction.
 #
@@ -20,19 +20,19 @@
 # Enable auto_position protocol
 --let $use_gtids= 1
 --let $rpl_gtid_utils= 1
---source include/master-slave.inc
+--source include/primary-replica.inc
 # Test should run only on debug build
 source include/have_debug.inc;
 source include/have_debug_sync.inc;
 
 # Initial setup
---connection master
+--connection primary
 CREATE TABLE t1(i INT) ENGINE=InnoDB;
-# The following "FLUSH LOGS" will make the master to clear the "created" flag
+# The following "FLUSH LOGS" will make the primary to clear the "created" flag
 # of the Format Description events in the next binlog files (and also in
-# their replicated versions in the slave's relaylog).
+# their replicated versions in the replica's relaylog).
 FLUSH LOGS;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SET @save_debug=@@global.debug;
 
 #
@@ -42,13 +42,13 @@ SET @save_debug=@@global.debug;
 #     1.Stop I/O thread after reading GTID_LOG_EVENT
 #     2.Stop I/O thread after reading QUERY_LOG_EVENT
 #     3.Stop I/O thread after reading XID_LOG_EVENT
-#        which is equal to I/O thread sync with master
+#        which is equal to I/O thread sync with primary
 #     4.Stop I/O thread after the gtid is in EXECUTED_GTID_SET
-#       i.e., after sync slave sql thread with master.
+#       i.e., after sync replica sql thread with primary.
 #     5.Stop I/O thread after reading USER_VAR_LOG_EVENT
 # and after that make sure there are no missing gtid events
-# i.e., we will verify this by doing diff between master:t1,
-# slave:t1.
+# i.e., we will verify this by doing diff between primary:t1,
+# replica:t1.
 
 --let $i=1
 while ($i <= 5)
@@ -64,49 +64,49 @@ while ($i <= 5)
   if ($i == 3)
   {
     # Stopping sql thread to make sure that case 3 is not equal to case 4.
-    --source include/stop_slave_sql.inc
+    --source include/stop_replica_sql.inc
     SET GLOBAL DEBUG='d,stop_io_after_reading_xid_log_event';
   }
   if ($i == 5)
   {
     SET GLOBAL DEBUG='d,stop_io_after_reading_user_var_log_event';
   }
-  --connection master
+  --connection primary
   BEGIN;
   --eval INSERT INTO t1 VALUES ($i)
   --eval SET @v= $i * 100
   --eval INSERT INTO t1 VALUES (@v)
   COMMIT;
-  --connection slave
+  --connection replica
   if ($i == 4)
   {
-    --connection master
-    --source include/sync_slave_sql_with_master.inc
-    --source include/stop_slave_io.inc
+    --connection primary
+    --source include/sync_replica_sql_with_primary.inc
+    --source include/stop_replica_io.inc
   }
-  --source include/wait_for_slave_io_to_stop.inc
-  # Remove the debug point and restart the slave threads
+  --source include/wait_for_replica_io_to_stop.inc
+  # Remove the debug point and restart the replica threads
   SET GLOBAL DEBUG= @save_debug;
 
-  --source include/start_slave_io.inc
+  --source include/start_replica_io.inc
   if ($i == 3)
   {
-    --source include/start_slave_sql.inc
+    --source include/start_replica_sql.inc
   }
-  # Do one more insert on master and then sync slave with master (to make sure
+  # Do one more insert on primary and then sync replica with primary (to make sure
   # that re-replicating the events are done successfully.
-  --connection master
+  --connection primary
   --eval INSERT INTO t1 VALUES ($i)
-  --source include/sync_slave_sql_with_master.inc
-  # Now compare master and slave's t1 table data
+  --source include/sync_replica_sql_with_primary.inc
+  # Now compare primary and replica's t1 table data
   # to prove that there are no missing gtids.
-  --let diff_tables= master:t1, slave:t1
+  --let diff_tables= primary:t1, replica:t1
   --source include/diff_tables.inc
   --inc $i
 }
 
 # Cleanup
---connection master
+--connection primary
 DROP TABLE t1;
 
 --source include/rpl_end.inc

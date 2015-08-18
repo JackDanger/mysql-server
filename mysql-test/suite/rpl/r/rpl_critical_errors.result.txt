@@ -1,9 +1,9 @@
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
+start replica;
 CREATE TABLE t1 (data LONGBLOB) ENGINE=MYISAM;
 CREATE TABLE t2 (data LONGBLOB) ENGINE=MYISAM;
 INSERT INTO t1 (data) VALUES (repeat('a',1024*1024));
@@ -20,19 +20,19 @@ KILL QUERY 2;
 SELECT COUNT(*) FROM t2;
 COUNT(*)
 0
-SHOW SLAVE STATUS;
-Slave_IO_State	#
-Master_Host	127.0.0.1
-Master_User	root
-Master_Port	MASTER_PORT
+SHOW REPLICA STATUS;
+Replica_IO_State	#
+Primary_Host	127.0.0.1
+Primary_User	root
+Primary_Port	PRIMARY_PORT
 Connect_Retry	1
-Master_Log_File	master-bin.000001
-Read_Master_Log_Pos	#
+Primary_Log_File	primary-bin.000001
+Read_Primary_Log_Pos	#
 Relay_Log_File	#
 Relay_Log_Pos	#
-Relay_Master_Log_File	master-bin.000001
-Slave_IO_Running	Yes
-Slave_SQL_Running	No
+Relay_Primary_Log_File	primary-bin.000001
+Replica_IO_Running	Yes
+Replica_SQL_Running	No
 Replicate_Do_DB	
 Replicate_Ignore_DB	
 Replicate_Do_Table	
@@ -42,15 +42,15 @@ Replicate_Wild_Ignore_Table
 Last_Errno	1317
 Last_Error	#
 Skip_Counter	0
-Exec_Master_Log_Pos	#
+Exec_Primary_Log_Pos	#
 Relay_Log_Space	#
 Until_Condition	None
 Until_Log_File	
 Until_Log_Pos	0
-Master_SSL_Allowed	No
-Master_SSL_CA_File	
-Master_SSL_CA_Path	
-Master_SSL_Cert	
-Master_SSL_Cipher	
-Master_SSL_Key	
-Seconds_Behind_Master	#
+Primary_SSL_Allowed	No
+Primary_SSL_CA_File	
+Primary_SSL_CA_Path	
+Primary_SSL_Cert	
+Primary_SSL_Cipher	
+Primary_SSL_Key	
+Seconds_Behind_Primary	#

@@ -76,7 +76,7 @@ public:
   /**
     Flushes and syncs in-memory information into a stable storage (i.e.
     repository). Usually, syncing after flushing depends on other options
-    such as @c relay-log-info-sync, @c master-info-sync. These options
+    such as @c relay-log-info-sync, @c primary-info-sync. These options
     dictate after how many events or transactions the information
     should be synced. We can ignore them and always sync by setting the
     parameter @c force, which is by default @c false, to @c true.
@@ -312,7 +312,7 @@ public:
 
   /**
     Configures the number of events after which the info (e.g.
-    master info, relay log info) must be synced when flush() is
+    primary info, relay log info) must be synced when flush() is
     called.
  
     @param[in] period Number of events.
@@ -347,9 +347,9 @@ public:
     is called.
 
     In the current implementation, the type of the repository can only be
-    changed when replication, i.e. slave, is stopped. For that reason,
+    changed when replication, i.e. replica, is stopped. For that reason,
     this member function, i.e. update_is__transactional(), must be called
-    when slave is starting.
+    when replica is starting.
 
     @retval FALSE No error
     @retval TRUE Failure
@@ -377,7 +377,7 @@ protected:
 
   /*
    Keeps track of the number of events before fsyncing. The option
-   --sync-master-info and --sync-relay-log-info determine how many
+   --sync-primary-info and --sync-relay-log-info determine how many
    events should be processed before fsyncing.
   */
   uint sync_counter;

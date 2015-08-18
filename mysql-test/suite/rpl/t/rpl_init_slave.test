@@ -1,30 +1,30 @@
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 #
-# Test of init_slave variable
+# Test of init_replica variable
 #
 
 set global max_connections=151;
 
-connection slave;
-source include/stop_slave.inc;
-source include/start_slave.inc;
+connection replica;
+source include/stop_replica.inc;
+source include/start_replica.inc;
 
-connection master;
---source include/sync_slave_sql_with_master.inc
-show variables like 'init_slave';
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
+show variables like 'init_replica';
 show variables like 'max_connections';
-reset master;
-connection master;
-show variables like 'init_slave';
+reset primary;
+connection primary;
+show variables like 'init_replica';
 show variables like 'max_connections';
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 # Save variable value
 set @my_global_init_connect= @@global.init_connect;
 set global init_connect="set @c=1";
 show variables like 'init_connect';
-connection master;
---source include/sync_slave_sql_with_master.inc
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
 
 # Restore changed global variable
 set global init_connect= @my_global_init_connect;

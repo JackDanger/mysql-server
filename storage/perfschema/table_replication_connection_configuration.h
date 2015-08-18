@@ -30,7 +30,7 @@
 #include "rpl_msr.h"
 #include "rpl_info.h"  /* CHANNEL_NAME_LENGTH*/
 
-class Master_info;
+class Primary_info;
 
 /**
   @addtogroup Performance_schema_tables
@@ -92,7 +92,7 @@ struct st_row_connect_config {
 class table_replication_connection_configuration: public PFS_engine_table
 {
 private:
-  void make_row(Master_info *);
+  void make_row(Primary_info *);
 
   /** Table share lock. */
   static THR_LOCK m_table_lock;

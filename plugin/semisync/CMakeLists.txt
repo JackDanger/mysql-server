@@ -13,18 +13,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
-SET(SEMISYNC_MASTER_SOURCES  
- semisync.cc semisync_master.cc semisync_master_plugin.cc
- semisync.h semisync_master.h semisync_master_ack_receiver.cc)
+SET(SEMISYNC_PRIMARY_SOURCES  
+ semisync.cc semisync_primary.cc semisync_primary_plugin.cc
+ semisync.h semisync_primary.h semisync_primary_ack_receiver.cc)
 
 IF(SSL_DEFINES)
  ADD_DEFINITIONS(${SSL_DEFINES})
 ENDIF()
 
-MYSQL_ADD_PLUGIN(semisync_master ${SEMISYNC_MASTER_SOURCES}  
-  MODULE_ONLY MODULE_OUTPUT_NAME "semisync_master")
+MYSQL_ADD_PLUGIN(semisync_primary ${SEMISYNC_PRIMARY_SOURCES}  
+  MODULE_ONLY MODULE_OUTPUT_NAME "semisync_primary")
 
-SET(SEMISYNC_SLAVE_SOURCES  semisync.cc semisync_slave.cc 
-  semisync_slave_plugin.cc semisync.h semisync_slave.h )
-MYSQL_ADD_PLUGIN(semisync_slave ${SEMISYNC_SLAVE_SOURCES} 
-  MODULE_ONLY MODULE_OUTPUT_NAME "semisync_slave")
+SET(SEMISYNC_REPLICA_SOURCES  semisync.cc semisync_replica.cc 
+  semisync_replica_plugin.cc semisync.h semisync_replica.h )
+MYSQL_ADD_PLUGIN(semisync_replica ${SEMISYNC_REPLICA_SOURCES} 
+  MODULE_ONLY MODULE_OUTPUT_NAME "semisync_replica")

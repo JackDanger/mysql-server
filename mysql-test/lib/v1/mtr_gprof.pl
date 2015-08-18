@@ -38,26 +38,26 @@ sub gprof_prepare () {
   mkdir($::opt_gprof_dir);
 }
 
-# FIXME what about master1 and slave1?!
+# FIXME what about primary1 and replica1?!
 sub gprof_collect () {
 
-  if ( -f "$::master->[0]->{'path_myddir'}/gmon.out" )
+  if ( -f "$::primary->[0]->{'path_myddir'}/gmon.out" )
   {
     # FIXME check result code?!
     mtr_run("gprof",
-            [$::exe_master_mysqld,
-             "$::master->[0]->{'path_myddir'}/gmon.out"],
-            $::opt_gprof_master, "", "", "");
-    print "Master execution profile has been saved in $::opt_gprof_master\n";
+            [$::exe_primary_mysqld,
+             "$::primary->[0]->{'path_myddir'}/gmon.out"],
+            $::opt_gprof_primary, "", "", "");
+    print "Primary execution profile has been saved in $::opt_gprof_primary\n";
   }
-  if ( -f "$::slave->[0]->{'path_myddir'}/gmon.out" )
+  if ( -f "$::replica->[0]->{'path_myddir'}/gmon.out" )
   {
     # FIXME check result code?!
     mtr_run("gprof",
-            [$::exe_slave_mysqld,
-             "$::slave->[0]->{'path_myddir'}/gmon.out"],
-            $::opt_gprof_slave, "", "", "");
-    print "Slave execution profile has been saved in $::opt_gprof_slave\n";
+            [$::exe_replica_mysqld,
+             "$::replica->[0]->{'path_myddir'}/gmon.out"],
+            $::opt_gprof_replica, "", "", "");
+    print "Replica execution profile has been saved in $::opt_gprof_replica\n";
   }
 }
 

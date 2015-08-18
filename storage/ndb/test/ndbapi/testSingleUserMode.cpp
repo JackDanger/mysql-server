@@ -109,7 +109,7 @@ runTestSingleUserMode(NDBT_Context* ctx, NDBT_Step* step)
   while (i<loops && result == NDBT_OK) {
     g_info << i << ": ";
     int timeout = 120;
-    int nodeId = restarter.getMasterNodeId();
+    int nodeId = restarter.getPrimaryNodeId();
     // Test that it's not possible to restart one node in single user mode
     CHECK(restarter.enterSingleUserMode(pNdb->getNodeId()) == 0);
     CHECK(restarter.waitClusterSingleUser(timeout) == 0);

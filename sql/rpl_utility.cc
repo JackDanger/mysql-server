@@ -47,8 +47,8 @@ static int compare(size_t a, size_t b)
 
 
 /*
-  Compare the pack lengths of a source field (on the master) and a
-  target field (on the slave).
+  Compare the pack lengths of a source field (on the primary) and a
+  target field (on the replica).
 
   @param field    Target field.
   @param type     Source field type.
@@ -80,11 +80,11 @@ int compare_lengths(Field *field, enum_field_types source_type, uint16 metadata)
 
 /*
   This function returns the field size in raw bytes based on the type
-  and the encoded field data from the master's raw data.
+  and the encoded field data from the primary's raw data.
 */
-uint32 table_def::calc_field_size(uint col, uchar *master_data) const
+uint32 table_def::calc_field_size(uint col, uchar *primary_data) const
 {
-  uint32 length= ::calc_field_size(type(col), master_data,
+  uint32 length= ::calc_field_size(type(col), primary_data,
                                    m_field_metadata[col]);
   return length;
 }
@@ -277,10 +277,10 @@ bool is_conversion_ok(int order, Relay_log_info *rli)
   DBUG_ENTER("is_conversion_ok");
   bool allow_non_lossy, allow_lossy;
 
-  allow_non_lossy = slave_type_conversions_options &
-                    (1ULL << SLAVE_TYPE_CONVERSIONS_ALL_NON_LOSSY);
-  allow_lossy= slave_type_conversions_options &
-               (1ULL << SLAVE_TYPE_CONVERSIONS_ALL_LOSSY);
+  allow_non_lossy = replica_type_conversions_options &
+                    (1ULL << REPLICA_TYPE_CONVERSIONS_ALL_NON_LOSSY);
+  allow_lossy= replica_type_conversions_options &
+               (1ULL << REPLICA_TYPE_CONVERSIONS_ALL_LOSSY);
 
   DBUG_PRINT("enter", ("order: %d, flags:%s%s", order,
                        allow_non_lossy ? " ALL_NON_LOSSY" : "",
@@ -421,11 +421,11 @@ can_convert_field_to(Field *field,
     /*
       In the above condition, we are taking care
       of case where
-      1) Master having old TIME, TIMESTAMP, DATETIME
-      and slave have new TIME2, TIMESTAMP2, DATETIME2
+      1) Primary having old TIME, TIMESTAMP, DATETIME
+      and replica have new TIME2, TIMESTAMP2, DATETIME2
       or
-      2) Master having new TIMESTAMP2, DATETIME2, TIME2
-      with fraction part zero and slave have TIME,
+      2) Primary having new TIMESTAMP2, DATETIME2, TIME2
+      with fraction part zero and replica have TIME,
       TIMESTAMP, DATETIME.
       We need second condition, as when we are
       upgrading from 5.5 to 5.6 TIME, TIMESTAMP,
@@ -443,7 +443,7 @@ can_convert_field_to(Field *field,
     *order_var= -1;
     DBUG_RETURN(true);
   }
-  else if (!slave_type_conversions_options)
+  else if (!replica_type_conversions_options)
     DBUG_RETURN(false);
 
   /*
@@ -453,7 +453,7 @@ can_convert_field_to(Field *field,
   */
 
   DBUG_PRINT("debug", ("Base types are different, checking conversion"));
-  switch (source_type)                      // Source type (on master)
+  switch (source_type)                      // Source type (on primary)
   {
   case MYSQL_TYPE_DECIMAL:
   case MYSQL_TYPE_NEWDECIMAL:
@@ -580,9 +580,9 @@ can_convert_field_to(Field *field,
 /**
   Is the definition compatible with a table?
 
-  This function will compare the master table with an existing table
-  on the slave and see if they are compatible with respect to the
-  current settings of @c SLAVE_TYPE_CONVERSIONS.
+  This function will compare the primary table with an existing table
+  on the replica and see if they are compatible with respect to the
+  current settings of @c REPLICA_TYPE_CONVERSIONS.
 
   If the tables are compatible and conversions are required, @c
   *tmp_table_var will be set to a virtual temporary table with field
@@ -601,8 +601,8 @@ can_convert_field_to(Field *field,
   @param tmp_table_var[out]
   Virtual temporary table for performing conversions, if necessary.
 
-  @retval true Master table is compatible with slave table.
-  @retval false Master table is not compatible with slave table.
+  @retval true Primary table is compatible with replica table.
+  @retval false Primary table is not compatible with replica table.
 */
 bool
 table_def::compatible_with(THD *thd, Relay_log_info *rli,
@@ -664,8 +664,8 @@ table_def::compatible_with(THD *thd, Relay_log_info *rli,
       String target_type(target_buf, sizeof(target_buf), &my_charset_latin1);
       show_sql_type(type(col), field_metadata(col), &source_type, field->charset());
       field->sql_type(target_type);
-      rli->report(ERROR_LEVEL, ER_SLAVE_CONVERSION_FAILED,
-                  ER(ER_SLAVE_CONVERSION_FAILED),
+      rli->report(ERROR_LEVEL, ER_REPLICA_CONVERSION_FAILED,
+                  ER(ER_REPLICA_CONVERSION_FAILED),
                   col, db_name, tbl_name,
                   source_type.c_ptr_safe(), target_type.c_ptr_safe());
       return false;
@@ -713,8 +713,8 @@ TABLE *table_def::create_conversion_table(THD *thd, Relay_log_info *rli, TABLE *
   List<Create_field> field_list;
   TABLE *conv_table= NULL;
   /*
-    At slave, columns may differ. So we should create
-    min(columns@master, columns@slave) columns in the
+    At replica, columns may differ. So we should create
+    min(columns@primary, columns@replica) columns in the
     conversion table.
   */
   uint const cols_to_create= min<ulong>(target_table->s->fields, size());
@@ -722,13 +722,13 @@ TABLE *table_def::create_conversion_table(THD *thd, Relay_log_info *rli, TABLE *
   // Default value : treat all values signed
   bool unsigned_flag= FALSE;
 
-  // Check if slave_type_conversions contains ALL_UNSIGNED
-  unsigned_flag= slave_type_conversions_options &
-                  (1ULL << SLAVE_TYPE_CONVERSIONS_ALL_UNSIGNED);
+  // Check if replica_type_conversions contains ALL_UNSIGNED
+  unsigned_flag= replica_type_conversions_options &
+                  (1ULL << REPLICA_TYPE_CONVERSIONS_ALL_UNSIGNED);
 
-  // Check if slave_type_conversions contains ALL_SIGNED
-  unsigned_flag= unsigned_flag && !(slave_type_conversions_options &
-                 (1ULL << SLAVE_TYPE_CONVERSIONS_ALL_SIGNED));
+  // Check if replica_type_conversions contains ALL_SIGNED
+  unsigned_flag= unsigned_flag && !(replica_type_conversions_options &
+                 (1ULL << REPLICA_TYPE_CONVERSIONS_ALL_SIGNED));
 
   for (uint col= 0 ; col < cols_to_create; ++col)
   {
@@ -765,10 +765,10 @@ TABLE *table_def::create_conversion_table(THD *thd, Relay_log_info *rli, TABLE *
       break;
 
     case MYSQL_TYPE_DECIMAL:
-      sql_print_error("In RBR mode, Slave received incompatible DECIMAL field "
-                      "(old-style decimal field) from Master while creating "
+      sql_print_error("In RBR mode, Replica received incompatible DECIMAL field "
+                      "(old-style decimal field) from Primary while creating "
                       "conversion table. Please consider changing datatype on "
-                      "Master to new style decimal by executing ALTER command for"
+                      "Primary to new style decimal by executing ALTER command for"
                       " column Name: %s.%s.%s.",
                       target_table->s->db.str,
                       target_table->s->table_name.str,
@@ -806,8 +806,8 @@ TABLE *table_def::create_conversion_table(THD *thd, Relay_log_info *rli, TABLE *
 
 err:
   if (conv_table == NULL)
-    rli->report(ERROR_LEVEL, ER_SLAVE_CANT_CREATE_CONVERSION,
-                ER(ER_SLAVE_CANT_CREATE_CONVERSION),
+    rli->report(ERROR_LEVEL, ER_REPLICA_CANT_CREATE_CONVERSION,
+                ER(ER_REPLICA_CANT_CREATE_CONVERSION),
                 target_table->s->db.str,
                 target_table->s->table_name.str);
   DBUG_RETURN(conv_table);
@@ -843,7 +843,7 @@ table_def::table_def(unsigned char *types, ulong size,
     iff there is field metadata. The variable metadata_size will be
     0 if we are replicating from an older version server since no field
     metadata was written to the table map. This can also happen if 
-    there were no fields in the master that needed extra metadata.
+    there were no fields in the primary that needed extra metadata.
   */
   if (m_size && metadata_size)
   { 
@@ -934,7 +934,7 @@ table_def::~table_def()
  */
 
 static uchar*
-hash_slave_rows_get_key(const uchar *record,
+hash_replica_rows_get_key(const uchar *record,
                         size_t *length,
                         my_bool not_used __attribute__((unused)))
 {
@@ -948,7 +948,7 @@ hash_slave_rows_get_key(const uchar *record,
 }
 
 static void
-hash_slave_rows_free_entry(HASH_ROW_ENTRY *entry)
+hash_replica_rows_free_entry(HASH_ROW_ENTRY *entry)
 {
   DBUG_ENTER("free_entry");
   if (entry)
@@ -962,7 +962,7 @@ hash_slave_rows_free_entry(HASH_ROW_ENTRY *entry)
   DBUG_VOID_RETURN;
 }
 
-bool Hash_slave_rows::is_empty(void)
+bool Hash_replica_rows::is_empty(void)
 {
   return (m_hash.records == 0);
 }
@@ -971,22 +971,22 @@ bool Hash_slave_rows::is_empty(void)
    Hashing commodity structures and functions.
  */
 
-bool Hash_slave_rows::init(void)
+bool Hash_replica_rows::init(void)
 {
   if (my_hash_init(&m_hash,
                    &my_charset_bin,                /* the charater set information */
                    16 /* TODO */,                  /* growth size */
                    0,                              /* key offset */
                    0,                              /* key length */
-                   hash_slave_rows_get_key,                        /* get function pointer */
-                   (my_hash_free_key) hash_slave_rows_free_entry,  /* freefunction pointer */
+                   hash_replica_rows_get_key,                        /* get function pointer */
+                   (my_hash_free_key) hash_replica_rows_free_entry,  /* freefunction pointer */
                    MYF(0),                         /* flags */
                    key_memory_HASH_ROW_ENTRY))     /* memory instrumentation key */
     return true;
   return false;
 }
 
-bool Hash_slave_rows::deinit(void)
+bool Hash_replica_rows::deinit(void)
 {
   if (my_hash_inited(&m_hash))
     my_hash_free(&m_hash);
@@ -994,19 +994,19 @@ bool Hash_slave_rows::deinit(void)
   return 0;
 }
 
-int Hash_slave_rows::size()
+int Hash_replica_rows::size()
 {
   return m_hash.records;
 }
 
-HASH_ROW_ENTRY* Hash_slave_rows::make_entry()
+HASH_ROW_ENTRY* Hash_replica_rows::make_entry()
 {
   return make_entry(NULL, NULL);
 }
 
-HASH_ROW_ENTRY* Hash_slave_rows::make_entry(const uchar* bi_start, const uchar* bi_ends)
+HASH_ROW_ENTRY* Hash_replica_rows::make_entry(const uchar* bi_start, const uchar* bi_ends)
 {
-  DBUG_ENTER("Hash_slave_rows::make_entry");
+  DBUG_ENTER("Hash_replica_rows::make_entry");
 
   HASH_ROW_ENTRY *entry= (HASH_ROW_ENTRY*) my_malloc(key_memory_HASH_ROW_ENTRY,
                                                      sizeof(HASH_ROW_ENTRY), MYF(0));
@@ -1051,12 +1051,12 @@ err:
 }
 
 bool
-Hash_slave_rows::put(TABLE *table,
+Hash_replica_rows::put(TABLE *table,
                      MY_BITMAP *cols,
                      HASH_ROW_ENTRY* entry)
 {
 
-  DBUG_ENTER("Hash_slave_rows::put");
+  DBUG_ENTER("Hash_replica_rows::put");
 
   HASH_ROW_PREAMBLE* preamble= entry->preamble;
 
@@ -1074,9 +1074,9 @@ Hash_slave_rows::put(TABLE *table,
 }
 
 HASH_ROW_ENTRY*
-Hash_slave_rows::get(TABLE *table, MY_BITMAP *cols)
+Hash_replica_rows::get(TABLE *table, MY_BITMAP *cols)
 {
-  DBUG_ENTER("Hash_slave_rows::get");
+  DBUG_ENTER("Hash_replica_rows::get");
   HASH_SEARCH_STATE state;
   my_hash_value_type key;
   HASH_ROW_ENTRY *entry= NULL;
@@ -1104,9 +1104,9 @@ Hash_slave_rows::get(TABLE *table, MY_BITMAP *cols)
   DBUG_RETURN(entry);
 }
 
-bool Hash_slave_rows::next(HASH_ROW_ENTRY** entry)
+bool Hash_replica_rows::next(HASH_ROW_ENTRY** entry)
 {
-  DBUG_ENTER("Hash_slave_rows::next");
+  DBUG_ENTER("Hash_replica_rows::next");
   DBUG_ASSERT(*entry);
 
   if (*entry == NULL)
@@ -1153,9 +1153,9 @@ bool Hash_slave_rows::next(HASH_ROW_ENTRY** entry)
 }
 
 bool
-Hash_slave_rows::del(HASH_ROW_ENTRY *entry)
+Hash_replica_rows::del(HASH_ROW_ENTRY *entry)
 {
-  DBUG_ENTER("Hash_slave_rows::del");
+  DBUG_ENTER("Hash_replica_rows::del");
   DBUG_ASSERT(entry);
 
   if (my_hash_delete(&m_hash, (uchar *) entry))
@@ -1164,9 +1164,9 @@ Hash_slave_rows::del(HASH_ROW_ENTRY *entry)
 }
 
 my_hash_value_type
-Hash_slave_rows::make_hash_key(TABLE *table, MY_BITMAP *cols)
+Hash_replica_rows::make_hash_key(TABLE *table, MY_BITMAP *cols)
 {
-  DBUG_ENTER("Hash_slave_rows::make_hash_key");
+  DBUG_ENTER("Hash_replica_rows::make_hash_key");
   ha_checksum crc= 0L;
 
   uchar *record= table->record[0];
@@ -1317,7 +1317,7 @@ void Deferred_log_events::rewind()
 {
   /*
     Reset preceding Query log event events which execution was
-    deferred because of slave side filtering.
+    deferred because of replica side filtering.
   */
   delete_container_pointers(m_array);
   m_array.shrink_to_fit();

@@ -2,7 +2,7 @@
 
 -- source include/have_ndb.inc
 -- source include/have_innodb.inc
--- source suite/ndb_rpl/ndb_master-slave.inc
+-- source suite/ndb_rpl/ndb_primary-replica.inc
 
 create table t1 (a int, unique(a)) engine=ndbcluster;
 create table t2 (a int, unique(a)) engine=innodb;
@@ -15,10 +15,10 @@ rollback;
 
 select count(*) from t1;
 select count(*) from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 select count(*) from t1;
 select count(*) from t2;
-connection master;
+connection primary;
 
 begin;
 load data infile '../../../std_data/rpl_loaddata.dat' into table t2;
@@ -27,10 +27,10 @@ rollback;
 
 select count(*) from t1;
 select count(*) from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 select count(*) from t1;
 select count(*) from t2;
-connection master;
+connection primary;
 
 delete from t1;
 delete from t2;
@@ -41,10 +41,10 @@ rollback;
 
 select count(*) from t1;
 select count(*) from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 select count(*) from t1;
 select count(*) from t2;
-connection master;
+connection primary;
 
 delete from t1;
 delete from t2;
@@ -57,11 +57,11 @@ rollback;
 
 select count(*) from t1;
 select count(*) from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 select count(*) from t1;
 select count(*) from t2;
-connection master;
+connection primary;
 
 drop table t1,t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 --source include/rpl_end.inc

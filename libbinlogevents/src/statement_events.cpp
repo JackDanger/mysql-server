@@ -36,7 +36,7 @@ Query_event::Query_event(Log_event_type type_arg)
 }
 
 /**
-  The constructor used by MySQL master to create a query event, to be
+  The constructor used by MySQL primary to create a query event, to be
   written to the binary log.
 */
 Query_event::Query_event(const char* query_arg, const char* catalog_arg,
@@ -61,7 +61,7 @@ Query_event::Query_event(const char* query_arg, const char* catalog_arg,
   time_zone_len(0), lc_time_names_number(number),
   charset_database_number(0),
   table_map_for_update(table_map_for_update_arg),
-  master_data_written(0), mts_accessed_dbs(0)
+  primary_data_written(0), mts_accessed_dbs(0)
 {
 }
 
@@ -116,7 +116,7 @@ Query_event::Query_event(const char* buf, unsigned int event_len,
   flags2_inited(0), sql_mode_inited(0), charset_inited(0),
   auto_increment_increment(1), auto_increment_offset(1),
   time_zone_len(0), catalog_len(0), lc_time_names_number(0),
-  charset_database_number(0), table_map_for_update(0), master_data_written(0),
+  charset_database_number(0), table_map_for_update(0), primary_data_written(0),
   explicit_defaults_ts(TERNARY_UNSET),
   mts_accessed_dbs(OVER_MAX_DBS_IN_EVENT_MTS)
 {
@@ -180,14 +180,14 @@ Query_event::Query_event(const char* buf, unsigned int event_len,
   else
   {
     /*
-      server version < 5.0 / binlog_version < 4 master's event is
+      server version < 5.0 / binlog_version < 4 primary's event is
       relay-logged with storing the original size of the event in
-      Q_MASTER_DATA_WRITTEN_CODE status variable.
-      The size is to be restored at reading Q_MASTER_DATA_WRITTEN_CODE-marked
+      Q_PRIMARY_DATA_WRITTEN_CODE status variable.
+      The size is to be restored at reading Q_PRIMARY_DATA_WRITTEN_CODE-marked
       event from the relay log.
     */
     BAPI_ASSERT(description_event->binlog_version < 4);
-    master_data_written= header()->data_written;
+    primary_data_written= header()->data_written;
   }
   /*
     We have parsed everything we know in the post header for QUERY_EVENT,
@@ -246,7 +246,7 @@ Query_event::Query_event(const char* buf, unsigned int event_len,
       pos+= time_zone_len + 1;
       break;
     }
-    case Q_CATALOG_CODE: /* for 5.0.x where 0<=x<=3 masters */
+    case Q_CATALOG_CODE: /* for 5.0.x where 0<=x<=3 primarys */
       CHECK_SPACE(pos, end, 1);
       if ((catalog_len= *pos))
         catalog= (const char*) (pos+1);
@@ -271,11 +271,11 @@ Query_event::Query_event(const char* buf, unsigned int event_len,
       table_map_for_update= le64toh(table_map_for_update);
       pos+= 8;
       break;
-    case Q_MASTER_DATA_WRITTEN_CODE:
+    case Q_PRIMARY_DATA_WRITTEN_CODE:
       CHECK_SPACE(pos, end, 4);
-      memcpy(&master_data_written, pos, sizeof(master_data_written));
-      master_data_written= le32toh(static_cast<uint32_t>(master_data_written));
-      header()->data_written= master_data_written;
+      memcpy(&primary_data_written, pos, sizeof(primary_data_written));
+      primary_data_written= le32toh(static_cast<uint32_t>(primary_data_written));
+      header()->data_written= primary_data_written;
       pos+= 4;
       break;
     case Q_MICROSECONDS:
@@ -317,8 +317,8 @@ break;
       mts_accessed_dbs= *pos++;
       /*
          Notice, the following check is positive also in case of
-         the master's MAX_DBS_IN_EVENT_MTS > the slave's one and the event
-         contains e.g the master's MAX_DBS_IN_EVENT_MTS db:s.
+         the primary's MAX_DBS_IN_EVENT_MTS > the replica's one and the event
+         contains e.g the primary's MAX_DBS_IN_EVENT_MTS db:s.
       */
       if (mts_accessed_dbs > MAX_DBS_IN_EVENT_MTS)
       {
@@ -547,7 +547,7 @@ err:
 }
 
 /**
-  Constructor receives a packet from the MySQL master or the binary
+  Constructor receives a packet from the MySQL primary or the binary
   log and decodes it to create an Intvar_event.
   Written every time a statement uses an AUTO_INCREMENT column or the
   LAST_INSERT_ID() function; precedes other events for the statement.

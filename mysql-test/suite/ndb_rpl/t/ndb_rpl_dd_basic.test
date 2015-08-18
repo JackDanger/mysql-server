@@ -5,7 +5,7 @@
 
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --disable_warnings
 DROP TABLE IF EXISTS t1;
@@ -60,18 +60,18 @@ insert into t1 values (1,2,3);
 select * from t1 order by pk1;
 
 #
-# check that the data is also on the slave
+# check that the data is also on the replica
 #
 
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select * from t1 order by pk1;
 
 #
 # view the binlog
 #
 
---connection master
+--connection primary
 -- source include/show_binlog_events.inc
 
 #

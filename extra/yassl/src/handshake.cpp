@@ -35,7 +35,7 @@ namespace yaSSL {
 // Build a client hello message from cipher suites and compression method
 void buildClientHello(SSL& ssl, ClientHello& hello)
 {
-    // store for pre master secret
+    // store for pre primary secret
     ssl.useSecurity().use_connection().chVersion_ = hello.client_version_;
 
     ssl.getCrypto().get_random().Fill(hello.random_, RAN_LEN);
@@ -170,19 +170,19 @@ void buildMD5(SSL& ssl, Finished& fin, const opaque* sender)
     opaque md5_inner[SIZEOF_SENDER + SECRET_LEN + PAD_MD5];
     opaque md5_outer[SECRET_LEN + PAD_MD5 + MD5_LEN];
 
-    const opaque* master_secret = 
-        ssl.getSecurity().get_connection().master_secret_;
+    const opaque* primary_secret = 
+        ssl.getSecurity().get_connection().primary_secret_;
 
     // make md5 inner
     memcpy(md5_inner, sender, SIZEOF_SENDER);
-    memcpy(&md5_inner[SIZEOF_SENDER], master_secret, SECRET_LEN);
+    memcpy(&md5_inner[SIZEOF_SENDER], primary_secret, SECRET_LEN);
     memcpy(&md5_inner[SIZEOF_SENDER + SECRET_LEN], PAD1, PAD_MD5);
 
     ssl.useHashes().use_MD5().get_digest(md5_result, md5_inner,
                                          sizeof(md5_inner));
 
     // make md5 outer
-    memcpy(md5_outer, master_secret, SECRET_LEN);
+    memcpy(md5_outer, primary_secret, SECRET_LEN);
     memcpy(&md5_outer[SECRET_LEN], PAD2, PAD_MD5);
     memcpy(&md5_outer[SECRET_LEN + PAD_MD5], md5_result, MD5_LEN);
 
@@ -199,19 +199,19 @@ void buildSHA(SSL& ssl, Finished& fin, const opaque* sender)
     opaque sha_inner[SIZEOF_SENDER + SECRET_LEN + PAD_SHA];
     opaque sha_outer[SECRET_LEN + PAD_SHA + SHA_LEN];
 
-    const opaque* master_secret = 
-        ssl.getSecurity().get_connection().master_secret_;
+    const opaque* primary_secret = 
+        ssl.getSecurity().get_connection().primary_secret_;
 
      // make sha inner
     memcpy(sha_inner, sender, SIZEOF_SENDER);
-    memcpy(&sha_inner[SIZEOF_SENDER], master_secret, SECRET_LEN);
+    memcpy(&sha_inner[SIZEOF_SENDER], primary_secret, SECRET_LEN);
     memcpy(&sha_inner[SIZEOF_SENDER + SECRET_LEN], PAD1, PAD_SHA);
 
     ssl.useHashes().use_SHA().get_digest(sha_result, sha_inner,
                                          sizeof(sha_inner));
 
     // make sha outer
-    memcpy(sha_outer, master_secret, SECRET_LEN);
+    memcpy(sha_outer, primary_secret, SECRET_LEN);
     memcpy(&sha_outer[SECRET_LEN], PAD2, PAD_SHA);
     memcpy(&sha_outer[SECRET_LEN + PAD_SHA], sha_result, SHA_LEN);
 
@@ -411,7 +411,7 @@ void buildFinishedTLS(SSL& ssl, Finished& fin, const opaque* sender)
         side = tls_server;
 
     PRF(fin.set_md5(), TLS_FINISHED_SZ, 
-        ssl.getSecurity().get_connection().master_secret_, SECRET_LEN, 
+        ssl.getSecurity().get_connection().primary_secret_, SECRET_LEN, 
         side, FINISHED_LABEL_SZ, 
         handshake_hash, FINISHED_SZ);
 
@@ -471,18 +471,18 @@ void buildMD5_CertVerify(SSL& ssl, byte* digest)
     opaque md5_inner[SECRET_LEN + PAD_MD5];
     opaque md5_outer[SECRET_LEN + PAD_MD5 + MD5_LEN];
 
-    const opaque* master_secret = 
-        ssl.getSecurity().get_connection().master_secret_;
+    const opaque* primary_secret = 
+        ssl.getSecurity().get_connection().primary_secret_;
 
     // make md5 inner
-    memcpy(md5_inner, master_secret, SECRET_LEN);
+    memcpy(md5_inner, primary_secret, SECRET_LEN);
     memcpy(&md5_inner[SECRET_LEN], PAD1, PAD_MD5);
 
     ssl.useHashes().use_MD5().get_digest(md5_result, md5_inner,
                                          sizeof(md5_inner));
 
     // make md5 outer
-    memcpy(md5_outer, master_secret, SECRET_LEN);
+    memcpy(md5_outer, primary_secret, SECRET_LEN);
     memcpy(&md5_outer[SECRET_LEN], PAD2, PAD_MD5);
     memcpy(&md5_outer[SECRET_LEN + PAD_MD5], md5_result, MD5_LEN);
 
@@ -497,18 +497,18 @@ void buildSHA_CertVerify(SSL& ssl, byte* digest)
     opaque sha_inner[SECRET_LEN + PAD_SHA];
     opaque sha_outer[SECRET_LEN + PAD_SHA + SHA_LEN];
 
-    const opaque* master_secret = 
-        ssl.getSecurity().get_connection().master_secret_;
+    const opaque* primary_secret = 
+        ssl.getSecurity().get_connection().primary_secret_;
 
      // make sha inner
-    memcpy(sha_inner, master_secret, SECRET_LEN);
+    memcpy(sha_inner, primary_secret, SECRET_LEN);
     memcpy(&sha_inner[SECRET_LEN], PAD1, PAD_SHA);
 
     ssl.useHashes().use_SHA().get_digest(sha_result, sha_inner,
                                          sizeof(sha_inner));
 
     // make sha outer
-    memcpy(sha_outer, master_secret, SECRET_LEN);
+    memcpy(sha_outer, primary_secret, SECRET_LEN);
     memcpy(&sha_outer[SECRET_LEN], PAD2, PAD_SHA);
     memcpy(&sha_outer[SECRET_LEN + PAD_SHA], sha_result, SHA_LEN);
 
@@ -880,7 +880,7 @@ void sendClientKeyExchange(SSL& ssl, BufferOutput buffer)
 
     ClientKeyExchange ck(ssl);
     ck.build(ssl);
-    ssl.makeMasterSecret();
+    ssl.makePrimarySecret();
 
     RecordLayerHeader rlHeader;
     HandShakeHeader   hsHeader;
@@ -962,7 +962,7 @@ void sendFinished(SSL& ssl, ConnectionEnd side, BufferOutput buffer)
         if (side == client_end)
             buildFinished(ssl, ssl.useHashes().use_verify(), server); // server
     }   
-    ssl.useSecurity().use_connection().CleanMaster();
+    ssl.useSecurity().use_connection().CleanPrimary();
 
     if (buffer == buffered)
         ssl.addBuffer(out.release());

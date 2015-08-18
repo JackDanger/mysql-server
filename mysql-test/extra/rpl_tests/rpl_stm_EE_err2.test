@@ -7,13 +7,13 @@
 #          first work with both RBR and SBR
 ###################################
 #REQUIREMENT: An INSERT with a faked duplicate entry error on
-#master should be replicated to slave and force the slave to stop
-#(since the slave can't cause a faked error to re-occur).
+#primary should be replicated to replica and force the replica to stop
+#(since the replica can't cause a faked error to re-occur).
 ###################################
 
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
-connection master;
+connection primary;
 eval create table t1 (a int, unique(a)) engine=$engine_type;
 set sql_log_bin=0;
 insert into t1 values(2);
@@ -23,22 +23,22 @@ set sql_log_bin=1;
 insert into t1 values(1),(2);
 drop table t1;
 
-connection slave;
+connection replica;
 --let $err1= convert_error(ER_MTS_INCONSISTENT_DATA)
 --let $err2= convert_error(ER_INCONSISTENT_ERROR)
---eval call mtr.add_suppression("Slave SQL.*Query caused different errors on master and slave.*Error on master:.* error code=1062.*Error on slave:.* Error_code: $err2")
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+--eval call mtr.add_suppression("Replica SQL.*Query caused different errors on primary and replica.*Error on primary:.* error code=1062.*Error on replica:.* Error_code: $err2")
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
---echo (expect different error codes on master and slave)
---let $slave_sql_errno= $err1,$err2
+--echo (expect different error codes on primary and replica)
+--let $replica_sql_errno= $err1,$err2
 # can't print error text. MTS reports a separate error in this case.
-# Todo: to fix single-threaded-slave BUG#57287.
---let $show_slave_sql_error= 0
---source include/wait_for_slave_sql_error.inc
+# Todo: to fix single-threaded-replica BUG#57287.
+--let $show_replica_sql_error= 0
+--source include/wait_for_replica_sql_error.inc
 drop table t1;
---source include/stop_slave.inc
+--source include/stop_replica.inc
 # Clear error messages.
-RESET SLAVE;
+RESET REPLICA;
 
 # End of 4.1 tests
 

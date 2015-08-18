@@ -4,7 +4,7 @@
 #
 ###################################
 -- source include/not_group_replication_plugin.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 disable_query_log;
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
@@ -14,31 +14,31 @@ enable_query_log;
 --disable_ps_protocol
 
 
-# Clean up old slave's binlogs.
-# The slave is started with --log-slave-updates
-# and this test does SHOW BINLOG EVENTS on the slave's
+# Clean up old replica's binlogs.
+# The replica is started with --log-replica-updates
+# and this test does SHOW BINLOG EVENTS on the replica's
 # binlog. But previous tests can influence the current test's
 # binlog (e.g. a temporary table in the previous test has not
-# been explicitly deleted, or it has but the slave hasn't had
-# enough time to catch it before STOP SLAVE, 
+# been explicitly deleted, or it has but the replica hasn't had
+# enough time to catch it before STOP REPLICA, 
 # and at the beginning of the current
-# test the slave immediately writes DROP TEMPORARY TABLE this_old_table).
-# We wait for the slave to have written all he wants to the binlog
-# (otherwise RESET MASTER may come too early).
---source include/sync_slave_sql_with_master.inc
-# Save slave's GTID_EXECUTED before issuing a reset master on it.
+# test the replica immediately writes DROP TEMPORARY TABLE this_old_table).
+# We wait for the replica to have written all he wants to the binlog
+# (otherwise RESET PRIMARY may come too early).
+--source include/sync_replica_sql_with_primary.inc
+# Save replica's GTID_EXECUTED before issuing a reset primary on it.
 --let $old_gtid_executed= `SELECT @@GLOBAL.GTID_EXECUTED`
 
-reset master;
-connection slave;
---source include/stop_slave.inc
-RESET MASTER;
+reset primary;
+connection replica;
+--source include/stop_replica.inc
+RESET PRIMARY;
 
-# As the master have a GTID for the suppression added in the beginning of the
-# test case, we have to make this GTID as purged on slave because we are not
-# issuing a RESET SLAVE, and the IO thread will not ask for this first
+# As the primary have a GTID for the suppression added in the beginning of the
+# test case, we have to make this GTID as purged on replica because we are not
+# issuing a RESET REPLICA, and the IO thread will not ask for this first
 # transaction again. Without doing this, the test will fail because the
-# master's GTID_EXECUTED will differ from slave's the end of the test.
+# primary's GTID_EXECUTED will differ from replica's the end of the test.
 --disable_query_log
 if ( `SELECT @@GLOBAL.GTID_MODE = "ON"` )
 {
@@ -46,8 +46,8 @@ if ( `SELECT @@GLOBAL.GTID_MODE = "ON"` )
 }
 --enable_query_log
 
---source include/start_slave.inc
-connection master;
+--source include/start_replica.inc
+connection primary;
 
 create table t1(n char(30));
 set @i1:=12345678901234, @i2:=-12345678901234, @i3:=0, @i4:=-1;
@@ -68,12 +68,12 @@ insert into t1 values (@a),(@a);
 # To flush the pending event, we add the following statement. RBR can
 # concatenate the result of several statements, which SBR cannot.
 select * from t1 where n = '<nonexistant>';
-connection master1; # see if variable is reset in binlog when thread changes
+connection primary1; # see if variable is reset in binlog when thread changes
 insert into t1 values (@a),(@a),(@a*5);
 SELECT * FROM t1 ORDER BY n;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY n;
-connection master;
+connection primary;
 insert into t1 select * FROM (select @var1 union  select @var2) AS t2;
 drop table t1;
 --echo End of 4.1 tests.
@@ -87,7 +87,7 @@ drop table t1;
 # user-defined variable. It also has a trigger that inserts data based on the 
 # same variable. Successful test runs show that the @var is replicated 
 # properly and that the procedure and trigger insert the correct data on the 
-# slave.
+# replica.
 #
 # The test of stored procedure was included for completeness. Replication of stored 
 # procedures was not directly affected by BUG#20141.
@@ -130,8 +130,8 @@ CREATE TRIGGER test.insert_bi BEFORE INSERT
     END|
 DELIMITER ;|
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 # Set @var and call the procedure, repeat with different values
 
@@ -140,18 +140,18 @@ CALL test.insert();
 SET @VAR=1;
 CALL test.insert();
 
---echo On master: Check the tables for correct data
+--echo On primary: Check the tables for correct data
 
 SELECT * FROM t20;
 SELECT * FROM t21;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo On slave: Check the tables for correct data and it matches master
+--echo On replica: Check the tables for correct data and it matches primary
 
 SELECT * FROM t20;
 SELECT * FROM t21;
-connection master;
+connection primary;
 
 # Cleanup
 
@@ -187,17 +187,17 @@ INSERT INTO t1 VALUES (square());
 SET @var = 5;
 INSERT INTO t1 VALUES (square());
 
---echo On master: Retrieve the values from the table
+--echo On primary: Retrieve the values from the table
 
 SELECT * FROM t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo On slave: Retrieve the values from the table and verify they are the same as on master
+--echo On replica: Retrieve the values from the table and verify they are the same as on primary
 
 SELECT * FROM t1;
 
-connection master;
+connection primary;
 
 # Cleanup
 
@@ -235,8 +235,8 @@ CREATE FUNCTION f2() returns int deterministic BEGIN
 END |
 DELIMITER ;|
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 # Set an @var to a value and insert data into a table using the first function.
 # Set two more @vars to some values and insert data into a table using the second function.
@@ -247,20 +247,20 @@ SET @b = 125;
 SET @c = 1;
 INSERT INTO t1 values(f2());
 
---echo On master: Retrieve the values from the table
+--echo On primary: Retrieve the values from the table
 
---source include/sync_slave_sql_with_master.inc
-connection master;
-
-SELECT * from t1;
-
-connection slave;
-
---echo On slave: Check the tables for correct data and it matches master
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 SELECT * from t1;
 
-connection master;
+connection replica;
+
+--echo On replica: Check the tables for correct data and it matches primary
+
+SELECT * from t1;
+
+connection primary;
 
 # Cleanup
 
@@ -270,7 +270,7 @@ DROP FUNCTION f2;
 
 # This test uses a function that changes a user-defined variable in its body. This test 
 # will ensure the @vars are replicated when needed and not interrupt the normal execution 
-# of the function on the slave. This also applies to procedures and triggers.
+# of the function on the replica. This also applies to procedures and triggers.
 
 # This test was constructed for BUG#25167
 
@@ -292,48 +292,48 @@ CREATE trigger t1_bi before INSERT on t1 for each row BEGIN
 END |
 DELIMITER ;|
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 # Set the @var to a value then insert data into first table.
 
 SET @a:=100;
 INSERT INTO t1 values (5);
 
---echo On master: Check to see that data was inserted correctly in both tables
+--echo On primary: Check to see that data was inserted correctly in both tables
 
 SELECT * from t1;
 SELECT * from t2;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo On slave: Check the tables for correct data and it matches master
+--echo On replica: Check the tables for correct data and it matches primary
 
 SELECT * from t1;
 SELECT * from t2;
 
-connection master;
+connection primary;
 drop table t1, t2;
 
 #
-# Bug #12826: Possible to get inconsistent slave using SQL syntax Prepared Statements
+# Bug #12826: Possible to get inconsistent replica using SQL syntax Prepared Statements
 #
-connection master;
+connection primary;
 create table t1(a int, b int);
 prepare s1 from 'insert into t1 values (@x:=@x+1, ?)';
 set @x=1; execute s1 using @x;
 select * from t1;
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 select * from t1;
-connection master;
+connection primary;
 drop table t1;
 
 #
 # Bug#33851: Passing UNSIGNED param to EXECUTE returns ERROR 1210
 #
 
-connection master;
+connection primary;
 create table t1(a int);
 insert into t1 values (1),(2);
 prepare s1 from 'insert into t1 select a from t1 limit ?';
@@ -342,10 +342,10 @@ set @x='1.1';
 execute s1 using @x;
 --enable_warnings
 select * from t1;
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 select * from t1;
-connection master;
+connection primary;
 drop table t1;
 
 --echo End of 5.0 tests.
@@ -373,26 +373,26 @@ FUNCTION f2() RETURNS INT BEGIN
 END|
 DELIMITER ;|
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 # Set the variable and execute the functions.
 
 SET @a:=123;
 SELECT f1(), f2();
 
---echo On master: Check to see that data was inserted correctly
+--echo On primary: Check to see that data was inserted correctly
 
 INSERT INTO t1 VALUES(f1());
 SELECT * FROM t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo On slave: Check the table for correct data and it matches master
+--echo On replica: Check the table for correct data and it matches primary
 
 SELECT * FROM t1;
 
-connection master;
+connection primary;
 
 # Cleanup
 
@@ -400,6 +400,6 @@ DROP FUNCTION f1;
 DROP FUNCTION f2;
 DROP TABLE t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

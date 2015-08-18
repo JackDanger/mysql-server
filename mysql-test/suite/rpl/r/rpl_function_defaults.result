@@ -1,24 +1,24 @@
 #
 # Test of function defaults on replicated tables.
 #
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-connection master
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+connection primary
 SET TIME_ZONE="+10:30";
 SET TIMESTAMP=123456.789123;
 SELECT CURRENT_TIMESTAMP;
 CURRENT_TIMESTAMP
 1970-01-02 20:47:36
-connection slave
+connection replica
 SET TIME_ZONE="+00:00";
 SET TIMESTAMP=987654321.123456;
 SELECT CURRENT_TIMESTAMP;
 CURRENT_TIMESTAMP
 2001-04-19 04:25:21
-connection master
+connection primary
 CREATE TABLE t1 (
 a TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 b TIMESTAMP(1) NOT NULL DEFAULT CURRENT_TIMESTAMP(1),
@@ -59,9 +59,9 @@ o INT
 );
 SET sql_mode = default;
 INSERT INTO t2 ( o ) VALUES ( 1 );
-sync_slave_with_master
-include/sync_slave_sql_with_master.inc
-connection slave
+sync_replica_with_primary
+include/sync_replica_sql_with_primary.inc
+connection replica
 SELECT * FROM t1;
 a	1970-01-02 10:17:36
 b	1970-01-02 10:17:36.7
@@ -94,16 +94,16 @@ l	NULL
 m	NULL
 n	NULL
 o	1
-connection master
+connection primary
 SET TIMESTAMP=1234567890.123456;
 SELECT CURRENT_TIMESTAMP;
 CURRENT_TIMESTAMP
 2009-02-14 10:01:30
 UPDATE t1 SET o = 2;
 UPDATE t2 SET o = 2;
-sync_slave_with_master
-include/sync_slave_sql_with_master.inc
-connection slave
+sync_replica_with_primary
+include/sync_replica_sql_with_primary.inc
+connection replica
 SELECT * FROM t1;
 a	1970-01-02 10:17:36
 b	1970-01-02 10:17:36.7
@@ -136,6 +136,6 @@ l	2009-02-14 10:01:30.1234
 m	2009-02-14 10:01:30.12345
 n	2009-02-14 10:01:30.123456
 o	2
-connection master
+connection primary
 DROP TABLE t1, t2;
 include/rpl_end.inc

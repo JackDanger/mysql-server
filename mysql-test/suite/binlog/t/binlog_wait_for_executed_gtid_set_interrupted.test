@@ -6,21 +6,21 @@
 --source include/have_log_bin.inc
 --source include/have_gtid.inc
 
---let $master_uuid= query_get_value(SELECT @@SERVER_UUID, @@SERVER_UUID, 1)
-RESET MASTER;
+--let $primary_uuid= query_get_value(SELECT @@SERVER_UUID, @@SERVER_UUID, 1)
+RESET PRIMARY;
 CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1);
 
---connect(con1,127.0.0.1,root,,test,$MASTER_MYPORT,)
---connect(con2,127.0.0.1,root,,test,$MASTER_MYPORT,)
+--connect(con1,127.0.0.1,root,,test,$PRIMARY_MYPORT,)
+--connect(con2,127.0.0.1,root,,test,$PRIMARY_MYPORT,)
 
 --connection con1
 
 --let $connection_id= `SELECT CONNECTION_ID()`
 
 --send
---replace_result $master_uuid MASTER_UUID
---eval SELECT WAIT_FOR_EXECUTED_GTID_SET('$master_uuid:4', 100)
+--replace_result $primary_uuid PRIMARY_UUID
+--eval SELECT WAIT_FOR_EXECUTED_GTID_SET('$primary_uuid:4', 100)
 
 --connection default
 DROP TABLE t1;

@@ -1749,7 +1749,7 @@ dict_create_or_check_foreign_constraint_tables(void)
 
 	ut_a(srv_get_active_thread_type() == SRV_NONE);
 
-	/* Note: The master thread has not been started at this point. */
+	/* Note: The primary thread has not been started at this point. */
 
 
 	sys_foreign_err = dict_check_if_system_table_exists(
@@ -1854,7 +1854,7 @@ dict_create_or_check_foreign_constraint_tables(void)
 		ib::info() << "Foreign key constraint system tables created";
 	}
 
-	/* Note: The master thread has not been started at this point. */
+	/* Note: The primary thread has not been started at this point. */
 	/* Confirm and move to the non-LRU part of the table LRU list. */
 	sys_foreign_err = dict_check_if_system_table_exists(
 		"SYS_FOREIGN", DICT_NUM_FIELDS__SYS_FOREIGN + 1, 3);
@@ -1880,7 +1880,7 @@ dict_create_or_check_sys_virtual()
 
 	ut_a(srv_get_active_thread_type() == SRV_NONE);
 
-	/* Note: The master thread has not been started at this point. */
+	/* Note: The primary thread has not been started at this point. */
 	err = dict_check_if_system_table_exists(
 		"SYS_VIRTUAL", DICT_NUM_FIELDS__SYS_VIRTUAL + 1, 1);
 
@@ -1957,7 +1957,7 @@ dict_create_or_check_sys_virtual()
 		ib::info() << "sys_virtual table created";
 	}
 
-	/* Note: The master thread has not been started at this point. */
+	/* Note: The primary thread has not been started at this point. */
 	/* Confirm and move to the non-LRU part of the table LRU list. */
 	dberr_t sys_virtual_err = dict_check_if_system_table_exists(
 		"SYS_VIRTUAL", DICT_NUM_FIELDS__SYS_VIRTUAL + 1, 1);
@@ -2208,7 +2208,7 @@ dict_create_or_check_sys_tablespace(void)
 
 	ut_a(srv_get_active_thread_type() == SRV_NONE);
 
-	/* Note: The master thread has not been started at this point. */
+	/* Note: The primary thread has not been started at this point. */
 
 	sys_tablespaces_err = dict_check_if_system_table_exists(
 		"SYS_TABLESPACES", DICT_NUM_FIELDS__SYS_TABLESPACES + 1, 1);
@@ -2294,7 +2294,7 @@ dict_create_or_check_sys_tablespace(void)
 		ib::info() << "Tablespace and datafile system tables created.";
 	}
 
-	/* Note: The master thread has not been started at this point. */
+	/* Note: The primary thread has not been started at this point. */
 	/* Confirm and move to the non-LRU part of the table LRU list. */
 
 	sys_tablespaces_err = dict_check_if_system_table_exists(

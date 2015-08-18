@@ -123,7 +123,7 @@ eval $my_select2;
 --horizontal_results
 
 --echo # Establish connection testuser1 (user=testuser1)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser1, localhost, testuser1, , db_datadict);
 --vertical_results
 --replace_regex /[0-9]*-[0-9]*-[0-9]* [0-9]*:[0-9]*:[0-9]*/DTVALUE/
@@ -170,7 +170,7 @@ eval $my_select2;
 eval $my_show;
 
 --echo # Establish connection testuser2 (user=testuser2)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser2, localhost, testuser2, , db_datadict);
 --vertical_results
 --replace_regex /[0-9]*-[0-9]*-[0-9]* [0-9]*:[0-9]*:[0-9]*/DTVALUE/
@@ -182,7 +182,7 @@ eval $my_select2;
 eval $my_show;
 
 --echo # Establish connection testuser3 (user=testuser3)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser3, localhost, testuser3, , test);
 --vertical_results
 --replace_regex /[0-9]*-[0-9]*-[0-9]* [0-9]*:[0-9]*:[0-9]*/DTVALUE/

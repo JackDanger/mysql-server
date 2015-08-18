@@ -1,52 +1,52 @@
 # test verifies that REVOKE must not be replicated when 
-# slave server starts with --replicate-wild-ignore-table=mysql.% 
-# the option is set in rpl_ignore_revoke-slave.opt
+# replica server starts with --replicate-wild-ignore-table=mysql.% 
+# the option is set in rpl_ignore_revoke-replica.opt
 # The first part of BUG#9483 for GRANT is checked by
 # existed specific rpl_ignore_grant test case (BUG#980)
 
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
-###  CLEAN-UP: create an account and manually duplicate it on the slave
+###  CLEAN-UP: create an account and manually duplicate it on the replica
 
-connection master;
+connection primary;
 grant select on *.* to 'user_foo'@'%' identified by 'user_foopass';
 revoke select on *.* from 'user_foo'@'%';
-select select_priv from mysql.user where user='user_foo' /* master:must be N */;
+select select_priv from mysql.user where user='user_foo' /* primary:must be N */;
 
---source include/sync_slave_sql_with_master.inc
-#connection slave;
+--source include/sync_replica_sql_with_primary.inc
+#connection replica;
 grant select on *.* to 'user_foo'@'%' identified by 'user_foopass';
 revoke select on *.* from 'user_foo'@'%';
-select select_priv from mysql.user where user='user_foo' /* slave:must be N */;
+select select_priv from mysql.user where user='user_foo' /* replica:must be N */;
 
 
 ### TEST
 
-#connection slave;
+#connection replica;
 grant select on *.* to 'user_foo'@'%' identified by 'user_foopass';
-select select_priv from mysql.user where user='user_foo' /* slave:must be Y */;
+select select_priv from mysql.user where user='user_foo' /* replica:must be Y */;
 
-connection master;
+connection primary;
 revoke select on *.* from 'user_foo';
-select select_priv from mysql.user where user='user_foo' /* master:must be N */;
+select select_priv from mysql.user where user='user_foo' /* primary:must be N */;
 
---source include/sync_slave_sql_with_master.inc
-#connection slave;
-select select_priv from mysql.user where user='user_foo' /* slave:must get Y */;
+--source include/sync_replica_sql_with_primary.inc
+#connection replica;
+select select_priv from mysql.user where user='user_foo' /* replica:must get Y */;
 
 ### CLEAN-UP
 
-connection slave;
+connection replica;
 --disable_abort_on_error
 revoke select on *.* FROM 'user_foo';
 --enable_abort_on_error
 
-connection master;
+connection primary;
 delete from mysql.user where user="user_foo";
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Since changes to mysql.* are ignored, the revoke need to
-# be done on slave as well
+# be done on replica as well
 delete from mysql.user where user="user_foo";
 --source include/rpl_end.inc

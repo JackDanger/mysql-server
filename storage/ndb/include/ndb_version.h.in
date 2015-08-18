@@ -885,13 +885,13 @@ ndbd_multi_tc_instance_takeover(Uint32 x)
 #define NDBD_NODE_RECOVERY_STATUS_VERSION NDB_MAKE_VERSION(7,4,3)
 
 /**
- * Support for removing EMPTY_LCP_REQ protocol in master takeover
+ * Support for removing EMPTY_LCP_REQ protocol in primary takeover
  */
 #define NDBD_EMPTY_LCP_NOT_NEEDED NDB_MAKE_VERSION(7,4,3)
 
 /**
  * Support for multiple take over threads per node group in parallel
- * in master node.
+ * in primary node.
  */
 #define NDBD_SUPPORT_PARALLEL_SYNCH NDB_MAKE_VERSION(7,4,3)
 

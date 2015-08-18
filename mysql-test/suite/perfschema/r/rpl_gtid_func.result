@@ -1,9 +1,9 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-**** On Master ****
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+**** On Primary ****
 drop table if exists test.marker;
 create table test.marker(a int) engine=innodb;
 insert into test.marker values (1);
@@ -14,20 +14,20 @@ truncate table performance_schema.events_waits_history_long;
 truncate table performance_schema.events_statements_summary_by_digest;
 update performance_schema.setup_instruments
 set enabled='YES', timed='YES';
-**** On Slave ****
+**** On Replica ****
 truncate table performance_schema.events_waits_history_long;
 truncate table performance_schema.events_statements_summary_by_digest;
 update performance_schema.setup_instruments
 set enabled='YES', timed='NO';
-**** On Master ****
+**** On Primary ****
 select * from performance_schema.setup_instruments
 where timed='NO';
 NAME	ENABLED	TIMED
-select "This better be in the master" as in_master_digest;
-in_master_digest
-This better be in the master
+select "This better be in the primary" as in_primary_digest;
+in_primary_digest
+This better be in the primary
 insert into performance_schema.setup_objects
-values ('TABLE', 'master', 'foo', 'YES', 'YES');
+values ('TABLE', 'primary', 'foo', 'YES', 'YES');
 select * from performance_schema.setup_objects
 order by object_type, object_schema, object_name;
 OBJECT_TYPE	OBJECT_SCHEMA	OBJECT_NAME	ENABLED	TIMED
@@ -45,7 +45,7 @@ PROCEDURE	mysql	%	NO	NO
 PROCEDURE	performance_schema	%	NO	NO
 TABLE	%	%	YES	YES
 TABLE	information_schema	%	NO	NO
-TABLE	master	foo	YES	YES
+TABLE	primary	foo	YES	YES
 TABLE	mysql	%	NO	NO
 TABLE	performance_schema	%	NO	NO
 TRIGGER	%	%	YES	YES
@@ -56,9 +56,9 @@ select digest, digest_text, count_star
 from performance_schema.events_statements_summary_by_digest
 where digest_text like "%in_%_digest%";
 digest	digest_text	count_star
-9e4eacbaab0cc999ecd94ce65aa73196	SELECT ? AS `in_master_digest` 	1
+9e4eacbaab0cc999ecd94ce65aa73196	SELECT ? AS `in_primary_digest` 	1
 insert into test.marker values (2);
-**** On Slave ****
+**** On Replica ****
 select * from test.marker;
 a
 1
@@ -66,11 +66,11 @@ a
 select * from performance_schema.setup_instruments
 where timed='YES';
 NAME	ENABLED	TIMED
-select "This better be in the slave" as in_slave_digest;
-in_slave_digest
-This better be in the slave
+select "This better be in the replica" as in_replica_digest;
+in_replica_digest
+This better be in the replica
 insert into performance_schema.setup_objects
-values ('TABLE', 'slave', 'foo', 'YES', 'YES');
+values ('TABLE', 'replica', 'foo', 'YES', 'YES');
 select * from performance_schema.setup_objects
 order by object_type, object_schema, object_name;
 OBJECT_TYPE	OBJECT_SCHEMA	OBJECT_NAME	ENABLED	TIMED
@@ -90,7 +90,7 @@ TABLE	%	%	YES	YES
 TABLE	information_schema	%	NO	NO
 TABLE	mysql	%	NO	NO
 TABLE	performance_schema	%	NO	NO
-TABLE	slave	foo	YES	YES
+TABLE	replica	foo	YES	YES
 TRIGGER	%	%	YES	YES
 TRIGGER	information_schema	%	NO	NO
 TRIGGER	mysql	%	NO	NO
@@ -99,13 +99,13 @@ select digest, digest_text, count_star
 from performance_schema.events_statements_summary_by_digest
 where digest_text like "%in_%_digest%";
 digest	digest_text	count_star
-1edf6036686652c02c13c7479516c898	SELECT ? AS `in_slave_digest` 	1
-**** On Master ****
+1edf6036686652c02c13c7479516c898	SELECT ? AS `in_replica_digest` 	1
+**** On Primary ****
 delete from performance_schema.setup_objects
-where object_schema='master';
-**** On Slave ****
+where object_schema='primary';
+**** On Replica ****
 delete from performance_schema.setup_objects
-where object_schema='slave';
+where object_schema='replica';
 select * from performance_schema.setup_objects;
 OBJECT_TYPE	OBJECT_SCHEMA	OBJECT_NAME	ENABLED	TIMED
 EVENT	mysql	%	NO	NO

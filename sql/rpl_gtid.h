@@ -607,7 +607,7 @@ public:
   ~Sid_map();
 #ifdef NON_DISABLED_GTID
   /**
-    Clears this Sid_map (for RESET MASTER)
+    Clears this Sid_map (for RESET PRIMARY)
 
     @return RETURN_STATUS_OK or RETURN_STAUTS_REPORTED_ERROR
   */
@@ -2386,7 +2386,7 @@ public:
   */
   int init();
   /**
-    Reset the state and persistor after RESET MASTER: remove all logged
+    Reset the state and persistor after RESET PRIMARY: remove all logged
     and lost groups, but keep owned groups as they are.
 
     The caller must hold the write lock on sid_lock before calling
@@ -3043,7 +3043,7 @@ enum enum_group_type
 
     thd->variables.gtid_next has this state when GTID_NEXT="UUID:NUMBER".
 
-    This is the state of GTID-transactions replicated to the slave.
+    This is the state of GTID-transactions replicated to the replica.
   */
   GTID_GROUP,
   /**
@@ -3072,14 +3072,14 @@ ANONYMOUS_GROUP,
     different transactions.
 
     Problematic case: Consider a transaction, Tx1, that updates two
-    transactional tables on the master, t1 and t2. Then slave (s1) later
+    transactional tables on the primary, t1 and t2. Then replica (s1) later
     replays Tx1. However, t2 is a non-transactional table at s1. As such, s1
     will report an error because it cannot split Tx1 into two different
     transactions. Had no error been reported, then Tx1 would be split into Tx1
     and Tx2, potentially causing severe harm in case some form of fail-over
     procedure is later engaged by s1.
 
-    To detect this case on the slave and generate an appropriate error
+    To detect this case on the replica and generate an appropriate error
     message rather than causing an inconsistency in the GTID state, we
     do as follows.  When committing a transaction that has
     GTID_NEXT==UUID:NUMBER, we set GTID_NEXT to UNDEFINED_GROUP.  When
@@ -3091,20 +3091,20 @@ ANONYMOUS_GROUP,
   */
   UNDEFINED_GROUP,
   /*
-    GTID_NEXT is set to this state by the slave applier thread when it
+    GTID_NEXT is set to this state by the replica applier thread when it
     reads a Format_description_log_event that does not originate from
     this server.
 
-    Background: when the slave applier thread reads a relay log that
-    comes from a pre-GTID master, it must preserve the transactions as
+    Background: when the replica applier thread reads a relay log that
+    comes from a pre-GTID primary, it must preserve the transactions as
     anonymous transactions, even if GTID_MODE>=ON_PERMISSIVE.  This
-    may happen, e.g., if the relay log was received when master and
-    slave had GTID_MODE=OFF or when master and slave were old, and the
-    relay log is applied when slave has GTID_MODE>=ON_PERMISSIVE.
+    may happen, e.g., if the relay log was received when primary and
+    replica had GTID_MODE=OFF or when primary and replica were old, and the
+    relay log is applied when replica has GTID_MODE>=ON_PERMISSIVE.
 
-    So the slave thread should set GTID_NEXT=ANONYMOUS for the next
+    So the replica thread should set GTID_NEXT=ANONYMOUS for the next
     transaction when it starts to process an old binary log.  However,
-    there is no way for the slave to tell if the binary log is old,
+    there is no way for the replica to tell if the binary log is old,
     until it sees the first transaction.  If the first transaction
     begins with a Gtid_log_event, we have the GTID there; if it begins
     with query_log_event, row events, etc, then this is an old binary

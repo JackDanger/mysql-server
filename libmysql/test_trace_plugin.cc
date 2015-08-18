@@ -874,7 +874,7 @@ int check_event_READY_FOR_COMMAND(MYSQL *conn,
     case COM_QUIT:
     case COM_STMT_SEND_LONG_DATA:
     case COM_STMT_CLOSE:
-    case COM_REGISTER_SLAVE:
+    case COM_REGISTER_REPLICA:
       return 0;
 
     /*

@@ -1,13 +1,13 @@
 # ==== Purpose ====
 #
-# Verify if the slave SQL thread is avoiding to update position when a Rotate
+# Verify if the replica SQL thread is avoiding to update position when a Rotate
 # event is applied in the middle of a group.
 #
-# This test will execute two INSERT statements in the master and will use
-# a debug sync point in the slave to rotate the relay log (restarting the IO
+# This test will execute two INSERT statements in the primary and will use
+# a debug sync point in the replica to rotate the relay log (restarting the IO
 # thread) after each Write_rows event be queued into the relay log.
 #
-# The slave SQL thread should not update its position while in the middle of
+# The replica SQL thread should not update its position while in the middle of
 # the transaction.
 #
 # After the last stop of the IO thread, the SQL thread will also be stopped.
@@ -25,26 +25,26 @@
 --source include/have_binlog_format_row.inc
 --source include/have_innodb.inc
 --source include/not_gtid_enabled.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 # Test should run only on debug build
 source include/have_debug.inc;
 source include/have_debug_sync.inc;
 
 --disable_query_log
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 --enable_query_log
 
 --echo # Initial setup
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 CREATE TABLE t1 (c1 INT) ENGINE=InnoDB;
 
---echo # Sync slave with master and setup debug sync point
---source include/sync_slave_sql_with_master.inc
+--echo # Sync replica with primary and setup debug sync point
+--source include/sync_replica_sql_with_primary.inc
 SET @save_debug=@@global.debug;
 SET GLOBAL DEBUG='d,stop_io_after_reading_write_rows_log_event';
 
---echo # Insert the data in the master
---source include/rpl_connection_master.inc
+--echo # Insert the data in the primary
+--source include/rpl_connection_primary.inc
 
 --let iterations= 2
 --let $inserts= 0
@@ -58,37 +58,37 @@ COMMIT;
 
 --echo # Restart the IO thread keeping SQL thread running until last relay log split
 
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 --let $restarts= $iterations
 
 while ($restarts)
 {
-  --source include/wait_for_slave_io_to_stop.inc
+  --source include/wait_for_replica_io_to_stop.inc
   --dec $restarts
   if ($restarts)
   {
-    START SLAVE IO_THREAD;
+    START REPLICA IO_THREAD;
   }
 }
 
 --echo # Stop the SQL thread (it should be in the middle of the transaction/group)
---source include/stop_slave_sql.inc
+--source include/stop_replica_sql.inc
 
 --echo # Remove the debug point and restart the both threads
 SET GLOBAL DEBUG= @save_debug;
---source include/start_slave.inc
+--source include/start_replica.inc
 
---echo # Do one more insert on master and then sync slave with master
---source include/rpl_connection_master.inc
+--echo # Do one more insert on primary and then sync replica with primary
+--source include/rpl_connection_primary.inc
 --eval INSERT INTO t1 (c1) VALUES ($inserts)
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo # Now compare master and slave's t1 table data
---source include/rpl_connection_master.inc
---let diff_tables= master:t1, slave:t1
+--echo # Now compare primary and replica's t1 table data
+--source include/rpl_connection_primary.inc
+--let diff_tables= primary:t1, replica:t1
 --source include/diff_tables.inc
 
 --echo # Cleanup
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 DROP TABLE t1;
 --source include/rpl_end.inc

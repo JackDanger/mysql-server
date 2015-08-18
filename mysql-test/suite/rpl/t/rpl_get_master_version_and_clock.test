@@ -3,15 +3,15 @@ source include/not_valgrind.inc;
 
 #
 # BUG#45214 
-# This test verifies if the slave I/O tread tries to reconnect to
-# master when it tries to get the values of the UNIX_TIMESTAMP, SERVER_ID,
-# COLLATION_SERVER and TIME_ZONE from master under network disconnection.
-# The COLLATION_SERVER and TIME_ZONE are got only on master server version 4.
+# This test verifies if the replica I/O tread tries to reconnect to
+# primary when it tries to get the values of the UNIX_TIMESTAMP, SERVER_ID,
+# COLLATION_SERVER and TIME_ZONE from primary under network disconnection.
+# The COLLATION_SERVER and TIME_ZONE are got only on primary server version 4.
 # So they can't be verified by test case here.
 # Finish the following tests by calling its common test script:  
-# extra/rpl_tests/rpl_get_master_version_and_clock.test. 
+# extra/rpl_tests/rpl_get_primary_version_and_clock.test. 
 
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/have_debug.inc;
 source include/have_debug_sync.inc;
 
@@ -21,65 +21,65 @@ source include/have_debug_sync.inc;
 #
 source include/have_binlog_format_mixed.inc;
 
-connection slave;
+connection replica;
 
-call mtr.add_suppression("Slave I/O: Master command COM_REGISTER_SLAVE failed: .*");
-call mtr.add_suppression("Slave I/O: .* failed with error: Lost connection to MySQL server at 'reading initial communication packet'");
-call mtr.add_suppression("Fatal error: The slave I/O thread stops because master and slave have equal MySQL server ids; .*");
-call mtr.add_suppression("Slave I/O thread .* register on master");
+call mtr.add_suppression("Replica I/O: Primary command COM_REGISTER_REPLICA failed: .*");
+call mtr.add_suppression("Replica I/O: .* failed with error: Lost connection to MySQL server at 'reading initial communication packet'");
+call mtr.add_suppression("Fatal error: The replica I/O thread stops because primary and replica have equal MySQL server ids; .*");
+call mtr.add_suppression("Replica I/O thread .* register on primary");
 
-#Test case 1: Try to get the value of the UNIX_TIMESTAMP from master under network disconnection
+#Test case 1: Try to get the value of the UNIX_TIMESTAMP from primary under network disconnection
 let $debug_saved= `select @@global.debug`;
 
-# set up two parameters to pass into extra/rpl_tests/rpl_get_master_version_and_clock
+# set up two parameters to pass into extra/rpl_tests/rpl_get_primary_version_and_clock
 let $dbug_sync_point= 'debug_lock.before_get_UNIX_TIMESTAMP';
 let $debug_sync_action= 'now SIGNAL signal.get_unix_timestamp';
-source extra/rpl_tests/rpl_get_master_version_and_clock.test; 
+source extra/rpl_tests/rpl_get_primary_version_and_clock.test; 
 
-#Test case 2: Try to get the value of the SERVER_ID from master under network disconnection
-connection slave;
+#Test case 2: Try to get the value of the SERVER_ID from primary under network disconnection
+connection replica;
 
 let $dbug_sync_point= 'debug_lock.before_get_SERVER_ID';
 let $debug_sync_action= 'now SIGNAL signal.get_server_id';
-source extra/rpl_tests/rpl_get_master_version_and_clock.test;
+source extra/rpl_tests/rpl_get_primary_version_and_clock.test;
 
-#Test case 3: Try to get the value of the MASTER_UUID from master under network disconnection
-connection slave;
+#Test case 3: Try to get the value of the PRIMARY_UUID from primary under network disconnection
+connection replica;
 
-let $dbug_sync_point= 'dbug.before_get_MASTER_UUID';
-let $debug_sync_action= 'now SIGNAL signal.get_master_uuid';
-source extra/rpl_tests/rpl_get_master_version_and_clock.test;
+let $dbug_sync_point= 'dbug.before_get_PRIMARY_UUID';
+let $debug_sync_action= 'now SIGNAL signal.get_primary_uuid';
+source extra/rpl_tests/rpl_get_primary_version_and_clock.test;
 
 #
 # Note, due to # Bug#11765758 - 58754
-# make sure the slave threads stand still (SQL thread in this context)
+# make sure the replica threads stand still (SQL thread in this context)
 # while @@global.debug is being updated.
 #
 eval set global debug= '$debug_saved';
 
-#Test case 4: This test checks that the slave I/O thread refuses to start
-#if slave and master have the same server id.
-connection slave;
-reset master;
+#Test case 4: This test checks that the replica I/O thread refuses to start
+#if replica and primary have the same server id.
+connection replica;
+reset primary;
 # replicate ourselves
-source include/stop_slave.inc;
---replace_result $SLAVE_MYPORT SLAVE_PORT
-eval change master to master_port=$SLAVE_MYPORT;
-start slave;
+source include/stop_replica.inc;
+--replace_result $REPLICA_MYPORT REPLICA_PORT
+eval change primary to primary_port=$REPLICA_MYPORT;
+start replica;
 
 --echo *** must be having the replicate-same-server-id IO thread error ***
-let $slave_io_errno= 1593;
-let $show_slave_io_error= 1;
-source include/wait_for_slave_io_error.inc;
+let $replica_io_errno= 1593;
+let $show_replica_io_error= 1;
+source include/wait_for_replica_io_error.inc;
 
 # cleanup
 
 # is not really necessary but avoids mtr post-run env check warnings
 SET DEBUG_SYNC= 'RESET';
 
-# clear slave_io_error
---source include/stop_slave_sql.inc
-RESET SLAVE;
+# clear replica_io_error
+--source include/stop_replica_sql.inc
+RESET REPLICA;
 
 # End of tests
 --let $rpl_only_running_threads= 1

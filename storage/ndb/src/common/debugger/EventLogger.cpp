@@ -420,7 +420,7 @@ void getTextArbitResult(QQQQ) {
 void getTextGlobalCheckpointStarted(QQQQ) {
   //-----------------------------------------------------------------------
   // This event reports that a global checkpoint has been started and this
-  // node is the master of this global checkpoint.
+  // node is the primary of this global checkpoint.
   //-----------------------------------------------------------------------
   BaseString::snprintf(m_text, m_text_len, 
 		       "Global checkpoint %u started", 
@@ -429,7 +429,7 @@ void getTextGlobalCheckpointStarted(QQQQ) {
 void getTextGlobalCheckpointCompleted(QQQQ) {
   //-----------------------------------------------------------------------
   // This event reports that a global checkpoint has been completed on this
-  // node and the node is the master of this global checkpoint.
+  // node and the node is the primary of this global checkpoint.
   //-----------------------------------------------------------------------
   BaseString::snprintf(m_text, m_text_len, 
 		       "Global checkpoint %u completed", 
@@ -438,7 +438,7 @@ void getTextGlobalCheckpointCompleted(QQQQ) {
 void getTextLocalCheckpointStarted(QQQQ) {
   //-----------------------------------------------------------------------
   // This event reports that a local checkpoint has been started and this
-  // node is the master of this local checkpoint.
+  // node is the primary of this local checkpoint.
   //-----------------------------------------------------------------------
   BaseString::snprintf(m_text, m_text_len, 
 		       "Local checkpoint %u started. "
@@ -450,7 +450,7 @@ void getTextLocalCheckpointStarted(QQQQ) {
 void getTextLocalCheckpointCompleted(QQQQ) {
   //-----------------------------------------------------------------------
   // This event reports that a local checkpoint has been completed on this
-  // node and the node is the master of this local checkpoint.
+  // node and the node is the primary of this local checkpoint.
   //-----------------------------------------------------------------------
   BaseString::snprintf(m_text, m_text_len, 
 		       "Local checkpoint %u completed", 

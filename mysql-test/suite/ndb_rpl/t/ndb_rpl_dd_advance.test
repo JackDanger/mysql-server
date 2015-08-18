@@ -12,12 +12,12 @@
 --source include/have_binlog_format_mixed_or_row.inc
 --source include/ndb_default_cluster.inc
 --source include/not_embedded.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 ######################################################
 # Requirment: Cluster DD and replication must be able#
 # to handle ALTER tables and indexes and must rpl    #
-# to the slave correctly                             #
+# to the replica correctly                             #
 ######################################################
 
 ##  Test #1 replication of CDD and Alter Tables #####
@@ -64,13 +64,13 @@ while ($j)
 }
 --enable_query_log
 
---echo ***** Select from Master *****
+--echo ***** Select from Primary *****
 
 SELECT * FROM t1 ORDER BY c1 LIMIT 5;
 
---echo ***** Select from Slave *****
---sync_slave_with_master
-connection slave;
+--echo ***** Select from Replica *****
+--sync_replica_with_primary
+connection replica;
 SELECT * FROM t1 ORDER BY c1 LIMIT 5;
 
 ###################################
@@ -83,15 +83,15 @@ SELECT DISTINCT FILE_NAME, FILE_TYPE, TABLESPACE_NAME, LOGFILE_GROUP_NAME
        WHERE ENGINE="ndbcluster" ORDER BY FILE_NAME;
 --enable_query_log
 
---echo **** Do First Set of ALTERs in the master table ****
+--echo **** Do First Set of ALTERs in the primary table ****
 ###################################################
 # On this first set of alters I expect: 
 # 1. To be able to create and index on 2 columns
 # 2. To be able to create a unique index
 # 3. To be able to add two columns and have
-# it all replicated correctly to the slave cluster.
+# it all replicated correctly to the replica cluster.
 ###################################################
-connection master;
+connection primary;
 CREATE INDEX t1_i ON t1(c2, c3);
 #Bug 18039
 CREATE UNIQUE INDEX t1_i2 ON t1(c2);
@@ -102,9 +102,9 @@ ALTER TABLE t1 ADD c5 DOUBLE;
 ALTER TABLE t1 ADD INDEX (c5);  
 SHOW CREATE TABLE t1;
 
---echo **** Show first set of ALTERs on SLAVE ****
---sync_slave_with_master
-connection slave;
+--echo **** Show first set of ALTERs on REPLICA ****
+--sync_replica_with_primary
+connection replica;
 SHOW CREATE TABLE t1;
 
 --echo **** Second set of alters test 1 ****
@@ -119,7 +119,7 @@ SHOW CREATE TABLE t1;
 # okay with this and 2) that it is replicated 
 # correctly.
 #############################################
-connection master;
+connection primary;
 ALTER TABLE t1 RENAME t2;
 ALTER TABLE t2 DROP INDEX c5;
 CREATE TABLE t1(c1 INT)ENGINE=NDB;
@@ -127,13 +127,13 @@ INSERT INTO t1 VALUES(1);
 DROP TABLE t1;
 ALTER TABLE t2 RENAME t1;
 
---echo **** Show second set of ALTERs on MASTER ****
+--echo **** Show second set of ALTERs on PRIMARY ****
 
 SHOW CREATE TABLE t1;
 
---echo **** Show second set of ALTERs on SLAVE ****
---sync_slave_with_master
-connection slave;
+--echo **** Show second set of ALTERs on REPLICA ****
+--sync_replica_with_primary
+connection replica;
 SHOW CREATE TABLE t1;
 
 --echo **** Third and last set of alters for test1  ****
@@ -144,9 +144,9 @@ SHOW CREATE TABLE t1;
 # a row. I have choosen the BLOB as it seems to have had many
 # issues in this release. I want to make sure that the cluster
 # deals with these radical changes and that the replication to
-# the slave cluster is dones correctly. 
+# the replica cluster is dones correctly. 
 ###########################################################
-connection master;
+connection primary;
 ALTER TABLE t1 CHANGE c1 c1 DOUBLE;
 ALTER TABLE t1 CHANGE c2 c2 DECIMAL(10,2);
 ALTER TABLE t1 DROP COLUMN c3;
@@ -158,43 +158,43 @@ set @b1 = concat(@b1,@b1,@b1,@b1,@b1,@b1,@b1,@b1,@b1,@b1);
 UPDATE t1 SET c3=@b1 where c1 = 1;
 UPDATE t1 SET c3=@b1 where c1 = 2;
  
---echo **** Show last set of ALTERs on MASTER ****
+--echo **** Show last set of ALTERs on PRIMARY ****
 
 SHOW CREATE TABLE t1;
 --replace_result $c4_timestamp_value <c4_timestamp_value>
 SELECT * FROM t1 ORDER BY c1 LIMIT 5;
 
---echo **** Show last set of ALTERs on SLAVE ****
---sync_slave_with_master
-connection slave;
+--echo **** Show last set of ALTERs on REPLICA ****
+--sync_replica_with_primary
+connection replica;
 SHOW CREATE TABLE t1;
 --replace_result $c4_timestamp_value <c4_timestamp_value>
 # Bug 18094
 SELECT * FROM t1 ORDER BY c1 LIMIT 5;
 SELECT * FROM t1 where c1 = 1;
 
-connection master;
+connection primary;
 DROP TABLE t1;
---sync_slave_with_master
-connection slave;
-STOP SLAVE;
-RESET SLAVE;
-connection master;
-RESET MASTER;
-connection slave;
-START SLAVE;
+--sync_replica_with_primary
+connection replica;
+STOP REPLICA;
+RESET REPLICA;
+connection primary;
+RESET PRIMARY;
+connection replica;
+START REPLICA;
 
 ################### TEST 2 TPCB for disk data ###########################
 # Requirement: To have Stored Procedures and Functions that are used to #
 # populate and post transactions to the data base using CDD that span   #
 # 2 tables spaces and also use a memory only cluster tables. In addition#
-# The slave is to be stopped, cleaned and restored and synced with the  #
-# Master cluster                                                        #
+# The replica is to be stopped, cleaned and restored and synced with the  #
+# Primary cluster                                                        #
 #########################################################################
 
 --echo ******** Create additional TABLESPACE test 2 **************
 
-connection master;
+connection primary;
 CREATE TABLESPACE ts2
 ADD DATAFILE 'datafile03.dat'
 USE LOGFILE GROUP lg1
@@ -218,16 +218,16 @@ USE tpcb;
 --echo *********** Load up the database ******************
 CALL tpcb.load();
 
---echo ********** Check load master and slave **************
+--echo ********** Check load primary and replica **************
 SELECT COUNT(*) FROM account;
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 USE tpcb;
 SELECT COUNT(*) FROM account;
 
 --echo ******** Run in some transactions ***************
 
-connection master;
+connection primary;
 let $j= 100;
 --disable_query_log
 while ($j)
@@ -238,11 +238,11 @@ while ($j)
 --enable_query_log
 
 
---echo ***** Time to try slave sync ***********
---echo **** Must make sure slave is clean *****
---connection slave
-STOP SLAVE;
-RESET SLAVE;
+--echo ***** Time to try replica sync ***********
+--echo **** Must make sure replica is clean *****
+--connection replica
+STOP REPLICA;
+RESET REPLICA;
 DROP PROCEDURE IF EXISTS tpcb.load;
 DROP PROCEDURE IF EXISTS tpcb.trans;
 DROP TABLE IF EXISTS tpcb.account;
@@ -273,8 +273,8 @@ DROP TABLESPACE ts2 ENGINE=NDB;
 
 DROP LOGFILE GROUP lg1 ENGINE=NDB;
 
---echo ********** Take a backup of the Master *************
-connection master;
+--echo ********** Take a backup of the Primary *************
+connection primary;
 
 SELECT COUNT(*) FROM history;
 
@@ -291,18 +291,18 @@ SELECT COUNT(*) FROM history;
 
 --source include/ndb_backup.inc
 
---echo ************ Restore the slave ************************
-connection slave;
+--echo ************ Restore the replica ************************
+connection replica;
 CREATE DATABASE tpcb;
---source include/ndb_restore_slave_eoption.inc
+--source include/ndb_restore_replica_eoption.inc
 
---echo ***** Check a few slave restore values ***************
-connection slave;
+--echo ***** Check a few replica restore values ***************
+connection replica;
 USE tpcb;
 SELECT COUNT(*) FROM account;
 
---echo ***** Add some more records to master *********
-connection master;
+--echo ***** Add some more records to primary *********
+connection primary;
 let $j= 100;
 --disable_query_log
 while ($j)
@@ -314,21 +314,21 @@ while ($j)
 
 #
 # now setup replication to continue from last epoch
-# 1. get apply_status epoch from slave
-# 2. get corresponding _next_ binlog postition from master
-# 3. change master on slave
-# 4. add some transaction for slave to process
+# 1. get apply_status epoch from replica
+# 2. get corresponding _next_ binlog postition from primary
+# 3. change primary on replica
+# 4. add some transaction for replica to process
 # 5. start the replication
 
---echo ***** Finsh the slave sync process *******
+--echo ***** Finsh the replica sync process *******
 --disable_query_log
 # 1. 2. 3.
---source include/ndb_setup_slave.inc
+--source include/ndb_setup_replica.inc
 --enable_query_log
 
 # 4.
 --echo * 4. *
-connection master;
+connection primary;
 let $j= 100;
 --disable_query_log
 while ($j)
@@ -340,31 +340,31 @@ while ($j)
 
 # 5.
 --echo * 5. *
-connection slave;
-START SLAVE;
+connection replica;
+START REPLICA;
 
 --echo **** We should be ready to continue on *************
 
-connection master;
+connection primary;
 --echo ****** Let's make sure we match *******
---echo ***** MASTER *******
+--echo ***** PRIMARY *******
 USE tpcb;
 SELECT COUNT(*) FROM history;
 
---echo ****** SLAVE ********
---sync_slave_with_master
-connection slave;
+--echo ****** REPLICA ********
+--sync_replica_with_primary
+connection replica;
 USE tpcb;
 SELECT COUNT(*) FROM history;
 
---echo *** DUMP MASTER & SLAVE FOR COMPARE ********
+--echo *** DUMP PRIMARY & REPLICA FOR COMPARE ********
 
 --exec $MYSQL_DUMP --no-tablespaces --compact --order-by-primary --skip-extended-insert tpcb account teller branch history > $MYSQLTEST_VARDIR/tmp/RPL_DD_ADV_M.sql
 
---exec $MYSQL_DUMP_SLAVE --no-tablespaces --compact --order-by-primary --skip-extended-insert tpcb account teller branch history > $MYSQLTEST_VARDIR/tmp/RPL_DD_ADV_S.sql
+--exec $MYSQL_DUMP_REPLICA --no-tablespaces --compact --order-by-primary --skip-extended-insert tpcb account teller branch history > $MYSQLTEST_VARDIR/tmp/RPL_DD_ADV_S.sql
 
 --echo *************** TEST 2 CLEANUP SECTION ********************
-connection master;
+connection primary;
 DROP PROCEDURE IF EXISTS tpcb.load;
 DROP PROCEDURE IF EXISTS tpcb.trans;
 DROP TABLE tpcb.account;
@@ -395,9 +395,9 @@ DROP TABLESPACE ts2 ENGINE=NDB;
 
 DROP LOGFILE GROUP lg1 ENGINE=NDB;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
-connection master;
+connection primary;
 
 --echo ****** Do dumps compare ************
 

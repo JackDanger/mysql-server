@@ -37,7 +37,7 @@
 #include "sys_vars_shared.h"      // throw_bounds_warning
 #include "tztime.h"               // Time_zone
 #include "binlog.h"               // mysql_bin_log
-#include "rpl_rli.h"              // sql_slave_skip_counter
+#include "rpl_rli.h"              // sql_replica_skip_counter
 #include "rpl_msr.h"              // msr_map
 #include "rpl_group_replication.h"// is_group_replication_running
 
@@ -2690,7 +2690,7 @@ public:
 
       Hold lock_msr_map so that:
       - gtid_mode is not changed during the execution of some
-        replication command; particularly CHANGE MASTER. CHANGE MASTER
+        replication command; particularly CHANGE PRIMARY. CHANGE PRIMARY
         checks if GTID_MODE is compatible with AUTO_POSITION, and
         later it actually updates the in-memory structure for
         AUTO_POSITION.  If gtid_mode was changed between these calls,
@@ -2727,12 +2727,12 @@ public:
       goto err;
     }
 
-    // Not allowed with slave_sql_skip_counter
-    DBUG_PRINT("info", ("sql_slave_skip_counter=%d", sql_slave_skip_counter));
-    if (new_gtid_mode == GTID_MODE_ON && sql_slave_skip_counter > 0)
+    // Not allowed with replica_sql_skip_counter
+    DBUG_PRINT("info", ("sql_replica_skip_counter=%d", sql_replica_skip_counter));
+    if (new_gtid_mode == GTID_MODE_ON && sql_replica_skip_counter > 0)
     {
       my_error(ER_CANT_SET_GTID_MODE, MYF(0), "ON",
-               "@@GLOBAL.SQL_SLAVE_SKIP_COUNTER is greater than zero");
+               "@@GLOBAL.SQL_REPLICA_SKIP_COUNTER is greater than zero");
       goto err;
     }
 
@@ -2741,7 +2741,7 @@ public:
     {
       for (mi_map::iterator it= msr_map.begin(); it!= msr_map.end(); it++)
       {
-        Master_info *mi= it->second;
+        Primary_info *mi= it->second;
         DBUG_PRINT("info", ("auto_position for channel '%s' is %d",
                             mi->get_channel(), mi->is_auto_position()));
         if (mi != NULL && mi->is_auto_position())
@@ -2749,7 +2749,7 @@ public:
           char buf[512];
           sprintf(buf, "replication channel '%.192s' is configured "
                   "in AUTO_POSITION mode. Execute "
-                  "CHANGE MASTER TO MASTER_AUTO_POSITION = 0 "
+                  "CHANGE PRIMARY TO PRIMARY_AUTO_POSITION = 0 "
                   "FOR CHANNEL '%.192s' before you set "
                   "@@GLOBAL.GTID_MODE = OFF.",
                   mi->get_channel(), mi->get_channel());
@@ -2784,7 +2784,7 @@ public:
                "SHOW STATUS LIKE 'ANONYMOUS_TRANSACTION_COUNT' "
                "shows zero on all servers. Then wait for all "
                "existing, anonymous transactions to replicate to "
-               "all slaves, and then execute "
+               "all replicas, and then execute "
                "SET @@GLOBAL.GTID_MODE = ON on all servers. "
                "See the Manual for details");
       goto err;

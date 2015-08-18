@@ -1,22 +1,22 @@
-[^.+master\-slave\.inc.*$]
-source suite/rpl_bhs/extension/bhs/master-slave.inc;
+[^.+primary\-replica\.inc.*$]
+source suite/rpl_bhs/extension/bhs/primary-replica.inc;
 
 [source extra]
 source suite/rpl_bhs/extra
 
-[^(\s|\-)*sync_slave_with_master.*$]
-connection master;
-sync_slave_with_master blackhole_slave;
-sync_slave_with_master;
+[^(\s|\-)*sync_replica_with_primary.*$]
+connection primary;
+sync_replica_with_primary blackhole_replica;
+sync_replica_with_primary;
 
-[^(\s|\-)*sync_with_master.*$]
-connection blackhole_slave;
-sync_with_master;
-save_master_pos;
-connection slave;
-sync_with_master;
+[^(\s|\-)*sync_with_primary.*$]
+connection blackhole_replica;
+sync_with_primary;
+save_primary_pos;
+connection replica;
+sync_with_primary;
 
-[^(\s|\-)*save_master_pos.*$]
-connection master;
-sync_slave_with_master blackhole_slave;
-save_master_pos;
+[^(\s|\-)*save_primary_pos.*$]
+connection primary;
+sync_replica_with_primary blackhole_replica;
+save_primary_pos;

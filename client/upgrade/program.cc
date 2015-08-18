@@ -144,7 +144,7 @@ public:
       <int64, const Message_data&, Program>(this, &Program::process_error));
 
     /*
-      Master and slave should be upgraded separately. All statements executed
+      Primary and replica should be upgraded separately. All statements executed
       by mysql_upgrade will not be binlogged.
       'SET SQL_LOG_BIN=0' is executed before any other statements.
      */
@@ -481,7 +481,7 @@ public:
 
     this->create_new_option(&this->m_write_binlog, "write-binlog",
       "Write all executed SQL statements to binary log. Disabled by default; "
-      "use when statements should be sent to replication slaves.");
+      "use when statements should be sent to replication replicas.");
 
     this->create_new_option(&this->m_ignore_errors, "force",
         "Force execution of SQL statements even if mysql_upgrade has already "

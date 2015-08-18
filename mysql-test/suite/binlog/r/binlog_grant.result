@@ -1,4 +1,4 @@
-reset master;
+reset primary;
 set @saved_binlog_format = @@global.binlog_format;
 create user mysqltest_1@localhost;
 show grants for mysqltest_1@localhost;
@@ -32,6 +32,6 @@ Warning	1287	Using GRANT for creating new user is deprecated and will be removed
 set sql_mode= @orig_sql_mode;
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-SHOW MASTER LOGS;
+SHOW PRIMARY LOGS;
 SHOW BINARY LOGS;
 DROP USER 'mysqltest_1'@'localhost';

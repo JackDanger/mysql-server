@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE `loadreptable` (
 `nid` int(11) NOT NULL,
 `nom` char(255) DEFAULT NULL,
@@ -27,92 +27,92 @@ END WHILE;
 END ;
 //
 call MAJ();
-"master"
+"primary"
 select count(*) from loadreptable;
 count(*)
 3
-"slave"
-select count(*) from loadreptable;
-count(*)
-3
-call MAJ();
-"master"
-select count(*) from loadreptable;
-count(*)
-3
-"slave"
+"replica"
 select count(*) from loadreptable;
 count(*)
 3
 call MAJ();
-"master"
+"primary"
 select count(*) from loadreptable;
 count(*)
 3
-"slave"
-select count(*) from loadreptable;
-count(*)
-3
-call MAJ();
-"master"
-select count(*) from loadreptable;
-count(*)
-3
-"slave"
+"replica"
 select count(*) from loadreptable;
 count(*)
 3
 call MAJ();
-"master"
+"primary"
 select count(*) from loadreptable;
 count(*)
 3
-"slave"
-select count(*) from loadreptable;
-count(*)
-3
-call MAJ();
-"master"
-select count(*) from loadreptable;
-count(*)
-3
-"slave"
+"replica"
 select count(*) from loadreptable;
 count(*)
 3
 call MAJ();
-"master"
+"primary"
 select count(*) from loadreptable;
 count(*)
 3
-"slave"
-select count(*) from loadreptable;
-count(*)
-3
-call MAJ();
-"master"
-select count(*) from loadreptable;
-count(*)
-3
-"slave"
+"replica"
 select count(*) from loadreptable;
 count(*)
 3
 call MAJ();
-"master"
+"primary"
 select count(*) from loadreptable;
 count(*)
 3
-"slave"
+"replica"
 select count(*) from loadreptable;
 count(*)
 3
 call MAJ();
-"master"
+"primary"
 select count(*) from loadreptable;
 count(*)
 3
-"slave"
+"replica"
+select count(*) from loadreptable;
+count(*)
+3
+call MAJ();
+"primary"
+select count(*) from loadreptable;
+count(*)
+3
+"replica"
+select count(*) from loadreptable;
+count(*)
+3
+call MAJ();
+"primary"
+select count(*) from loadreptable;
+count(*)
+3
+"replica"
+select count(*) from loadreptable;
+count(*)
+3
+call MAJ();
+"primary"
+select count(*) from loadreptable;
+count(*)
+3
+"replica"
+select count(*) from loadreptable;
+count(*)
+3
+call MAJ();
+"primary"
+select count(*) from loadreptable;
+count(*)
+3
+"replica"
 select count(*) from loadreptable;
 count(*)
 3

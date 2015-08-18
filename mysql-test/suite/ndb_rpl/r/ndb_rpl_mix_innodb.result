@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 
 *** Test 1 ***
 
@@ -27,19 +27,19 @@ from mysql.ndb_apply_status;
 
 show binlog events from <binlog_start> limit 1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	BEGIN
 
 # Now the insert, one step after
 
 show binlog events from <binlog_start> limit 1,1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values (1,2)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values (1,2)
 
 # and the COMMIT should be at <end_pos>
 
 show binlog events from <binlog_start> limit 2,1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 
 begin;
 insert into t1 values (2,3);
@@ -52,16 +52,16 @@ from mysql.ndb_apply_status;
 <log_name>	<start_pos>	<end_pos>
 show binlog events from <binlog_start> limit 1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	BEGIN
 
 show binlog events from <binlog_start> limit 1,2;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values (2,3)
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 values (3,4)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values (2,3)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 values (3,4)
 
 show binlog events from <binlog_start> limit 3,1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 
 DROP TABLE test.t1, test.t2;
 SHOW TABLES;
@@ -102,9 +102,9 @@ from mysql.ndb_apply_status;
 @log_name:=log_name	@start_pos:=start_pos	@end_pos:=end_pos
 <log_name>	<start_pos>	<end_pos>
 
-show binlog events in 'master-bin.000001'  from <start_pos> limit 9,1;
+show binlog events in 'primary-bin.000001'  from <start_pos> limit 9,1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Xid	1	<end_pos>	COMMIT /* XID */
+primary-bin.000001	#	Xid	1	<end_pos>	COMMIT /* XID */
 
 ** Test 3 **
 
@@ -115,9 +115,9 @@ from mysql.ndb_apply_status;
 @log_name:=log_name	@start_pos:=start_pos	@end_pos:=end_pos
 <log_name>	<start_pos>	<end_pos>
 
-show binlog events in 'master-bin.000002'  from <start_pos> limit 9,1;
+show binlog events in 'primary-bin.000002'  from <start_pos> limit 9,1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000002	#	Xid	1	<end_pos>	COMMIT /* XID */
+primary-bin.000002	#	Xid	1	<end_pos>	COMMIT /* XID */
 
 ** Test 4 **
 
@@ -128,11 +128,11 @@ from mysql.ndb_apply_status;
 @log_name:=log_name	@start_pos:=start_pos	@end_pos:=end_pos
 <log_name>	<start_pos>	<end_pos>
 
-show binlog events in 'master-bin.000001'  from <start_pos> limit 9,1;
+show binlog events in 'primary-bin.000001'  from <start_pos> limit 9,1;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Xid	1	<end_pos>	COMMIT /* XID */
+primary-bin.000001	#	Xid	1	<end_pos>	COMMIT /* XID */
 
-*** DUMP MASTER & SLAVE FOR COMPARE ********
+*** DUMP PRIMARY & REPLICA FOR COMPARE ********
 DROP DATABASE tpcb;
 ****** Do dumps compare ************
 include/rpl_end.inc

@@ -1,8 +1,8 @@
 --source include/not_embedded.inc
 # Save the initial number of concurrent sessions
 --source include/count_sessions.inc
---source include/master-slave.inc
---connection master
+--source include/primary-replica.inc
+--connection primary
 
 SHOW GLOBAL VARIABLES LIKE 'log_backward_compatible_user_definitions';
 
@@ -16,8 +16,8 @@ ALTER USER IF EXISTS u1@localhost ACCOUNT LOCK;
 DROP USER u1@localhost;
 DROP USER IF EXISTS u2@localhost;
 
---source include/sync_slave_sql_with_master.inc
---echo [On Slave]
+--source include/sync_replica_sql_with_primary.inc
+--echo [On Replica]
 --source include/show_binlog_events.inc
 --source include/rpl_end.inc
 

@@ -4,7 +4,7 @@
 # This script runs the transactional stress test "stress_tx_rr" against the
 # transactional storage engine and looks for errors in two log files:
 #   var/stress/<timestamp>/mysql-stress-test.log
-#   var/log/master.err
+#   var/log/primary.err
 #
 # The script assumes current working dir is mysql-test/.
 #
@@ -161,10 +161,10 @@ system $cmd;
 #
 ################################################################################
 
-# Open log file. If MTR_VERSION=1 this is in var/log/master.err.
+# Open log file. If MTR_VERSION=1 this is in var/log/primary.err.
 # Otherwise, it is in ?... [stress_tx_rr not yet runnable with MTR_VERSION=2]
 # Assuming current directory mysql-test/
-my $serverlog=getcwd() . "/var/log/master.err";
+my $serverlog=getcwd() . "/var/log/primary.err";
 
 open(SERVERLOG, $serverlog) 
     or die "Unable to open $serverlog. Test not run?";
@@ -238,7 +238,7 @@ if (@errors) {
 if (@servererrors or @crash) {
     $errorFound = 1;
     print "\n########################################################\n\n";
-    print "Server error log (master.err):\n\n";
+    print "Server error log (primary.err):\n\n";
     
     open(SERVERLOG, $serverlog) 
         or die "Unable to open $serverlog!";

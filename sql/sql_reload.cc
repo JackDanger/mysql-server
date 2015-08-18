@@ -22,8 +22,8 @@
 #include "sql_base.h"    // close_cached_tables
 #include "sql_db.h"      // my_dbopt_cleanup
 #include "hostname.h"    // hostname_cache_refresh
-#include "rpl_master.h"  // reset_master
-#include "rpl_slave.h"   // reset_slave
+#include "rpl_primary.h"  // reset_primary
+#include "rpl_replica.h"   // reset_replica
 #include "rpl_rli.h"     // rotate_relay_log
 #include "rpl_mi.h"
 #include "rpl_msr.h"     /* multisource replication */
@@ -37,7 +37,7 @@
   Reload/resets privileges and the different caches.
 
   @param thd Thread handler (can be NULL!)
-  @param options What should be reset/reloaded (tables, privileges, slave...)
+  @param options What should be reset/reloaded (tables, privileges, replica...)
   @param tables Tables to flush (if any)
   @param write_to_binlog < 0 if there was an error while interacting with the binary log inside
                          reload_acl_and_cache,
@@ -46,7 +46,7 @@
 
                
   @note Depending on 'options', it may be very bad to write the
-    query to the binlog (e.g. FLUSH SLAVE); this is a
+    query to the binlog (e.g. FLUSH REPLICA); this is a
     pointer where reload_acl_and_cache() will put 0 if
     it thinks we really should not write to the binlog.
     Otherwise it will put 1.
@@ -303,13 +303,13 @@ bool reload_acl_and_cache(THD *thd, unsigned long options,
     Per_thread_connection_handler::kill_blocked_pthreads();
 #endif
 #ifdef HAVE_REPLICATION
-  if (options & REFRESH_MASTER)
+  if (options & REFRESH_PRIMARY)
   {
     DBUG_ASSERT(thd);
     tmp_write_to_binlog= 0;
-    if (reset_master(thd))
+    if (reset_primary(thd))
     {
-      /* NOTE: my_error() has been already called by reset_master(). */
+      /* NOTE: my_error() has been already called by reset_primary(). */
       result= 1;
     }
   }
@@ -327,12 +327,12 @@ bool reload_acl_and_cache(THD *thd, unsigned long options,
   if (options & REFRESH_OPTIMIZER_COSTS)
     reload_optimizer_cost_constants();
 #ifdef HAVE_REPLICATION
- if (options & REFRESH_SLAVE)
+ if (options & REFRESH_REPLICA)
  {
    tmp_write_to_binlog= 0;
-   if (reset_slave_cmd(thd))
+   if (reset_replica_cmd(thd))
    {
-     /*NOTE: my_error() has been already called by reset_slave() */
+     /*NOTE: my_error() has been already called by reset_replica() */
      result= 1;
    }
  }

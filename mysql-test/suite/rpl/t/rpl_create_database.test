@@ -2,25 +2,25 @@
 # Tests for replication of statements that manipulate databases.
 #
 # For this test file, we have a number of databases. All databases
-# with "greek" names will be replicated on the slave, while other names
+# with "greek" names will be replicated on the replica, while other names
 # (e.g., american) will not be replicated. 
 #
 
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 # Bug#6391 (binlog-do-db rules ignored)
-# In this case, 'mysqltest_bob' should not be replicated to the slave. 
+# In this case, 'mysqltest_bob' should not be replicated to the replica. 
 --disable_warnings
 DROP DATABASE IF EXISTS mysqltest_prometheus;
 DROP DATABASE IF EXISTS mysqltest_sisyfos;
 DROP DATABASE IF EXISTS mysqltest_bob;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 # This database is not replicated
 DROP DATABASE IF EXISTS mysqltest_bob;
 --enable_warnings
 
-connection master;
+connection primary;
 CREATE DATABASE mysqltest_prometheus;
 CREATE DATABASE mysqltest_sisyfos;
 CREATE DATABASE mysqltest_bob;
@@ -44,10 +44,10 @@ USE mysqltest_sisyfos;
 ALTER DATABASE mysqltest_bob CHARACTER SET latin1;
 
 SHOW DATABASES LIKE 'mysql%';
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SHOW DATABASES LIKE 'mysql%';
 
-connection master;
+connection primary;
 DROP DATABASE IF EXISTS mysqltest_sisyfos;
 USE mysqltest_prometheus;
 CREATE TABLE t1 (a INT);
@@ -57,18 +57,18 @@ USE mysqltest_sisyfos;
 CREATE TABLE t2 (a INT);
 let $VERSION=`select version()`;
 SHOW DATABASES LIKE 'mysql%';
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SHOW DATABASES LIKE 'mysql%';
 USE mysqltest_prometheus;
 SHOW TABLES;
 USE mysqltest_sisyfos;
 SHOW TABLES;
 
-connection master;
+connection primary;
 DROP DATABASE IF EXISTS mysqltest_prometheus;
 DROP DATABASE IF EXISTS mysqltest_sisyfos;
 DROP DATABASE IF EXISTS mysqltest_bob;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 4.1 tests
 --source include/rpl_end.inc

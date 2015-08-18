@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 USE test;
 DROP VIEW IF EXISTS v1,v11;
 DROP TABLE IF EXISTS t1,t2,t3,t11,t12,t13;
@@ -266,7 +266,7 @@ a	b
 101	101
 102	102
 103	103
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
 SHOW TABLES LIKE 't%';
 Tables_in_test (t%)
@@ -294,8 +294,8 @@ PROCEDURE	p1
 PROCEDURE	p11
 SELECT event_name, status FROM information_schema.events WHERE event_schema='test';
 event_name	status
-e1	SLAVESIDE_DISABLED
-e11	SLAVESIDE_DISABLED
+e1	REPLICASIDE_DISABLED
+e11	REPLICASIDE_DISABLED
 
 SELECT COUNT(*) FROM t1;
 COUNT(*)
@@ -436,7 +436,7 @@ UPDATE t12 SET c='';
 UPDATE t13 SET c='';
 ALTER TABLE t3 ORDER BY a;
 ALTER TABLE t13 ORDER BY a;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
 
 
@@ -448,5 +448,5 @@ DROP FUNCTION IF EXISTS f1;
 DROP FUNCTION IF EXISTS f2;
 DROP EVENT IF EXISTS e1;
 DROP EVENT IF EXISTS e11;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

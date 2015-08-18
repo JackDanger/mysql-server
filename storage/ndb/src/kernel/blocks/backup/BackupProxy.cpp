@@ -57,7 +57,7 @@ BackupProxy::callSTTOR(Signal* signal)
     break;
   case 7:
     if (c_typeOfStart == NodeState::ST_INITIAL_START &&
-        c_masterNodeId == getOwnNodeId()) {
+        c_primaryNodeId == getOwnNodeId()) {
       jam();
       sendUTIL_SEQUENCE_REQ(signal);
       return;

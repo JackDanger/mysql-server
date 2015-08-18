@@ -1,5 +1,5 @@
 				
-Master DIH			Starting DIH		  Starting DICT
+Primary DIH			Starting DIH		  Starting DICT
 ----------------------		----------------------	  ---------------------
 
                                 Check for sysfile
@@ -35,7 +35,7 @@ For each table
 
 DICTSTARTREQ -> starting DICT
 			 				  GET_SCHEMA_INFOREQ
-							  (to master DICT)
+							  (to primary DICT)
 
 							  ->SCHEMA_INFO
 							    (schema file)

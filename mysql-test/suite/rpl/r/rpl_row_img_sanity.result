@@ -1,11 +1,11 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-call mtr.add_suppression("Slave: Can\'t find record in \'t\' Error_code: 1032");
-call mtr.add_suppression("Slave SQL for channel '': .*Could not execute Update_rows event on table test.t; Can.t find record in .t.* Error_code: 1032");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+call mtr.add_suppression("Replica: Can\'t find record in \'t\' Error_code: 1032");
+call mtr.add_suppression("Replica SQL for channel '': .*Could not execute Update_rows event on table test.t; Can.t find record in .t.* Error_code: 1032");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	FULL
@@ -15,18 +15,18 @@ SET @old_binlog_row_image= @@binlog_row_image;
 # basic assertion that binlog_row_image='FULL' is the
 # default 
 #####################################################
-CON: 'master', IMG: 'FULL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'FULL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'slave', IMG: 'FULL', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'FULL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -48,21 +48,21 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t;;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET @img_types= 'MINIMAL NOBLOB FULL';
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'MINIMAL', RESTART SLAVE: 'Y'
-include/stop_slave.inc
-include/start_slave.inc
+CON: 'replica', IMG: 'MINIMAL', RESTART REPLICA: 'Y'
+include/stop_replica.inc
+include/start_replica.inc
 Variable_name	Value
 binlog_row_image	MINIMAL
 ITERATIONS: row_img: MINIMAL, indexes: UK-NOT-NULL
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'UK-NOT-NULL'
+CREATING TABLE IN primary WITH INDEX 'UK-NOT-NULL'
 CREATE TABLE t (c1 int NOT NULL, c2 int, c3 blob, unique key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -89,12 +89,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: MINIMAL, indexes: PK
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'PK'
+CREATING TABLE IN primary WITH INDEX 'PK'
 CREATE TABLE t (c1 int, c2 int, c3 blob, primary key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -121,12 +121,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: MINIMAL, indexes: UK
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'UK'
+CREATING TABLE IN primary WITH INDEX 'UK'
 CREATE TABLE t (c1 int, c2 int, c3 blob, unique key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -153,12 +153,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: MINIMAL, indexes: K
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'K'
+CREATING TABLE IN primary WITH INDEX 'K'
 CREATE TABLE t (c1 int, c2 int, c3 blob, key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -185,12 +185,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: MINIMAL, indexes: NONE
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'NONE'
+CREATING TABLE IN primary WITH INDEX 'NONE'
 CREATE TABLE t (c1 int, c2 int, c3 blob);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -217,20 +217,20 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
-CON: 'master', IMG: 'NOBLOB', RESTART SLAVE: 'N'
+include/sync_replica_sql_with_primary.inc
+CON: 'primary', IMG: 'NOBLOB', RESTART REPLICA: 'N'
 Variable_name	Value
 binlog_row_image	NOBLOB
-CON: 'slave', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
-include/stop_slave.inc
-include/start_slave.inc
+CON: 'replica', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
+include/stop_replica.inc
+include/start_replica.inc
 Variable_name	Value
 binlog_row_image	NOBLOB
 ITERATIONS: row_img: NOBLOB, indexes: UK-NOT-NULL
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'UK-NOT-NULL'
+CREATING TABLE IN primary WITH INDEX 'UK-NOT-NULL'
 CREATE TABLE t (c1 int NOT NULL, c2 int, c3 blob, unique key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -257,12 +257,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: NOBLOB, indexes: PK
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'PK'
+CREATING TABLE IN primary WITH INDEX 'PK'
 CREATE TABLE t (c1 int, c2 int, c3 blob, primary key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -289,12 +289,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: NOBLOB, indexes: UK
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'UK'
+CREATING TABLE IN primary WITH INDEX 'UK'
 CREATE TABLE t (c1 int, c2 int, c3 blob, unique key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -321,12 +321,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: NOBLOB, indexes: K
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'K'
+CREATING TABLE IN primary WITH INDEX 'K'
 CREATE TABLE t (c1 int, c2 int, c3 blob, key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -353,12 +353,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: NOBLOB, indexes: NONE
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'NONE'
+CREATING TABLE IN primary WITH INDEX 'NONE'
 CREATE TABLE t (c1 int, c2 int, c3 blob);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -385,20 +385,20 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
-CON: 'master', IMG: 'FULL', RESTART SLAVE: 'N'
+include/sync_replica_sql_with_primary.inc
+CON: 'primary', IMG: 'FULL', RESTART REPLICA: 'N'
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'slave', IMG: 'FULL', RESTART SLAVE: 'Y'
-include/stop_slave.inc
-include/start_slave.inc
+CON: 'replica', IMG: 'FULL', RESTART REPLICA: 'Y'
+include/stop_replica.inc
+include/start_replica.inc
 Variable_name	Value
 binlog_row_image	FULL
 ITERATIONS: row_img: FULL, indexes: UK-NOT-NULL
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'UK-NOT-NULL'
+CREATING TABLE IN primary WITH INDEX 'UK-NOT-NULL'
 CREATE TABLE t (c1 int NOT NULL, c2 int, c3 blob, unique key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -425,12 +425,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: FULL, indexes: PK
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'PK'
+CREATING TABLE IN primary WITH INDEX 'PK'
 CREATE TABLE t (c1 int, c2 int, c3 blob, primary key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -457,12 +457,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: FULL, indexes: UK
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'UK'
+CREATING TABLE IN primary WITH INDEX 'UK'
 CREATE TABLE t (c1 int, c2 int, c3 blob, unique key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -489,12 +489,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: FULL, indexes: K
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'K'
+CREATING TABLE IN primary WITH INDEX 'K'
 CREATE TABLE t (c1 int, c2 int, c3 blob, key(c1));
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -521,12 +521,12 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ITERATIONS: row_img: FULL, indexes: NONE
 include/rpl_reset.inc
-CREATING TABLE IN master WITH INDEX 'NONE'
+CREATING TABLE IN primary WITH INDEX 'NONE'
 CREATE TABLE t (c1 int, c2 int, c3 blob);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -553,22 +553,22 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SET @img_types= 'MINIMAL NOBLOB FULL';
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'MINIMAL', RESTART SLAVE: 'Y'
-include/stop_slave.inc
-include/start_slave.inc
+CON: 'replica', IMG: 'MINIMAL', RESTART REPLICA: 'Y'
+include/stop_replica.inc
+include/start_replica.inc
 Variable_name	Value
 binlog_row_image	MINIMAL
 ITERATIONS: row_img: MINIMAL
 include/rpl_reset.inc
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_reset.inc
 ####### MINIMAL PARTICULAR SCENARIO ######
 Warnings:
@@ -577,25 +577,25 @@ Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ####### MINIMAL OTHER PARTICULAR SCENARIO ######
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/sync_slave_sql_with_master.inc
-CON: 'master', IMG: 'NOBLOB', RESTART SLAVE: 'N'
+include/sync_replica_sql_with_primary.inc
+CON: 'primary', IMG: 'NOBLOB', RESTART REPLICA: 'N'
 Variable_name	Value
 binlog_row_image	NOBLOB
-CON: 'slave', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
-include/stop_slave.inc
-include/start_slave.inc
+CON: 'replica', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
+include/stop_replica.inc
+include/start_replica.inc
 Variable_name	Value
 binlog_row_image	NOBLOB
 ITERATIONS: row_img: NOBLOB
 include/rpl_reset.inc
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_reset.inc
 ####### NOBLOB PARTICULAR SCENARIO ######
 Warnings:
@@ -604,36 +604,36 @@ Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/sync_slave_sql_with_master.inc
-CON: 'master', IMG: 'FULL', RESTART SLAVE: 'N'
+include/sync_replica_sql_with_primary.inc
+CON: 'primary', IMG: 'FULL', RESTART REPLICA: 'N'
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'slave', IMG: 'FULL', RESTART SLAVE: 'Y'
-include/stop_slave.inc
-include/start_slave.inc
+CON: 'replica', IMG: 'FULL', RESTART REPLICA: 'Y'
+include/stop_replica.inc
+include/start_replica.inc
 Variable_name	Value
 binlog_row_image	FULL
 ITERATIONS: row_img: FULL
 include/rpl_reset.inc
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_reset.inc
 ################## SPECIAL CASES #########################
 include/rpl_reset.inc
-CON: 'master', IMG: 'NOBLOB', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'NOBLOB', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	NOBLOB
-CON: 'slave', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -670,7 +670,7 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ###################################
 # PK (does not contain blob, but blob is updated)
 ###################################
@@ -706,23 +706,23 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ###################################
 # AUTOINC columns
 ###################################
 include/rpl_reset.inc
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'MINIMAL', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'MINIMAL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -734,23 +734,23 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 INSERT INTO t(c2) VALUES (2);
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ##################################################################
-# Test that slave does not write more columns than the ones it has 
+# Test that replica does not write more columns than the ones it has 
 ##################################################################
 include/rpl_reset.inc
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'MINIMAL', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'MINIMAL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -770,23 +770,23 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 UPDATE t SET c2=3, c3='bbbbb' WHERE c2=2;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ##################################################################
-# Test that slave fills default columns in its own columns
+# Test that replica fills default columns in its own columns
 ##################################################################
 include/rpl_reset.inc
-CON: 'master', IMG: 'FULL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'FULL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'slave', IMG: 'FULL', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'FULL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -814,23 +814,23 @@ c1	c2
 1	NULL
 2	NULL
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ##################################################################
-# Test that slave uses partial BI when master contains more columns
+# Test that replica uses partial BI when primary contains more columns
 ##################################################################
 include/rpl_reset.inc
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'MINIMAL', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'MINIMAL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -856,24 +856,24 @@ SELECT * FROM t;
 c1	c2	c3
 1	4	3
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ##################################################################
-# Test that if master has binlog_row_image=MINIMAL and slave has 
+# Test that if primary has binlog_row_image=MINIMAL and replica has 
 # NOBLOB or FULL, it will log the expected columns
 ##################################################################
 include/rpl_reset.inc
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'FULL', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'FULL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -898,20 +898,20 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=4;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_reset.inc
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -936,23 +936,23 @@ Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be r
 DELETE FROM t WHERE c2=4;
 SET sql_mode = default;
 DROP TABLE t;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ################################################################
-# Test that the slave stop with error if no usable data is on BI
+# Test that the replica stop with error if no usable data is on BI
 ################################################################
 include/rpl_reset.inc
-CON: 'master', IMG: 'MINIMAL', RESTART SLAVE: 'N'
+CON: 'primary', IMG: 'MINIMAL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'MINIMAL';
 SET GLOBAL binlog_row_image= 'MINIMAL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	MINIMAL
-CON: 'slave', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
+CON: 'replica', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -964,7 +964,7 @@ CREATE TABLE t (c1 int NOT NULL, c2 int, primary key(c1));
 INSERT INTO t VALUES (1,2,3);
 UPDATE t SET c2=4 WHERE c2=2;
 DROP TABLE t;
-include/wait_for_slave_sql_error.inc [errno=1032]
+include/wait_for_replica_sql_error.inc [errno=1032]
 DROP TABLE t;
 include/rpl_reset.inc
 SET GLOBAL binlog_row_image= @old_binlog_row_image;

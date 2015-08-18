@@ -129,7 +129,7 @@ Log_event_header(const char* buf, uint16_t binlog_version)
   case 3:
     /*
       If the log is 4.0 (so here it can only be a 4.0 relay log read by
-      the SQL thread or a 4.0 master binlog read by the I/O thread),
+      the SQL thread or a 4.0 primary binlog read by the I/O thread),
       log_pos is the beginning of the event: we transform it into the end
       of the event, which is more useful.
       But how do you know that the log is 4.0: you know it if
@@ -141,14 +141,14 @@ Log_event_header(const char* buf, uint16_t binlog_version)
     {
       /*
         If log_pos=0, don't change it. log_pos==0 is a marker to mean
-        "don't change rli->group_master_log_pos" (see
+        "don't change rli->group_primary_log_pos" (see
         inc_group_relay_log_pos()). As it is unreal log_pos, adding the
         event len's is not correct. For example, a fake Rotate event should
         not have its log_pos (which is 0) changed or it will modify
-        Exec_master_log_pos in SHOW SLAVE STATUS, displaying a wrong
-        value of (a non-zero offset which does not exist in the master's
+        Exec_primary_log_pos in SHOW REPLICA STATUS, displaying a wrong
+        value of (a non-zero offset which does not exist in the primary's
         binlog, so which will cause problems if the user uses this value
-        in CHANGE MASTER).
+        in CHANGE PRIMARY).
       */
       log_pos+= data_written; /* purecov: inspected */
     }
@@ -186,8 +186,8 @@ Log_event_header(const char* buf, uint16_t binlog_version)
          not specified. Currently there are no such members; in the future
          there will be an event UID (but Format_description and Rotate
          don't need this UID, as they are not propagated through
-         --log-slave-updates (remember the UID is used to not play a query
-         twice when you have two masters which are slaves of a 3rd master).
+         --log-replica-updates (remember the UID is used to not play a query
+         twice when you have two primarys which are replicas of a 3rd primary).
          Then we are done with decoding the header.
       */
       break;

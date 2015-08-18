@@ -1,6 +1,6 @@
 --source include/not_group_replication_plugin.inc
 --source include/not_embedded.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 # Suppress "unsafe" warnings.
 #
@@ -62,15 +62,15 @@ END;|
 INSERT INTO t1 VALUES (6,6), (7,7), (8,8);
 --source suite/rpl/include/rpl_only_stmt_unsafe.inc
 --enable_warnings
---source include/sync_slave_sql_with_master.inc
---connection master
+--source include/sync_replica_sql_with_primary.inc
+--connection primary
 
---echo # FT_RPL-3: Check that there is no diff in table content between master
---echo #           and slave in case binlog_format != 'statement'.
-# Master and slave differ for @@binlog_format = 'statement'.
+--echo # FT_RPL-3: Check that there is no diff in table content between primary
+--echo #           and replica in case binlog_format != 'statement'.
+# Primary and replica differ for @@binlog_format = 'statement'.
 # We do not reveal that difference here because the warnings about unsafe
 # statements checked above is sufficient.
-# Master and slave must not differ for @@binlog_format <> 'statement'.
+# Primary and replica must not differ for @@binlog_format <> 'statement'.
 # That gets checked here.
 # Getting no difference for binlog_format 'row' is no challenge because any
 # modification of table content has to be done based on 'row'.
@@ -80,19 +80,19 @@ INSERT INTO t1 VALUES (6,6), (7,7), (8,8);
 # safe row based operation.
 if (`SELECT @@binlog_format <> 'statement'`)
 {
-   let $master_avg_col1= `SELECT AVG(col1) FROM t1`;
-   let $master_avg_col2= `SELECT AVG(col2) FROM t1`;
-   --connection slave
-   let $slave_avg_col1= `SELECT AVG(col1) FROM t1`;
-   let $slave_avg_col2= `SELECT AVG(col2) FROM t1`;
-   if (`SELECT $master_avg_col1 <> $slave_avg_col1 OR
-               $master_avg_col2 <> $slave_avg_col2`)
+   let $primary_avg_col1= `SELECT AVG(col1) FROM t1`;
+   let $primary_avg_col2= `SELECT AVG(col2) FROM t1`;
+   --connection replica
+   let $replica_avg_col1= `SELECT AVG(col1) FROM t1`;
+   let $replica_avg_col2= `SELECT AVG(col2) FROM t1`;
+   if (`SELECT $primary_avg_col1 <> $replica_avg_col1 OR
+               $primary_avg_col2 <> $replica_avg_col2`)
    {
-   --echo ERROR: The content of t1 differs between slave and master.
-   --echo Slave:
+   --echo ERROR: The content of t1 differs between replica and primary.
+   --echo Replica:
    SELECT col1, col2 FROM t1 ORDER BY col2;
-   --connection master
-   --echo Master:
+   --connection primary
+   --echo Primary:
    SELECT col1, col2 FROM t1 ORDER BY col2;
    --echo This must not happen with @@binlog_format <> 'statement'.
    --echo Abort.
@@ -100,7 +100,7 @@ if (`SELECT @@binlog_format <> 'statement'`)
    }
 }
 
---connection master
+--connection primary
 DROP TRIGGER trig_t1_ins;
 DROP TABLE t1;
 

@@ -1,32 +1,32 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 set global max_connections=151;
-include/stop_slave.inc
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-show variables like 'init_slave';
+include/stop_replica.inc
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+show variables like 'init_replica';
 Variable_name	Value
-init_slave	set global max_connections=500
+init_replica	set global max_connections=500
 show variables like 'max_connections';
 Variable_name	Value
 max_connections	500
-reset master;
-show variables like 'init_slave';
+reset primary;
+show variables like 'init_replica';
 Variable_name	Value
-init_slave	
+init_replica	
 show variables like 'max_connections';
 Variable_name	Value
 max_connections	151
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 set @my_global_init_connect= @@global.init_connect;
 set global init_connect="set @c=1";
 show variables like 'init_connect';
 Variable_name	Value
 init_connect	set @c=1
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 set global init_connect= @my_global_init_connect;
 set global max_connections= default;
 include/rpl_end.inc

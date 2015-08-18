@@ -5,14 +5,14 @@ Transaction framework
 ### Parse phase
 
 2) OP (e.g create table) from API, Savepoint X
-3) OP::parse *on master*
+3) OP::parse *on primary*
    if error
    then
       OP::abortParse
       reply ref
       goto 2
     if
-4) OP::parse on *slaves*
+4) OP::parse on *replicas*
 5) if error
    then
      goto 7
@@ -67,7 +67,7 @@ OP::abortParse . undo OP::parse
 
 ### TODO (not sorted)
 
-- Master take-over
+- Primary take-over
 
 - SchemaFile batching
 

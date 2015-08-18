@@ -26,7 +26,7 @@
 #include "opt_explain.h"              // Modification_plan
 #include "opt_explain_format.h"       // enum_mod_type
 #include "rpl_rli.h"                  // Relay_log_info
-#include "rpl_slave.h"                // rpl_master_has_bug
+#include "rpl_replica.h"                // rpl_primary_has_bug
 #include "sql_base.h"                 // setup_fields
 #include "sql_resolver.h"             // Column_privilege_tracker
 #include "sql_select.h"               // free_underlaid_joins
@@ -569,14 +569,14 @@ bool Sql_cmd_insert::mysql_insert(THD *thd,TABLE_LIST *table_list)
   insert_table->next_number_field= insert_table->found_next_number_field;
 
 #ifdef HAVE_REPLICATION
-    if (thd->slave_thread)
+    if (thd->replica_thread)
     {
-      /* Get SQL thread's rli, even for a slave worker thread */
-      Relay_log_info* c_rli= thd->rli_slave->get_c_rli();
+      /* Get SQL thread's rli, even for a replica worker thread */
+      Relay_log_info* c_rli= thd->rli_replica->get_c_rli();
       DBUG_ASSERT(c_rli != NULL);
       if(info.get_duplicate_handling() == DUP_UPDATE &&
          insert_table->next_number_field != NULL &&
-         rpl_master_has_bug(c_rli, 24432, TRUE, NULL, NULL))
+         rpl_primary_has_bug(c_rli, 24432, TRUE, NULL, NULL))
         goto exit_without_my_ok;
     }
 #endif
@@ -2024,14 +2024,14 @@ int Query_result_insert::prepare(List<Item> &values, SELECT_LEX_UNIT *u)
   table->next_number_field=table->found_next_number_field;
 
 #ifdef HAVE_REPLICATION
-  if (thd->slave_thread)
+  if (thd->replica_thread)
   {
-    /* Get SQL thread's rli, even for a slave worker thread */
-    Relay_log_info *c_rli= thd->rli_slave->get_c_rli();
+    /* Get SQL thread's rli, even for a replica worker thread */
+    Relay_log_info *c_rli= thd->rli_replica->get_c_rli();
     DBUG_ASSERT(c_rli != NULL);
     if (duplicate_handling == DUP_UPDATE &&
         table->next_number_field != NULL &&
-        rpl_master_has_bug(c_rli, 24432, TRUE, NULL, NULL))
+        rpl_primary_has_bug(c_rli, 24432, TRUE, NULL, NULL))
       DBUG_RETURN(1);
   }
 #endif
@@ -2166,7 +2166,7 @@ bool Query_result_insert::send_data(List<Item> &values)
           row events
           COMMIT
         CREATE TABLE is logged into binary log, but the table is not created
-        in storage engine on the master, if error happens on DML part of
+        in storage engine on the primary, if error happens on DML part of
         CREATE...SELECT. So we log a compensatory DROP TABLE Query-event for
         the case.
       */
@@ -2382,12 +2382,12 @@ void Query_result_insert::abort_result_set()
     /*
       If at least one row has been inserted/modified and will stay in
       the table (the table doesn't have transactions) we must write to
-      the binlog (and the error code will make the slave stop).
+      the binlog (and the error code will make the replica stop).
 
       For many errors (example: we got a duplicate key error while
       inserting into a MyISAM table), no row will be added to the table,
-      so passing the error to the slave will not help since there will
-      be an error code mismatch (the inserts will succeed on the slave
+      so passing the error to the replica will not help since there will
+      be an error code mismatch (the inserts will succeed on the replica
       with no error).
 
       If table creation failed, the number of rows modified will also be
@@ -2700,10 +2700,10 @@ int Query_result_create::prepare2()
     of the statement, the entire statement is committed as a
     transaction, and all events are written to the binary log.
 
-    On the master, the table is locked for the duration of the
+    On the primary, the table is locked for the duration of the
     statement, but since the CREATE part is replicated as a simple
     statement, there is no way to lock the table for accesses on the
-    slave.  Hence, we have to hold on to the CREATE part of the
+    replica.  Hence, we have to hold on to the CREATE part of the
     statement until the statement has finished.
    */
   class MY_HOOKS : public TABLEOP_HOOKS {

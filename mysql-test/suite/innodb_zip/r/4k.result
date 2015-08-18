@@ -36,9 +36,9 @@ mysql/time_zone_transition_type	8	1	PRIMARY	3	3	2	50
 mysql/time_zone_leap_second	5	1	PRIMARY	3	3	1	50
 mysql/innodb_table_stats	9	1	PRIMARY	3	3	2	50
 mysql/innodb_index_stats	11	1	PRIMARY	3	3	4	50
-mysql/slave_relay_log_info	12	1	PRIMARY	3	3	1	50
-mysql/slave_master_info	27	1	PRIMARY	3	3	1	50
-mysql/slave_worker_info	16	1	PRIMARY	3	3	2	50
+mysql/replica_relay_log_info	12	1	PRIMARY	3	3	1	50
+mysql/replica_primary_info	27	1	PRIMARY	3	3	1	50
+mysql/replica_worker_info	16	1	PRIMARY	3	3	2	50
 mysql/gtid_executed	6	1	PRIMARY	3	3	2	50
 mysql/server_cost	7	1	PRIMARY	3	3	1	50
 mysql/engine_cost	9	1	PRIMARY	3	3	3	50

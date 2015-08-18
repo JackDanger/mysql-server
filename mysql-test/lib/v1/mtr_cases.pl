@@ -157,7 +157,7 @@ sub collect_test_cases ($) {
 	push(@criteria, "ndb=" . ($tinfo->{'ndb_test'} ? "1" : "0"));
 	# Group test with equal options together.
 	# Ending with "~" makes empty sort later than filled
-	push(@criteria, join("!", sort @{$tinfo->{'master_opt'}}) . "~");
+	push(@criteria, join("!", sort @{$tinfo->{'primary_opt'}}) . "~");
 
 	$sort_criteria{$test_name} = join(" ", @criteria);
       }
@@ -409,9 +409,9 @@ sub collect_one_suite($)
 	    }
 	  }
 
-	  # Append the combination options to master_opt and slave_opt
-	  push(@{$new_test->{master_opt}}, @{$comb->{comb_opt}});
-	  push(@{$new_test->{slave_opt}}, @{$comb->{comb_opt}});
+	  # Append the combination options to primary_opt and replica_opt
+	  push(@{$new_test->{primary_opt}}, @{$comb->{comb_opt}});
+	  push(@{$new_test->{replica_opt}}, @{$comb->{comb_opt}});
 
 	  # Add combination name shrt name
 	  $new_test->{combination}= $comb->{name};
@@ -479,9 +479,9 @@ sub optimize_cases {
       # Use dynamic switching of binlog format
       # =======================================================
 
-      # Get binlog-format used by this test from master_opt
+      # Get binlog-format used by this test from primary_opt
       my $test_binlog_format;
-      foreach my $opt ( @{$tinfo->{master_opt}} ) {
+      foreach my $opt ( @{$tinfo->{primary_opt}} ) {
 	$test_binlog_format=
 	  mtr_match_prefix($opt, "--binlog-format=") || $test_binlog_format;
       }
@@ -569,8 +569,8 @@ sub collect_one_test_case($$$$$$$$$) {
   $tinfo->{'path'}= $path;
   $tinfo->{'timezone'}= "GMT-3"; # for UNIX_TIMESTAMP tests to work
 
-  $tinfo->{'slave_num'}= 0; # Default, no slave
-  $tinfo->{'master_num'}= 1; # Default, 1 master
+  $tinfo->{'replica_num'}= 0; # Default, no replica
+  $tinfo->{'primary_num'}= 1; # Default, 1 primary
   if ( defined mtr_match_prefix($tname,"rpl") )
   {
     if ( $::opt_skip_rpl )
@@ -580,44 +580,44 @@ sub collect_one_test_case($$$$$$$$$) {
       return;
     }
 
-    $tinfo->{'slave_num'}= 1; # Default for rpl* tests, use one slave
+    $tinfo->{'replica_num'}= 1; # Default for rpl* tests, use one replica
 
   }
 
   if ( defined mtr_match_prefix($tname,"federated") )
   {
-    # Default, federated uses the first slave as it's federated database
-    $tinfo->{'slave_num'}= 1;
+    # Default, federated uses the first replica as it's federated database
+    $tinfo->{'replica_num'}= 1;
   }
 
-  my $master_opt_file= "$testdir/$tname-master.opt";
-  my $slave_opt_file=  "$testdir/$tname-slave.opt";
-  my $slave_mi_file=   "$testdir/$tname.slave-mi";
-  my $master_sh=       "$testdir/$tname-master.sh";
-  my $slave_sh=        "$testdir/$tname-slave.sh";
+  my $primary_opt_file= "$testdir/$tname-primary.opt";
+  my $replica_opt_file=  "$testdir/$tname-replica.opt";
+  my $replica_mi_file=   "$testdir/$tname.replica-mi";
+  my $primary_sh=       "$testdir/$tname-primary.sh";
+  my $replica_sh=        "$testdir/$tname-replica.sh";
   my $disabled_file=   "$testdir/$tname.disabled";
   my $im_opt_file=     "$testdir/$tname-im.opt";
 
-  $tinfo->{'master_opt'}= [];
-  $tinfo->{'slave_opt'}=  [];
-  $tinfo->{'slave_mi'}=   [];
+  $tinfo->{'primary_opt'}= [];
+  $tinfo->{'replica_opt'}=  [];
+  $tinfo->{'replica_mi'}=   [];
 
 
   # Add suite opts
   foreach my $opt ( @$suite_opts )
   {
     mtr_verbose($opt);
-    push(@{$tinfo->{'master_opt'}}, $opt);
-    push(@{$tinfo->{'slave_opt'}}, $opt);
+    push(@{$tinfo->{'primary_opt'}}, $opt);
+    push(@{$tinfo->{'replica_opt'}}, $opt);
   }
 
-  # Add master opts
-  if ( -f $master_opt_file )
+  # Add primary opts
+  if ( -f $primary_opt_file )
   {
 
-    my $master_opt= mtr_get_opts_from_file($master_opt_file);
+    my $primary_opt= mtr_get_opts_from_file($primary_opt_file);
 
-    foreach my $opt ( @$master_opt )
+    foreach my $opt ( @$primary_opt )
     {
       my $value;
 
@@ -632,10 +632,10 @@ sub collect_one_test_case($$$$$$$$$) {
 	next;
       }
 
-      $value= mtr_match_prefix($opt, "--slave-num=");
+      $value= mtr_match_prefix($opt, "--replica-num=");
       if ( defined $value )
       {
-	$tinfo->{'slave_num'}= $value;
+	$tinfo->{'replica_num'}= $value;
 	next;
       }
 
@@ -668,44 +668,30 @@ sub collect_one_test_case($$$$$$$$$) {
       }
 
       # Ok, this was a real option, add it
-      push(@{$tinfo->{'master_opt'}}, $opt);
+      push(@{$tinfo->{'primary_opt'}}, $opt);
     }
   }
 
-  # Add slave opts
-  if ( -f $slave_opt_file )
+  # Add replica opts
+  if ( -f $replica_opt_file )
   {
-    my $slave_opt= mtr_get_opts_from_file($slave_opt_file);
+    my $replica_opt= mtr_get_opts_from_file($replica_opt_file);
 
-    foreach my $opt ( @$slave_opt )
+    foreach my $opt ( @$replica_opt )
     {
       # If we set default time zone, remove the one we have
       my $value= mtr_match_prefix($opt, "--default-time-zone=");
-      $tinfo->{'slave_opt'}= [] if defined $value;
+      $tinfo->{'replica_opt'}= [] if defined $value;
     }
-    push(@{$tinfo->{'slave_opt'}}, @$slave_opt);
+    push(@{$tinfo->{'replica_opt'}}, @$replica_opt);
   }
 
-  if ( -f $slave_mi_file )
+  if ( -f $replica_mi_file )
   {
-    $tinfo->{'slave_mi'}= mtr_get_opts_from_file($slave_mi_file);
+    $tinfo->{'replica_mi'}= mtr_get_opts_from_file($replica_mi_file);
   }
 
-  if ( -f $master_sh )
-  {
-    if ( $::glob_win32_perl )
-    {
-      $tinfo->{'skip'}= 1;
-      $tinfo->{'comment'}= "No tests with sh scripts on Windows";
-      return;
-    }
-    else
-    {
-      $tinfo->{'master_sh'}= $master_sh;
-    }
-  }
-
-  if ( -f $slave_sh )
+  if ( -f $primary_sh )
   {
     if ( $::glob_win32_perl )
     {
@@ -715,7 +701,21 @@ sub collect_one_test_case($$$$$$$$$) {
     }
     else
     {
-      $tinfo->{'slave_sh'}= $slave_sh;
+      $tinfo->{'primary_sh'}= $primary_sh;
+    }
+  }
+
+  if ( -f $replica_sh )
+  {
+    if ( $::glob_win32_perl )
+    {
+      $tinfo->{'skip'}= 1;
+      $tinfo->{'comment'}= "No tests with sh scripts on Windows";
+      return;
+    }
+    else
+    {
+      $tinfo->{'replica_sh'}= $replica_sh;
     }
   }
 
@@ -798,8 +798,8 @@ sub collect_one_test_case($$$$$$$$$) {
     #enable federated for this test
     if ($tinfo->{'federated_test'})
     {
-      push(@{$tinfo->{'master_opt'}}, "--loose-federated");
-      push(@{$tinfo->{'slave_opt'}}, "--loose-federated");
+      push(@{$tinfo->{'primary_opt'}}, "--loose-federated");
+      push(@{$tinfo->{'replica_opt'}}, "--loose-federated");
     }
 
     if ( $tinfo->{'big_test'} and ! $::opt_big_test )
@@ -847,8 +847,8 @@ sub collect_one_test_case($$$$$$$$$) {
 	$tinfo->{'comment'}= "No ndbcluster tests(--skip-ndbcluster)";
 	return;
       }
-      # Ndb tests run with two mysqld masters
-      $tinfo->{'master_num'}= 2;
+      # Ndb tests run with two mysqld primarys
+      $tinfo->{'primary_num'}= 2;
     }
     else
     {
@@ -889,7 +889,7 @@ sub collect_one_test_case($$$$$$$$$) {
       {
 	# Test does not need binlog, add --skip-binlog to
 	# the options used when starting it
-	push(@{$tinfo->{'master_opt'}}, "--skip-log-bin");
+	push(@{$tinfo->{'primary_opt'}}, "--skip-log-bin");
       }
     }
 
@@ -919,7 +919,7 @@ our @tags=
  ["include/have_ndb.inc", "ndb_test", 1],
  ["include/have_multi_ndb.inc", "ndb_test", 1],
  ["include/have_ndb_extra.inc", "ndb_extra", 1],
- ["include/ndb_master-slave.inc", "ndb_test", 1],
+ ["include/ndb_primary-replica.inc", "ndb_test", 1],
  ["require_manager", "require_manager", 1],
  ["include/federated.inc", "federated_test", 1],
  ["include/have_federated_db.inc", "federated_test", 1],

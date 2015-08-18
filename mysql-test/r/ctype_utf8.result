@@ -3093,7 +3093,7 @@ t1	CREATE TABLE `t1` (
   `c1` varchar(37) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 drop table t1;
-create table t1 as select concat(master_pos_wait('non-existent',0,2)) as c1;
+create table t1 as select concat(primary_pos_wait('non-existent',0,2)) as c1;
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (

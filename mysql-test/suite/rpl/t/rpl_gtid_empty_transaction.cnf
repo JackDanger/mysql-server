@@ -2,12 +2,12 @@
 
 [mysqld.1]
 gtid-mode=on
-log-slave-updates=on
+log-replica-updates=on
 enforce-gtid-consistency=on
 
 [mysqld.2]
 gtid-mode=on
-log-slave-updates=on
+log-replica-updates=on
 enforce-gtid-consistency=on
 
 replicate-ignore-table=test.t_ignore
@@ -17,7 +17,7 @@ binlog-ignore-db=db_binlog_ignore
 
 [mysqld.3]
 gtid-mode=on
-log-slave-updates=on
+log-replica-updates=on
 enforce-gtid-consistency=on
 
 [ENV]

@@ -103,7 +103,7 @@ trx_t*
 trx_allocate_for_mysql(void);
 /*========================*/
 /********************************************************************//**
-Creates a transaction object for background operations by the master thread.
+Creates a transaction object for background operations by the primary thread.
 @return own: transaction object */
 trx_t*
 trx_allocate_for_background(void);

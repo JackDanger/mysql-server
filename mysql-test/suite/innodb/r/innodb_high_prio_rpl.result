@@ -1,13 +1,13 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP TABLE IF EXISTS t1,t2;
 CREATE TABLE t1 (c1 INT NOT NULL PRIMARY KEY) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (0);
 
-# On connection master
+# On connection primary
 START TRANSACTION;
 UPDATE t1 SET c1=1 WHERE c1=0;
 
@@ -17,20 +17,20 @@ START TRANSACTION /* HIGH PRIORITY */;
 UPDATE t1 SET c1=2 WHERE c1=0;
 COMMIT;
 
-# On connection master
+# On connection primary
 COMMIT;
 ERROR HY000: Got error 149 during COMMIT
-# Row with value 2 is expected on master.
+# Row with value 2 is expected on primary.
 SELECT * FROM t1;
 c1
 2
-include/sync_slave_sql_with_master.inc
-# Row with value 2 is expected on slave.
+include/sync_replica_sql_with_primary.inc
+# Row with value 2 is expected on replica.
 SELECT * FROM t1;
 c1
 2
 
-# On connection master
+# On connection primary
 DROP TABLE t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

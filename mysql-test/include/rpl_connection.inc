@@ -9,7 +9,7 @@
 #
 # ==== Usage ====
 #
-# --let $rpl_connection_name= master
+# --let $rpl_connection_name= primary
 # [--let $rpl_connection_silent= 1]
 # [--let $rpl_debug= 1]
 # --source include/rpl_connection.inc

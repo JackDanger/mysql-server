@@ -471,7 +471,7 @@ dojo.provide("dojox.drawing.manager.Stencil");
 				// summary:
 				//		Event fired on mousedown of a stencil's label
 				//		Because it's an annotation the id will be the
-				//		master stencil.
+				//		primary stencil.
 				//console.info("===============>>>Label click: ",obj, " evt: ",evt);
 				this.onStencilDown(obj,evt);
 			},

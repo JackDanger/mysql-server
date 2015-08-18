@@ -2,16 +2,16 @@
 # Test of auto_increment with offset
 #
 -- source include/not_ndb_default.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 -- source include/have_myisam.inc
 
 eval create table t1 (a int not null auto_increment,b int, primary key (a)) engine=$engine_type2 auto_increment=3;
 insert into t1 values (NULL,1),(NULL,2),(NULL,3);
 select * from t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
-connection master;
+connection primary;
 drop table t1;
 
 eval create table t1 (a int not null auto_increment,b int, primary key (a)) engine=$engine_type2;
@@ -20,9 +20,9 @@ delete from t1 where b=4;
 insert into t1 values (NULL,5),(NULL,6);
 select * from t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
-connection master;
+connection primary;
 
 drop table t1;
 
@@ -39,9 +39,9 @@ set @@insert_id=400;
 insert into t1 values(NULL),(NULL);
 select * from t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
-connection master;
+connection primary;
 drop table t1;
 
 #
@@ -57,9 +57,9 @@ set @@insert_id=400;
 insert into t1 values(NULL),(NULL);
 select * from t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
-connection master;
+connection primary;
 drop table t1;
 
 set @@session.auto_increment_increment=1, @@session.auto_increment_offset=1;
@@ -75,27 +75,27 @@ set @@insert_id=600;
 insert ignore into t1 values(600),(NULL),(NULL),(610),(NULL);
 select * from t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
-connection master;
+connection primary;
 drop table t1;
 
 #
-# Test that auto-increment works when slave has rows in the table
+# Test that auto-increment works when replica has rows in the table
 #
 set @@session.auto_increment_increment=10, @@session.auto_increment_offset=1;
 
 eval create table t1 (a int not null auto_increment, primary key (a)) engine=$engine_type2;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 insert into t1 values(2),(12),(22),(32),(42);
-connection master;
+connection primary;
 
 insert into t1 values (NULL),(NULL);
 insert into t1 values (3),(NULL),(NULL);
 select * from t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
 
 # Test for BUG#20524 "auto_increment_* not observed when inserting
@@ -104,7 +104,7 @@ select * from t1;
 # possible value, without being "rounded down" to still honour
 # auto_increment_* variables.
 
-connection master;
+connection primary;
 drop table t1;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 create table t1 (a tinyint not null auto_increment primary key) engine=myisam;
@@ -131,42 +131,42 @@ set auto_increment_increment=1000;
 set auto_increment_offset=700;
 insert into t3 values(null);
 select * from t3 order by a;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 order by a;
 select * from t2 order by a;
 select * from t3 order by a;
 
-connection master;
+connection primary;
 
 drop table t1,t2,t3;
 SET sql_mode = default;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
-# BUG#41986 Replication slave does not pick up proper AUTO_INCREMENT value for Innodb tables
+# BUG#41986 Replication replica does not pick up proper AUTO_INCREMENT value for Innodb tables
 #
-connection master;
+connection primary;
 set auto_increment_increment=1;
 set auto_increment_offset=1;
 CREATE TABLE t1 (id MEDIUMINT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=innodb;
 INSERT INTO t1 VALUES (NULL), (NULL), (NULL);
 show create table t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 show create table t1;
 
-connection master;
+connection primary;
 drop table t1;
 
 #
 # BUG#45999 Row based replication fails when auto_increment field = 0.  
-# Store engine of Slaves auto-generates new sequence numbers for
+# Store engine of Replicas auto-generates new sequence numbers for
 # auto_increment fields if the values of them are 0. There is an inconsistency
-# between slave and master. When MODE_NO_AUTO_VALUE_ON_ZERO are masters treat 
+# between replica and primary. When MODE_NO_AUTO_VALUE_ON_ZERO are primarys treat 
 #
 source include/rpl_reset.inc;
 
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS t1;
 DROP TABLE IF EXISTS t2;
@@ -185,7 +185,7 @@ INSERT INTO t1 VALUES();
 INSERT INTO t2 VALUES();
 SELECT * FROM t1;
 SELECT * FROM t2;
-# Value of the id will be 3. The master treats 0 as NULL or empty because
+# Value of the id will be 3. The primary treats 0 as NULL or empty because
 # NO_AUTO_VALUE_ON_ZERO is not assign to SQL_MODE.
 INSERT INTO t1 VALUES(0);
 INSERT INTO t2 VALUES(0);
@@ -193,7 +193,7 @@ SELECT * FROM t1;
 SELECT * FROM t2;
 
 SET SQL_MODE=NO_AUTO_VALUE_ON_ZERO;
-# Value of the id will be 0. The master does not treat 0 as NULL or empty
+# Value of the id will be 0. The primary does not treat 0 as NULL or empty
 # because NO_AUTO_VALUE_ON_ZERO has assigned to SQL_MODE.
 INSERT INTO t1 VALUES(0);
 INSERT INTO t2 VALUES(0);
@@ -203,58 +203,58 @@ SELECT * FROM t2;
 INSERT INTO t1 VALUES(4);
 INSERT INTO t2 VALUES(4);
 FLUSH LOGS;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-let $diff_tables= master:t1, slave:t1;
+let $diff_tables= primary:t1, replica:t1;
 source include/diff_tables.inc;
 
-let $diff_tables= master:t2, slave:t2;
+let $diff_tables= primary:t2, replica:t2;
 source include/diff_tables.inc;
 
-connection master;
+connection primary;
 DROP TABLE t1;
 DROP TABLE t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 let $MYSQLD_DATADIR= `SELECT @@DATADIR`;
 # Keep original binlog file
---copy_file $MYSQLD_DATADIR/master-bin.000001 $MYSQLD_DATADIR/master-bin-rpl-auto-increment.saved
-# Stop slave
-connection slave;
-source include/stop_slave.inc;
-RESET SLAVE;
-RESET MASTER;
-connection master;
-# Force master to forget used GTIDs
-RESET MASTER;
+--copy_file $MYSQLD_DATADIR/primary-bin.000001 $MYSQLD_DATADIR/primary-bin-rpl-auto-increment.saved
+# Stop replica
+connection replica;
+source include/stop_replica.inc;
+RESET REPLICA;
+RESET PRIMARY;
+connection primary;
+# Force primary to forget used GTIDs
+RESET PRIMARY;
 FLUSH LOGS;
-connection slave;
-source include/start_slave.inc;
-connection master;
---exec $MYSQL_BINLOG $MYSQLD_DATADIR/master-bin-rpl-auto-increment.saved | $MYSQL test
---remove_file $MYSQLD_DATADIR/master-bin-rpl-auto-increment.saved
---source include/sync_slave_sql_with_master.inc
+connection replica;
+source include/start_replica.inc;
+connection primary;
+--exec $MYSQL_BINLOG $MYSQLD_DATADIR/primary-bin-rpl-auto-increment.saved | $MYSQL test
+--remove_file $MYSQLD_DATADIR/primary-bin-rpl-auto-increment.saved
+--source include/sync_replica_sql_with_primary.inc
 
-let $diff_tables= master:t1, slave:t1;
+let $diff_tables= primary:t1, replica:t1;
 source include/diff_tables.inc;
 
-let $diff_tables= master:t2, slave:t2;
+let $diff_tables= primary:t2, replica:t2;
 source include/diff_tables.inc;
 
 # End cleanup
---connection master
+--connection primary
 DROP TABLE t1;
 DROP TABLE t2;
 SET SQL_MODE='';
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # BUG#56662
 # The test verifies if the assertion of "next_insert_id == 0"
 # will fail in ha_external_lock() function.
 #
-connection master;
+connection primary;
 CREATE TABLE t1 (id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, data INT) ENGINE=innodb;
 
 BEGIN;
@@ -263,30 +263,30 @@ BEGIN;
 SET SQL_MODE=NO_AUTO_VALUE_ON_ZERO;
 INSERT INTO t1(id,data) VALUES(0,2);
 --echo # Resetting sql_mode without NO_AUTO_VALUE_ON_ZERO to
---echo # affect the execution of the transaction on slave.
+--echo # affect the execution of the transaction on replica.
 SET SQL_MODE=0;
 COMMIT;
 SELECT * FROM t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1;
 
-connection master;
+connection primary;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # WL#5872 "avoid using global heap memory to remember autoincrement
 # values for statement-based binlog".
 #
-connection master;
+connection primary;
 eval create table t1(a int auto_increment primary key) engine=$engine_type;
 insert into t1 values (null),(null),(1025),(null);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
-let $diff_tables= master:t1, slave:t1;
+let $diff_tables= primary:t1, replica:t1;
 --source include/diff_tables.inc
-connection master;
+connection primary;
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

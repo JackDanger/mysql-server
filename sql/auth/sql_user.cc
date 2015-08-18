@@ -205,7 +205,7 @@ int check_change_password(THD *thd, const char *host, const char *user,
   }
 
   sctx= thd->security_context();
-  if (!thd->slave_thread &&
+  if (!thd->replica_thread &&
       (strcmp(sctx->user().str, user) ||
        my_strcasecmp(system_charset_info, host,
                      sctx->priv_host().str)))
@@ -218,7 +218,7 @@ int check_change_password(THD *thd, const char *host, const char *user,
     if (check_access(thd, UPDATE_ACL, "mysql", NULL, NULL, 1, 0))
       return(1);
   }
-  if (!thd->slave_thread &&
+  if (!thd->replica_thread &&
       !strcmp(thd->security_context()->priv_user().str,""))
   {
     my_message(ER_PASSWORD_ANONYMOUS_USER, ER(ER_PASSWORD_ANONYMOUS_USER),
@@ -562,12 +562,12 @@ bool set_and_validate_user_attributes(THD *thd,
       Validate hash string in following cases:
         1. IDENTIFIED BY PASSWORD.
         2. IDENTIFIED WITH .. AS 'auth_str' for ALTER USER statement
-           and its a replication slave thread
+           and its a replication replica thread
     */
     if (Str->uses_identified_by_password_clause ||
         (Str->uses_authentication_string_clause &&
         thd->lex->sql_command == SQLCOM_ALTER_USER &&
-        thd->slave_thread))
+        thd->replica_thread))
     {
       if (auth->validate_authentication_string((char*)Str->auth.str,
                                                Str->auth.length))
@@ -632,10 +632,10 @@ bool change_password(THD *thd, const char *host, const char *user,
 
 #ifdef HAVE_REPLICATION
   /*
-    GRANT and REVOKE are applied the slave in/exclusion rules as they are
+    GRANT and REVOKE are applied the replica in/exclusion rules as they are
     some kind of updates to the mysql.% tables.
   */
-  if (thd->slave_thread && rpl_filter->is_on())
+  if (thd->replica_thread && rpl_filter->is_on())
   {
     /*
       The tables must be marked "updating" so that tables_ok() takes them into
@@ -707,11 +707,11 @@ bool change_password(THD *thd, const char *host, const char *user,
 
   /*
     When @@log-backward-compatible-user-definitions variable is ON
-    and its a slave thread, then the password is already hashed. So
+    and its a replica thread, then the password is already hashed. So
     do not generate another hash.
   */
   if (opt_log_backward_compatible_user_definitions &&
-      thd->slave_thread)
+      thd->replica_thread)
     combo->uses_identified_by_clause= false;
     
   if (set_and_validate_user_attributes(thd, combo, what_to_set, true))
@@ -1656,10 +1656,10 @@ bool mysql_alter_user(THD *thd, List <LEX_USER> &list, bool if_exists)
 
 #ifdef HAVE_REPLICATION
   /*
-    GRANT and REVOKE are applied the slave in/exclusion rules as they are
+    GRANT and REVOKE are applied the replica in/exclusion rules as they are
     some kind of updates to the mysql.% tables.
   */
-  if (thd->slave_thread && rpl_filter->is_on())
+  if (thd->replica_thread && rpl_filter->is_on())
   {
     /*
       The tables must be marked "updating" so that tables_ok() takes them into

@@ -4,34 +4,34 @@
 --source include/not_gtid_enabled.inc
 
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-connection slave;
+connection replica;
 --let $saved_log_error_verbosity=`SELECT @@global.log_error_verbosity`
-set @saved_slave_type_conversions = @@global.slave_type_conversions;
+set @saved_replica_type_conversions = @@global.replica_type_conversions;
 CREATE TABLE type_conversions (
        TestNo INT AUTO_INCREMENT PRIMARY KEY,
        Source TEXT,
        Target TEXT,
        Flags TEXT,
-       On_Master TEXT,
-       On_Slave TEXT,
+       On_Primary TEXT,
+       On_Replica TEXT,
        Expected TEXT,
        Compare INT,
        Error TEXT);
 
-SELECT @@global.slave_type_conversions;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='';
-SELECT @@global.slave_type_conversions;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_NON_LOSSY';
-SELECT @@global.slave_type_conversions;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY';
-SELECT @@global.slave_type_conversions;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
-SELECT @@global.slave_type_conversions;
+SELECT @@global.replica_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='';
+SELECT @@global.replica_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_NON_LOSSY';
+SELECT @@global.replica_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY';
+SELECT @@global.replica_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
+SELECT @@global.replica_type_conversions;
 --error ER_WRONG_VALUE_FOR_VAR
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY,NONEXISTING_BIT';
-SELECT @@global.slave_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY,NONEXISTING_BIT';
+SELECT @@global.replica_type_conversions;
 
 # Disabling warnings to not flood the error log, otherwise it might
 # cause sporadic test failures during the 'check warnings' stage because
@@ -40,34 +40,34 @@ SELECT @@global.slave_type_conversions;
 # the amount of warnings that we are removing from the log is good 
 # enough to make the test less vulnerable.
 SET @@global.log_error_verbosity=1;
---source include/stop_slave.inc
---source include/start_slave.inc
+--source include/stop_replica.inc
+--source include/start_replica.inc
 
 # Checking strict interpretation of type conversions
-connection slave;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='';
+connection replica;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='';
 source extra/rpl_tests/type_conversions.test;
 
 # Checking lossy integer type conversions
-connection slave;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_NON_LOSSY';
+connection replica;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_NON_LOSSY';
 source extra/rpl_tests/type_conversions.test;
 
 # Checking non-lossy integer type conversions
-connection slave;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY';
+connection replica;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY';
 source extra/rpl_tests/type_conversions.test;
 
 # Checking all type conversions
-connection slave;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
+connection replica;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
 source extra/rpl_tests/type_conversions.test;
 
 # reinstate the log_error_verbosity value
 --replace_result $saved_log_error_verbosity SAVED_LOG_ERROR_VERBOSITY
 --eval SET @@global.log_error_verbosity= $saved_log_error_verbosity
 
-connection slave;
+connection replica;
 --echo **** Result of conversions ****
 disable_query_log;
 SELECT RPAD(Source, 15, ' ') AS Source_Type,
@@ -75,19 +75,19 @@ SELECT RPAD(Source, 15, ' ') AS Source_Type,
        RPAD(Flags, 25, ' ') AS All_Type_Conversion_Flags,
        IF(Compare IS NULL AND Error IS NOT NULL, '<Correct error>',
           IF(Compare, '<Correct value>',
-             CONCAT("'", On_Slave, "' != '", Expected, "'")))
-         AS Value_On_Slave
+             CONCAT("'", On_Replica, "' != '", Expected, "'")))
+         AS Value_On_Replica
   FROM type_conversions;
 enable_query_log;
 DROP TABLE type_conversions;
 
-call mtr.add_suppression("Slave SQL.*Column 1 of table .test.t1. cannot be converted from type.* Error_code: 1677");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+call mtr.add_suppression("Replica SQL.*Column 1 of table .test.t1. cannot be converted from type.* Error_code: 1677");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
-connection master;
+connection primary;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-set global slave_type_conversions = @saved_slave_type_conversions;
+set global replica_type_conversions = @saved_replica_type_conversions;
 
 --source include/rpl_end.inc

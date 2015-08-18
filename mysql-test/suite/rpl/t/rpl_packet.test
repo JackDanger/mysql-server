@@ -3,7 +3,7 @@
 # Check replication protocol packet size handling
 #
 # ==== Related bugs ====
-# Bug#19402 SQL close to the size of the max_allowed_packet fails on slave
+# Bug#19402 SQL close to the size of the max_allowed_packet fails on replica
 # BUG#23755: Replicated event larger that max_allowed_packet infinitely re-transmits
 # BUG#42914: No LAST_IO_ERROR for max_allowed_packet errors
 # BUG#55322: SHOW BINLOG EVENTS increases @@SESSION.MAX_ALLOWED_PACKET
@@ -15,149 +15,149 @@ source include/have_binlog_format_row.inc;
 # TODO: Fixing is handed over to Sergei.
 # The test runs slow in MTS mode because of state of MTS at time of the graceful stop.
 # In this case MTS can't stop immediately if there is a Worker that received a BEGIN but never COMMIT.
--- source include/not_mts_slave_parallel_workers.inc
+-- source include/not_mts_replica_parallel_workers.inc
 
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
-call mtr.add_suppression("Slave I/O for channel '': Got a packet bigger than 'slave_max_allowed_packet' bytes, Error_code: 1153");
-call mtr.add_suppression("Log entry on master is longer than slave_max_allowed_packet");
+call mtr.add_suppression("Replica I/O for channel '': Got a packet bigger than 'replica_max_allowed_packet' bytes, Error_code: 1153");
+call mtr.add_suppression("Log entry on primary is longer than replica_max_allowed_packet");
 let $db= DB_NAME_OF_MAX_LENGTH_AKA_NAME_LEN_64_BYTES_____________________;
 disable_warnings;
 eval drop database if exists $db;
 enable_warnings;
 eval create database $db;
 
-connection master;
+connection primary;
 let $old_max_allowed_packet= `SELECT @@global.max_allowed_packet`;
 let $old_net_buffer_length= `SELECT @@global.net_buffer_length`;
-let $old_slave_max_allowed_packet= `SELECT @@global.slave_max_allowed_packet`;
-let $old_slave_max_allowed_packet_temp= `SELECT @@global.slave_max_allowed_packet`;
+let $old_replica_max_allowed_packet= `SELECT @@global.replica_max_allowed_packet`;
+let $old_replica_max_allowed_packet_temp= `SELECT @@global.replica_max_allowed_packet`;
 SET @@global.max_allowed_packet=10240;
 SET @@global.net_buffer_length=1024;
 
---source include/sync_slave_sql_with_master.inc
-# Restart slave for setting to take effect
-source include/stop_slave.inc;
-source include/start_slave.inc;
+--source include/sync_replica_sql_with_primary.inc
+# Restart replica for setting to take effect
+source include/stop_replica.inc;
+source include/start_replica.inc;
 
-# Reconnect to master for new setting to take effect
-disconnect master;
+# Reconnect to primary for new setting to take effect
+disconnect primary;
 
 # alas, can't use eval here; if db name changed apply the change here
-connect (master,localhost,root,,DB_NAME_OF_MAX_LENGTH_AKA_NAME_LEN_64_BYTES_____________________);
+connect (primary,localhost,root,,DB_NAME_OF_MAX_LENGTH_AKA_NAME_LEN_64_BYTES_____________________);
 
-connection master;
+connection primary;
 select @@net_buffer_length, @@max_allowed_packet;
 
 create table `t1` (`f1` LONGTEXT);
 
 INSERT INTO `t1`(`f1`) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2048');
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 eval select count(*) from `$db`.`t1` /* must be 1 */;
 
-SHOW STATUS LIKE 'Slave_running';
+SHOW STATUS LIKE 'Replica_running';
 --disable_warnings
-select * from information_schema.session_status where variable_name= 'SLAVE_RUNNING';
+select * from information_schema.session_status where variable_name= 'REPLICA_RUNNING';
 --enable_warnings
-connection master;
+connection primary;
 eval drop database $db;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Bug #23755: Replicated event larger that max_allowed_packet infinitely re-transmits
 #
-# Check that a situation when the size of event on the master is greater than 
-# max_allowed_packet on the slave does not lead to infinite re-transmits.
+# Check that a situation when the size of event on the primary is greater than 
+# max_allowed_packet on the replica does not lead to infinite re-transmits.
 
-connection master;
+connection primary;
 
-# Change the max packet size on master
+# Change the max packet size on primary
 
-# Todo: improve over-max_allowed_packet size events block on the slave.
+# Todo: improve over-max_allowed_packet size events block on the replica.
 # The current size checking algorithm is not presize to allow large event
 # to slip it. Reject happens according to the guard:
 #   if (data_len > max(max_allowed_packet,
 #       opt_binlog_rows_event_max_size + MAX_LOG_EVENT_HEADER))
 # However, MAX_LOG_EVENT_HEADER is a conservative estimate so if the actual
-# header size is less the extra data let in the slave.
+# header size is less the extra data let in the replica.
 
 # Adding the max size of the query log event status as
-# MAX_DBS_IN_QUERY_MTS * (1 + NAME_LEN) to make the master not fail to read
+# MAX_DBS_IN_QUERY_MTS * (1 + NAME_LEN) to make the primary not fail to read
 # an event itself. The increased max_allowed_packet also takes care of the 
 # increase in the connect string processing introduced due to WL#5924.
 
 SET @@global.max_allowed_packet=4096 + (floor(64 * 3 * 254 / 1024) + 1) * 1024;
 SET @@global.net_buffer_length=@@global.max_allowed_packet;
 
-# Restart slave for new setting to take effect
-connection slave;
-source include/stop_slave.inc;
-source include/start_slave.inc;
+# Restart replica for new setting to take effect
+connection replica;
+source include/stop_replica.inc;
+source include/start_replica.inc;
 
-# Reconnect to master for new setting to take effect
-disconnect master;
-connect (master, localhost, root);
-connection master;
+# Reconnect to primary for new setting to take effect
+disconnect primary;
+connect (primary, localhost, root);
+connection primary;
 
 CREATE TABLE `t1` (`f1` LONGTEXT);
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 
 INSERT INTO t1 VALUES (REPEAT('a', @@global.max_allowed_packet));
 
 
 #
-# Bug#42914: The slave I/O thread must stop after trying to read the above
+# Bug#42914: The replica I/O thread must stop after trying to read the above
 # event, However there is no Last_IO_Error report.
 #
 
-# The slave I/O thread must stop after trying to read the above event
-connection slave;
+# The replica I/O thread must stop after trying to read the above event
+connection replica;
 # 1153 = ER_NET_PACKET_TOO_LARGE
---let $slave_io_errno= 1153
---let $show_slave_io_error= 1
---source include/wait_for_slave_io_error.inc
+--let $replica_io_errno= 1153
+--let $show_replica_io_error= 1
+--source include/wait_for_replica_io_error.inc
 
 # TODO: this is needed because of BUG#55790. Remove once that is fixed.
---source include/stop_slave_sql.inc
+--source include/stop_replica_sql.inc
 
 #
-# Bug#42914: On the master, if a binary log event is larger than
-# max_allowed_packet, the error message ER_MASTER_FATAL_ERROR_READING_BINLOG
-# is sent to a slave when it requests a dump from the master, thus leading the
+# Bug#42914: On the primary, if a binary log event is larger than
+# max_allowed_packet, the error message ER_PRIMARY_FATAL_ERROR_READING_BINLOG
+# is sent to a replica when it requests a dump from the primary, thus leading the
 # I/O thread to stop. However, there is no Last_IO_Error reported.
 #
 
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
---connection master
+--connection primary
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 
-connection master;
+connection primary;
 CREATE TABLE t1 (f1 int PRIMARY KEY, f2 LONGTEXT, f3 LONGTEXT) ENGINE=MyISAM;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 INSERT INTO t1(f1, f2, f3) VALUES(1, REPEAT('a', @@global.max_allowed_packet), REPEAT('b', @@global.max_allowed_packet));
 
-connection slave;
-# The slave I/O thread must stop after receiving
+connection replica;
+# The replica I/O thread must stop after receiving
 # 1153 = ER_NET_PACKET_TOO_LARGE
---let $slave_io_errno= 1153
---let $show_slave_io_error= 1
---source include/wait_for_slave_io_error.inc
+--let $replica_io_errno= 1153
+--let $show_replica_io_error= 1
+--source include/wait_for_replica_io_error.inc
 
-# Remove the bad binlog and clear error status on slave.
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
---connection master
-RESET MASTER;
+# Remove the bad binlog and clear error status on replica.
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+--connection primary
+RESET PRIMARY;
 
 
 #
@@ -193,48 +193,48 @@ if (`SELECT NOT(@max_allowed_packet_0 = @max_allowed_packet_1 AND @max_allowed_p
 # rows event.
 #
 
-connection slave;
+connection replica;
 
-START SLAVE;
---source include/wait_for_slave_to_start.inc
+START REPLICA;
+--source include/wait_for_replica_to_start.inc
 
-connection master;
+connection primary;
 DROP TABLE t1;
 select @@global.max_allowed_packet;
 select @@global.net_buffer_length;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select @@global.max_allowed_packet;
 select @@global.net_buffer_length;
 
---connection master
+--connection primary
 CREATE TABLE t1 (a TEXT) ENGINE=MyISAM;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Create big row event.
---connection master
+--connection primary
 INSERT INTO t1 VALUES (REPEAT('a', @@global.max_allowed_packet));
 
-# Slave IO thread should stop with error when trying to read the big event.
---connection slave
+# Replica IO thread should stop with error when trying to read the big event.
+--connection replica
 --echo # 1153 = ER_NET_PACKET_TOO_LARGE
---let $slave_io_errno= 1153
---let $show_slave_io_error= 1
---source include/wait_for_slave_io_error.inc
+--let $replica_io_errno= 1153
+--let $show_replica_io_error= 1
+--source include/wait_for_replica_io_error.inc
 
---echo # Record Read_Master_Log_Pos for the Table_map_log_event
---let $table_map_log_pos= query_get_value("SHOW SLAVE STATUS", Read_Master_Log_Pos, 1)
+--echo # Record Read_Primary_Log_Pos for the Table_map_log_event
+--let $table_map_log_pos= query_get_value("SHOW REPLICA STATUS", Read_Primary_Log_Pos, 1)
 
 --let $MYSQLD_DATADIR= `SELECT @@datadir`
---let $start_pos= query_get_value("SHOW SLAVE STATUS", Relay_Log_Pos, 1)
---let $relay_log_file= query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1)
+--let $start_pos= query_get_value("SHOW REPLICA STATUS", Relay_Log_Pos, 1)
+--let $relay_log_file= query_get_value(SHOW REPLICA STATUS, Relay_Log_File, 1)
 --let $outfile= $MYSQLTEST_VARDIR/tmp/b55790-mysqlbinlog
 --let $i= 2
 
---let $old_slave_max_allowed_packet= `SELECT @@global.max_allowed_packet`
+--let $old_replica_max_allowed_packet= `SELECT @@global.max_allowed_packet`
 SET @@global.max_allowed_packet=1048576;
-# Restart slave session for new settings to take effect.
---connect (slave2,127.0.0.1,root,,test,$SLAVE_MYPORT,)
---connection slave2
+# Restart replica session for new settings to take effect.
+--connect (replica2,127.0.0.1,root,,test,$REPLICA_MYPORT,)
+--connection replica2
 
 while($i)
 {
@@ -286,20 +286,20 @@ EOF
 }
 
 --echo ==== clean up ====
-connection master;
+connection primary;
 DROP TABLE t1;
 eval SET @@global.max_allowed_packet= $old_max_allowed_packet;
 eval SET @@global.net_buffer_length= $old_net_buffer_length;
-eval SET @@global.slave_max_allowed_packet= $old_slave_max_allowed_packet_temp;
-# slave is stopped
-connection slave;
-eval SET @@global.max_allowed_packet= $old_slave_max_allowed_packet;
+eval SET @@global.replica_max_allowed_packet= $old_replica_max_allowed_packet_temp;
+# replica is stopped
+connection replica;
+eval SET @@global.max_allowed_packet= $old_replica_max_allowed_packet;
 DROP TABLE t1;
 
 # Clear Last_IO_Error
 
---source include/stop_slave_sql.inc
-RESET SLAVE;
+--source include/stop_replica_sql.inc
+RESET REPLICA;
 
 --source include/rpl_end.inc
 # End of tests

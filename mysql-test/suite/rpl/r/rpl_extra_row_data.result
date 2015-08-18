@@ -1,12 +1,12 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-Basic insert, update, delete from Master->Slave
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+Basic insert, update, delete from Primary->Replica
 DBUG code will set + check transfer of extra
 row data in RBR
-**** On Master ****
+**** On Primary ****
 CREATE TABLE t1 (a INT);
 Ten inserts in one transaction -> 1 epoch transaction
 BEGIN;
@@ -39,13 +39,13 @@ UPDATE t1 SET a = a+1;
 UPDATE t1 SET a = a+1;
 UPDATE t1 SET a = a+1;
 DELETE FROM t1 WHERE a > 390;
-**** On Slave ****
-include/sync_slave_sql_with_master.inc
-Check row count and that slave is running ok
+**** On Replica ****
+include/sync_replica_sql_with_primary.inc
+Check row count and that replica is running ok
 SELECT count(*) from t1;
 count(*)
 80
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 DROP TABLE t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

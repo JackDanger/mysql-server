@@ -13,8 +13,8 @@
 #
 # ==== References ====
 #
-# WL#5493 Binlog crash-safe when master crashed
-# WL#5440 Test binlog and replication when master crashed
+# WL#5493 Binlog crash-safe when primary crashed
+# WL#5440 Test binlog and replication when primary crashed
 
 --let $old_debug = `select @@global.debug`
 --let $prefix = `select CONCAT(IF(LENGTH(@@global.debug) > 0, CONCAT(@@global.debug, ":"), ''), "d,debug,info,enter,return,query,")`
@@ -32,17 +32,17 @@ call mtr.add_suppression("allocated tablespace *., old maximum was 0");
 call mtr.add_suppression("Error in Log_event::read_log_event()");
 call mtr.add_suppression("Buffered warning: Performance schema disabled");
 
-RESET MASTER;
+RESET PRIMARY;
 
 CREATE TABLE t1(a LONGBLOB) ENGINE=INNODB;
 CREATE TABLE t2(a LONGBLOB) ENGINE=MYISAM;
 
 -- echo # Test case5: Inject wrong value of crc for a log event, and
--- echo #             then set DBUG POINT to casue the master crash.
+-- echo #             then set DBUG POINT to casue the primary crash.
 # Write file to make mysql-test-run.pl expect crash and restart
 -- exec echo "wait" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
--- let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
--- let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+-- let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
+-- let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
 INSERT INTO t2 (a) VALUES (REPEAT('a',1));
 
 BEGIN;
@@ -64,7 +64,7 @@ COMMIT;
 
 -- source include/wait_until_disconnected.inc
 -- enable_reconnect
--- echo # Restart the master server
+-- echo # Restart the primary server
 -- exec echo "restart" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
 -- source include/wait_until_connected_again.inc
 -- disable_reconnect

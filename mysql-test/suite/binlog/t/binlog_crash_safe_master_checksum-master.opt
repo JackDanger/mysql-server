@@ -1,1 +1,1 @@
---binlog-checksum=CRC32 --master-verify-checksum=1
+--binlog-checksum=CRC32 --primary-verify-checksum=1

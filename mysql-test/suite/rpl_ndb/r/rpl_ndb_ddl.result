@@ -1,16 +1,16 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-include/sync_slave_sql_with_master.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+include/sync_replica_sql_with_primary.inc
 
--------- switch to master -------
+-------- switch to primary -------
 SET AUTOCOMMIT = 1;
 CREATE DATABASE mysqltest1;
 CREATE DATABASE mysqltest2;
 CREATE TABLE mysqltest1.t1 (f1 BIGINT) ENGINE=NDB;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 INSERT INTO mysqltest1.t1 SET f1= 0;
 CREATE TABLE mysqltest1.t2 (f1 BIGINT) ENGINE=NDB;
 CREATE TABLE mysqltest1.t3 (f1 BIGINT) ENGINE=NDB;
@@ -35,28 +35,28 @@ CREATE TABLE mysqltest1.t19 (f1 BIGINT) ENGINE=NDB;
 CREATE TEMPORARY TABLE mysqltest1.t23 (f1 BIGINT) ENGINE=MEMORY;
 SET AUTOCOMMIT = 0;
 use mysqltest1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
--------- switch to slave --------
+-------- switch to replica --------
 SET AUTOCOMMIT = 1;
 use mysqltest1;
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## SELECT 1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 0 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
--------- switch to master -------
+-------- switch to primary -------
 SELECT 1;
 1
 1
@@ -64,42 +64,42 @@ SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
-TEST-INFO: MASTER: The INSERT is not committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is not committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
-TEST-INFO: SLAVE:  The INSERT is not committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is not committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## SELECT COUNT(*) FROM t1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 0 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
--------- switch to master -------
+-------- switch to primary -------
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 2
@@ -107,308 +107,308 @@ SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
-TEST-INFO: MASTER: The INSERT is not committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is not committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
-TEST-INFO: SLAVE:  The INSERT is not committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is not committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## COMMIT ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 0 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 0
 
--------- switch to master -------
+-------- switch to primary -------
 COMMIT;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## ROLLBACK ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 1 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 2
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
-TEST-INFO: MASTER: The INSERT is not committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is not committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
-TEST-INFO: SLAVE:  The INSERT is not committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is not committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## SET AUTOCOMMIT=1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 1 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 2
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 1
 
--------- switch to master -------
+-------- switch to primary -------
 SET AUTOCOMMIT=1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 2
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 2
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 2
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 2
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SET AUTOCOMMIT=0;
 
 ######## START TRANSACTION ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 2 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 3
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 2
 
--------- switch to master -------
+-------- switch to primary -------
 START TRANSACTION;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 3
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 3
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 3
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 3
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## BEGIN ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 3 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 4
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 3
 
--------- switch to master -------
+-------- switch to primary -------
 BEGIN;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 4
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 4
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 4
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 4
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP TABLE mysqltest1.t2 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 4 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 4
 
--------- switch to master -------
+-------- switch to primary -------
 DROP TABLE mysqltest1.t2;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW TABLES LIKE 't2';
 Tables_in_mysqltest1 (t2)
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW TABLES LIKE 't2';
 Tables_in_mysqltest1 (t2)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP TEMPORARY TABLE mysqltest1.t23 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 5 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
--------- switch to master -------
+-------- switch to primary -------
 DROP TEMPORARY TABLE mysqltest1.t23;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 Warnings:
 Warning	1752	Some temporary tables were dropped, but these operations could not be rolled back.
@@ -416,195 +416,195 @@ SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
-TEST-INFO: MASTER: The INSERT is not committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is not committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
-TEST-INFO: SLAVE:  The INSERT is not committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is not committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW TABLES LIKE 't23';
 Tables_in_mysqltest1 (t23)
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW TABLES LIKE 't23';
 Tables_in_mysqltest1 (t23)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## RENAME TABLE mysqltest1.t3 to mysqltest1.t20 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 5 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 5
 
--------- switch to master -------
+-------- switch to primary -------
 RENAME TABLE mysqltest1.t3 to mysqltest1.t20;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW TABLES LIKE 't20';
 Tables_in_mysqltest1 (t20)
 t20
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW TABLES LIKE 't20';
 Tables_in_mysqltest1 (t20)
 t20
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## ALTER TABLE mysqltest1.t4 ADD column f2 BIGINT ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 6 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 7
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 6
 
--------- switch to master -------
+-------- switch to primary -------
 ALTER TABLE mysqltest1.t4 ADD column f2 BIGINT;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 7
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 7
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 7
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 7
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 describe mysqltest1.t4;
 Field	Type	Null	Key	Default	Extra
 f1	bigint(20)	YES		NULL	
 f2	bigint(20)	YES		NULL	
 
--------- switch to slave --------
+-------- switch to replica --------
 describe mysqltest1.t4;
 Field	Type	Null	Key	Default	Extra
 f1	bigint(20)	YES		NULL	
 f2	bigint(20)	YES		NULL	
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE TABLE mysqltest1.t21 (f1 BIGINT) ENGINE= NDB ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 7 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 7
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE TABLE mysqltest1.t21 (f1 BIGINT) ENGINE= NDB;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE TEMPORARY TABLE mysqltest1.t22 (f1 BIGINT) ENGINE=MEMORY ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 8 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE TEMPORARY TABLE mysqltest1.t22 (f1 BIGINT) ENGINE=MEMORY;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 Warnings:
 Warning	1751	The creation of some temporary tables could not be rolled back.
@@ -612,475 +612,475 @@ SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
-TEST-INFO: MASTER: The INSERT is not committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is not committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
-TEST-INFO: SLAVE:  The INSERT is not committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is not committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## TRUNCATE TABLE mysqltest1.t7 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 8 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 8
 
--------- switch to master -------
+-------- switch to primary -------
 TRUNCATE TABLE mysqltest1.t7;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SELECT * FROM mysqltest1.t7;
 f1
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT * FROM mysqltest1.t7;
 f1
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## LOCK TABLES mysqltest1.t1 WRITE, mysqltest1.t8 READ ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 9 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 9
 
--------- switch to master -------
+-------- switch to primary -------
 LOCK TABLES mysqltest1.t1 WRITE, mysqltest1.t8 READ;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 UNLOCK TABLES;
 
 ######## UNLOCK TABLES ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 10 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to master -------
+-------- switch to primary -------
 UNLOCK TABLES;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
-TEST-INFO: MASTER: The INSERT is not committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is not committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
-TEST-INFO: SLAVE:  The INSERT is not committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is not committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 LOCK TABLES mysqltest1.t1 READ;
 
 ######## UNLOCK TABLES ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 10 + 1;
 ERROR HY000: Table 't1' was locked with a READ lock and can't be updated
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to master -------
+-------- switch to primary -------
 UNLOCK TABLES;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
-TEST-INFO: MASTER: The INSERT is not committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is not committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
-TEST-INFO: SLAVE:  The INSERT is not committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is not committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 LOCK TABLES mysqltest1.t1 WRITE, mysqltest1.t8 READ;
 
 ######## UNLOCK TABLES ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 10 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 10
 
--------- switch to master -------
+-------- switch to primary -------
 UNLOCK TABLES;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP INDEX my_idx6 ON mysqltest1.t6 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 11 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 12
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 11
 
--------- switch to master -------
+-------- switch to primary -------
 DROP INDEX my_idx6 ON mysqltest1.t6;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 12
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 12
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 12
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 12
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW INDEX FROM mysqltest1.t6;
 Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW INDEX FROM mysqltest1.t6;
 Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE INDEX my_idx5 ON mysqltest1.t5(f1) ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 12 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 13
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 12
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE INDEX my_idx5 ON mysqltest1.t5(f1);
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 13
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 13
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 13
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 13
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW INDEX FROM mysqltest1.t5;
 Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
 t5	1	my_idx5	1	f1	A	NULL	NULL	NULL	YES	BTREE		
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW INDEX FROM mysqltest1.t5;
 Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
 t5	1	my_idx5	1	f1	A	NULL	NULL	NULL	YES	BTREE		
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP DATABASE mysqltest2 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 13 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 14
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 13
 
--------- switch to master -------
+-------- switch to primary -------
 DROP DATABASE mysqltest2;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 14
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 14
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 14
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 14
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW DATABASES LIKE "mysqltest2";
 Database (mysqltest2)
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW DATABASES LIKE "mysqltest2";
 Database (mysqltest2)
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE DATABASE mysqltest3 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 14 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 15
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 14
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE DATABASE mysqltest3;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 15
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 15
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 15
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 15
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW DATABASES LIKE "mysqltest3";
 Database (mysqltest3)
 mysqltest3
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW DATABASES LIKE "mysqltest3";
 Database (mysqltest3)
 mysqltest3
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE PROCEDURE p1() READS SQL DATA SELECT "this is p1" ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 15 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 16
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 15
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE PROCEDURE p1() READS SQL DATA SELECT "this is p1";
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 16
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 16
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 16
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 16
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW PROCEDURE STATUS LIKE 'p1';
 Db	mysqltest1
 Name	p1
@@ -1094,7 +1094,7 @@ character_set_client	latin1
 collation_connection	latin1_swedish_ci
 Database Collation	latin1_swedish_ci
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW PROCEDURE STATUS LIKE 'p1';
 Db	mysqltest1
 Name	p1
@@ -1108,48 +1108,48 @@ character_set_client	latin1
 collation_connection	latin1_swedish_ci
 Database Collation	latin1_swedish_ci
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## ALTER PROCEDURE p1 COMMENT "I have been altered" ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 16 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 17
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 16
 
--------- switch to master -------
+-------- switch to primary -------
 ALTER PROCEDURE p1 COMMENT "I have been altered";
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 17
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 17
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 17
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 17
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW PROCEDURE STATUS LIKE 'p1';
 Db	mysqltest1
 Name	p1
@@ -1163,7 +1163,7 @@ character_set_client	latin1
 collation_connection	latin1_swedish_ci
 Database Collation	latin1_swedish_ci
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW PROCEDURE STATUS LIKE 'p1';
 Db	mysqltest1
 Name	p1
@@ -1177,457 +1177,457 @@ character_set_client	latin1
 collation_connection	latin1_swedish_ci
 Database Collation	latin1_swedish_ci
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP PROCEDURE p1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 17 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 18
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 17
 
--------- switch to master -------
+-------- switch to primary -------
 DROP PROCEDURE p1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 18
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 18
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 18
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 18
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW PROCEDURE STATUS LIKE 'p1';
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW PROCEDURE STATUS LIKE 'p1';
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE OR REPLACE VIEW v1 as select * from t1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 18 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 19
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 18
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE OR REPLACE VIEW v1 as select * from t1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 19
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 19
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 19
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 19
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
 v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`f1` AS `f1` from `t1`	latin1	latin1_swedish_ci
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
 v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`f1` AS `f1` from `t1`	latin1	latin1_swedish_ci
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## ALTER VIEW v1 AS select f1 from t1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 19 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 20
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 19
 
--------- switch to master -------
+-------- switch to primary -------
 ALTER VIEW v1 AS select f1 from t1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 20
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 20
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 20
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 20
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
 v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`f1` AS `f1` from `t1`	latin1	latin1_swedish_ci
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW CREATE VIEW v1;
 View	Create View	character_set_client	collation_connection
 v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`f1` AS `f1` from `t1`	latin1	latin1_swedish_ci
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP VIEW IF EXISTS v1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 20 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 21
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 20
 
--------- switch to master -------
+-------- switch to primary -------
 DROP VIEW IF EXISTS v1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 21
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 21
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 21
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 21
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW CREATE VIEW v1;
 ERROR 42S02: Table 'mysqltest1.v1' doesn't exist
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW CREATE VIEW v1;
 ERROR 42S02: Table 'mysqltest1.v1' doesn't exist
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE TRIGGER trg1 BEFORE INSERT ON t1 FOR EACH ROW SET @a:=1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 21 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 22
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 21
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE TRIGGER trg1 BEFORE INSERT ON t1 FOR EACH ROW SET @a:=1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 22
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 22
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 22
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 22
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW TRIGGERS;
 Trigger	Event	Table	Statement	Timing	Created	sql_mode	Definer	character_set_client	collation_connection	Database Collation
 trg1	INSERT	t1	SET @a:=1	BEFORE	NULL	NO_ENGINE_SUBSTITUTION	root@localhost	latin1	latin1_swedish_ci	latin1_swedish_ci
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW TRIGGERS;
 Trigger	Event	Table	Statement	Timing	Created	sql_mode	Definer	character_set_client	collation_connection	Database Collation
 trg1	INSERT	t1	SET @a:=1	BEFORE	NULL	NO_ENGINE_SUBSTITUTION	root@localhost	latin1	latin1_swedish_ci	latin1_swedish_ci
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP TRIGGER trg1 ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 22 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 23
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 22
 
--------- switch to master -------
+-------- switch to primary -------
 DROP TRIGGER trg1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 23
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 23
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 23
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 23
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SHOW TRIGGERS;
 Trigger	Event	Table	Statement	Timing	Created	sql_mode	Definer	character_set_client	collation_connection	Database Collation
 
--------- switch to slave --------
+-------- switch to replica --------
 SHOW TRIGGERS;
 Trigger	Event	Table	Statement	Timing	Created	sql_mode	Definer	character_set_client	collation_connection	Database Collation
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## CREATE USER user1@localhost ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 23 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 24
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 23
 
--------- switch to master -------
+-------- switch to primary -------
 CREATE USER user1@localhost;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 24
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 24
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 24
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 24
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SELECT user FROM mysql.user WHERE user = 'user1';
 user
 user1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT user FROM mysql.user WHERE user = 'user1';
 user
 user1
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## RENAME USER user1@localhost TO rename1@localhost ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 24 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 25
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 24
 
--------- switch to master -------
+-------- switch to primary -------
 RENAME USER user1@localhost TO rename1@localhost;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 25
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 25
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 25
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 25
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SELECT user FROM mysql.user WHERE user = 'rename1';
 user
 rename1
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT user FROM mysql.user WHERE user = 'rename1';
 user
 rename1
 
--------- switch to master -------
+-------- switch to primary -------
 
 ######## DROP USER rename1@localhost ########
 
--------- switch to master -------
+-------- switch to primary -------
 INSERT INTO t1 SET f1= 25 + 1;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 26
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 25
 
--------- switch to master -------
+-------- switch to primary -------
 DROP USER rename1@localhost;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 26
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 26
 
--------- switch to master -------
+-------- switch to primary -------
 ROLLBACK;
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 26
 
-TEST-INFO: MASTER: The INSERT is committed (Succeeded)
+TEST-INFO: PRIMARY: The INSERT is committed (Succeeded)
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT MAX(f1) FROM t1;
 MAX(f1)
 26
 
-TEST-INFO: SLAVE:  The INSERT is committed (Succeeded)
+TEST-INFO: REPLICA:  The INSERT is committed (Succeeded)
 
--------- switch to master -------
+-------- switch to primary -------
 SELECT user FROM mysql.user WHERE user = 'rename1';
 user
 
--------- switch to slave --------
+-------- switch to replica --------
 SELECT user FROM mysql.user WHERE user = 'rename1';
 user
 use test;
 
--------- switch to master -------
+-------- switch to primary -------
 DROP DATABASE mysqltest1;
 DROP DATABASE mysqltest3;
 include/rpl_end.inc

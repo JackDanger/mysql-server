@@ -1,6 +1,6 @@
 --source include/not_group_replication_plugin.inc
 source include/have_sjis.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 --disable_warnings
 drop table if exists t1;
@@ -11,17 +11,17 @@ create procedure p1 (in a varchar(255) character set sjis) insert into t1 values
 
 SET NAMES binary;
 CALL p1 ('–\\');
-select "--- on master ---";
+select "--- on primary ---";
 select hex(a) from t1 ;
---source include/sync_slave_sql_with_master.inc
-connection slave;
-select "--- on slave ---";
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
+select "--- on replica ---";
 select hex(a) from t1;
-connection master;
+connection primary;
 drop table t1;
 drop procedure p1;
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 # End of 5.0 tests
 --source include/rpl_end.inc

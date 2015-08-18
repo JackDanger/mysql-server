@@ -4,7 +4,7 @@
 # Modified by WL#2971.
 
 source include/have_binlog_format_mixed.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/not_gtid_enabled.inc;
 
 
@@ -15,15 +15,15 @@ drop database if exists mysqltest1;
 create database mysqltest1;
 use mysqltest1;
 eval create table t1 (a varchar(100)) engine=$DEFAULT_ENGINE;
-sync_slave_with_master;
+sync_replica_with_primary;
 use mysqltest1;
 
 # ********************** PART 1 : STORED PROCEDURES ***************
 
-# Does the same proc as on master get inserted into mysql.proc ?
+# Does the same proc as on primary get inserted into mysql.proc ?
 # (same definer, same properties...)
 
-connection master;
+connection primary;
 
 delimiter |;
 
@@ -46,24 +46,24 @@ delimiter ;|
 --replace_result localhost.localdomain localhost 127.0.0.1 localhost
 --replace_column 13 # 14 #
 select * from mysql.proc where name='foo' and db='mysqltest1';
-sync_slave_with_master;
+sync_replica_with_primary;
 # You will notice in the result that the definer does not match what
-# it is on master, it is a known bug on which Alik is working
+# it is on primary, it is a known bug on which Alik is working
 --replace_result localhost.localdomain localhost 127.0.0.1 localhost
 --replace_column 13 # 14 #
 select * from mysql.proc where name='foo' and db='mysqltest1';
 
-connection master;
-# see if timestamp used in SP on slave is same as on master
+connection primary;
+# see if timestamp used in SP on replica is same as on primary
 set timestamp=1000000000;
 call foo();
 select * from t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 select * from t1;
 
 # Now a SP which is not updating tables
 
-connection master;
+connection primary;
 delete from t1;
 create procedure foo2()
   select * from mysqltest1.t1;
@@ -101,7 +101,7 @@ grant SELECT, INSERT on mysqltest1.t2 to "zedjzlcsjhd"@127.0.0.1;
 # Please remove this SELECT 1 when BUG#14931 is fixed.
 SELECT 1;
 
-connect (con1,127.0.0.1,zedjzlcsjhd,,mysqltest1,$MASTER_MYPORT,);
+connect (con1,127.0.0.1,zedjzlcsjhd,,mysqltest1,$PRIMARY_MYPORT,);
 connection con1;
 
 # this routine will fail in the second INSERT because of privileges
@@ -120,7 +120,7 @@ delimiter ;|
 --error 1142,0
 call foo4(); # invoker has no INSERT grant on table t1 => failure
 
-connection master;
+connection primary;
 call foo3(); # success (definer == root)
 show warnings;
 
@@ -133,16 +133,16 @@ call foo4(); # invoker's rights => success
 show warnings;
 
 # Note that half-failed procedure calls are ok with binlogging;
-# if we compare t2 on master and slave we see they are identical:
+# if we compare t2 on primary and replica we see they are identical:
 
 select * from t1;
 select * from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 select * from t1;
 select * from t2;
 
 # Let's check another failing-in-the-middle procedure
-connection master;
+connection primary;
 delete from t2;
 alter table t2 add unique (a);
 
@@ -161,7 +161,7 @@ call foo4();
 show warnings;
 
 select * from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 # check that this failed-in-the-middle replicated right:
 select * from t2;
 
@@ -170,15 +170,15 @@ select * from t2;
 --replace_result localhost.localdomain localhost 127.0.0.1 localhost
 --replace_column 13 # 14 #
 select * from mysql.proc where name="foo4" and db='mysqltest1';
-connection master;
+connection primary;
 drop procedure foo4;
 select * from mysql.proc where name="foo4" and db='mysqltest1';
-sync_slave_with_master;
+sync_replica_with_primary;
 select * from mysql.proc where name="foo4" and db='mysqltest1';
 
 # ********************** PART 2 : FUNCTIONS ***************
 
-connection master;
+connection primary;
 drop procedure foo;
 drop procedure foo2;
 drop procedure foo3;
@@ -206,11 +206,11 @@ select fn1(20);
 insert into t2 values(fn1(21));
 select * from t1;
 select * from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 select * from t1;
 select * from t2;
 
-connection master;
+connection primary;
 delimiter |;
 
 drop function fn1;
@@ -242,12 +242,12 @@ begin
        return unix_timestamp();
 end|
 delimiter ;|
-connection master;
+connection primary;
 set @old_log_bin_trust_function_creators= @@global.log_bin_trust_function_creators;
 set global log_bin_trust_function_creators=0;
 set global log_bin_trust_function_creators=1;
-# slave needs it too otherwise will not execute what master allowed:
-connection slave;
+# replica needs it too otherwise will not execute what primary allowed:
+connection replica;
 set @old_log_bin_trust_function_creators= @@global.log_bin_trust_function_creators;
 set global log_bin_trust_function_creators=1;
 
@@ -262,7 +262,7 @@ begin
 end|
 delimiter ;|
 
-connection master;
+connection primary;
 
 # Now a function which is supposed to not update tables
 # as it's "reads sql data", so should not give error even if
@@ -284,7 +284,7 @@ select fn3();
 select * from mysql.proc where db='mysqltest1';
 select * from t1;
 
-sync_slave_with_master;
+sync_replica_with_primary;
 use mysqltest1;
 select * from t1;
 --replace_result localhost.localdomain localhost 127.0.0.1 localhost
@@ -292,7 +292,7 @@ select * from t1;
 select * from mysql.proc where db='mysqltest1';
 
 # Let's check a failing-in-the-middle function
-connection master;
+connection primary;
 delete from t2;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 alter table t2 add unique (a);
@@ -316,7 +316,7 @@ do fn1(100);
 select fn1(20);
 
 select * from t2;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 # check that this failed-in-the-middle replicated right:
 select * from t2;
@@ -329,25 +329,25 @@ connection con1;
 --error ER_TABLEACCESS_DENIED_ERROR
 create trigger trg before insert on t1 for each row set new.a= 10;
 
-connection master;
+connection primary;
 delete from t1;
 # TODO: when triggers can contain an update, test that this update
 # does not go into binlog.
 # I'm not setting user vars in the trigger, because replication of user vars
-# would take care of propagating the user var's value to slave, so even if
-# the trigger was not executed on slave it would not be discovered.
+# would take care of propagating the user var's value to replica, so even if
+# the trigger was not executed on replica it would not be discovered.
 create trigger trg before insert on t1 for each row set new.a= 10;
 insert into t1 values (1);
 select * from t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 select * from t1;
 
-connection master;
+connection primary;
 delete from t1;
 drop trigger trg;
 insert into t1 values (1);
 select * from t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 select * from t1;
 
 
@@ -355,36 +355,36 @@ select * from t1;
 
 
 #
-# Test for bug #13969 "Routines which are replicated from master can't be
-# executed on slave".
+# Test for bug #13969 "Routines which are replicated from primary can't be
+# executed on replica".
 # 
-connection master;
+connection primary;
 create procedure foo()
   not deterministic
   reads sql data
   select * from t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 # This should not fail
 call foo();
-connection master;
+connection primary;
 drop procedure foo;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 
 # Clean up
-connection master;
+connection primary;
 drop function fn1;
 drop database mysqltest1;
 drop user "zedjzlcsjhd"@127.0.0.1;
 use test;
-sync_slave_with_master;
+sync_replica_with_primary;
 use test;
 
 #
 # Bug#14077 "Failure to replicate a stored function with a cursor":
-# verify that stored routines with cursors work on slave. 
+# verify that stored routines with cursors work on replica. 
 #
-connection master;
+connection primary;
 --disable_warnings
 drop function if exists f1;
 --enable_warnings
@@ -405,8 +405,8 @@ insert into t1 (a) values (f1());
 select * from t1;
 drop view v1;
 drop function f1;
-sync_slave_with_master;
-connection slave;
+sync_replica_with_primary;
+connection replica;
 select * from t1;
 
 #
@@ -416,7 +416,7 @@ select * from t1;
 
 # Prepare environment.
 
-connection master;
+connection primary;
 
 --disable_warnings
 DROP PROCEDURE IF EXISTS p1;
@@ -434,11 +434,11 @@ CALL p1('test');
 
 SELECT * FROM t1;
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SELECT * FROM t1;
 
 # Cleanup
-connection master;
+connection primary;
 DROP PROCEDURE p1;
 
 
@@ -454,8 +454,8 @@ DROP PROCEDURE p1;
 
 --echo
 --echo ---> Preparing environment...
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 --disable_warnings
 DROP PROCEDURE IF EXISTS p1;
@@ -463,13 +463,13 @@ DROP FUNCTION IF EXISTS f1;
 --enable_warnings
 
 --echo
---echo ---> Synchronizing slave with master...
+--echo ---> Synchronizing replica with primary...
 
---sync_slave_with_master
+--sync_replica_with_primary
 
 --echo
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 # Test.
 
@@ -481,20 +481,20 @@ DROP FUNCTION IF EXISTS f1;
 /*!50003 CREATE FUNCTION f1() RETURNS INT RETURN 0 */;
 
 --echo
---echo ---> Checking on master...
+--echo ---> Checking on primary...
 
 SHOW CREATE PROCEDURE p1;
 SHOW CREATE FUNCTION f1;
 
 --echo
---echo ---> Synchronizing slave with master...
+--echo ---> Synchronizing replica with primary...
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---echo ---> connection: master
+--echo ---> connection: primary
 
 --echo
---echo ---> Checking on slave...
+--echo ---> Checking on replica...
 
 SHOW CREATE PROCEDURE p1;
 SHOW CREATE FUNCTION f1;
@@ -502,8 +502,8 @@ SHOW CREATE FUNCTION f1;
 # Cleanup.
 
 --echo
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 --echo
 --echo ---> Cleaning up...
@@ -511,20 +511,20 @@ SHOW CREATE FUNCTION f1;
 DROP PROCEDURE p1;
 DROP FUNCTION f1;
 
---sync_slave_with_master
---connection master
+--sync_replica_with_primary
+--connection primary
 
 
 # cleanup
-connection master;
+connection primary;
 drop table t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 #
 # Bug22043: MySQL don't add "USE <DATABASE>" before "DROP PROCEDURE IF EXISTS"
 #
 
-connection master;
+connection primary;
 --disable_warnings
 drop database if exists mysqltest;
 drop database if exists mysqltest2;
@@ -543,7 +543,7 @@ create procedure `\\`.test() begin end;
 # replicated correctly in some cases
 #
 
-connection master;
+connection primary;
 delimiter |;
 create function f1 () returns int
 begin
@@ -551,13 +551,13 @@ begin
   return 0;
 end|
 delimiter ;|
-sync_slave_with_master;
+sync_replica_with_primary;
 # Let us test if we don't forget to binlog the function's database
-connection master;
+connection primary;
 use mysqltest;
 set @a:= mysqltest2.f1();
-sync_slave_with_master;
-connection master;
+sync_replica_with_primary;
+connection primary;
 
 # Final inspection which verifies how all statements of this test file
 # were written to the binary log.
@@ -568,20 +568,20 @@ connection master;
 # Restore log_bin_trust_function_creators to its original value.
 # This is a cleanup for all parts above where we tested stored
 # functions and triggers.
-connection slave;
+connection replica;
 set @@global.log_bin_trust_function_creators= @old_log_bin_trust_function_creators;
-connection master;
+connection primary;
 set @@global.log_bin_trust_function_creators= @old_log_bin_trust_function_creators;
 
 # Clean up
 drop database mysqltest;
 drop database mysqltest2;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 #
-# Bug#36570: Parse error of CREATE PROCEDURE stmt with comments on slave
+# Bug#36570: Parse error of CREATE PROCEDURE stmt with comments on replica
 #
-connection master;
+connection primary;
 use test;
 delimiter |;
 
@@ -610,8 +610,8 @@ delimiter ;|
 show procedure status like '%mysqltestbug36570%';
 show create procedure ` mysqltestbug36570_p2`;
 
-sync_slave_with_master;
-connection slave;
+sync_replica_with_primary;
+connection replica;
 
 --replace_column 5 t 6 t
 show procedure status like '%mysqltestbug36570%';
@@ -621,10 +621,10 @@ call ` mysqltestbug36570_p2`(42);
 --replace_column 5 t 6 t
 show function status like '%mysqltestbug36570%';
 
-connection master;
+connection primary;
 flush logs;
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --short-form $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --short-form $MYSQLD_DATADIR/primary-bin.000001
 --source include/mysqlbinlog.inc
 use test;
 drop procedure mysqltestbug36570_p1;
@@ -644,7 +644,7 @@ drop function mysqltestbug36570_f1;
 --echo # on a table lock. While insert is blocked, attempt to
 --echo # drop the routine. Verify that this attempt 
 --echo # blocks and waits for INSERT to complete. Commit and 
---echo # reap the chain of events. Master and slave must contain
+--echo # reap the chain of events. Primary and replica must contain
 --echo # identical data. Statements in the binrary log must be
 --echo # consistent with data in the table.
 --echo #
@@ -658,11 +658,11 @@ eval create table t1 (a int) engine=$DEFAULT_ENGINE;
 eval create table t2 (a int) engine=$DEFAULT_ENGINE as select 1 as a;
 create function f1() returns int deterministic return (select max(a) from t2);
 lock table t2 write;
---echo # --> connection master
-connection master;
+--echo # --> connection primary
+connection primary;
 --echo # Sending 'insert into t1 (a) values (f1())'...
 --send insert into t1 (a) values (f1())
-connection master1;
+connection primary1;
 --echo # Waitng for 'insert into t1 ...' to get blocked on table lock...
 let $wait_condition=select count(*)=1 from information_schema.processlist
 where state='Waiting for table metadata lock' and
@@ -678,22 +678,22 @@ where state='Waiting for stored function metadata lock' and info='drop function 
 --source include/wait_condition_or_abort.inc
 --echo # Now let's let 'insert' go through...
 unlock tables;
---echo # --> connection master
-connection master;
+--echo # --> connection primary
+connection primary;
 --echo # Reaping 'insert into t1 (a) values (f1())'...
 --reap
---echo # --> connection master1
-connection master1;
+--echo # --> connection primary1
+connection primary1;
 --echo # Reaping 'drop function f1'
 --reap
---echo # --> connection master
-connection master;
+--echo # --> connection primary
+connection primary;
 select * from t1;
-sync_slave_with_master;
-connection slave;
+sync_replica_with_primary;
+connection replica;
 select * from  t1;
 # Cleanup
-connection master;
+connection primary;
 drop table t1, t2;
 --error ER_SP_DOES_NOT_EXIST
 drop function f1;
@@ -725,18 +725,18 @@ call p1(3);
 --enable_warnings
 
 select * from t1;
-sync_slave_with_master;
-connection slave;
+sync_replica_with_primary;
+connection replica;
 select * from t1;
-connection master;
+connection primary;
 --disable_warnings
 call p1(-1);
 --enable_warnings
 select * from t1;
-sync_slave_with_master;
-connection slave;
+sync_replica_with_primary;
+connection replica;
 select * from t1;
-connection master;
+connection primary;
 
 --echo # Cleanup
 set @@session.binlog_format=@save_binlog_format;
@@ -747,5 +747,5 @@ drop procedure p1;
 
 
 # Cleanup
-sync_slave_with_master;
+sync_replica_with_primary;
 --source include/rpl_end.inc

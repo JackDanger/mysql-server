@@ -221,9 +221,9 @@ st_parsing_options::reset()
 }
 
 /**
- Cleans slave connection info.
+ Cleans replica connection info.
 */
-void struct_slave_connection::reset()
+void struct_replica_connection::reset()
 {
   user= 0;
   password= 0;
@@ -281,13 +281,13 @@ Lex_input_stream::reset(const char *buffer, size_t length)
   /*
     Lex_input_stream modifies the query string in one special case (sic!).
     yyUnput() modifises the string when patching version comments.
-    This is done to prevent newer slaves from executing a different
-    statement than older masters.
+    This is done to prevent newer replicas from executing a different
+    statement than older primarys.
 
     For now, cast away const here. This means that e.g. SHOW PROCESSLIST
     can see partially patched query strings. It would be better if we
-    could replicate the query string as is and have the slave take the
-    master version into account.
+    could replicate the query string as is and have the replica take the
+    primary version into account.
   */
   m_ptr= const_cast<char*>(buffer);
   m_tok_start= NULL;
@@ -532,7 +532,7 @@ void LEX::reset()
   explain_format= NULL;
   is_lex_started= true;
   used_tables= 0;
-  reset_slave_info.all= false;
+  reset_replica_info.all= false;
   alter_tablespace_info= NULL;
   mi.channel= NULL;
 
@@ -722,7 +722,7 @@ st_select_lex *LEX::new_union_query(st_select_lex *curr_select, bool distinct)
   DBUG_ASSERT(unit != NULL && select_lex != NULL);
 
   // Is this the outer-most query expression?
-  bool const outer_most= curr_select->master_unit() == unit;
+  bool const outer_most= curr_select->primary_unit() == unit;
   /*
      Only the last SELECT can have INTO. Since the grammar won't allow INTO in
      a nested SELECT, we make this check only when creating a query block on
@@ -757,7 +757,7 @@ st_select_lex *LEX::new_union_query(st_select_lex *curr_select, bool distinct)
 
   select->include_neighbour(this, curr_select);
 
-  SELECT_LEX_UNIT *const sel_unit= select->master_unit();
+  SELECT_LEX_UNIT *const sel_unit= select->primary_unit();
 
   if (!sel_unit->fake_select_lex && sel_unit->add_fake_select_lex(thd))
     DBUG_RETURN(NULL);       /* purecov: inspected */
@@ -804,7 +804,7 @@ bool LEX::new_top_level_query()
   if (select_lex == NULL)
     DBUG_RETURN(true);     /* purecov: inspected */
 
-  unit= select_lex->master_unit();
+  unit= select_lex->primary_unit();
 
   DBUG_RETURN(false);
 }
@@ -1952,7 +1952,7 @@ static int lex_one_token(YYSTYPE *yylval, THD *thd)
           {
             /*
               Patch and skip the conditional comment to avoid it
-              being propagated infinitely (eg. to a slave).
+              being propagated infinitely (eg. to a replica).
             */
             char *pcom= lip->yyUnput(' ');
             comment_closed= ! consume_comment(lip, 1);
@@ -2171,8 +2171,8 @@ void trim_whitespace(const CHARSET_INFO *cs, LEX_STRING *str)
 st_select_lex_unit::st_select_lex_unit(enum_parsing_context parsing_context) :
   next(NULL),
   prev(NULL),
-  master(NULL),
-  slave(NULL),
+  primary(NULL),
+  replica(NULL),
   explain_marker(CTX_NONE),
   prepared(false),
   optimized(false),
@@ -2232,8 +2232,8 @@ st_select_lex::st_select_lex
   :
   next(NULL),
   prev(NULL),
-  master(NULL),
-  slave(NULL),
+  primary(NULL),
+  replica(NULL),
   link_next(NULL),
   link_prev(NULL),
   m_query_result(NULL),
@@ -2379,7 +2379,7 @@ void st_select_lex_unit::exclude_level()
       if (u->fake_select_lex &&
           u->fake_select_lex->context.outer_context == &sl->context)
         u->fake_select_lex->context.outer_context= sl->context.outer_context;
-      u->master= master;
+      u->primary= primary;
       last= &(u->next);
     }
     if (last)
@@ -2455,8 +2455,8 @@ void st_select_lex_unit::invalidate()
 {
   next= NULL;
   prev= NULL;
-  master= NULL;
-  slave= NULL;
+  primary= NULL;
+  replica= NULL;
 }
 
 
@@ -2500,7 +2500,7 @@ void st_select_lex::mark_as_dependent(st_select_lex *last)
       // Select is dependent of outer select
       s->uncacheable= (s->uncacheable & ~UNCACHEABLE_UNITED) |
                        UNCACHEABLE_DEPENDENT;
-      SELECT_LEX_UNIT *munit= s->master_unit();
+      SELECT_LEX_UNIT *munit= s->primary_unit();
       munit->uncacheable= (munit->uncacheable & ~UNCACHEABLE_UNITED) |
                        UNCACHEABLE_DEPENDENT;
       for (SELECT_LEX *sl= munit->first_select(); sl ; sl= sl->next_select())
@@ -2563,7 +2563,7 @@ ha_rows st_select_lex::get_offset()
     bool fix_fields_successful= true;
     if (!offset_limit->fixed)
     {
-      fix_fields_successful= !offset_limit->fix_fields(master->thd, NULL);
+      fix_fields_successful= !offset_limit->fix_fields(primary->thd, NULL);
 
       DBUG_ASSERT(fix_fields_successful);
     }
@@ -2609,7 +2609,7 @@ ha_rows st_select_lex::get_limit()
     bool fix_fields_successful= true;
     if (!select_limit->fixed)
     {
-      fix_fields_successful= !select_limit->fix_fields(master->thd, NULL);
+      fix_fields_successful= !select_limit->fix_fields(primary->thd, NULL);
 
       DBUG_ASSERT(fix_fields_successful);
     }
@@ -2654,8 +2654,8 @@ void st_select_lex::invalidate()
 {
   next= NULL;
   prev= NULL;
-  master= NULL;
-  slave= NULL;
+  primary= NULL;
+  replica= NULL;
   link_next= NULL;
   link_prev= NULL;  
 }
@@ -2796,7 +2796,7 @@ void st_select_lex::print_limit(THD *thd,
                                 String *str,
                                 enum_query_type query_type)
 {
-  SELECT_LEX_UNIT *unit= master_unit();
+  SELECT_LEX_UNIT *unit= primary_unit();
   Item_subselect *item= unit->item;
 
   if (item && unit->global_parameters() == this)
@@ -3154,7 +3154,7 @@ void st_select_lex::print(THD *thd, String *str, enum_query_type query_type)
    be completely cleaned till the end of the query. This is valid only for
    explainable commands.
   */
-  DBUG_ASSERT(!(master_unit()->cleaned == SELECT_LEX_UNIT::UC_CLEAN &&
+  DBUG_ASSERT(!(primary_unit()->cleaned == SELECT_LEX_UNIT::UC_CLEAN &&
                 is_explainable_query(thd->lex->sql_command)));
 
   /* First add options */
@@ -3197,7 +3197,7 @@ void st_select_lex::print(THD *thd, String *str, enum_query_type query_type)
     else
       str->append(',');
 
-    if (master_unit()->item && item->item_name.is_autogenerated())
+    if (primary_unit()->item && item->item_name.is_autogenerated())
     {
       /*
         Do not print auto-generated aliases in subqueries. It has no purpose
@@ -3723,11 +3723,11 @@ bool st_select_lex_unit::union_needs_tmp_table()
 */
 void st_select_lex_unit::include_down(LEX *lex, st_select_lex *outer)
 {
-  if ((next= outer->slave))
+  if ((next= outer->replica))
     next->prev= &next;
-  prev= &outer->slave;
-  outer->slave= this;
-  master= outer;
+  prev= &outer->replica;
+  outer->replica= this;
+  primary= outer;
 
   renumber_selects(lex);
 }
@@ -3747,15 +3747,15 @@ void st_select_lex_unit::include_chain(LEX *lex, st_select_lex *outer)
   st_select_lex_unit *last_unit= this; // Initialization needed for gcc
   for (st_select_lex_unit *unit= this; unit != NULL; unit= unit->next)
   {
-    unit->master= outer; // Link to the outer query block
+    unit->primary= outer; // Link to the outer query block
     unit->renumber_selects(lex);
     last_unit= unit;
   }
 
-  if ((last_unit->next= outer->slave))
+  if ((last_unit->next= outer->replica))
     last_unit->next->prev= &last_unit->next;
-  prev= &outer->slave;
-  outer->slave= this;
+  prev= &outer->replica;
+  outer->replica= this;
 }
 
 
@@ -4232,17 +4232,17 @@ void st_select_lex::fix_prepare_information(THD *thd)
 
 st_select_lex::type_enum st_select_lex::type()
 {
-  if (master_unit()->fake_select_lex == this)
+  if (primary_unit()->fake_select_lex == this)
     return SLT_UNION_RESULT;
-  else if (!master_unit()->outer_select() &&
-           master_unit()->first_select() == this) 
+  else if (!primary_unit()->outer_select() &&
+           primary_unit()->first_select() == this) 
   {
     if (first_inner_unit() || next_select())
       return SLT_PRIMARY;
     else
       return SLT_SIMPLE;
   }
-  else if (this == master_unit()->first_select())
+  else if (this == primary_unit()->first_select())
   {
     if (linkage == DERIVED_TABLE_TYPE) 
       return SLT_DERIVED;
@@ -4267,13 +4267,13 @@ st_select_lex::type_enum st_select_lex::type()
 */
 void st_select_lex::include_down(LEX *lex, st_select_lex_unit *outer)
 {
-  DBUG_ASSERT(slave == NULL);
+  DBUG_ASSERT(replica == NULL);
 
-  if ((next= outer->slave))
+  if ((next= outer->replica))
     next->prev= &next;
-  prev= &outer->slave;
-  outer->slave= this;
-  master= outer;
+  prev= &outer->replica;
+  outer->replica= this;
+  primary= outer;
 
   select_number= ++lex->select_number;
 
@@ -4293,7 +4293,7 @@ void st_select_lex::include_neighbour(LEX *lex, st_select_lex *before)
     next->prev= &next;
   prev= &before->next;
   before->next= this;
-  master= before->master;
+  primary= before->primary;
 
   select_number= ++lex->select_number;
   nest_level= before->nest_level;
@@ -4316,8 +4316,8 @@ void st_select_lex::include_standalone(st_select_lex_unit *outer,
 {
   next= NULL;
   prev= ref;
-  master= outer;
-  nest_level= master->first_select()->nest_level;
+  primary= outer;
+  nest_level= primary->first_select()->nest_level;
 }
 
 
@@ -4372,9 +4372,9 @@ void st_select_lex::include_chain_in_global(st_select_lex **start)
 
 void st_select_lex::set_join(JOIN *join_arg)
 {
-  master_unit()->thd->lock_query_plan();
+  primary_unit()->thd->lock_query_plan();
   join= join_arg;
-  master_unit()->thd->unlock_query_plan();
+  primary_unit()->thd->unlock_query_plan();
 }
 
 
@@ -4709,7 +4709,7 @@ bool LEX::accept(Select_lex_visitor *visitor)
 }
 
 
-void st_lex_master_info::initialize()
+void st_lex_primary_info::initialize()
 {
   host= user= password= log_file_name= bind_addr = NULL;
   port= connect_retry= 0;
@@ -4732,7 +4732,7 @@ void st_lex_master_info::initialize()
   for_channel= false;
 }
 
-void st_lex_master_info::set_unspecified()
+void st_lex_primary_info::set_unspecified()
 {
   initialize();
   sql_delay= -1;

@@ -3,7 +3,7 @@
 
 select 'Ok, the server started' as result;
 
-# See the associated -master.opt file.
+# See the associated -primary.opt file.
 
 select @@SQL_MODE;
 show global variables like 'sql_mode';

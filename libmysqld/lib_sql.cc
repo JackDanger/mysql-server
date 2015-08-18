@@ -726,7 +726,7 @@ void *create_embedded_thd(int client_flag)
   thd->reset_db(NULL_CSTR);
 #ifndef NO_EMBEDDED_ACCESS_CHECKS
   thd->security_context()->set_db_access(DB_ACLS);
-  thd->security_context()->set_master_access(~NO_ACCESS);
+  thd->security_context()->set_primary_access(~NO_ACCESS);
 #endif
   thd->cur_data= 0;
   thd->first_data= 0;
@@ -781,7 +781,7 @@ int check_embedded_connection(MYSQL *mysql, const char *db)
   sctx->assign_user(mysql->user, strlen(mysql->user));
   sctx->assign_proxy_user("", 0);
   sctx->assign_priv_host(my_localhost, strlen(my_localhost));
-  sctx->set_master_access(GLOBAL_ACLS);       // Full rights
+  sctx->set_primary_access(GLOBAL_ACLS);       // Full rights
   emb_transfer_connect_attrs(mysql);
   /* Change database if necessary */
   if (!(result= (db && db[0] && mysql_change_db(thd, db_lex_cstr, false))))

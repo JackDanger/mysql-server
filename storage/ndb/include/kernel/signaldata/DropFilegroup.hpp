@@ -77,7 +77,7 @@ struct DropFilegroupRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     NoSuchFilegroup = 767,
     FilegroupInUse = 768,
     InvalidSchemaObjectVersion = 774,
@@ -86,7 +86,7 @@ struct DropFilegroupRef {
   
   Uint32 senderData;
   Uint32 senderRef;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorCode;
   Uint32 errorLine; 
   Uint32 errorKey;
@@ -175,7 +175,7 @@ struct DropFileRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     NoSuchFile = 766,
     DropUndoFileNotSupported = 769,
     InvalidSchemaObjectVersion = 774,
@@ -184,7 +184,7 @@ struct DropFileRef {
 
   Uint32 senderData;
   Uint32 senderRef;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorCode;
   Uint32 errorLine; 
   Uint32 errorKey;

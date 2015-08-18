@@ -1,45 +1,45 @@
 
-SET @start_global_value = @@global.sync_master_info;
+SET @start_global_value = @@global.sync_primary_info;
 SELECT @start_global_value;
 
 #
 # exists as global only
 #
-select @@global.sync_master_info;
+select @@global.sync_primary_info;
 --error ER_INCORRECT_GLOBAL_LOCAL_VAR
-select @@session.sync_master_info;
-show global variables like 'sync_master_info';
-show session variables like 'sync_master_info';
+select @@session.sync_primary_info;
+show global variables like 'sync_primary_info';
+show session variables like 'sync_primary_info';
 --disable_warnings
-select * from information_schema.global_variables where variable_name='sync_master_info';
-select * from information_schema.session_variables where variable_name='sync_master_info';
+select * from information_schema.global_variables where variable_name='sync_primary_info';
+select * from information_schema.session_variables where variable_name='sync_primary_info';
 --enable_warnings
 
 #
 # show that it's writable
 #
-set global sync_master_info=1;
-select @@global.sync_master_info;
+set global sync_primary_info=1;
+select @@global.sync_primary_info;
 --error ER_GLOBAL_VARIABLE
-set session sync_master_info=1;
+set session sync_primary_info=1;
 
 #
 # incorrect types
 #
 --error ER_WRONG_TYPE_FOR_VAR
-set global sync_master_info=1.1;
+set global sync_primary_info=1.1;
 --error ER_WRONG_TYPE_FOR_VAR
-set global sync_master_info=1e1;
+set global sync_primary_info=1e1;
 --error ER_WRONG_TYPE_FOR_VAR
-set global sync_master_info="foo";
+set global sync_primary_info="foo";
 
 #
 # min/max values
 #
-set global sync_master_info=0;
-select @@global.sync_master_info;
-set global sync_master_info=cast(-1 as unsigned int);
-select @@global.sync_master_info;
+set global sync_primary_info=0;
+select @@global.sync_primary_info;
+set global sync_primary_info=cast(-1 as unsigned int);
+select @@global.sync_primary_info;
 
-SET @@global.sync_master_info = @start_global_value;
-SELECT @@global.sync_master_info;
+SET @@global.sync_primary_info = @start_global_value;
+SELECT @@global.sync_primary_info;

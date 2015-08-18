@@ -39,8 +39,8 @@ CREATE USER 'billy1'@'127.0.0.1' IDENTIFIED by 'mypass';
 connection server2;
 --source suite/ndb/include/start_mysqld.inc
 
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT1 MASTER_PORT1
-connect (server2_as_billy1,127.0.0.1,billy1,mypass,test,$MASTER_MYPORT1,);
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT1 PRIMARY_PORT1
+connect (server2_as_billy1,127.0.0.1,billy1,mypass,test,$PRIMARY_MYPORT1,);
 connection server2_as_billy1;
 SELECT USER();
 

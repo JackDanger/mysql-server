@@ -2,29 +2,29 @@ source include/have_binlog_format_statement.inc;
 --source include/not_group_replication_plugin.inc
 source include/have_debug.inc;
 source include/not_gtid_enabled.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
-# We do this little stunt to make sure that the slave has started
+# We do this little stunt to make sure that the replica has started
 # before we stop it again.
-connection master;
+connection primary;
 CREATE TABLE t1 (a INT, b INT);
 INSERT INTO t1 VALUES (1,10);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Now we feed it a load data infile, which should make it stop with a
 # fatal error.
-connection master;
+connection primary;
 LOAD DATA INFILE '../../std_data/rpl_loaddata.dat' INTO TABLE t1;
 
-connection slave;
-call mtr.add_suppression("Slave SQL.*Fatal error: Not enough memory, Error_code: 1593");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+connection replica;
+call mtr.add_suppression("Replica SQL.*Fatal error: Not enough memory, Error_code: 1593");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
---let $slave_sql_errno= convert_error(ER_SLAVE_FATAL_ERROR) # 1593
-source include/wait_for_slave_sql_error_and_skip.inc;
+--let $replica_sql_errno= convert_error(ER_REPLICA_FATAL_ERROR) # 1593
+source include/wait_for_replica_sql_error_and_skip.inc;
 
-connection master;
+connection primary;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

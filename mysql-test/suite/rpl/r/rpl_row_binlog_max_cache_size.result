@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master.info repository is not secure and is therefore not recommended. Please see the MySQL Manual for more about this issue and possible alternatives.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary.info repository is not secure and is therefore not recommended. Please see the MySQL Manual for more about this issue and possible alternatives.
+[connection primary]
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 call mtr.add_suppression("Option binlog_cache_size ");
 SET GLOBAL max_binlog_cache_size = 4096;
@@ -21,11 +21,11 @@ CREATE TABLE t3(a INT PRIMARY KEY, data VARCHAR(30000)) ENGINE=Innodb;
 Got one of the listed errors
 *** Single statement on non-transactional table ***
 Got one of the listed errors
-include/wait_for_slave_sql_error_and_skip.inc [errno=1590]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1590]
 *** Single statement on both transactional and non-transactional tables. ***
 Got one of the listed errors
-include/wait_for_slave_sql_error_and_skip.inc [errno=1590]
-include/diff_tables.inc [master:t1,slave:t1]
+include/wait_for_replica_sql_error_and_skip.inc [errno=1590]
+include/diff_tables.inc [primary:t1,replica:t1]
 #########  2 - BEGIN - IMPLICIT COMMIT by DDL #########
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
@@ -41,7 +41,7 @@ Got one of the listed errors
 BEGIN;
 Got one of the listed errors
 Got one of the listed errors
-include/diff_tables.inc [master:t1,slave:t1]
+include/diff_tables.inc [primary:t1,replica:t1]
 ###### 3 - BEGIN - COMMIT ######
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
@@ -51,7 +51,7 @@ Got one of the listed errors
 Got one of the listed errors
 Got one of the listed errors
 COMMIT;
-include/diff_tables.inc [master:t1,slave:t1]
+include/diff_tables.inc [primary:t1,replica:t1]
 ####### 4 - BEGIN - ROLLBACK  #######
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
@@ -63,7 +63,7 @@ Got one of the listed errors
 ROLLBACK;
 Warnings:
 Warning	1196	Some non-transactional changed tables couldn't be rolled back
-include/diff_tables.inc [master:t1,slave:t1]
+include/diff_tables.inc [primary:t1,replica:t1]
 ###### 5 - PROCEDURE  #######
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
@@ -85,7 +85,7 @@ TRUNCATE TABLE t1;
 BEGIN;
 Got one of the listed errors
 ROLLBACK;
-include/diff_tables.inc [master:t1,slave:t1]
+include/diff_tables.inc [primary:t1,replica:t1]
 ####### 6 - XID ######
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
@@ -98,7 +98,7 @@ ROLLBACK TO sv;
 Warnings:
 Warning	1196	Some non-transactional changed tables couldn't be rolled back
 COMMIT;
-include/diff_tables.inc [master:t1,slave:t1]
+include/diff_tables.inc [primary:t1,replica:t1]
 ####### 7 - NON-TRANS TABLE #######
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
@@ -111,10 +111,10 @@ COMMIT;
 BEGIN;
 Got one of the listed errors
 COMMIT;
-include/diff_tables.inc [master:t1,slave:t1]
+include/diff_tables.inc [primary:t1,replica:t1]
 ######### 8 - Bug#55375(Regression Bug) Transaction bigger than  ##########
-#########     max_binlog_cache_size crashes slave                ##########
-# [ On Slave ]
+#########     max_binlog_cache_size crashes replica                ##########
+# [ On Replica ]
 SET GLOBAL max_binlog_cache_size = 4096;
 Warnings:
 Warning	1738	Option binlog_cache_size (32768) is greater than max_binlog_cache_size (4096); setting binlog_cache_size equal to max_binlog_cache_size.
@@ -123,13 +123,13 @@ SET GLOBAL max_binlog_stmt_cache_size = 4096;
 Warnings:
 Warning	1745	Option binlog_stmt_cache_size (32768) is greater than max_binlog_stmt_cache_size (4096); setting binlog_stmt_cache_size equal to max_binlog_stmt_cache_size.
 SET GLOBAL binlog_stmt_cache_size = 4096;
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 CALL mtr.add_suppression("Multi-statement transaction required more than 'max_binlog_cache_size' bytes of storage.*");
 CALL mtr.add_suppression("Multi-statement transaction required more than 'max_binlog_stmt_cache_size' bytes of storage.*");
 CALL mtr.add_suppression("Writing one row to the row-based binary log failed.*");
-CALL mtr.add_suppression("Slave SQL.*The incident LOST_EVENTS occured on the master. Message: error writing to the binary log");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+CALL mtr.add_suppression("Replica SQL.*The incident LOST_EVENTS occured on the primary. Message: error writing to the binary log");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 TRUNCATE t1;
 SET GLOBAL max_binlog_cache_size= ORIGINAL_VALUE;
 SET GLOBAL binlog_cache_size= ORIGINAL_VALUE;
@@ -138,7 +138,7 @@ SET GLOBAL binlog_stmt_cache_size= ORIGINAL_VALUE;
 BEGIN;
 Repeat statement 'INSERT INTO t1 VALUES($n, repeat("a", 32))' 128 times
 COMMIT;
-include/wait_for_slave_sql_error.inc [errno=1534,1197]
+include/wait_for_replica_sql_error.inc [errno=1534,1197]
 SELECT count(*) FROM t1;
 count(*)
 0
@@ -147,8 +147,8 @@ SET GLOBAL max_binlog_cache_size= ORIGINAL_VALUE;
 SET GLOBAL binlog_cache_size= ORIGINAL_VALUE;
 SET GLOBAL max_binlog_stmt_cache_size= ORIGINAL_VALUE;
 SET GLOBAL binlog_stmt_cache_size= ORIGINAL_VALUE;
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 SELECT count(*) FROM t1;
 count(*)
 128

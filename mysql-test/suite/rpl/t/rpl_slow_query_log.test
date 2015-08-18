@@ -1,20 +1,20 @@
 #
-# BUG#23300: Slow query log on slave does not log slow replicated statements
+# BUG#23300: Slow query log on replica does not log slow replicated statements
 #
 # Description:
-#   The slave should log slow queries replicated from master when
-#   --log-slow-slave-statements is used.
+#   The replica should log slow queries replicated from primary when
+#   --log-slow-replica-statements is used.
 #
 #   Test is implemented as follows:
-#      i) stop slave
-#     ii) On slave, set long_query_time to a small value.
-#     ii) start slave so that long_query_time variable is picked by sql thread
-#    iii) On master, do one short time query and one long time query, on slave
+#      i) stop replica
+#     ii) On replica, set long_query_time to a small value.
+#     ii) start replica so that long_query_time variable is picked by sql thread
+#    iii) On primary, do one short time query and one long time query, on replica
 #         and check that slow query is logged to slow query log but fast query 
 #         is not.
-#     iv) On slave, check that slow queries go into the slow log and fast dont,
+#     iv) On replica, check that slow queries go into the slow log and fast dont,
 #         when issued through a regular client connection
-#      v) On slave, check that slow queries go into the slow log and fast dont
+#      v) On replica, check that slow queries go into the slow log and fast dont
 #         when we use SET TIMESTAMP= 1 on a regular client connection.
 #     vi) check that when setting slow_query_log= OFF in a connection 'extra2'
 #         prevents logging slow queries in a connection 'extra'
@@ -25,21 +25,21 @@
 #   sleep() command, the insert would be binlogged in row format if
 #   binlog_format=MIXED. Hence, we do not use binlog_format=MIXED.
 
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/have_binlog_format_statement.inc;
 
 CALL mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
-call mtr.add_suppression("Slave SQL.*Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
+call mtr.add_suppression("Replica SQL.*Request to stop replica SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
 
-# Prepare slave for different long_query_time we need to stop the slave 
+# Prepare replica for different long_query_time we need to stop the replica 
 # and restart it as long_query_time variable is dynamic and, after 
 # setting it, it only takes effect on new connections. 
 #
 # Reference: 
 #   http://dev.mysql.com/doc/refman/6.0/en/set-option.html
-connection slave;
+connection replica;
 
-source include/stop_slave.inc;
+source include/stop_replica.inc;
 
 SET @old_log_output= @@log_output;
 SET GLOBAL log_output= 'TABLE';
@@ -47,13 +47,13 @@ SET @old_long_query_time= @@long_query_time;
 SET GLOBAL long_query_time= 2;
 TRUNCATE mysql.slow_log;
 
-source include/start_slave.inc;
+source include/start_replica.inc;
 
-connection master;
+connection primary;
 CREATE TABLE t1 (a int, b int); 
 
 # test:
-#   check that slave logs the slow query to the slow log, but not the fast one.
+#   check that replica logs the slow query to the slow log, but not the fast one.
 
 let $slow_query= INSERT INTO t1 values(1, sleep(3));
 let $fast_query= INSERT INTO t1 values(1, 1);
@@ -62,7 +62,7 @@ eval $fast_query;
 --disable_warnings
 eval $slow_query;
 --enable_warnings
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 let $found_fast_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$fast_query'`;
 let $found_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
@@ -80,13 +80,13 @@ if (!$found_slow_query)
 }
 TRUNCATE mysql.slow_log;
 
-# regular checks for slow query log (using a new connection - 'extra' - to slave)
+# regular checks for slow query log (using a new connection - 'extra' - to replica)
 
 # test: 
-#   when using direct connections to the slave, check that slow query is logged 
+#   when using direct connections to the replica, check that slow query is logged 
 #   but not the fast one.
 
-connect(extra,127.0.0.1,root,,test,$SLAVE_MYPORT);
+connect(extra,127.0.0.1,root,,test,$REPLICA_MYPORT);
 connection extra;
 
 let $fast_query= SELECT 1;
@@ -112,7 +112,7 @@ if (!$found_slow_query)
 TRUNCATE mysql.slow_log;
 
 # test:
-#   when using direct connections to the slave, check that when setting timestamp to 1 the 
+#   when using direct connections to the replica, check that when setting timestamp to 1 the 
 #   slow query is logged but the fast one is not.
 
 let $fast_query= SELECT 2;
@@ -145,7 +145,7 @@ TRUNCATE mysql.slow_log;
 let $fast_query= SELECT 3;
 let $slow_query= SELECT 3, sleep(3);
 
-connect(extra2,127.0.0.1,root,,test,$SLAVE_MYPORT);
+connect(extra2,127.0.0.1,root,,test,$REPLICA_MYPORT);
 connection extra2;
 
 SET @old_slow_query_log= @@slow_query_log;
@@ -178,92 +178,92 @@ connection extra2;
 
 SET GLOBAL slow_query_log= @old_slow_query_log;
 
-connection master;
+connection primary;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-source include/stop_slave.inc;
+source include/stop_replica.inc;
 
 SET GLOBAL long_query_time= @old_long_query_time;
 SET GLOBAL log_output= @old_log_output;
 
-source include/start_slave.inc;
+source include/start_replica.inc;
 
 disconnect extra;
 disconnect extra2;
 
 #
-# BUG#50620: Adding an index to a table prevents slave from logging into slow log
+# BUG#50620: Adding an index to a table prevents replica from logging into slow log
 #
 
 --source include/rpl_reset.inc
 
--- connection master
+-- connection primary
 SET @old_log_output= @@log_output;
 SET GLOBAL log_output= 'TABLE';
 SET GLOBAL long_query_time= 2;
 SET @old_long_query_time= @@long_query_time;
 SET SESSION long_query_time= 2;
 TRUNCATE mysql.slow_log;
--- connection slave
+-- connection replica
 
--- source include/stop_slave.inc
+-- source include/stop_replica.inc
 SET @old_log_output= @@log_output;
 SET GLOBAL log_output= 'TABLE';
 SET @old_long_query_time= @@long_query_time;
 SET GLOBAL long_query_time= 2;
 TRUNCATE mysql.slow_log;
--- source include/start_slave.inc
+-- source include/start_replica.inc
 
 let $slow_query= INSERT INTO t1 values(1, sleep(3));
 
--- connection master
+-- connection primary
 CREATE TABLE t1 (a int, b int); 
 
 -- echo ********************************************************************
 -- echo **** INSERT one row that exceeds long_query_time
--- echo **** Outcome: query ends up in both master and slave slow log
+-- echo **** Outcome: query ends up in both primary and replica slow log
 -- echo ********************************************************************
 
 -- disable_warnings
 -- eval $slow_query
 -- enable_warnings
 
-let $master_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
---source include/sync_slave_sql_with_master.inc
-let $slave_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
+let $primary_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
+--source include/sync_replica_sql_with_primary.inc
+let $replica_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
 
-if ($master_slow_query != $slave_slow_query)
+if ($primary_slow_query != $replica_slow_query)
 {
-  -- connection master
+  -- connection primary
   -- echo ***********************************************
-  -- echo ** DUMPING MASTER SLOW LOG CONTENTS 
-  -- echo ***********************************************
-  SELECT * FROM mysql.slow_log;
-
-  -- connection slave
-  -- echo ***********************************************
-  -- echo ** DUMPING SLAVE SLOW LOG CONTENTS 
+  -- echo ** DUMPING PRIMARY SLOW LOG CONTENTS 
   -- echo ***********************************************
   SELECT * FROM mysql.slow_log;
 
-  -- die "Assertion failed! Master and slave slow log contents differ. Bailing out!"
+  -- connection replica
+  -- echo ***********************************************
+  -- echo ** DUMPING REPLICA SLOW LOG CONTENTS 
+  -- echo ***********************************************
+  SELECT * FROM mysql.slow_log;
+
+  -- die "Assertion failed! Primary and replica slow log contents differ. Bailing out!"
 }
 
-if ($master_slow_query == $slave_slow_query)
+if ($primary_slow_query == $replica_slow_query)
 {
-  -- echo ### Assertion is good. Both Master and Slave exhibit the 
-  -- echo ### same number of queries in slow log: $master_slow_query
+  -- echo ### Assertion is good. Both Primary and Replica exhibit the 
+  -- echo ### same number of queries in slow log: $primary_slow_query
 }
 
 TRUNCATE mysql.slow_log;
--- connection master
+-- connection primary
 TRUNCATE mysql.slow_log;
 
 -- echo ********************************************************************
 -- echo **** Now do inserts again, but first add an index to the table.
--- echo **** Outcome: Note that the slave contains the same one entry (as 
--- echo ****          the master does)  whereas before the patch it did not.
+-- echo **** Outcome: Note that the replica contains the same one entry (as 
+-- echo ****          the primary does)  whereas before the patch it did not.
 -- echo ********************************************************************
 
 ALTER TABLE t1 ADD INDEX id1(a);
@@ -272,83 +272,83 @@ ALTER TABLE t1 ADD INDEX id1(a);
 -- eval $slow_query
 -- enable_warnings
 
-let $master_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
---source include/sync_slave_sql_with_master.inc
-let $slave_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
+let $primary_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
+--source include/sync_replica_sql_with_primary.inc
+let $replica_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
 
-if ($master_slow_query != $slave_slow_query)
+if ($primary_slow_query != $replica_slow_query)
 {
-  -- connection master
+  -- connection primary
   -- echo ***********************************************
-  -- echo ** DUMPING MASTER SLOW LOG CONTENTS 
-  -- echo ***********************************************
-  SELECT * FROM mysql.slow_log;
-
-  -- connection slave
-  -- echo ***********************************************
-  -- echo ** DUMPING SLAVE SLOW LOG CONTENTS 
+  -- echo ** DUMPING PRIMARY SLOW LOG CONTENTS 
   -- echo ***********************************************
   SELECT * FROM mysql.slow_log;
 
-  -- die "Assertion failed! Master and slave slow log contents differ. Bailing out!"
+  -- connection replica
+  -- echo ***********************************************
+  -- echo ** DUMPING REPLICA SLOW LOG CONTENTS 
+  -- echo ***********************************************
+  SELECT * FROM mysql.slow_log;
+
+  -- die "Assertion failed! Primary and replica slow log contents differ. Bailing out!"
 }
 
-if ($master_slow_query == $slave_slow_query)
+if ($primary_slow_query == $replica_slow_query)
 {
-  -- echo ### Assertion is good. Both Master and Slave exhibit the 
-  -- echo ### same number of queries in slow log: $master_slow_query
+  -- echo ### Assertion is good. Both Primary and Replica exhibit the 
+  -- echo ### same number of queries in slow log: $primary_slow_query
 }
 
 -- echo ********************************************************************
 -- echo **** TRUNCATE the slow log then check whether runtime changes of
--- echo **** log_slow_slave_statements work without slave restart.
+-- echo **** log_slow_replica_statements work without replica restart.
 -- echo ********************************************************************
 
-SET @old_log_slow_slave_statements= @@global.log_slow_slave_statements;
-SET @@global.log_slow_slave_statements = off;
+SET @old_log_slow_replica_statements= @@global.log_slow_replica_statements;
+SET @@global.log_slow_replica_statements = off;
 TRUNCATE mysql.slow_log;
 
--- connection master
+-- connection primary
 
 --disable_warnings
 -- eval $slow_query;
 --enable_warnings
 
---source include/sync_slave_sql_with_master.inc
--- connection slave
+--source include/sync_replica_sql_with_primary.inc
+-- connection replica
 
-let $slave_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
-if ($slave_slow_query)
+let $replica_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
+if ($replica_slow_query)
 {
   SELECT * FROM mysql.slow_log;
   die "Assertion failed! Slow query FOUND in slow query log. Bailing out!";
 }
 
-SET @@global.log_slow_slave_statements = on;
+SET @@global.log_slow_replica_statements = on;
 
--- connection master
+-- connection primary
 
 --disable_warnings
 -- eval $slow_query;
 --enable_warnings
 
---source include/sync_slave_sql_with_master.inc
--- connection slave
+--source include/sync_replica_sql_with_primary.inc
+-- connection replica
 
-let $slave_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
-if (!$slave_slow_query)
+let $replica_slow_query= `SELECT count(*) = 1 FROM mysql.slow_log WHERE sql_text like '$slow_query'`;
+if (!$replica_slow_query)
 {
   SELECT * FROM mysql.slow_log;
   die "Assertion failed! Slow query NOT FOUND in slow query log. Bailing out!";
 }
 
--- connection master
+-- connection primary
 SET @@global.log_output= @old_log_output;
 SET @@global.long_query_time= @old_long_query_time;
 DROP TABLE t1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SET @@global.log_output= @old_log_output;
 SET @@global.long_query_time= @old_long_query_time;
-SET @@global.log_slow_slave_statements= @old_log_slow_slave_statements;
+SET @@global.log_slow_replica_statements= @old_log_slow_replica_statements;
 --source include/rpl_end.inc

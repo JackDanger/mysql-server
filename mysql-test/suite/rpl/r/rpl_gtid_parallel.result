@@ -1,18 +1,18 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 ==== Configure ====
 ==== Initialize ====
-connection slave;
-include/stop_slave.inc
-connection slave;
-CREATE PROCEDURE show_slave_status ()
+connection replica;
+include/stop_replica.inc
+connection replica;
+CREATE PROCEDURE show_replica_status ()
 BEGIN
 DECLARE name VARCHAR(100) DEFAULT('');
 WHILE name = '' DO
-SHOW SLAVE STATUS;
+SHOW REPLICA STATUS;
 SELECT TABLE_NAME INTO name
 FROM INFORMATION_SCHEMA.TABLES
 WHERE TABLE_NAME = 't_end';
@@ -30,7 +30,7 @@ FROM INFORMATION_SCHEMA.TABLES
 WHERE TABLE_NAME = 't_end';
 END WHILE;
 END|
-connection master;
+connection primary;
 CREATE TABLE t1_1 (a INT) ENGINE = InnoDB;
 CREATE TABLE t2_1 (a INT) ENGINE = InnoDB;
 INSERT INTO t1_1 VALUES (0);
@@ -39,15 +39,15 @@ INSERT INTO t2_1 VALUES (0);
 CREATE TABLE t_end (a INT);
 ==== Apply the generated binary logs ====
 ==== Wait for load to finish ====
-connection slave;
+connection replica;
 ==== Check result ====
 include/diff_tables.inc
-connection slave;
+connection replica;
 ==== Clean up ====
-connection master;
+connection primary;
 DROP TABLE t_end;
-connection slave;
+connection replica;
 DROP TABLE t_end;
-DROP PROCEDURE show_slave_status;
+DROP PROCEDURE show_replica_status;
 DROP PROCEDURE read_gtid_executed;
-CHANGE MASTER TO MASTER_AUTO_POSITION= 0;
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 0;

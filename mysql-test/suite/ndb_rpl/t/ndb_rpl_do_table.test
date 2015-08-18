@@ -11,7 +11,7 @@
 ##########################################################
 
 --source include/have_ndb.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --disable_warnings
 DROP TABLE IF EXISTS t1, t2;
@@ -27,25 +27,25 @@ INSERT INTO t2 VALUES(1, repeat('abc',10));
 INSERT INTO t2 VALUES(2, repeat('def',200));
 INSERT INTO t2 VALUES(3, repeat('ghi',3000));
 
---sync_slave_with_master
+--sync_replica_with_primary
 SHOW TABLES;
 SELECT COUNT(*) FROM t1;
 
 #
 # Bug #27044 replicated with unique field ndb table allows dup key inserts
 #
-connection master;
+connection primary;
 
 --error ER_DUP_ENTRY
 INSERT INTO t1 VALUES (3, repeat('bad',1));
 
-connection slave;
+connection replica;
 --error ER_DUP_ENTRY
 INSERT INTO t1 VALUES (3, repeat('bad too',1));
 
 # cleanup
 
-connection master;
+connection primary;
 DROP TABLE IF EXISTS t1, t2;
---sync_slave_with_master
+--sync_replica_with_primary
 --source include/rpl_end.inc

@@ -893,10 +893,10 @@ end|
 create function bug8409() returns int begin reset query cache;
 return 1; end|
 --error ER_STMT_NOT_ALLOWED_IN_SF_OR_TRG
-create function bug8409() returns int begin reset master;
+create function bug8409() returns int begin reset primary;
 return 1; end|
 --error ER_STMT_NOT_ALLOWED_IN_SF_OR_TRG
-create function bug8409() returns int begin reset slave;
+create function bug8409() returns int begin reset replica;
 return 1; end|
 --error ER_STMT_NOT_ALLOWED_IN_SF_OR_TRG
 create function bug8409() returns int begin flush hosts;

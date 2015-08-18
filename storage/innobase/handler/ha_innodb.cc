@@ -253,7 +253,7 @@ static TYPELIB innodb_checksum_algorithm_typelib = {
 
 /* The following counter is used to convey information to InnoDB
 about server activity: in case of normal DML ops it is not
-sensible to call srv_active_wake_master_thread after each
+sensible to call srv_active_wake_primary_thread after each
 operation, we only do it every INNOBASE_WAKE_INTERVAL'th step. */
 
 #define INNOBASE_WAKE_INTERVAL	32
@@ -431,7 +431,7 @@ static PSI_thread_info	all_innodb_threads[] = {
 	PSI_KEY(recv_writer_thread),
 	PSI_KEY(srv_error_monitor_thread),
 	PSI_KEY(srv_lock_timeout_thread),
-	PSI_KEY(srv_master_thread),
+	PSI_KEY(srv_primary_thread),
 	PSI_KEY(srv_monitor_thread),
 	PSI_KEY(srv_purge_thread),
 	PSI_KEY(trx_rollback_clean_thread),
@@ -1166,18 +1166,18 @@ innodb_page_size_validate(
 }
 
 /******************************************************************//**
-Returns true if the thread is the replication thread on the slave
+Returns true if the thread is the replication thread on the replica
 server. Used in srv_conc_enter_innodb() to determine if the thread
 should be allowed to enter InnoDB - the replication thread is treated
 differently than other threads. Also used in
 srv_conc_force_exit_innodb().
 @return true if thd is the replication thread */
 ibool
-thd_is_replication_slave_thread(
+thd_is_replication_replica_thread(
 /*============================*/
 	THD*	thd)	/*!< in: thread handle */
 {
-	return((ibool) thd_slave_thread(thd));
+	return((ibool) thd_replica_thread(thd));
 }
 
 /******************************************************************//**
@@ -1304,7 +1304,7 @@ innobase_srv_conc_enter_innodb(
 			--trx->n_tickets_to_enter_innodb;
 
 		} else if (trx->mysql_thd != NULL
-			   && thd_is_replication_slave_thread(trx->mysql_thd)) {
+			   && thd_is_replication_replica_thread(trx->mysql_thd)) {
 
 			UT_WAIT_FOR(
 				srv_conc_get_active_threads()
@@ -1547,7 +1547,7 @@ innobase_release_temporary_latches(
 
 /********************************************************************//**
 Increments innobase_active_counter and every INNOBASE_WAKE_INTERVALth
-time calls srv_active_wake_master_thread. This function should be used
+time calls srv_active_wake_primary_thread. This function should be used
 when a single database operation may introduce a small need for
 server utility activity, like checkpointing. */
 inline
@@ -1558,7 +1558,7 @@ innobase_active_small(void)
 	innobase_active_counter++;
 
 	if ((innobase_active_counter % INNOBASE_WAKE_INTERVAL) == 0) {
-		srv_active_wake_master_thread();
+		srv_active_wake_primary_thread();
 	}
 }
 
@@ -4306,7 +4306,7 @@ innobase_close_connection(
 	trx_t*	trx = thd_to_trx(thd);
 
 	/* During server initialization MySQL layer will try to open
-	some of the master-slave tables those residing in InnoDB.
+	some of the primary-replica tables those residing in InnoDB.
 	After MySQL layer is done with needed checks these tables
 	are closed followed by invocation of close_connection on the
 	associated thd.
@@ -5924,7 +5924,7 @@ ha_innobase::close()
 	/* Tell InnoDB server that there might be work for
 	utility threads: */
 
-	srv_active_wake_master_thread();
+	srv_active_wake_primary_thread();
 
 	DBUG_RETURN(0);
 }
@@ -11339,7 +11339,7 @@ create_table_info_t::create_table_update_dict()
 	if (m_flags2 & DICT_TF2_FTS) {
 		if (!innobase_fts_load_stopword(innobase_table, NULL, m_thd)) {
 			dict_table_close(innobase_table, FALSE, FALSE);
-			srv_active_wake_master_thread();
+			srv_active_wake_primary_thread();
 			trx_free_for_mysql(m_trx);
 			DBUG_RETURN(-1);
 		}
@@ -11464,7 +11464,7 @@ ha_innobase::create(
 	/* Tell the InnoDB server that there might be work for
 	utility threads: */
 
-	srv_active_wake_master_thread();
+	srv_active_wake_primary_thread();
 
 	trx_free_for_mysql(trx);
 
@@ -16190,7 +16190,7 @@ innobase_commit_by_xid(
 
 		innobase_commit_low(trx);
                 ut_ad(trx->mysql_thd == NULL);
-		/* use cases are: disconnected xa, slave xa, recovery */
+		/* use cases are: disconnected xa, replica xa, recovery */
 		trx_deregister_from_2pc(trx);
 		ut_ad(!trx->will_lock);    /* trx cache requirement */
 		trx_free_for_background(trx);
@@ -18609,7 +18609,7 @@ static MYSQL_SYSVAR_ULONG(adaptive_hash_index_parts, btr_ahi_parts,
 
 static MYSQL_SYSVAR_ULONG(replication_delay, srv_replication_delay,
   PLUGIN_VAR_RQCMDARG,
-  "Replication thread delay (ms) on the slave server if"
+  "Replication thread delay (ms) on the replica server if"
   " innodb_thread_concurrency is reached (0 by default)",
   NULL, NULL, 0, 0, ~0UL, 0);
 
@@ -19052,7 +19052,7 @@ static MYSQL_SYSVAR_UINT(change_buffering_debug, ibuf_debug,
 static MYSQL_SYSVAR_BOOL(disable_background_merge,
   srv_ibuf_disable_background_merge,
   PLUGIN_VAR_NOCMDARG | PLUGIN_VAR_RQCMDARG,
-  "Disable change buffering merges by the master thread",
+  "Disable change buffering merges by the primary thread",
   NULL, NULL, FALSE);
 
 static MYSQL_SYSVAR_ENUM(compress_debug, srv_debug_compress,

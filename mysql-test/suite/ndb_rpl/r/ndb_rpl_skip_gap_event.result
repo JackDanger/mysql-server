@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 create table t1(pk int not null primary key, i int) engine = ndb;
 select count(*) from t1;
 count(*)
@@ -11,15 +11,15 @@ Restarting mysqld
 # restart
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000002	#	Incident	#	#	#1 (LOST_EVENTS)
-master-bin.000002	#	Rotate	#	#	master-bin.000003;pos=POS
-start slave;
-Sync Slave with master
-Show that Slave has not stopped (has skipped GAP)
+primary-bin.000002	#	Incident	#	#	#1 (LOST_EVENTS)
+primary-bin.000002	#	Rotate	#	#	primary-bin.000003;pos=POS
+start replica;
+Sync Replica with primary
+Show that Replica has not stopped (has skipped GAP)
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-Slave_IO_Running = 'Yes'
-Slave_SQL_Running = 'Yes'
+Replica_IO_Running = 'Yes'
+Replica_SQL_Running = 'Yes'
 Last_Errno = '0'
 Last_Error = ''
 Warnings:
@@ -30,4 +30,4 @@ select count(*) from t1;
 count(*)
 1001
 drop table t1;
-include/stop_slave.inc
+include/stop_replica.inc

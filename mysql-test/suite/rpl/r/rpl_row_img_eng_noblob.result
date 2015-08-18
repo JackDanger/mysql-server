@@ -1,31 +1,31 @@
 include/rpl_init.inc [topology=1->2->3]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-CON: 'server_1', IMG: 'NOBLOB', RESTART SLAVE: 'N'
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+CON: 'server_1', IMG: 'NOBLOB', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	NOBLOB
-CON: 'server_2', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
+CON: 'server_2', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	NOBLOB
-CON: 'server_3', IMG: 'NOBLOB', RESTART SLAVE: 'Y'
+CON: 'server_3', IMG: 'NOBLOB', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'NOBLOB';
 SET GLOBAL binlog_row_image= 'NOBLOB';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
@@ -34,7 +34,7 @@ binlog_row_image	NOBLOB
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
@@ -467,7 +467,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
@@ -900,7 +900,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
@@ -1333,7 +1333,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
@@ -1766,7 +1766,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
@@ -2199,7 +2199,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= MyISAM;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
@@ -2632,7 +2632,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= MyISAM;;
@@ -3065,7 +3065,7 @@ include/rpl_sync.inc
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
 SET SQL_LOG_BIN=0;
-****** TEST: One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave
+****** TEST: One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int, c2 char(1), c3 char(1), c4 char(1), unique key(c1,c3)) engine= InnoDB;;
 CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= InnoDB;;
@@ -3494,27 +3494,27 @@ include/rpl_sync.inc
 include/diff_tables.inc [server_1:test.t, server_2:test.t, server_3:test.t]
 DROP TABLE t;
 include/rpl_sync.inc
-CON: 'server_1', IMG: 'FULL', RESTART SLAVE: 'N'
+CON: 'server_1', IMG: 'FULL', RESTART REPLICA: 'N'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'server_2', IMG: 'FULL', RESTART SLAVE: 'Y'
+CON: 'server_2', IMG: 'FULL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value
 binlog_row_image	FULL
-CON: 'server_3', IMG: 'FULL', RESTART SLAVE: 'Y'
+CON: 'server_3', IMG: 'FULL', RESTART REPLICA: 'Y'
 SET SESSION binlog_row_image= 'FULL';
 SET GLOBAL binlog_row_image= 'FULL';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 FLUSH TABLES;
 SHOW VARIABLES LIKE 'binlog_row_image';
 Variable_name	Value

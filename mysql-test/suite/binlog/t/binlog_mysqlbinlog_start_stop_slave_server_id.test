@@ -28,14 +28,14 @@
 --source include/have_binlog_format_statement.inc
 
 CREATE TABLE t1 (a INT);
-RESET MASTER;
+RESET PRIMARY;
 
 --source extra/binlog_tests/binlog_mysqlbinlog_fill.inc
 
 # Verify Non blocking behaviour with connection-server-id=0
 --echo
 --echo ==== Remote with to-last-log stop-never connection-server-id=0 ====
---let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT $file_1
+--let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT $file_1
 --let $options= --to-last-log --stop-never --connection-server-id=0
 --source extra/binlog_tests/mysqlbinlog_start_stop_2.inc
 
@@ -43,7 +43,7 @@ RESET MASTER;
 # connection-server-id=1 and not setting --stop-never
 --echo
 --echo ==== Remote with connection-server-id= (value other than 0) ====
---let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT $file_1
+--let $extra_options= --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT $file_1
 --let $options= --to-last-log  --connection-server-id=1
 --source extra/binlog_tests/mysqlbinlog_start_stop_2.inc
 

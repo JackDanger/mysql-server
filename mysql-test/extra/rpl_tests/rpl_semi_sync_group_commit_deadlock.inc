@@ -9,8 +9,8 @@
 --echo # ==============================================================
 --echo # Flush error happens before AFTER_SYNC wait point. So
 --echo #
---source include/rpl_connection_master.inc
-SET GLOBAL rpl_semi_sync_master_wait_point= AFTER_SYNC;
+--source include/rpl_connection_primary.inc
+SET GLOBAL rpl_semi_sync_primary_wait_point= AFTER_SYNC;
 
 --echo # Disable diff_table test
 --let $enable_diff_table= 0
@@ -31,8 +31,8 @@ SET GLOBAL rpl_semi_sync_master_wait_point= AFTER_SYNC;
 --echo # Verify it on AFTER_COMMIT wait point
 --echo # ==============================================================
 --echo #
---source include/rpl_connection_master.inc
-SET GLOBAL rpl_semi_sync_master_wait_point= AFTER_COMMIT;
+--source include/rpl_connection_primary.inc
+SET GLOBAL rpl_semi_sync_primary_wait_point= AFTER_COMMIT;
 
 --echo # Disable diff_table test
 --let $enable_diff_table= 0

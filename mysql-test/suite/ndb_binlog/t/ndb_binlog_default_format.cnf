@@ -22,5 +22,5 @@ ndb-extra-logging=99
 
 [ENV]
 NDB_CONNECTSTRING=             @mysql_cluster.1.ndb_connectstring
-MASTER_MYPORT=                 @mysqld.1.1.port
-MASTER_MYPORT1=                @mysqld.2.1.port
+PRIMARY_MYPORT=                 @mysqld.1.1.port
+PRIMARY_MYPORT1=                @mysqld.2.1.port

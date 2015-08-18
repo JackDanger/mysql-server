@@ -231,7 +231,7 @@ int Rpl_info_table::do_flush_info(const bool force)
 end:
   DBUG_EXECUTE_IF("mts_debug_concurrent_access",
     {
-      while (thd->system_thread == SYSTEM_THREAD_SLAVE_WORKER &&
+      while (thd->system_thread == SYSTEM_THREAD_REPLICA_WORKER &&
              mts_debug_concurrent_access < 2 && mts_debug_concurrent_access >  0)
       {
         DBUG_PRINT("mts", ("Waiting while locks are acquired to show "
@@ -366,7 +366,7 @@ int Rpl_info_table::do_reset_info(uint nparam,
       todo: for another table in future, consider to make use of the
       passed parameter to locate the lookup key.
     */
-    DBUG_ASSERT(strcmp(info->str_table.str, "slave_worker_info") == 0);
+    DBUG_ASSERT(strcmp(info->str_table.str, "replica_worker_info") == 0);
 
     if (!key_info || key_info->user_defined_key_parts == 0 ||
         key_info->key_part[0].field != table->field[channel_field_idx])

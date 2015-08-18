@@ -1,4 +1,4 @@
-Lock master DICT against schema operations
+Lock primary DICT against schema operations
 
 Implementation
 --------------
@@ -8,22 +8,22 @@ Implementation
 Use case: Node startup INR / NR
 -------------------------------
 
-Master DICT (like any block) keeps list of alive nodes (c_aliveNodes).
+Primary DICT (like any block) keeps list of alive nodes (c_aliveNodes).
 These are participants in schema ops.
 
 (1) c_aliveNodes is initialized when DICT starts
     in sp3 in READ_NODESCONF from CNTR
 
-(2) when slave node fails (in any sp of the slave node)
+(2) when replica node fails (in any sp of the replica node)
     it is removed from c_aliveNodes in NODE_FAILREP
 
-(3) when slave starts, it is added to c_aliveNodes
+(3) when replica starts, it is added to c_aliveNodes
     in sp4 of the starting node in INCL_NODEREQ
 
-Slave DIH locks master DICT in sp2 and releases the lock when started.
+Replica DIH locks primary DICT in sp2 and releases the lock when started.
 Based on the constraints:
 
-- the lock is taken when master DICT is known
+- the lock is taken when primary DICT is known
   DIH reads this in sp2 in READ_NODESCONF
 
 - the lock is taken before (3)
@@ -31,13 +31,13 @@ Based on the constraints:
 - the lock is taken before copying starts and held until it is done
   in sp4 DIH meta, DICT meta, tuple data
 
-- on INR in sp2 in START_PERMREQ the LCP info of the slave is erased
+- on INR in sp2 in START_PERMREQ the LCP info of the replica is erased
   in all DIH in invalidateNodeLCP() - not safe under schema ops
 
 Signals:
 
 All but DICT_LOCK are standard v5.0 signals.
-s=starting node, m=master, a=all participants, l=local block.
+s=starting node, m=primary, a=all participants, l=local block.
 
 * sp2 - DICT_LOCK and START_PERM
 

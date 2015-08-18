@@ -8,21 +8,21 @@
 # ==== Usage ====
 #
 #   [--let $rpl_debug= 1]
-#   --source suite/ndb_rpl/ndb_master-slave_2ch_end.inc
+#   --source suite/ndb_rpl/ndb_primary-replica_2ch_end.inc
 #
 # Parameters:
 #   $rpl_debug
-#     See include/master-slave.inc
+#     See include/primary-replica.inc
 
---source include/rpl_stop_slaves.inc
---connection master
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
---connection master1
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
---connection slave
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
---connection slave1
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
---source include/rpl_start_slaves.inc
+--source include/rpl_stop_replicas.inc
+--connection primary
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+--connection primary1
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+--connection replica
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+--connection replica1
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+--source include/rpl_start_replicas.inc
 
 --source include/rpl_end.inc

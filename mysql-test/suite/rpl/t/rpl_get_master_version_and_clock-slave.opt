@@ -1,1 +1,1 @@
---master-retry-count=60
+--primary-retry-count=60

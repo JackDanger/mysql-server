@@ -353,7 +353,7 @@ NdbBackup::restore(unsigned _backup_id, bool restore_meta, bool restore_data, un
   return 0;
 }
 
-// Master failure
+// Primary failure
 int
 NFDuringBackupM_codes[] = {
   10003,
@@ -366,7 +366,7 @@ NFDuringBackupM_codes[] = {
   10013
 };
 
-// Slave failure
+// Replica failure
 int
 NFDuringBackupS_codes[] = {
   10014,
@@ -377,7 +377,7 @@ NFDuringBackupS_codes[] = {
   10020
 };
 
-// Master takeover etc...
+// Primary takeover etc...
 int
 NFDuringBackupSL_codes[] = {
   10001,
@@ -386,31 +386,31 @@ NFDuringBackupSL_codes[] = {
 };
 
 int 
-NdbBackup::NFMaster(NdbRestarter& _restarter){
+NdbBackup::NFPrimary(NdbRestarter& _restarter){
   const int sz = sizeof(NFDuringBackupM_codes)/sizeof(NFDuringBackupM_codes[0]);
   return NF(_restarter, NFDuringBackupM_codes, sz, true);
 }
 
 int 
-NdbBackup::NFMasterAsSlave(NdbRestarter& _restarter){
+NdbBackup::NFPrimaryAsReplica(NdbRestarter& _restarter){
   const int sz = sizeof(NFDuringBackupS_codes)/sizeof(NFDuringBackupS_codes[0]);
   return NF(_restarter, NFDuringBackupS_codes, sz, true);
 }
 
 int 
-NdbBackup::NFSlave(NdbRestarter& _restarter){
+NdbBackup::NFReplica(NdbRestarter& _restarter){
   const int sz = sizeof(NFDuringBackupS_codes)/sizeof(NFDuringBackupS_codes[0]);
   return NF(_restarter, NFDuringBackupS_codes, sz, false);
 }
 
 int 
-NdbBackup::NF(NdbRestarter& _restarter, int *NFDuringBackup_codes, const int sz, bool onMaster){
+NdbBackup::NF(NdbRestarter& _restarter, int *NFDuringBackup_codes, const int sz, bool onPrimary){
   int nNodes = _restarter.getNumDbNodes();
   {
     if(nNodes == 1)
       return NDBT_OK;
     
-    int nodeId = _restarter.getMasterNodeId();
+    int nodeId = _restarter.getPrimaryNodeId();
 
     CHECK(_restarter.restartOneDbNode(nodeId, false, true, true) == 0,
 	  "Could not restart node "<< nodeId);
@@ -432,22 +432,22 @@ NdbBackup::NF(NdbRestarter& _restarter, int *NFDuringBackup_codes, const int sz,
     int error = NFDuringBackup_codes[i];
     unsigned int backupId;
 
-    const int masterNodeId = _restarter.getMasterNodeId();
-    CHECK(masterNodeId > 0, "getMasterNodeId failed");
+    const int primaryNodeId = _restarter.getPrimaryNodeId();
+    CHECK(primaryNodeId > 0, "getPrimaryNodeId failed");
     int nodeId;
 
-    nodeId = masterNodeId;
-    if (!onMaster) {
+    nodeId = primaryNodeId;
+    if (!onPrimary) {
       int randomId;
-      while (nodeId == masterNodeId) {
+      while (nodeId == primaryNodeId) {
 	randomId = myRandom48(nNodes);
 	nodeId = _restarter.getDbNodeId(randomId);
       }
     }
 
     g_err << "NdbBackup::NF node = " << nodeId 
-	   << " error code = " << error << " masterNodeId = "
-	   << masterNodeId << endl;
+	   << " error code = " << error << " primaryNodeId = "
+	   << primaryNodeId << endl;
 
 
     int val[] = { DumpStateOrd::CmvmiSetRestartOnErrorInsert, 1 };
@@ -465,7 +465,7 @@ NdbBackup::NF(NdbRestarter& _restarter, int *NFDuringBackup_codes, const int sz,
 	   << " (which should fail) started with id = "  << backupId << endl;
     if (r == 0) {
       g_err << "Backup should have failed on error_insertion " << error << endl
-	    << "Master = " << masterNodeId << "Node = " << nodeId << endl;
+	    << "Primary = " << primaryNodeId << "Node = " << nodeId << endl;
       return NDBT_FAILED;
     }
 
@@ -530,25 +530,25 @@ FailM_codes[] = {
 };
 
 int 
-NdbBackup::FailMaster(NdbRestarter& _restarter){
+NdbBackup::FailPrimary(NdbRestarter& _restarter){
   const int sz = sizeof(FailM_codes)/sizeof(FailM_codes[0]);
   return Fail(_restarter, FailM_codes, sz, true);
 }
 
 int 
-NdbBackup::FailMasterAsSlave(NdbRestarter& _restarter){
+NdbBackup::FailPrimaryAsReplica(NdbRestarter& _restarter){
   const int sz = sizeof(FailS_codes)/sizeof(FailS_codes[0]);
   return Fail(_restarter, FailS_codes, sz, true);
 }
 
 int 
-NdbBackup::FailSlave(NdbRestarter& _restarter){
+NdbBackup::FailReplica(NdbRestarter& _restarter){
   const int sz = sizeof(FailS_codes)/sizeof(FailS_codes[0]);
   return Fail(_restarter, FailS_codes, sz, false);
 }
 
 int 
-NdbBackup::Fail(NdbRestarter& _restarter, int *Fail_codes, const int sz, bool onMaster){
+NdbBackup::Fail(NdbRestarter& _restarter, int *Fail_codes, const int sz, bool onPrimary){
 
   CHECK(_restarter.waitClusterStarted() == 0,
 	"waitClusterStarted failed");
@@ -561,22 +561,22 @@ NdbBackup::Fail(NdbRestarter& _restarter, int *Fail_codes, const int sz, bool on
     int error = Fail_codes[i];
     unsigned int backupId;
 
-    const int masterNodeId = _restarter.getMasterNodeId();
-    CHECK(masterNodeId > 0, "getMasterNodeId failed");
+    const int primaryNodeId = _restarter.getPrimaryNodeId();
+    CHECK(primaryNodeId > 0, "getPrimaryNodeId failed");
     int nodeId;
 
-    nodeId = masterNodeId;
-    if (!onMaster) {
+    nodeId = primaryNodeId;
+    if (!onPrimary) {
       int randomId;
-      while (nodeId == masterNodeId) {
+      while (nodeId == primaryNodeId) {
 	randomId = myRandom48(nNodes);
 	nodeId = _restarter.getDbNodeId(randomId);
       }
     }
 
     g_err << "NdbBackup::Fail node = " << nodeId 
-	   << " error code = " << error << " masterNodeId = "
-	   << masterNodeId << endl;
+	   << " error code = " << error << " primaryNodeId = "
+	   << primaryNodeId << endl;
 
     CHECK(_restarter.insertErrorInNode(nodeId, error) == 0,
 	  "failed to set error insert");
@@ -590,7 +590,7 @@ NdbBackup::Fail(NdbRestarter& _restarter, int *Fail_codes, const int sz, bool on
 	   << " (which should fail) started with id = "  << backupId << endl;
     if (r == 0) {
       g_err << "Backup should have failed on error_insertion " << error << endl
-	    << "Master = " << masterNodeId << "Node = " << nodeId << endl;
+	    << "Primary = " << primaryNodeId << "Node = " << nodeId << endl;
       return NDBT_FAILED;
     }
     

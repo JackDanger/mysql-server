@@ -9,7 +9,7 @@
 
 # Check that user variables are binlogged correctly (BUG#3875)
 create table t1 (a varchar(50));
-reset master;
+reset primary;
 SET TIMESTAMP=10000;
 SET @`a b`='hello';
 INSERT INTO t1 VALUES(@`a b`);
@@ -23,7 +23,7 @@ source include/show_binlog_events.inc;
 # escaped).
 let $MYSQLD_DATADIR= `select @@datadir`;
 flush logs;
---let $mysqlbinlog_parameters= --short-form $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --short-form $MYSQLD_DATADIR/primary-bin.000001
 --source include/mysqlbinlog.inc
 drop table t1;
 

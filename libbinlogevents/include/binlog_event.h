@@ -82,7 +82,7 @@
    Compared to version 3, version 4 has:
    - a different Start_event, which includes info about the binary log
    (sizes of headers); this info is included for better compatibility if the
-   master's MySQL version is different from the slave's.
+   primary's MySQL version is different from the replica's.
 */
 #define BINLOG_VERSION    4
 
@@ -106,7 +106,7 @@
 
 /**
   Max number of possible extra bytes in a replication event compared to a
-  packet (i.e. a query) sent from client to master;
+  packet (i.e. a query) sent from client to primary;
   First, an auxiliary log_event status vars estimation:
 */
 #define MAX_SIZE_LOG_EVENT_STATUS (1U + 4          /* type, flags2 */   + \
@@ -118,7 +118,7 @@
                                    1U + 2          /* type, lc_time_names_number */ + \
                                    1U + 2          /* type, charset_database_number */ + \
                                    1U + 8          /* type, table_map_for_update */ + \
-                                   1U + 4          /* type, master_data_written */ + \
+                                   1U + 4          /* type, primary_data_written */ + \
                                                    /* type, db_1, db_2, ... */  \
                                    1U + (MAX_DBS_IN_EVENT_MTS * (1 + NAME_LEN)) + \
                                    3U +            /* type, microseconds */ + \
@@ -230,8 +230,8 @@ namespace binary_log
    rollback automatically, while binlog does not.  To solve this we use this
    flag and automatically append ROLLBACK to every non-closed binlog (append
    virtually, on reading, file itself is not changed). If this flag is found,
-   mysqlbinlog simply prints "ROLLBACK". Replication master does not abort on
-   binlog corruption, but takes it as EOF, and replication slave forces a
+   mysqlbinlog simply prints "ROLLBACK". Replication primary does not abort on
+   binlog corruption, but takes it as EOF, and replication replica forces a
    rollback in this case.
 
    Note, that old binlogs does not have this flag set, so we get a
@@ -255,7 +255,7 @@ enum Log_event_type
   ROTATE_EVENT= 4,
   INTVAR_EVENT= 5,
   LOAD_EVENT= 6,
-  SLAVE_EVENT= 7,
+  REPLICA_EVENT= 7,
   CREATE_FILE_EVENT= 8,
   APPEND_BLOCK_EVENT= 9,
   EXEC_LOAD_EVENT= 10,
@@ -291,19 +291,19 @@ enum Log_event_type
   DELETE_ROWS_EVENT_V1 = 25,
 
   /**
-    Something out of the ordinary happened on the master
+    Something out of the ordinary happened on the primary
    */
   INCIDENT_EVENT= 26,
 
   /**
-    Heartbeat event to be send by master at its idle time
-    to ensure master's online status to slave
+    Heartbeat event to be send by primary at its idle time
+    to ensure primary's online status to replica
   */
   HEARTBEAT_LOG_EVENT= 27,
 
   /**
     In some situations, it is necessary to send over ignorable
-    data to the slave: data that a slave can handle in case there
+    data to the replica: data that a replica can handle in case there
     is code for handling it, but which can be ignored if it is not
     recognized.
   */
@@ -382,7 +382,7 @@ enum enum_binlog_checksum_alg
 {
   /**
     Events are without checksum though its generator is checksum-capable
-    New Master (NM).
+    New Primary (NM).
   */
   BINLOG_CHECKSUM_ALG_OFF= 0,
   /** CRC32 of zlib algorithm */
@@ -484,9 +484,9 @@ class Format_description_event;
     <td>Algorithm used to checksum the events contained in the binary log</td>
   </table>
 
-  @note checksum *value* is not stored in the event. On master's side, it
+  @note checksum *value* is not stored in the event. On primary's side, it
        is calculated before writing into the binary log, depending on the
-       updated event data. On the slave, the checksum value is retrieved
+       updated event data. On the replica, the checksum value is retrieved
        from a particular offset and checked for corruption, by computing
        a new value. It is not required after that. Therefore, it is not
        required to store the value in the instance as a class member.
@@ -513,12 +513,12 @@ public:
 
   /**
      @verbatim
-     Master side:
+     Primary side:
      The value is set by caller of FD(Format Description) constructor
      In the FD case it's propagated into the last byte
      of post_header_len[].
-     Slave side:
-     On the slave side the value is assigned from post_header_len[last]
+     Replica side:
+     On the replica side the value is assigned from post_header_len[last]
      of the last seen FD event.
      @endverbatim
      TODO(WL#7546): Revisit this comment when encoder is moved in libbinlogevent
@@ -575,11 +575,11 @@ public:
   <tr>
     <td>log_pos</td>
     <td>4 byte unsigned integer</td>
-    <td>The position of the next event in the master binary log, in
+    <td>The position of the next event in the primary binary log, in
     bytes from the beginning of the file.  In a binlog that is not a
     relay log, this is just the position of the next event, in bytes
     from the beginning of the file.  In a relay log, this is
-    the position of the next event in the master's binlog.
+    the position of the next event in the primary's binlog.
     </td>
   </tr>
 
@@ -597,7 +597,7 @@ class Log_event_header
 {
 public:
   /*
-    Timestamp on the master(for debugging and replication of
+    Timestamp on the primary(for debugging and replication of
     NOW()/TIMESTAMP).  It is important for queries and LOAD DATA
     INFILE. This is set at the event's creation time, except for Query
     and Load (and other events) events where this is set at the query's
@@ -622,11 +622,11 @@ public:
 
   /*
     The offset in the log where this event originally appeared (it is
-    preserved in relay logs, making SHOW SLAVE STATUS able to print
-    coordinates of the event in the master's binlog). Note: when a
-    transaction is written by the master to its binlog (wrapped in
+    preserved in relay logs, making SHOW REPLICA STATUS able to print
+    coordinates of the event in the primary's binlog). Note: when a
+    transaction is written by the primary to its binlog (wrapped in
     BEGIN/COMMIT) the log_pos of all the queries it contains is the
-    one of the BEGIN (this way, when one does SHOW SLAVE STATUS it
+    one of the BEGIN (this way, when one does SHOW REPLICA STATUS it
     sees the offset of the BEGIN, which is logical as rollback may
     occur), except the COMMIT query which has its real offset.
   */

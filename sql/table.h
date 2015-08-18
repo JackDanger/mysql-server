@@ -445,8 +445,8 @@ enum enum_table_category
     as there is no point in locking explicitly
     a Replication Information table.
     An example of replication tables are:
-    - mysql.slave_master_info
-    - mysql.slave_relay_log_info,
+    - mysql.replica_primary_info
+    - mysql.replica_relay_log_info,
     which *are* updated even when there is either
     a GLOBAL READ LOCK or a GLOBAL READ_ONLY in effect.
     User queries do not write directly to these tables.

@@ -55,13 +55,13 @@ public:
 
   enum ErrorCode {
     OK = 0,
-    NotMaster = 1,
+    NotPrimary = 1,
     StopInProgress = 2
   };
 private:
   
   Uint32 errorCode;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 class CntrStartConf {
@@ -80,7 +80,7 @@ private:
   
   Uint32 startType;
   Uint32 startGci;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 noStartNodes;
   Uint32 startedNodes[NdbNodeBitmask::Size];
   Uint32 startingNodes[NdbNodeBitmask::Size];

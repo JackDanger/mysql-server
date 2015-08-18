@@ -4,9 +4,9 @@
 --source include/have_innodb.inc
 --source include/have_partition.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-# Set the default connection to 'master'
+# Set the default connection to 'primary'
 
 --vertical_results
 
@@ -133,22 +133,22 @@ delimiter ;|
 ############ Test Section ###################
 
 CALL test.proc_norm();
-SELECT count(*) as "Master regular" FROM test.regular_tbl;
+SELECT count(*) as "Primary regular" FROM test.regular_tbl;
 CALL test.proc_bykey();
-SELECT count(*) as "Master bykey" FROM test.bykey_tbl;
+SELECT count(*) as "Primary bykey" FROM test.bykey_tbl;
 CALL test.proc_byrange();
-SELECT count(*) as "Master byrange" FROM test.byrange_tbl;
+SELECT count(*) as "Primary byrange" FROM test.byrange_tbl;
 
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 show create table test.byrange_tbl;
-SELECT count(*) "Slave norm" FROM test.regular_tbl;
-SELECT count(*) "Slave bykey" FROM test.bykey_tbl;
-SELECT count(*) "Slave byrange" FROM test.byrange_tbl;
+SELECT count(*) "Replica norm" FROM test.regular_tbl;
+SELECT count(*) "Replica bykey" FROM test.bykey_tbl;
+SELECT count(*) "Replica byrange" FROM test.byrange_tbl;
 
 ###### CLEAN UP SECTION ##############
 
-connection master;
+connection primary;
 DROP PROCEDURE test.proc_norm;
 DROP PROCEDURE test.proc_bykey;
 DROP PROCEDURE test.proc_byrange;

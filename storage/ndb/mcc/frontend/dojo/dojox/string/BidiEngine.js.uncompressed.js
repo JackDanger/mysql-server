@@ -219,7 +219,7 @@ declare("dojox.string.BidiEngine", null, {
 		var type = null, uc = null,	hi = null;
 		for(var i = 0; i < text.length; i++){
 			uc = text.charAt(i).charCodeAt(0);
-			hi = MasterTable[uc >> 8];
+			hi = PrimaryTable[uc >> 8];
 			type = hi < TBBASE ? hi : UnicodeTable[hi - TBBASE][uc & 0xFF];
 			if(type == UBAT_R || type == UBAT_AL){
 				return true;
@@ -486,7 +486,7 @@ function firstStrongDir(/*String*/text){
 	var type = null, uc = null, hi = null;
 	for(var i = 0; i < text.length; i++){
 		uc = text.charAt(i).charCodeAt(0);
-		hi = MasterTable[uc >> 8];
+		hi = PrimaryTable[uc >> 8];
 		type = hi < TBBASE ? hi : UnicodeTable[hi - TBBASE][uc & 0xFF];
 		if(type == UBAT_R || type == UBAT_AL){
 			return "rtl";
@@ -712,12 +712,12 @@ function getCharacterType(ch){
 	//		The character to be checked.
 
 	// description:
-	//		Check the type of the character according to MasterTable,
+	//		Check the type of the character according to PrimaryTable,
 	//		type = LTR, RTL, neutral,Arabic-Indic digit etc.
 	// tags:
 	//		private			
 	var uc = ch.charCodeAt(0)
-		, hi = MasterTable[uc >> 8];
+		, hi = PrimaryTable[uc >> 8];
 	return (hi < TBBASE) ? hi : UnicodeTable[hi - TBBASE][uc & 0xFF];
 };
 function invertStr(str){
@@ -1281,7 +1281,7 @@ var LRO	= UBAT_LRO;
 var RLO	= UBAT_RLO;
 var BN	= UBAT_BN;
 
-var MasterTable = [
+var PrimaryTable = [
 	/************************************************************************************************************************************/
 	/*		0		1		2		3		4		5		6		7		8		9		A		B		C		D		E		F	*/
 	/************************************************************************************************************************************/

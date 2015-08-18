@@ -4907,7 +4907,7 @@ runRestarts(NDBT_Context* ctx, NDBT_Step* step)
   int result = NDBT_OK;
   Uint32 threads = ctx->getProperty("API_NODES", (unsigned)0);
   Uint32 sr = ctx->getProperty("ClusterRestart", (unsigned)0);
-  Uint32 master = ctx->getProperty("Master", (unsigned)0);
+  Uint32 primary = ctx->getProperty("Primary", (unsigned)0);
   Uint32 slow = ctx->getProperty("SlowNR", (unsigned)0);
   NdbRestarter restarter;
 
@@ -4930,16 +4930,16 @@ runRestarts(NDBT_Context* ctx, NDBT_Step* step)
     {
       int id = rand() % restarter.getNumDbNodes();
       int nodeId = restarter.getDbNodeId(id);
-      if (master == 1)
+      if (primary == 1)
       {
-        nodeId = restarter.getMasterNodeId();
+        nodeId = restarter.getPrimaryNodeId();
       }
-      else if (master == 2)
+      else if (primary == 2)
       {
-        nodeId = restarter.getRandomNotMasterNodeId(rand());
+        nodeId = restarter.getRandomNotPrimaryNodeId(rand());
       }
       ndbout << "Restart node " << nodeId
-             << "(master: " << restarter.getMasterNodeId() << ")"
+             << "(primary: " << restarter.getPrimaryNodeId() << ")"
              << endl;
       if (restarter.restartOneDbNode(nodeId, false, true, true) != 0)
       {
@@ -6505,19 +6505,19 @@ TESTCASE("NdbClusterConnectNR",
   STEPS(runNdbClusterConnect, MAX_NODES);
   STEP(runRestarts); // Note after runNdbClusterConnect or else counting wrong
 }
-TESTCASE("NdbClusterConnectNR_master",
+TESTCASE("NdbClusterConnectNR_primary",
          "Make sure that every Ndb_cluster_connection get a unique nodeid")
 {
-  TC_PROPERTY("Master", 1);
+  TC_PROPERTY("Primary", 1);
   TC_PROPERTY("TimeoutAfterFirst", (Uint32)0);
   INITIALIZER(runNdbClusterConnectInit);
   STEPS(runNdbClusterConnect, MAX_NODES);
   STEP(runRestarts); // Note after runNdbClusterConnect or else counting wrong
 }
-TESTCASE("NdbClusterConnectNR_non_master",
+TESTCASE("NdbClusterConnectNR_non_primary",
          "Make sure that every Ndb_cluster_connection get a unique nodeid")
 {
-  TC_PROPERTY("Master", 2);
+  TC_PROPERTY("Primary", 2);
   TC_PROPERTY("TimeoutAfterFirst", (Uint32)0);
   INITIALIZER(runNdbClusterConnectInit);
   STEPS(runNdbClusterConnect, MAX_NODES);
@@ -6526,7 +6526,7 @@ TESTCASE("NdbClusterConnectNR_non_master",
 TESTCASE("NdbClusterConnectNR_slow",
          "Make sure that every Ndb_cluster_connection get a unique nodeid")
 {
-  TC_PROPERTY("Master", 2);
+  TC_PROPERTY("Primary", 2);
   TC_PROPERTY("TimeoutAfterFirst", (Uint32)0);
   TC_PROPERTY("SlowNR", 1);
   INITIALIZER(runNdbClusterConnectInit);

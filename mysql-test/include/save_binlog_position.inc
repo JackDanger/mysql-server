@@ -9,8 +9,8 @@
 --let $include_filename= save_binlog_position.inc
 --source include/begin_include_file.inc
 
---let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
---let $binlog_position= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
+--let $binlog_position= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 if ($rpl_debug)
 {
   --echo saved binlog_file='$binlog_file' binlog_position='$binlog_position'

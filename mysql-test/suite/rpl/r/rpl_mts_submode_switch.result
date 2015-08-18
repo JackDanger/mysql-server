@@ -1,13 +1,13 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-call mtr.add_suppression("Statement is unsafe because it uses a system function that may return a different value on the slave");
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+call mtr.add_suppression("Statement is unsafe because it uses a system function that may return a different value on the replica");
 SET GLOBAL DEBUG ='+d,set_commit_parent_100';
-SET GLOBAL slave_parallel_type=LOGICAL_CLOCK;
-ERROR HY000: This operation cannot be performed with a running slave sql thread; run STOP SLAVE SQL_THREAD first
-include/stop_slave.inc
+SET GLOBAL replica_parallel_type=LOGICAL_CLOCK;
+ERROR HY000: This operation cannot be performed with a running replica sql thread; run STOP REPLICA SQL_THREAD first
+include/stop_replica.inc
 FLUSH LOGS;
 create database db1;
 create database db2;
@@ -63,46 +63,46 @@ DROP TABLE db1.t_temp;
 DROP TABLE db2.t_temp;
 DROP TABLE db3.t_temp;
 DROP TABLE db4.t_temp;
-SET GLOBAL slave_parallel_type='DATABASE';
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:db1.t,slave:db1.t]
-include/diff_tables.inc [master:db2.t, slave:db2.t]
-include/diff_tables.inc [master:db3.t, slave:db3.t]
-include/diff_tables.inc [master:db4.t, slave:db4.t]
-include/stop_slave.inc
-RESET SLAVE;
+SET GLOBAL replica_parallel_type='DATABASE';
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:db1.t,replica:db1.t]
+include/diff_tables.inc [primary:db2.t, replica:db2.t]
+include/diff_tables.inc [primary:db3.t, replica:db3.t]
+include/diff_tables.inc [primary:db4.t, replica:db4.t]
+include/stop_replica.inc
+RESET REPLICA;
 DROP DATABASE db1;
 DROP DATABASE db2;
 DROP DATABASE db3;
 DROP DATABASE db4;
-SET GLOBAL slave_parallel_type='LOGICAL_CLOCK';
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:db1.t, slave:db1.t]
-include/diff_tables.inc [master:db2.t, slave:db2.t]
-include/diff_tables.inc [master:db3.t, slave:db3.t]
-include/diff_tables.inc [master:db4.t, slave:db4.t]
-include/stop_slave.inc
-RESET SLAVE;
+SET GLOBAL replica_parallel_type='LOGICAL_CLOCK';
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:db1.t, replica:db1.t]
+include/diff_tables.inc [primary:db2.t, replica:db2.t]
+include/diff_tables.inc [primary:db3.t, replica:db3.t]
+include/diff_tables.inc [primary:db4.t, replica:db4.t]
+include/stop_replica.inc
+RESET REPLICA;
 DROP DATABASE db1;
 DROP DATABASE db2;
 DROP DATABASE db3;
 DROP DATABASE db4;
-SET GLOBAL slave_parallel_type='DATABASE';
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:db1.t, slave:db1.t]
-include/diff_tables.inc [master:db2.t, slave:db2.t]
-include/diff_tables.inc [master:db3.t, slave:db3.t]
-include/diff_tables.inc [master:db4.t, slave:db4.t]
-include/stop_slave.inc
-SET GLOBAL SLAVE_PARALLEL_TYPE=DEFAULT;
-include/start_slave.inc
+SET GLOBAL replica_parallel_type='DATABASE';
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:db1.t, replica:db1.t]
+include/diff_tables.inc [primary:db2.t, replica:db2.t]
+include/diff_tables.inc [primary:db3.t, replica:db3.t]
+include/diff_tables.inc [primary:db4.t, replica:db4.t]
+include/stop_replica.inc
+SET GLOBAL REPLICA_PARALLEL_TYPE=DEFAULT;
+include/start_replica.inc
 DROP DATABASE db1;
 DROP DATABASE db2;
 DROP DATABASE db3;
 DROP DATABASE db4;
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 include/rpl_end.inc

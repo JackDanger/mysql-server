@@ -296,7 +296,7 @@ var DnD = declare("dojox.grid.enhanced.plugins.DnD", _Plugin, {
 			"dndElem": this._elem,
 			"dnd": this
 		});
-		this._container = query(".dojoxGridMasterView", this.grid.domNode)[0];
+		this._container = query(".dojoxGridPrimaryView", this.grid.domNode)[0];
 		this._initEvents();
 	},
 	destroy: function(){
@@ -616,7 +616,7 @@ var DnD = declare("dojox.grid.enhanced.plugins.DnD", _Plugin, {
 		this._clear();
 	},
 	_createDnDUI: function(evt, isMovingIn){
-		//By default the master view of grid do not have height, because the children in it are all positioned absolutely.
+		//By default the primary view of grid do not have height, because the children in it are all positioned absolutely.
 		//But we need it to contain avatars.
 		var viewPos = html.position(this.grid.views.views[0].domNode);
 		html.style(this._container, "height", viewPos.h + "px");

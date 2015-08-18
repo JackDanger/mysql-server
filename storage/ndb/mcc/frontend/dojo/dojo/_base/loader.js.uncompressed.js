@@ -200,7 +200,7 @@ define("dojo/_base/loader", ["./kernel", "../has", "require", "module", "./json"
 				throw "unmatched paren around character " + parenRe.lastIndex + " in: " + text;
 			}
 
-			//Put the master matching string in the results.
+			//Put the primary matching string in the results.
 			return [dojo.trim(text.substring(startApplication, parenRe.lastIndex))+";\n", parenRe.lastIndex];
 		},
 

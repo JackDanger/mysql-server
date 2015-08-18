@@ -1,12 +1,12 @@
 --source include/not_group_replication_plugin.inc
 --source include/have_debug.inc
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---echo Basic insert, update, delete from Master->Slave
+--echo Basic insert, update, delete from Primary->Replica
 --echo DBUG code will set + check transfer of extra
 --echo row data in RBR
---echo **** On Master ****
+--echo **** On Primary ****
 CREATE TABLE t1 (a INT);
 
 --echo Ten inserts in one transaction -> 1 epoch transaction
@@ -21,7 +21,7 @@ flush logs;
 create table raw_data(txt varchar(1000));
 --disable_query_log
 let $MYSQLD_DATADIR= `select @@datadir;`;
---exec $MYSQL_BINLOG --verbose $MYSQLD_DATADIR/master-bin.000001 > $MYSQLTEST_VARDIR/tmp/rpl_extra_row_data.out
+--exec $MYSQL_BINLOG --verbose $MYSQLD_DATADIR/primary-bin.000001 > $MYSQLTEST_VARDIR/tmp/rpl_extra_row_data.out
 
 --eval load data local infile '$MYSQLTEST_VARDIR/tmp/rpl_extra_row_data.out' into table raw_data columns terminated by '\n';
 --enable_query_log
@@ -47,17 +47,17 @@ DELETE FROM t1 WHERE a > 390;
 
 #show binlog events;
 #let $MYSQLD_DATADIR= `select @@datadir;`;
-#--exec $MYSQL_BINLOG --verbose $MYSQLD_DATADIR/master-bin.000001
+#--exec $MYSQL_BINLOG --verbose $MYSQLD_DATADIR/primary-bin.000001
 
---echo **** On Slave ****
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--echo **** On Replica ****
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 
---echo Check row count and that slave is running ok
+--echo Check row count and that replica is running ok
 SELECT count(*) from t1;
-source include/check_slave_is_running.inc;
+source include/check_replica_is_running.inc;
 
-connection master;
+connection primary;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --source include/rpl_end.inc

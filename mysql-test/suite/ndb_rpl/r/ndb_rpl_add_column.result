@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE t1 (c1 INT KEY) ROW_FORMAT=DYNAMIC ENGINE=NDB;
 INSERT INTO t1 VALUES (1),(2),(3);
 ALTER TABLE t1 ADD c2 INT;
@@ -39,7 +39,7 @@ INSERT INTO t1 VALUES(15, 5,'e', -3.402823466E+38, 456.78, '2007-10-26 12:00:00'
 ALTER TABLE t1 algorithm=inplace, ADD h BINARY(4);
 INSERT INTO t1 VALUES(16, 6,'f', -3.402823466E+38, 456.78, '2007-10-26 12:00:00',"abcd");
 **********************
-"Master data"
+"Primary data"
 **********************
 SELECT * FROM t1 ORDER BY c1;
 c1	c2	c	d	f	g	h
@@ -55,7 +55,7 @@ c1	c2	c	d	f	g	h
 15	5	e	-3.40282e38	456.78	2007-10-26 12:00:00	NULL
 16	6	f	-3.40282e38	456.78	2007-10-26 12:00:00	abcd
 **********************
-"Slave data"
+"Replica data"
 **********************
 SELECT * FROM t1 ORDER BY c1;
 c1	c2	c	d	f	g	h
@@ -72,7 +72,7 @@ c1	c2	c	d	f	g	h
 16	6	f	-3.40282e38	456.78	2007-10-26 12:00:00	abcd
 UPDATE t1 SET c = "abcdef", d = 3.402823466E+38, f = 987.65, g = '2007-10-22 22:22:22', h = "aaaa";
 ***************************
-"Master Data After Update"
+"Primary Data After Update"
 ***************************
 SELECT * FROM t1 ORDER BY c1;
 c1	c2	c	d	f	g	h
@@ -88,7 +88,7 @@ c1	c2	c	d	f	g	h
 15	5	abcdef	3.40282e38	987.65	2007-10-22 22:22:22	aaaa
 16	6	abcdef	3.40282e38	987.65	2007-10-22 22:22:22	aaaa
 *************************
-"Slave Data After Update"
+"Replica Data After Update"
 *************************
 SELECT * FROM t1 ORDER BY c1;
 c1	c2	c	d	f	g	h
@@ -122,7 +122,7 @@ a	b	c	d	e
 4	0	aaa	bbb	ccc
 5	0	NULL	NULL	NULL
 *************************
-"Slave Data With Commit
+"Replica Data With Commit
 *************************
 SELECT * FROM t1 ORDER BY a;
 a	b	c	d	e
@@ -157,7 +157,7 @@ a	b	c	d	e
 1	1	NULL	NULL	NULL
 2	2	NULL	NULL	NULL
 *************************
-"Slave Data With Rollback
+"Replica Data With Rollback
 *************************
 SHOW CREATE TABLE t1;
 Table	Create Table

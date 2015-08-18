@@ -23,7 +23,7 @@
 #define jtie_hpp
 
 // ---------------------------------------------------------------------------
-// JTie Template Library -- Master Include File
+// JTie Template Library -- Primary Include File
 // ---------------------------------------------------------------------------
 
 // API -- template types for writing an application's JNI function stubs

@@ -13,9 +13,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-#include "rpl_slave_commit_order_manager.h"
+#include "rpl_replica_commit_order_manager.h"
 
-#include "rpl_rli_pdb.h"     // Slave_worker
+#include "rpl_rli_pdb.h"     // Replica_worker
 
 Commit_order_manager::Commit_order_manager(uint32 worker_numbers)
   : m_rollback_trx(false), m_workers(worker_numbers), queue_head(QUEUE_EOF),
@@ -29,7 +29,7 @@ Commit_order_manager::Commit_order_manager(uint32 worker_numbers)
   }
 }
 
-void Commit_order_manager::register_trx(Slave_worker *worker)
+void Commit_order_manager::register_trx(Replica_worker *worker)
 {
   DBUG_ENTER("Commit_order_manager::register_trx");
 
@@ -48,7 +48,7 @@ void Commit_order_manager::register_trx(Slave_worker *worker)
   @retval false All previous threads succeeded so this thread can go
   ahead and commit.
 */
-bool Commit_order_manager::wait_for_its_turn(Slave_worker *worker,
+bool Commit_order_manager::wait_for_its_turn(Replica_worker *worker,
                                                   bool all)
 {
   DBUG_ENTER("Commit_order_manager::wait_for_its_turn");
@@ -93,14 +93,14 @@ bool Commit_order_manager::wait_for_its_turn(Slave_worker *worker,
 
       DBUG_PRINT("info", ("thd has seen an error signal from old thread"));
       thd->get_stmt_da()->set_overwrite_status(true);
-      my_error(ER_SLAVE_WORKER_STOPPED_PREVIOUS_THD_ERROR, MYF(0));
+      my_error(ER_REPLICA_WORKER_STOPPED_PREVIOUS_THD_ERROR, MYF(0));
     }
   }
 
   DBUG_RETURN(m_rollback_trx);
 }
 
-void Commit_order_manager::unregister_trx(Slave_worker *worker)
+void Commit_order_manager::unregister_trx(Replica_worker *worker)
 {
   DBUG_ENTER("Commit_order_manager::unregister_trx");
 
@@ -125,7 +125,7 @@ void Commit_order_manager::unregister_trx(Slave_worker *worker)
   DBUG_VOID_RETURN;
 }
 
-void Commit_order_manager::report_rollback(Slave_worker *worker)
+void Commit_order_manager::report_rollback(Replica_worker *worker)
 {
   DBUG_ENTER("Commit_order_manager::report_rollback");
 
@@ -137,7 +137,7 @@ void Commit_order_manager::report_rollback(Slave_worker *worker)
   DBUG_VOID_RETURN;
 }
 
-void Commit_order_manager::report_deadlock(Slave_worker *worker)
+void Commit_order_manager::report_deadlock(Replica_worker *worker)
 {
   DBUG_ENTER("Commit_order_manager::report_deadlock");
   mysql_mutex_lock(&m_mutex);

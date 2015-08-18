@@ -5,5 +5,5 @@
 ################################################################################
 
 --source include/have_64bit.inc
---source suite/sys_vars/inc/slave_transaction_retries_basic.inc
+--source suite/sys_vars/inc/replica_transaction_retries_basic.inc
 

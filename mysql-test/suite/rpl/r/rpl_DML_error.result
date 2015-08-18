@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 # Verify the statements can be binlogged correctly when error happens
 # ------------------------------------------------------------------
 CREATE TABLE t1(c1 INT KEY) ENGINE=MyISAM;
@@ -18,8 +18,8 @@ include/show_binlog_events.inc
 # A row is inserted.
 INSERT INTO t1 VALUES(2),(1);
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:test.t1, slave:test.t1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:test.t1, replica:test.t1]
 
 # Nothing is inserted.
 INSERT INTO t1 SELECT 1 UNION SELECT 2;
@@ -29,14 +29,14 @@ include/show_binlog_events.inc
 # A row is inserted.
 INSERT INTO t1 SELECT 3 UNION SELECT 2;
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:test.t1, slave:test.t1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:test.t1, replica:test.t1]
 
 # A row is updated.
 UPDATE t1 SET c1=4;
 ERROR 23000: Duplicate entry '4' for key 'PRIMARY'
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:test.t1, slave:test.t1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:test.t1, replica:test.t1]
 # Nothing is updated.
 UPDATE t1 SET c1=4;
 ERROR 23000: Duplicate entry '4' for key 'PRIMARY'
@@ -45,8 +45,8 @@ include/show_binlog_events.inc
 # A row is updated.
 UPDATE t1, t2 SET t1.c1= 5, t2.c1=5;
 ERROR 23000: Duplicate entry '5' for key 'PRIMARY'
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:test.t1, slave:test.t1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:test.t1, replica:test.t1]
 
 Nothing is updated.
 UPDATE t1, t2 SET t1.c1= 5, t2.c1=5;

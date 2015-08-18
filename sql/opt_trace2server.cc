@@ -166,10 +166,10 @@ Opt_trace_start::Opt_trace_start(THD *thd, TABLE_LIST *tbl,
         - statement-based replication of
         "INSERT INTO real_table SELECT * FROM I_S.OPTIMIZER_TRACE" is
         anyway impossible as @@optimizer_trace* are not replicated, and trace
-        would be different between master and slave unless data and engines
+        would be different between primary and replica unless data and engines
         and version of the optimizer are strictly identical.
         - row-based replication of the INSERT SELECT above is still allowed,
-        it does not require enabling optimizer trace on the slave.
+        it does not require enabling optimizer trace on the replica.
       */
       support_I_S= true;
     }
@@ -325,7 +325,7 @@ void opt_trace_disable_if_no_security_context_access(THD *thd)
     DBUG_VOID_RETURN;
   }
   /*
-    Note that thd->m_main_security_ctx.master_access is probably invariant
+    Note that thd->m_main_security_ctx.primary_access is probably invariant
     accross the life of THD: GRANT/REVOKE don't affect global privileges of an
     existing connection, per the manual.
   */

@@ -9,7 +9,7 @@
 --echo  the cluster roles.
 --echo  The main result differences w.r.t ndb_rpl_conflict_epoch.result are :
 --echo    - Result file has 2 passes for different roles
---echo    - Master and Local server ids swapped in second run
+--echo    - Primary and Local server ids swapped in second run
 --echo    - Delete-Delete-Insert (case 8) shows no divergence
 --echo 
 
@@ -18,11 +18,11 @@
 
 #let $rpl_debug=1;
 
-let $clusterA_port=$MASTER_MYPORT;
-let $clusterB_port=$SLAVE_MYPORT;
+let $clusterA_port=$PRIMARY_MYPORT;
+let $clusterB_port=$REPLICA_MYPORT;
 
-#let $clusterA_port=$SLAVE_MYPORT;
-#let $clusterB_port=$MASTER_MYPORT;
+#let $clusterA_port=$REPLICA_MYPORT;
+#let $clusterB_port=$PRIMARY_MYPORT;
 #let $SWITCH_CLUSTER_ROLES=1;
 
 #echo $clusterA_port;
@@ -35,11 +35,11 @@ let $clusterB_port=$SLAVE_MYPORT;
 --echo First we have Cluster A as Primary, Cluster B as Secondary
 --connection clusterA
 #SHOW VARIABLES LIKE '%server%';
-SET GLOBAL ndb_slave_conflict_role="PRIMARY";
+SET GLOBAL ndb_replica_conflict_role="PRIMARY";
 
 --connection clusterB
 #SHOW VARIABLES LIKE '%server%';
-SET GLOBAL ndb_slave_conflict_role="SECONDARY";
+SET GLOBAL ndb_replica_conflict_role="SECONDARY";
 
 --connection clusterA
 
@@ -50,30 +50,30 @@ let $SECONDARY_CONFLICT_ALG=\"NDB\$EPOCH2()\";
 
 --echo Next we have Cluster A as Secondary, Cluster B as Primary
 --connection clusterA
-SET GLOBAL ndb_slave_conflict_role="NONE";
-SET GLOBAL ndb_slave_conflict_role="SECONDARY";
+SET GLOBAL ndb_replica_conflict_role="NONE";
+SET GLOBAL ndb_replica_conflict_role="SECONDARY";
 
 --connection clusterB
-SET GLOBAL ndb_slave_conflict_role="NONE";
-SET GLOBAL ndb_slave_conflict_role="PRIMARY";
+SET GLOBAL ndb_replica_conflict_role="NONE";
+SET GLOBAL ndb_replica_conflict_role="PRIMARY";
 
 --echo We set a special control var to allow the generic scripts
 --echo to handle this topology
 let $SWITCH_CLUSTER_ROLES=1;
 
 --echo Remove some connections which can't be setup twice (ugly)
---disconnect master
---disconnect master1
---disconnect slave
---disconnect slave1
+--disconnect primary
+--disconnect primary1
+--disconnect replica
+--disconnect replica1
 
 --source suite/ndb_rpl/t/ndb_rpl_conflict_epoch.inc
 
 # TODO : Switch back to A Primary, B Secondary?
 
 --connection clusterA
-SET GLOBAL ndb_slave_conflict_role="NONE";
+SET GLOBAL ndb_replica_conflict_role="NONE";
 
 --connection clusterB
-SET GLOBAL ndb_slave_conflict_role="NONE";
+SET GLOBAL ndb_replica_conflict_role="NONE";
 

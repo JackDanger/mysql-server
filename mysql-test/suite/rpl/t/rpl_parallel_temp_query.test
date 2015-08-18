@@ -6,29 +6,29 @@
 
 --source include/not_group_replication_plugin.inc
 --source include/have_binlog_format_statement.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 call mtr.add_suppression('Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.');
 
 let $temp_tables= 16;
 let $workers= 4;
 
-connection slave;
+connection replica;
 
-flush status; # to nullify Slave_open_temp_tables
+flush status; # to nullify Replica_open_temp_tables
 
 # restart in Parallel
-source include/stop_slave.inc;
-set @save.slave_parallel_workers= @@global.slave_parallel_workers;
-eval set @@global.slave_parallel_workers= $workers;
+source include/stop_replica.inc;
+set @save.replica_parallel_workers= @@global.replica_parallel_workers;
+eval set @@global.replica_parallel_workers= $workers;
 
-source include/start_slave.inc;
+source include/start_replica.inc;
 
 # Two connections each create 2 db:s a regular table and a set of temp tables.
 # The temp tables contribute content to the regular tables.
 # In the end there must be consistent data on both sides.
 
-connection master;
+connection primary;
 
 let $n= `select round($workers/2)`;
 let $n1= `select $n`;
@@ -62,7 +62,7 @@ while ($n)
   dec $n1;
 }
 
-connection master1;
+connection primary1;
 
 let $n= `select round($workers/2)`;
 let $n1= `select 2*$n`;
@@ -96,13 +96,13 @@ while ($n)
   dec $n1;
 }
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-if (`select variable_value - $workers*$temp_tables as must_be_zero from information_schema.global_status where variable_name like 'Slave_open_temp_tables'`)
+if (`select variable_value - $workers*$temp_tables as must_be_zero from information_schema.global_status where variable_name like 'Replica_open_temp_tables'`)
 {
-   --let $actual_temps= `select variable_value from information_schema.global_status where variable_name like 'Slave_open_temp_tables'`
+   --let $actual_temps= `select variable_value from information_schema.global_status where variable_name like 'Replica_open_temp_tables'`
    --let $exected= `select  $workers*$temp_tables`
-   --echo *** Wrong value of Slave_open_temp_tables: got $actual_temps, expected $expected ***
+   --echo *** Wrong value of Replica_open_temp_tables: got $actual_temps, expected $expected ***
    --die
 }
 
@@ -113,7 +113,7 @@ if (`select variable_value - $workers*$temp_tables as must_be_zero from informat
 let $n = $workers;
 while($n)
 {
-  let $diff_tables=master:d$n.t1, slave:d$n.t1;
+  let $diff_tables=primary:d$n.t1, replica:d$n.t1;
   source include/diff_tables.inc;
 
   dec $n;
@@ -125,7 +125,7 @@ while($n)
 # All temp tables are removed explicitly.
 #
 
-connection master;
+connection primary;
 let $n= `select round($workers/2)`;
 let $n1= `select $n`;
 while($n)
@@ -153,7 +153,7 @@ while ($n)
   dec $n1;
 }
 
-connection master1;
+connection primary1;
 
 let $n= `select round($workers/2)`;
 let $n1= `select 2*$n`;
@@ -172,17 +172,17 @@ while ($n)
   dec $n1;
 }
 
---source include/sync_slave_sql_with_master.inc
-#connection slave;
+--source include/sync_replica_sql_with_primary.inc
+#connection replica;
 
-connection master1;
-disconnect master1;
+connection primary1;
+disconnect primary1;
 
 #
 # Clean-up
 #
 
-connection master;
+connection primary;
 
 let $n= `select round($workers/2)`;
 let $n1= `select 2*$n`;
@@ -193,9 +193,9 @@ while ($n)
   dec $n1;
 }
 
---source include/sync_slave_sql_with_master.inc
-source include/stop_slave.inc;
+--source include/sync_replica_sql_with_primary.inc
+source include/stop_replica.inc;
 
-set @@global.slave_parallel_workers= @save.slave_parallel_workers;
-CHANGE MASTER TO MASTER_AUTO_POSITION= 0;
+set @@global.replica_parallel_workers= @save.replica_parallel_workers;
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 0;
 ### TODO: --source include/rpl_end.inc

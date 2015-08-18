@@ -4,16 +4,16 @@
 #
 # ==== Method ====
 #
-# Create a procedure with aliases of variables, then replicate it to slave.
+# Create a procedure with aliases of variables, then replicate it to replica.
 # BUG#35515 Aliases of variables in binary log are ignored with NAME_CONST.
 #
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 --echo ==== Initialize ====
 
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 
 create table t1 (id int);
 
@@ -35,14 +35,14 @@ delimiter ;$$
 call test_procedure(1234);
 
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 select * from t1 order by id;
 
 --echo ==== Clean up ====
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 drop table t1;
 drop procedure test_procedure;
 --source include/rpl_end.inc

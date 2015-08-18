@@ -605,7 +605,7 @@ int init_floatvar_from_file(float* var, IO_CACHE* f, float default_val)
    to calculate the size of the buffers.
 
    Particularly, this function is responsible for restoring IGNORE_SERVER_IDS
-   list of servers whose events the slave is going to ignore (to not log them
+   list of servers whose events the replica is going to ignore (to not log them
    in the relay log).
 
    Items being read are supposed to be decimal output of values of a  type
@@ -632,7 +632,7 @@ bool init_dynarray_intvar_from_file(char *buffer, size_t size,
 
   if ((read_size= my_b_gets(f, buf_act, size)) == 0)
   {
-    DBUG_RETURN(FALSE); // no line in master.info
+    DBUG_RETURN(FALSE); // no line in primary.info
   }
   if (read_size + 1 == size && buf[size - 2] != '\n')
   {

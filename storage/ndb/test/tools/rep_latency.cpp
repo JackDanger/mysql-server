@@ -16,7 +16,7 @@
 */
 
 /* 
- * Update on master wait for update on slave
+ * Update on primary wait for update on replica
  *
  */
 
@@ -44,7 +44,7 @@ struct XxxR
 };
 
 static int
-prepare_master_or_slave(Ndb &myNdb,
+prepare_primary_or_replica(Ndb &myNdb,
                         const char* table,
                         const char* pk,
                         Uint32 pk_val,
@@ -52,9 +52,9 @@ prepare_master_or_slave(Ndb &myNdb,
                         struct Xxx &xxx,
                         struct XxxR &xxxr);
 static void
-run_master_update(struct Xxx &xxx, struct XxxR &xxxr);
+run_primary_update(struct Xxx &xxx, struct XxxR &xxxr);
 static void
-run_slave_wait(struct Xxx &xxx, struct XxxR &xxxr);
+run_replica_wait(struct Xxx &xxx, struct XxxR &xxxr);
 
 #define PRINT_ERROR(code,msg) \
   g_err << "Error in " << __FILE__ << ", line: " << __LINE__ \
@@ -126,15 +126,15 @@ int main(int argc, char** argv)
     struct Xxx xxx1;
     struct Xxx xxx2;
     struct XxxR xxxr;
-    prepare_master_or_slave(myNdb1, opt_table, opt_pk, opt_pk_val, opt_col,
+    prepare_primary_or_replica(myNdb1, opt_table, opt_pk, opt_pk_val, opt_col,
                             xxx1, xxxr);
-    prepare_master_or_slave(myNdb2, opt_table, opt_pk, opt_pk_val, opt_col,
+    prepare_primary_or_replica(myNdb2, opt_table, opt_pk, opt_pk_val, opt_col,
                             xxx2, xxxr);
     while (1)
     {
       // run the application code
-      run_master_update(xxx1, xxxr);
-      run_slave_wait(xxx2, xxxr);
+      run_primary_update(xxx1, xxxr);
+      run_replica_wait(xxx2, xxxr);
       ndbout << "latency: " << xxxr.latency << endl;
     }
   }
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 }
 
 static int
-prepare_master_or_slave(Ndb &myNdb,
+prepare_primary_or_replica(Ndb &myNdb,
                         const char* table,
                         const char* pk,
                         Uint32 pk_val,
@@ -186,7 +186,7 @@ prepare_master_or_slave(Ndb &myNdb,
   return 0;
 }
 
-static void run_master_update(struct Xxx &xxx, struct XxxR &xxxr)
+static void run_primary_update(struct Xxx &xxx, struct XxxR &xxxr)
 {
   Ndb *ndb = xxx.ndb;
   const NdbDictionary::Table *myTable = xxx.table;
@@ -244,7 +244,7 @@ err:
   gettimeofday(&xxxr.start_time, 0);
 }
 
-static void run_slave_wait(struct Xxx &xxx, struct XxxR &xxxr)
+static void run_replica_wait(struct Xxx &xxx, struct XxxR &xxxr)
 {
   struct timeval old_end_time = xxxr.start_time, end_time;
   Ndb *ndb = xxx.ndb;

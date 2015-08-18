@@ -32,10 +32,10 @@ int restartRandomNodeAbort(F_ARGS);
 int restartRandomNodeError(F_ARGS);
 int restartRandomNodeInitial(F_ARGS);
 int restartNFDuringNR(F_ARGS);
-int restartMasterNodeError(F_ARGS);
+int restartPrimaryNodeError(F_ARGS);
 int twoNodeFailure(F_ARGS);
 int fiftyPercentFail(F_ARGS);
-int twoMasterNodeFailure(F_ARGS);
+int twoPrimaryNodeFailure(F_ARGS);
 int restartAllNodesGracfeul(F_ARGS);
 int restartAllNodesAbort(F_ARGS);
 int restartAllNodesError9999(F_ARGS);
@@ -86,12 +86,12 @@ const NdbRestarts::NdbRestart NdbRestarts::m_restarts[] = {
 	     restartRandomNodeError,
 	     2),
   /**
-   * Restart the master node
+   * Restart the primary node
    * with  error insert
    */ 
-  NdbRestart("RestartMasterNodeError",
+  NdbRestart("RestartPrimaryNodeError",
 	     NODE_RESTART,
-	     restartMasterNodeError,
+	     restartPrimaryNodeError,
 	     2),
   /**
    * Restart a randomly selected node without fileystem
@@ -135,13 +135,13 @@ const NdbRestarts::NdbRestart NdbRestarts::m_restarts[] = {
 	     twoNodeFailure,
 	     4),
   /**
-   * 2 nodes restart, select master nodes and restart with 
+   * 2 nodes restart, select primary nodes and restart with 
    * a small random delay between restarts 
    */ 
   
-  NdbRestart("TwoMasterNodeFailure",
+  NdbRestart("TwoPrimaryNodeFailure",
 	     MULTIPLE_NODE_RESTART,
-	     twoMasterNodeFailure,
+	     twoPrimaryNodeFailure,
 	     4),
 
   NdbRestart("FiftyPercentFail",
@@ -189,7 +189,7 @@ const NdbRestarts::NdbRestart NdbRestarts::m_restarts[] = {
 	     fiftyPercentStopAndWait,
 	     2),
   /** 
-   * Restart a master node during LCP with error inserts.
+   * Restart a primary node during LCP with error inserts.
    */ 
   NdbRestart("RestartNodeDuringLCP", 
 	     NODE_RESTART,
@@ -414,7 +414,7 @@ int restartRandomNodeError(F_ARGS){
   return NDBT_OK;
 }
 
-int restartMasterNodeError(F_ARGS){
+int restartPrimaryNodeError(F_ARGS){
 
   int nodeId = _restarter.getDbNodeId(0);
   
@@ -477,13 +477,13 @@ int twoNodeFailure(F_ARGS){
   return NDBT_OK;
 }
 
-int twoMasterNodeFailure(F_ARGS){
+int twoPrimaryNodeFailure(F_ARGS){
 
   int n[2];
-  n[0] = _restarter.getMasterNodeId();  
+  n[0] = _restarter.getPrimaryNodeId();  
   n[1] = n[0];
   do {
-    n[1] = _restarter.getNextMasterNodeId(n[1]);
+    n[1] = _restarter.getNextPrimaryNodeId(n[1]);
   } while(_restarter.getNodeGroup(n[0]) == _restarter.getNodeGroup(n[1]));
   
   g_info << _restart->m_name << ": ";
@@ -727,15 +727,15 @@ int restartNFDuringNR(F_ARGS safety){
     int nodeId = _restarter.getDbNodeId(randomId);
     const int error = NFDuringNR_codes[i];
     
-    const int masterNodeId = _restarter.getMasterNodeId();
-    CHECK(masterNodeId > 0, "getMasterNodeId failed");
+    const int primaryNodeId = _restarter.getPrimaryNodeId();
+    CHECK(primaryNodeId > 0, "getPrimaryNodeId failed");
     int crashNodeId = 0;
     do {
       int rand = myRandom48(1000);
       crashNodeId = _restarter.getRandomNodeOtherNodeGroup(nodeId, rand);
-    } while(crashNodeId == masterNodeId);
+    } while(crashNodeId == primaryNodeId);
 
-    CHECK(crashNodeId > 0, "getMasterNodeId failed");
+    CHECK(crashNodeId > 0, "getPrimaryNodeId failed");
 
     g_info << _restart->m_name << " restarting node = " << nodeId 
 	   << " error code = " << error 
@@ -765,57 +765,57 @@ int restartNFDuringNR(F_ARGS safety){
 }
 
 int
-NRDuringLCP_Master_codes[] = {
-  7009, // Insert system error in master when local checkpoint is idle.
-  7010, // Insert system error in master when local checkpoint is in the
+NRDuringLCP_Primary_codes[] = {
+  7009, // Insert system error in primary when local checkpoint is idle.
+  7010, // Insert system error in primary when local checkpoint is in the
         // state clcpStatus = CALCULATE_KEEP_GCI.
-  7013, // Insert system error in master when local checkpoint is in the
+  7013, // Insert system error in primary when local checkpoint is in the
         // state clcpStatus = COPY_GCI before sending COPY_GCIREQ.
-  7014, // Insert system error in master when local checkpoint is in the
+  7014, // Insert system error in primary when local checkpoint is in the
         // state clcpStatus = TC_CLOPSIZE before sending TC_CLOPSIZEREQ.
-  7015, // Insert system error in master when local checkpoint is in the
+  7015, // Insert system error in primary when local checkpoint is in the
         // state clcpStatus = START_LCP_ROUND before sending START_LCP_ROUND.
-  7019, // Insert system error in master when local checkpoint is in the
+  7019, // Insert system error in primary when local checkpoint is in the
         // state clcpStatus = IDLE before sending CONTINUEB(ZCHECK_TC_COUNTER).
-  7075, // Master. Don't send any LCP_FRAG_ORD(last=true)
+  7075, // Primary. Don't send any LCP_FRAG_ORD(last=true)
         // And crash when all have "not" been sent
-  7021, // Crash in  master when receiving START_LCP_REQ
-  7023, // Crash in  master when sending START_LCP_CONF
-  7025, // Crash in  master when receiving LCP_FRAG_REP
-  7026, // Crash in  master when changing state to LCP_TAB_COMPLETED 
-  7027  // Crash in  master when changing state to LCP_TAB_SAVED
+  7021, // Crash in  primary when receiving START_LCP_REQ
+  7023, // Crash in  primary when sending START_LCP_CONF
+  7025, // Crash in  primary when receiving LCP_FRAG_REP
+  7026, // Crash in  primary when changing state to LCP_TAB_COMPLETED 
+  7027  // Crash in  primary when changing state to LCP_TAB_SAVED
 };
 
 int
-NRDuringLCP_NonMaster_codes[] = {
+NRDuringLCP_NonPrimary_codes[] = {
   7020, // Insert system error in local checkpoint participant at reception 
         // of COPY_GCIREQ.
   8000, // Crash particpant when receiving TCGETOPSIZEREQ
   8001, // Crash particpant when receiving TC_CLOPSIZEREQ
   5010, // Crash any when receiving LCP_FRAGORD
-  7022, // Crash in !master when receiving START_LCP_REQ
-  7024, // Crash in !master when sending START_LCP_CONF
-  7016, // Crash in !master when receiving LCP_FRAG_REP
-  7017, // Crash in !master when changing state to LCP_TAB_COMPLETED 
-  7018  // Crash in !master when changing state to LCP_TAB_SAVED
+  7022, // Crash in !primary when receiving START_LCP_REQ
+  7024, // Crash in !primary when sending START_LCP_CONF
+  7016, // Crash in !primary when receiving LCP_FRAG_REP
+  7017, // Crash in !primary when changing state to LCP_TAB_COMPLETED 
+  7018  // Crash in !primary when changing state to LCP_TAB_SAVED
 };
 
 int restartNodeDuringLCP(F_ARGS safety) {
   int i;
-  // Master
+  // Primary
   int val = DumpStateOrd::DihMinTimeBetweenLCP;
   CHECK(_restarter.dumpStateAllNodes(&val, 1) == 0,
 	"Failed to set LCP to min value"); // Set LCP to min val
-  int sz = sizeof(NRDuringLCP_Master_codes)/
-           sizeof(NRDuringLCP_Master_codes[0]);
+  int sz = sizeof(NRDuringLCP_Primary_codes)/
+           sizeof(NRDuringLCP_Primary_codes[0]);
   for(i = 0; i<sz && !ctx->closeToTimeout(safety); i++)
   {
-    int error = NRDuringLCP_Master_codes[i];
-    int masterNodeId = _restarter.getMasterNodeId();
+    int error = NRDuringLCP_Primary_codes[i];
+    int primaryNodeId = _restarter.getPrimaryNodeId();
 
-    CHECK(masterNodeId > 0, "getMasterNodeId failed");
+    CHECK(primaryNodeId > 0, "getPrimaryNodeId failed");
 
-    ndbout << _restart->m_name << " restarting master node = " << masterNodeId 
+    ndbout << _restart->m_name << " restarting primary node = " << primaryNodeId 
 	   << " error code = " << error << endl;
 
     {
@@ -824,13 +824,13 @@ int restartNodeDuringLCP(F_ARGS safety) {
 	    "failed to set RestartOnErrorInsert");
     }
 
-    CHECK(_restarter.insertErrorInNode(masterNodeId, error) == 0,
+    CHECK(_restarter.insertErrorInNode(primaryNodeId, error) == 0,
 	  "failed to set error insert");
 
-    CHECK(_restarter.waitNodesNoStart(&masterNodeId, 1, 300) == 0,
+    CHECK(_restarter.waitNodesNoStart(&primaryNodeId, 1, 300) == 0,
 				      "failed to wait no start");
 
-    CHECK(_restarter.startNodes(&masterNodeId, 1) == 0,
+    CHECK(_restarter.startNodes(&primaryNodeId, 1) == 0,
 	  "failed to start node");
 
     CHECK(_restarter.waitClusterStarted(300) == 0,
@@ -838,26 +838,26 @@ int restartNodeDuringLCP(F_ARGS safety) {
 
     {
       int val = DumpStateOrd::DihMinTimeBetweenLCP;
-      CHECK(_restarter.dumpStateOneNode(masterNodeId, &val, 1) == 0,
+      CHECK(_restarter.dumpStateOneNode(primaryNodeId, &val, 1) == 0,
 	    "failed to set error insert");
     }
   }
 
-  // NON-Master
-  sz = sizeof(NRDuringLCP_NonMaster_codes)/
-       sizeof(NRDuringLCP_NonMaster_codes[0]);
+  // NON-Primary
+  sz = sizeof(NRDuringLCP_NonPrimary_codes)/
+       sizeof(NRDuringLCP_NonPrimary_codes[0]);
   for(i = 0; i<sz && !ctx->closeToTimeout(safety) ; i++) {
 
-    int error = NRDuringLCP_NonMaster_codes[i];
+    int error = NRDuringLCP_NonPrimary_codes[i];
     int nodeId = getRandomNodeId(_restarter);
-    int masterNodeId = _restarter.getMasterNodeId();
-    CHECK(masterNodeId > 0, "getMasterNodeId failed");
+    int primaryNodeId = _restarter.getPrimaryNodeId();
+    CHECK(primaryNodeId > 0, "getPrimaryNodeId failed");
 
-    while (nodeId == masterNodeId) {
+    while (nodeId == primaryNodeId) {
       nodeId = getRandomNodeId(_restarter);
     }
 
-    ndbout << _restart->m_name << " restarting non-master node = " << nodeId
+    ndbout << _restart->m_name << " restarting non-primary node = " << nodeId
 	   << " error code = " << error << endl;
 
     int val[] = { DumpStateOrd::CmvmiSetRestartOnErrorInsert, 1 };

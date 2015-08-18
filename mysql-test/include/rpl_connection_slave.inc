@@ -1,2 +1,2 @@
-let $rpl_connection_name= slave;
+let $rpl_connection_name= replica;
 source include/rpl_connection.inc;

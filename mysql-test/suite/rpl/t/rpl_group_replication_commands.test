@@ -24,7 +24,7 @@ STOP GROUP_REPLICATION;
 #########################################################################################
 
 CREATE USER 'group_rpl_user' IDENTIFIED BY '';
---connect (con_group_rpl_user,127.0.0.1,group_rpl_user,,test,$MASTER_MYPORT,,)
+--connect (con_group_rpl_user,127.0.0.1,group_rpl_user,,test,$PRIMARY_MYPORT,,)
 --connection con_group_rpl_user
 
 # Start Group Replication with non-super privilege user

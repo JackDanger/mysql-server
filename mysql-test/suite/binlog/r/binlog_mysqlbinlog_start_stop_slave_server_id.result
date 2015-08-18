@@ -1,5 +1,5 @@
 CREATE TABLE t1 (a INT);
-RESET MASTER;
+RESET PRIMARY;
 SET TIMESTAMP= UNIX_TIMESTAMP("2031-01-01 12:00:00");
 INSERT INTO t1 VALUES(1);
 SET TIMESTAMP= UNIX_TIMESTAMP("2032-01-01 12:00:00");
@@ -17,7 +17,7 @@ FLUSH LOGS;
 
 ---- to-last-log stop-never connection-server-id ----
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -79,13 +79,13 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 ==== Remote with connection-server-id= (value other than 0) ====
 
 ---- to-last-log  connection-server-id ----
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -147,7 +147,7 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 ==== clean up ====
 DROP TABLE t1;

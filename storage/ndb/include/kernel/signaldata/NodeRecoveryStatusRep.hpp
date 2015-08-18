@@ -59,7 +59,7 @@ class LocalRecoveryCompleteRep
 {
 public:
   STATIC_CONST ( SignalLengthLocal = 4 );
-  STATIC_CONST ( SignalLengthMaster = 2 );
+  STATIC_CONST ( SignalLengthPrimary = 2 );
 
   enum PhaseIds
   {

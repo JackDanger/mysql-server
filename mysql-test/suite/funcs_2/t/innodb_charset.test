@@ -3,7 +3,7 @@
 # Date:    2005-09-21                                                          #
 # Purpose: Testing the charsets for InnoDB engine                              #
 #                                                                              #
-# Checking of other prerequisites is in charset_master.test                    #
+# Checking of other prerequisites is in charset_primary.test                    #
 ################################################################################
 #Want to skip this test from daily Valgrind execution.
 --source include/no_valgrind_without_big.inc
@@ -11,5 +11,5 @@
 --source include/have_innodb.inc
 
 let $engine_type= InnoDB;
---source suite/funcs_2/charset/charset_master.test
+--source suite/funcs_2/charset/charset_primary.test
 

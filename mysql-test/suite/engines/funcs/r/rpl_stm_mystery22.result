@@ -1,9 +1,9 @@
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
+start replica;
 create table t1(n int auto_increment primary key, s char(10));
 insert into t1 values (2,'old');
 insert into t1 values(NULL,'new');
@@ -13,8 +13,8 @@ n	s
 1	new
 2	old
 delete from t1 where n = 2;
-start slave;
-stop slave;
+start replica;
+stop replica;
 create table t2(n int);
 drop table t2;
 insert into t1 values(NULL,'new');
@@ -22,7 +22,7 @@ set sql_log_bin=0;
 insert into t1 values(NULL,'new');
 set sql_log_bin=1;
 delete from t1 where n=4;
-start slave;
+start replica;
 select * from t1 order by n;
 n	s
 1	new

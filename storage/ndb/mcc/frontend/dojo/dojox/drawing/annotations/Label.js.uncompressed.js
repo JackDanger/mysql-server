@@ -18,17 +18,17 @@ dojox.drawing.annotations.Label = dojox.drawing.util.oo.declare(
 		//	options: Object
 		//		One key value: the stencil that called this.
 		//
-		this.master = options.stencil;
+		this.primary = options.stencil;
 		this.labelPosition = options.labelPosition || "BR"; // TL, TR, BR, BL, or function
 		if(dojo.isFunction(this.labelPosition)){
 			this.setLabel = this.setLabelCustom;
 		}
 		this.setLabel(options.text || "");
-		this.connect(this.master, "onTransform", this, "setLabel");
-		this.connect(this.master, "destroy", this, "destroy");
+		this.connect(this.primary, "onTransform", this, "setLabel");
+		this.connect(this.primary, "destroy", this, "destroy");
 		
 		if(this.style.labelSameColor){
-			this.connect(this.master, "attr", this, "beforeAttr");
+			this.connect(this.primary, "attr", this, "beforeAttr");
 		}
 	},{
 		_align:"start",
@@ -38,7 +38,7 @@ dojox.drawing.annotations.Label = dojox.drawing.util.oo.declare(
 			// summary:
 			//	Attaches to custom positioning within a Stencil
 			//
-			var d = dojo.hitch(this.master, this.labelPosition)();
+			var d = dojo.hitch(this.primary, this.labelPosition)();
 			this.setData({
 				x:d.x,
 				y:d.y,
@@ -58,7 +58,7 @@ dojox.drawing.annotations.Label = dojox.drawing.util.oo.declare(
 			//	be called within Stencil. See stencil._Base
 			//
 			// onTransform will pass an object here
-			var x, y, box = this.master.getBounds();
+			var x, y, box = this.primary.getBounds();
 			
 			if(/B/.test(this.labelPosition)){
 				y = box.y2 - this._lineHeight;

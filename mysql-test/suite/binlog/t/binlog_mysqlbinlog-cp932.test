@@ -6,7 +6,7 @@
 -- source include/have_cp932.inc
 -- source include/have_log_bin.inc
 
-RESET MASTER;
+RESET PRIMARY;
 
 # Bug#16217 (mysql client did not know how not switch its internal charset)
 create table t3 (f text character set utf8);
@@ -17,13 +17,13 @@ create table t4 (f text character set cp932);
 --execw $MYSQL --default-character-set=cp932 test -e "insert into t4 values(_cp932'ƒ\');"
 flush logs;
 let $datadir = `SELECT @@DATADIR`;
-copy_file $datadir/master-bin.000001 $datadir/master-bin.saved;
+copy_file $datadir/primary-bin.000001 $datadir/primary-bin.saved;
 rename table t3 to t03, t4 to t04;
 
 # Reset GTIDs
-RESET MASTER;
+RESET PRIMARY;
 
---exec $MYSQL_BINLOG --short-form $datadir/master-bin.saved | $MYSQL --default-character-set=utf8
+--exec $MYSQL_BINLOG --short-form $datadir/primary-bin.saved | $MYSQL --default-character-set=utf8
 # original and recovered data must be equal
 select HEX(f) from t03;
 select HEX(f) from t3;

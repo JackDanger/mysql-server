@@ -5,18 +5,18 @@
 # transitivity strategy. Instead we do an exhaustive testing.
 
 # Using begin_include_file/end_include_file to prevent output from all
-# the rpl_sync_slave_sql_with_master, etc.
+# the rpl_sync_replica_sql_with_primary, etc.
 --let $include_silent= 1
 --source include/begin_include_file.inc
 --let $include_silent= 0
 
 disable_query_log;
-connection slave;
---let $conv = `select @@slave_type_conversions`
---echo **** Running tests with @@SLAVE_TYPE_CONVERSIONS = '$conv' ****
+connection replica;
+--let $conv = `select @@replica_type_conversions`
+--echo **** Running tests with @@REPLICA_TYPE_CONVERSIONS = '$conv' ****
 
-let $if_is_lossy = `SELECT FIND_IN_SET('ALL_LOSSY', @@SLAVE_TYPE_CONVERSIONS)`;
-let $if_is_non_lossy = `SELECT FIND_IN_SET('ALL_NON_LOSSY', @@SLAVE_TYPE_CONVERSIONS)`;
+let $if_is_lossy = `SELECT FIND_IN_SET('ALL_LOSSY', @@REPLICA_TYPE_CONVERSIONS)`;
+let $if_is_non_lossy = `SELECT FIND_IN_SET('ALL_NON_LOSSY', @@REPLICA_TYPE_CONVERSIONS)`;
 
 # TINYBLOB
 
@@ -175,52 +175,52 @@ let $target_value = '2009-11-21';
 let $can_convert  = 1;
 source extra/rpl_tests/check_type.inc;
 
-let $source_type  = ENUM('master','slave');
-let $target_type  = ENUM('master','slave');
-let $source_value = 'master';
-let $target_value = 'master';
+let $source_type  = ENUM('primary','replica');
+let $target_type  = ENUM('primary','replica');
+let $source_value = 'primary';
+let $target_value = 'primary';
 let $can_convert  = 1;
 source extra/rpl_tests/check_type.inc;
 
 let $source_type  = CHAR(10);
-let $target_type  = ENUM('master','slave');
-let $source_value = 'master';
-let $target_value = 'master';
+let $target_type  = ENUM('primary','replica');
+let $source_value = 'primary';
+let $target_value = 'primary';
 let $can_convert  = 0;
 source extra/rpl_tests/check_type.inc;
 
 let $source_type  = CHAR(10);
-let $target_type  = SET('master','slave');
-let $source_value = 'master';
-let $target_value = 'master';
+let $target_type  = SET('primary','replica');
+let $source_value = 'primary';
+let $target_value = 'primary';
 let $can_convert  = 0;
 source extra/rpl_tests/check_type.inc;
 
-let $source_type  = ENUM('master','slave');
+let $source_type  = ENUM('primary','replica');
 let $target_type  = CHAR(10);
-let $source_value = 'master';
-let $target_value = 'master';
+let $source_value = 'primary';
+let $target_value = 'primary';
 let $can_convert  = 0;
 source extra/rpl_tests/check_type.inc;
 
-let $source_type  = SET('master','slave');
+let $source_type  = SET('primary','replica');
 let $target_type  = CHAR(10);
-let $source_value = 'master';
-let $target_value = 'master';
+let $source_value = 'primary';
+let $target_value = 'primary';
 let $can_convert  = 0;
 source extra/rpl_tests/check_type.inc;
 
-let $source_type  = SET('master','slave');
-let $target_type  = SET('master','slave');
+let $source_type  = SET('primary','replica');
+let $target_type  = SET('primary','replica');
 let $source_value = '';
 let $target_value = '';
 let $can_convert  = 1;
 source extra/rpl_tests/check_type.inc;
 
-let $source_type  = SET('master','slave');
-let $target_type  = SET('master','slave');
-let $source_value = 'master,slave';
-let $target_value = 'master,slave';
+let $source_type  = SET('primary','replica');
+let $target_type  = SET('primary','replica');
+let $source_value = 'primary,replica';
+let $target_value = 'primary,replica';
 let $can_convert  = 1;
 source extra/rpl_tests/check_type.inc;
 

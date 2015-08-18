@@ -29,7 +29,7 @@
 --echo #########################################################################
 --echo #                            CONFIGURATION
 --echo #########################################################################
-connection master;
+connection primary;
 
 eval CREATE TABLE tt_1 (ddl_case INT, PRIMARY KEY(ddl_case)) ENGINE = $engine;
 eval CREATE TABLE tt_2 (ddl_case INT, PRIMARY KEY(ddl_case)) ENGINE = $engine;
@@ -95,7 +95,7 @@ while ($ddl_cases >= 1)
     let $commit_event_row_number= 9;
   }
 
-  let $first_binlog_position= query_get_value("SHOW MASTER STATUS", Position, 1);
+  let $first_binlog_position= query_get_value("SHOW PRIMARY STATUS", Position, 1);
   --enable_query_log
   eval INSERT INTO tt_1(ddl_case) VALUES ($ddl_cases);
 
@@ -701,18 +701,18 @@ SET AUTOCOMMIT= 1;
 --echo ###################################################################################
 --echo #                               CHECK CONSISTENCY
 --echo ###################################################################################
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---let $diff_tables= master:tt_1,slave:tt_1
+--let $diff_tables= primary:tt_1,replica:tt_1
 --source include/diff_tables.inc
 
 --echo ###################################################################################
 --echo #                                        CLEAN
 --echo ###################################################################################
-connection master;
+connection primary;
 
 DROP TABLE tt_1;
 DROP TABLE tt_2;
 DROP TABLE nt_1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc

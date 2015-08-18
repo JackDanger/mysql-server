@@ -338,7 +338,7 @@ typedef struct st_mi_sort_param
   my_off_t pos,max_pos,filepos,start_recpos;
   uint key, key_length,real_key_length;
   uint maxbuffers, keys, find_length, sort_keys_length;
-  my_bool fix_datafile, master;
+  my_bool fix_datafile, primary;
   my_bool calc_checksum;                /* calculate table checksum */
   MI_KEYDEF *keyinfo;
   HA_KEYSEG *seg;

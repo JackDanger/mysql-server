@@ -3181,7 +3181,7 @@ void Item_ident::fix_after_pullout(st_select_lex *parent_select,
       /*
         The subquery on this level is outer-correlated with respect to the field
       */
-      Item_subselect *subq_predicate= child_select->master_unit()->item;
+      Item_subselect *subq_predicate= child_select->primary_unit()->item;
 
       subq_predicate->used_tables_cache|= OUTER_REF_TABLE_BIT;
       child_select= child_select->outer_select();
@@ -3192,7 +3192,7 @@ void Item_ident::fix_after_pullout(st_select_lex *parent_select,
       Now, locate the subquery predicate that contains this select_lex and
       update used tables information.
     */
-    Item_subselect *subq_predicate= child_select->master_unit()->item;
+    Item_subselect *subq_predicate= child_select->primary_unit()->item;
 
     subq_predicate->used_tables_cache|= this->resolved_used_tables();
     subq_predicate->const_item_cache&= this->const_item();
@@ -5097,7 +5097,7 @@ static void mark_as_dependent(THD *thd, SELECT_LEX *last, SELECT_LEX *current,
       first SELECT.
     */
     uint sel_nr= (last->select_number < INT_MAX) ? last->select_number :
-                  last->master_unit()->first_select()->select_number;
+                  last->primary_unit()->first_select()->select_number;
     push_warning_printf(thd, Sql_condition::SL_NOTE,
 		 ER_WARN_FIELD_RESOLVED, ER(ER_WARN_FIELD_RESOLVED),
                  db_name, (db_name[0] ? "." : ""),
@@ -5145,13 +5145,13 @@ void mark_select_range_as_dependent(THD *thd,
        previous_select= previous_select->outer_select())
   {
     Item_subselect *prev_subselect_item=
-      previous_select->master_unit()->item;
+      previous_select->primary_unit()->item;
     prev_subselect_item->used_tables_cache|= OUTER_REF_TABLE_BIT;
     prev_subselect_item->const_item_cache= 0;
   }
   {
     Item_subselect *prev_subselect_item=
-      previous_select->master_unit()->item;
+      previous_select->primary_unit()->item;
     Item_ident *dependent= resolved_item;
     if (found_field == view_ref_found)
     {
@@ -5467,7 +5467,7 @@ Item_field::fix_outer_field(THD *thd, Field **from_field, Item **reference)
   Name_resolution_context *outer_context= NULL;
   SELECT_LEX *select= NULL;
   /* Currently derived tables cannot be correlated */
-  if (current_sel->master_unit()->first_select()->linkage !=
+  if (current_sel->primary_unit()->first_select()->linkage !=
       DERIVED_TABLE_TYPE)
     outer_context= context->outer_context;
   for (;
@@ -5476,7 +5476,7 @@ Item_field::fix_outer_field(THD *thd, Field **from_field, Item **reference)
   {
     select= outer_context->select_lex;
     Item_subselect *prev_subselect_item=
-      last_checked_context->select_lex->master_unit()->item;
+      last_checked_context->select_lex->primary_unit()->item;
     last_checked_context= outer_context;
     upward_lookup= TRUE;
 
@@ -7945,7 +7945,7 @@ bool Item_ref::fix_fields(THD *thd, Item **reference)
       {
         SELECT_LEX *select= outer_context->select_lex;
         Item_subselect *prev_subselect_item=
-          last_checked_context->select_lex->master_unit()->item;
+          last_checked_context->select_lex->primary_unit()->item;
         last_checked_context= outer_context;
         place= prev_subselect_item->parsing_place;
 
@@ -8035,7 +8035,7 @@ bool Item_ref::fix_fields(THD *thd, Item **reference)
                 outer_context= outer_context->outer_context;
                 select= outer_context->select_lex;
                 prev_subselect_item=
-                  last_checked_context->select_lex->master_unit()->item;
+                  last_checked_context->select_lex->primary_unit()->item;
                 last_checked_context= outer_context;
               } while (outer_context && outer_context->select_lex &&
                        cached_table->select_lex != outer_context->select_lex);

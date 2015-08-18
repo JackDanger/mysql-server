@@ -1,4 +1,4 @@
-RESET MASTER;
+RESET PRIMARY;
 CREATE TABLE t1 (c1 INT) Engine=InnoDB;
 CREATE TABLE t2 (c1 INT) Engine=InnoDB;
 SET @free_intervals_mutex_before= (
@@ -27,4 +27,4 @@ EVENT_NAME='wait/synch/mutex/sql/Gtid_state::gtid_executed::free_intervals_mutex
 include/assert.inc ["gtid_executed::free_intervals_mutex wasn't used"]
 SET GLOBAL binlog_group_commit_sync_delay=0;
 DROP TABLE t1, t2;
-RESET MASTER;
+RESET PRIMARY;

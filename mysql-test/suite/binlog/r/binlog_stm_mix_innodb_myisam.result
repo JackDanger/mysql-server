@@ -3,7 +3,7 @@ call mtr.add_suppression("Unsafe statement written to the binary log using state
 drop table if exists t1, t2;
 create table t1 (a int) engine=innodb;
 create table t2 (a int) engine=myisam;
-reset master;
+reset primary;
 begin;
 insert into t1 values(1);
 insert into t2 select * from t1;
@@ -12,13 +12,13 @@ Note	1592	Unsafe statement written to the binary log using statement format sinc
 commit;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(1)
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(1)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 begin;
 insert into t1 values(2);
 insert into t2 select * from t1;
@@ -29,13 +29,13 @@ Warnings:
 Warning	1196	Some non-transactional changed tables couldn't be rolled back
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(2)
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(2)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Query	#	#	ROLLBACK
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 begin;
 insert into t1 values(3);
 savepoint my_savepoint;
@@ -49,16 +49,16 @@ Warning	1196	Some non-transactional changed tables couldn't be rolled back
 commit;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(3)
-master-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(4)
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Query	#	#	ROLLBACK TO `my_savepoint`
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(3)
+primary-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(4)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Query	#	#	ROLLBACK TO `my_savepoint`
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 begin;
 insert into t1 values(5);
 savepoint my_savepoint;
@@ -77,17 +77,17 @@ a
 7
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(5)
-master-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(6)
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Query	#	#	ROLLBACK TO `my_savepoint`
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(7)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(5)
+primary-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(6)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Query	#	#	ROLLBACK TO `my_savepoint`
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(7)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 select get_lock("a",10);
 get_lock("a",10)
 1
@@ -101,67 +101,67 @@ get_lock("a",10)
 1
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(8)
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(8)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Query	#	#	ROLLBACK
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 insert into t1 values(9);
 insert into t2 select * from t1;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(9)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(9)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Query	#	#	COMMIT
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 insert into t1 values(10);
 begin;
 insert into t2 select * from t1;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(10)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(10)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Query	#	#	COMMIT
 insert into t1 values(11);
 commit;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(10)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(11)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(10)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(11)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 alter table t2 engine=INNODB;
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 begin;
 insert into t1 values(12);
 insert into t2 select * from t1;
 commit;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(12)
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(12)
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select * from t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 begin;
 insert into t1 values(13);
 insert into t2 select * from t1;
@@ -170,7 +170,7 @@ include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 begin;
 insert into t1 values(14);
 savepoint my_savepoint;
@@ -180,13 +180,13 @@ rollback to savepoint my_savepoint;
 commit;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(14)
-master-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(14)
+primary-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 delete from t1;
 delete from t2;
-reset master;
+reset primary;
 begin;
 insert into t1 values(16);
 savepoint my_savepoint;
@@ -201,11 +201,11 @@ a
 18
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(16)
-master-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(18)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(16)
+primary-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(18)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 delete from t1;
 delete from t2;
 alter table t2 engine=MyISAM;
@@ -248,7 +248,7 @@ insert t0 select * from t1;
 set autocommit=1;
 insert into t0 select GET_LOCK("lock1",null);
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it uses a system function that may return a different value on the slave.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it uses a system function that may return a different value on the replica.
 set autocommit=0;
 create table t2 (n int) engine=innodb;
 insert into t2 values (3);
@@ -257,52 +257,52 @@ get_lock("lock1",60)
 1
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(16)
-master-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values(18)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; delete from t1
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; delete from t2
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; alter table t2 engine=MyISAM
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t1 values (1)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 values (20)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE `t1`,`t2` /* generated by server */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; create temporary table ti (a int) engine=innodb
-master-bin.000001	#	Query	#	#	ROLLBACK
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values(1)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; create temporary table t1 (a int) engine=myisam
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert t1 values (1)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; create table t0 (n int)
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert t0 select * from t1
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into t0 select GET_LOCK("lock1",null)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; create table t2 (n int) engine=innodb
-master-bin.000001	#	Query	#	#	use `test`; DROP /*!40005 TEMPORARY */ TABLE IF EXISTS `ti`
-master-bin.000001	#	Query	#	#	use `test`; DROP /*!40005 TEMPORARY */ TABLE IF EXISTS `t1`
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(16)
+primary-bin.000001	#	Query	#	#	SAVEPOINT `my_savepoint`
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values(18)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; delete from t1
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; delete from t2
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; alter table t2 engine=MyISAM
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t1 values (1)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 values (20)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE `t1`,`t2` /* generated by server */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; create temporary table ti (a int) engine=innodb
+primary-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values(1)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; create temporary table t1 (a int) engine=myisam
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert t1 values (1)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; create table t0 (n int)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert t0 select * from t1
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into t0 select GET_LOCK("lock1",null)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; create table t2 (n int) engine=innodb
+primary-bin.000001	#	Query	#	#	use `test`; DROP /*!40005 TEMPORARY */ TABLE IF EXISTS `ti`
+primary-bin.000001	#	Query	#	#	use `test`; DROP /*!40005 TEMPORARY */ TABLE IF EXISTS `t1`
 do release_lock("lock1");
 drop table t0,t2;
 set autocommit=0;
 CREATE TABLE t1 (a int, b int) engine=myisam;
-reset master;
+reset primary;
 INSERT INTO t1 values (1,1),(1,2);
 CREATE TABLE t2 (primary key (a)) engine=innodb select * from t1;
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
@@ -387,46 +387,46 @@ a	b
 DROP TABLE t1,t2;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (1,1),(1,2)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `t2` /* generated by server */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (3,3)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `t2` /* generated by server */
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t2 (a int, b int, primary key (a)) engine=innodb
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (4,4)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; TRUNCATE table t2
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (5,5)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE `t2` /* generated by server */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (6,6)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; CREATE TEMPORARY TABLE t2 (a int, b int, primary key (a)) engine=innodb
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (7,7)
-master-bin.000001	#	Query	#	#	ROLLBACK
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (8,8)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (9,9)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; TRUNCATE table t2
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (10,10)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t2 values (100,100)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; DROP TEMPORARY TABLE `t2` /* generated by server */
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE `t1` /* generated by server */
-reset master;
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (1,1),(1,2)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `t2` /* generated by server */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (3,3)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `t2` /* generated by server */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t2 (a int, b int, primary key (a)) engine=innodb
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (4,4)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; TRUNCATE table t2
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (5,5)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE `t2` /* generated by server */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (6,6)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TEMPORARY TABLE t2 (a int, b int, primary key (a)) engine=innodb
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (7,7)
+primary-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (8,8)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (9,9)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; TRUNCATE table t2
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 values (10,10)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t2 values (100,100)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; DROP TEMPORARY TABLE `t2` /* generated by server */
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE `t1` /* generated by server */
+reset primary;
 create table t1 (a int) engine=innodb;
 create table t2 (a int) engine=myisam;
 select get_lock("a",10);
@@ -458,7 +458,7 @@ select
 drop table t1, t2;
 create temporary table tt (a int unique);
 create table ti (a int) engine=innodb;
-reset master;
+reset primary;
 begin;
 insert into ti values (1);
 insert into ti values (2) ;
@@ -471,22 +471,22 @@ count(*)
 2
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (2)
-master-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (2)
+primary-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from ti /* zero */;
 count(*)
 0
 insert into ti select * from tt;
-select * from ti /* that is what slave would miss - a bug */;
+select * from ti /* that is what replica would miss - a bug */;
 a
 1
 2
 delete from ti;
 delete from tt where a=1;
-reset master;
+reset primary;
 begin;
 insert into ti values (1);
 insert into ti values (2) /* to make the dup error in the following */;
@@ -497,16 +497,16 @@ Warnings:
 Warning	1196	Some non-transactional changed tables couldn't be rolled back
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (2) /* to make the dup error in the following */
-master-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti /* one affected and error */
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (2) /* to make the dup error in the following */
+primary-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti /* one affected and error */
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from ti /* zero */;
 count(*)
 0
 insert into ti select * from tt;
-select * from tt /* that is what otherwise slave missed - the bug */;
+select * from tt /* that is what otherwise replica missed - the bug */;
 a
 1
 2
@@ -521,27 +521,27 @@ begin
 insert into t1 values (null);
 return n;
 end|
-reset master;
+reset primary;
 insert into t2 values (bug27417(1));
 Warnings:
 Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column. Inserted values cannot be logged correctly.
 insert into t2 select bug27417(2);
 Warnings:
 Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column. Inserted values cannot be logged correctly.
-reset master;
+reset primary;
 insert into t2 values (bug27417(2));
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=3
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(2))
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=3
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(2))
+primary-bin.000001	#	Query	#	#	COMMIT
 /* only (!) with fixes for #23333 will show there is the query */;
 select count(*) from t1 /* must be 3 */;
 count(*)
 3
-reset master;
+reset primary;
 select count(*) from t2;
 count(*)
 2
@@ -553,10 +553,10 @@ count(*)
 2
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=4
-master-bin.000001	#	Query	#	#	use `test`; delete from t2 where a=bug27417(3)
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=4
+primary-bin.000001	#	Query	#	#	use `test`; delete from t2 where a=bug27417(3)
+primary-bin.000001	#	Query	#	#	COMMIT
 /* the query must be in regardless of #23333 */;
 select count(*) from t1 /* must be 5 */;
 count(*)
@@ -575,15 +575,15 @@ CREATE TABLE t3 (a int, PRIMARY KEY (a), b int unique) ENGINE=MyISAM;
 CREATE TABLE t4 (a int, PRIMARY KEY (a), b int unique) ENGINE=Innodb;
 CREATE TABLE t5 (a int, PRIMARY KEY (a)) ENGINE=InnoDB;
 insert into t2 values (1);
-reset master;
+reset primary;
 insert into t2 values (bug27417(1));
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=1
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(1))
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=1
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(1))
+primary-bin.000001	#	Query	#	#	ROLLBACK
 /* the output must denote there is the query */;
 select count(*) from t1 /* must be 1 */;
 count(*)
@@ -591,30 +591,30 @@ count(*)
 delete from t1;
 delete from t2;
 insert into t2 values (2);
-reset master;
+reset primary;
 insert into t2 select bug27417(1) union select bug27417(2);
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=2
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select bug27417(1) union select bug27417(2)
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=2
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select bug27417(1) union select bug27417(2)
+primary-bin.000001	#	Query	#	#	ROLLBACK
 /* the output must denote there is the query */;
 select count(*) from t1 /* must be 2 */;
 count(*)
 2
 delete from t1;
 insert into t3 values (1,1),(2,3),(3,4);
-reset master;
+reset primary;
 update t3 set b=b+bug27417(1);
 ERROR 23000: Duplicate entry '4' for key 'b'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=4
-master-bin.000001	#	Query	#	#	use `test`; update t3 set b=b+bug27417(1)
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=4
+primary-bin.000001	#	Query	#	#	use `test`; update t3 set b=b+bug27417(1)
+primary-bin.000001	#	Query	#	#	COMMIT
 /* the output must denote there is the query */;
 select count(*) from t1 /* must be 2 */;
 count(*)
@@ -623,15 +623,15 @@ delete from t3;
 delete from t4;
 insert into t3 values (1,1);
 insert into t4 values (1,1),(2,2);
-reset master;
+reset primary;
 UPDATE t4,t3 SET t4.a=t3.a + bug27417(1) /* top level non-ta table */;
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=6
-master-bin.000001	#	Query	#	#	use `test`; UPDATE t4,t3 SET t4.a=t3.a + bug27417(1) /* top level non-ta table */
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=6
+primary-bin.000001	#	Query	#	#	use `test`; UPDATE t4,t3 SET t4.a=t3.a + bug27417(1) /* top level non-ta table */
+primary-bin.000001	#	Query	#	#	ROLLBACK
 /* the output must denote there is the query */;
 select count(*) from t1 /* must be 4 */;
 count(*)
@@ -641,7 +641,7 @@ delete from t3;
 delete from t4;
 insert into t3 values (1,1),(2,2);
 insert into t4 values (1,1),(2,2);
-reset master;
+reset primary;
 UPDATE t3,t4 SET t3.a=t4.a + bug27417(1);
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 select count(*) from t1 /* must be 1 */;
@@ -655,15 +655,15 @@ insert into t2 values (1);
 insert into t3 values (1,1);
 create trigger trg_del before delete on t2 for each row 
 insert into t3 values (bug27417(1), 2);
-reset master;
+reset primary;
 delete from t2;
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=9
-master-bin.000001	#	Query	#	#	use `test`; delete from t2
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=9
+primary-bin.000001	#	Query	#	#	use `test`; delete from t2
+primary-bin.000001	#	Query	#	#	ROLLBACK
 /* the output must denote there is the query */;
 select count(*) from t1 /* must be 1 */;
 count(*)
@@ -676,14 +676,14 @@ create trigger trg_del_t2 after  delete on t2 for each row
 insert into t1 values (1);
 insert into t2 values (2),(3);
 insert into t5 values (1),(2);
-reset master;
+reset primary;
 delete t2.* from t2,t5 where t2.a=t5.a + 1;
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; delete t2.* from t2,t5 where t2.a=t5.a + 1
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; delete t2.* from t2,t5 where t2.a=t5.a + 1
+primary-bin.000001	#	Query	#	#	ROLLBACK
 /* the output must denote there is the query */;
 select count(*) from t1 /* must be 1 */;
 count(*)
@@ -691,7 +691,7 @@ count(*)
 delete from t1;
 create table t4 (a int default 0, b int primary key) engine=innodb;
 insert into t4 values (0, 17);
-reset master;
+reset primary;
 load data infile '../../std_data/rpl_loaddata.dat' into table t4 (a, @b) set b= @b + bug27417(2);
 ERROR 23000: Duplicate entry '17' for key 'PRIMARY'
 select * from t4;
@@ -702,12 +702,12 @@ count(*)
 2
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=10
-master-bin.000001	#	Begin_load_query	#	#	;file_id=#;block_len=#
-master-bin.000001	#	Intvar	#	#	INSERT_ID=10
-master-bin.000001	#	Execute_load_query	#	#	use `test`; LOAD DATA INFILE '../../std_data/rpl_loaddata.dat' INTO TABLE `t4` FIELDS TERMINATED BY '\t' ENCLOSED BY '' ESCAPED BY '\\' LINES TERMINATED BY '\n' (`a`, @`b`) SET `b`= @b + bug27417(2) ;file_id=#
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=10
+primary-bin.000001	#	Begin_load_query	#	#	;file_id=#;block_len=#
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=10
+primary-bin.000001	#	Execute_load_query	#	#	use `test`; LOAD DATA INFILE '../../std_data/rpl_loaddata.dat' INTO TABLE `t4` FIELDS TERMINATED BY '\t' ENCLOSED BY '' ESCAPED BY '\\' LINES TERMINATED BY '\n' (`a`, @`b`) SET `b`= @b + bug27417(2) ;file_id=#
+primary-bin.000001	#	Query	#	#	ROLLBACK
 /* the output must denote there is the query */;
 drop trigger trg_del_t2;
 drop table t1,t2,t3,t4,t5;
@@ -716,7 +716,7 @@ end of tests
 set @@session.binlog_format=statement;
 create temporary table tt (a int unique);
 create table ti (a int) engine=innodb;
-reset master;
+reset primary;
 begin;
 insert into ti values (1);
 insert into ti values (2) ;
@@ -729,22 +729,22 @@ count(*)
 2
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (2)
-master-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (2)
+primary-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from ti /* zero */;
 count(*)
 0
 insert into ti select * from tt;
-select * from ti /* that is what slave would miss - bug#28960 */;
+select * from ti /* that is what replica would miss - bug#28960 */;
 a
 1
 2
 delete from ti;
 delete from tt where a=1;
-reset master;
+reset primary;
 begin;
 insert into ti values (1);
 insert into ti values (2) /* to make the dup error in the following */;
@@ -755,16 +755,16 @@ Warnings:
 Warning	1196	Some non-transactional changed tables couldn't be rolled back
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
-master-bin.000001	#	Query	#	#	use `test`; insert into ti values (2) /* to make the dup error in the following */
-master-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti /* one affected and error */
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (1)
+primary-bin.000001	#	Query	#	#	use `test`; insert into ti values (2) /* to make the dup error in the following */
+primary-bin.000001	#	Query	#	#	use `test`; insert into tt select * from ti /* one affected and error */
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from ti /* zero */;
 count(*)
 0
 insert into ti select * from tt;
-select * from tt /* that is what otherwise slave missed - the bug */;
+select * from tt /* that is what otherwise replica missed - the bug */;
 a
 1
 2
@@ -779,26 +779,26 @@ begin
 insert into t1 values (null);
 return n;
 end|
-reset master;
+reset primary;
 insert into t2 values (bug27417(1));
 Warnings:
 Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column. Inserted values cannot be logged correctly.
 insert into t2 select bug27417(2);
 Warnings:
 Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column. Inserted values cannot be logged correctly.
-reset master;
+reset primary;
 insert into t2 values (bug27417(2));
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=3
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(2))
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=3
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(2))
+primary-bin.000001	#	Query	#	#	COMMIT
 select count(*) from t1 /* must be 3 */;
 count(*)
 3
-reset master;
+reset primary;
 select count(*) from t2;
 count(*)
 2
@@ -810,10 +810,10 @@ count(*)
 2
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=4
-master-bin.000001	#	Query	#	#	use `test`; delete from t2 where a=bug27417(3)
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=4
+primary-bin.000001	#	Query	#	#	use `test`; delete from t2 where a=bug27417(3)
+primary-bin.000001	#	Query	#	#	COMMIT
 select count(*) from t1 /* must be 5 */;
 count(*)
 5
@@ -831,44 +831,44 @@ CREATE TABLE t3 (a int, PRIMARY KEY (a), b int unique) ENGINE=MyISAM;
 CREATE TABLE t4 (a int, PRIMARY KEY (a), b int unique) ENGINE=Innodb;
 CREATE TABLE t5 (a int, PRIMARY KEY (a)) ENGINE=InnoDB;
 insert into t2 values (1);
-reset master;
+reset primary;
 insert into t2 values (bug27417(1));
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=1
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(1))
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=1
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 values (bug27417(1))
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from t1 /* must be 1 */;
 count(*)
 1
 delete from t1;
 delete from t2;
 insert into t2 values (2);
-reset master;
+reset primary;
 insert into t2 select bug27417(1) union select bug27417(2);
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=2
-master-bin.000001	#	Query	#	#	use `test`; insert into t2 select bug27417(1) union select bug27417(2)
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=2
+primary-bin.000001	#	Query	#	#	use `test`; insert into t2 select bug27417(1) union select bug27417(2)
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from t1 /* must be 2 */;
 count(*)
 2
 delete from t1;
 insert into t3 values (1,1),(2,3),(3,4);
-reset master;
+reset primary;
 update t3 set b=b+bug27417(1);
 ERROR 23000: Duplicate entry '4' for key 'b'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=4
-master-bin.000001	#	Query	#	#	use `test`; update t3 set b=b+bug27417(1)
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=4
+primary-bin.000001	#	Query	#	#	use `test`; update t3 set b=b+bug27417(1)
+primary-bin.000001	#	Query	#	#	COMMIT
 select count(*) from t1 /* must be 2 */;
 count(*)
 2
@@ -876,15 +876,15 @@ delete from t3;
 delete from t4;
 insert into t3 values (1,1);
 insert into t4 values (1,1),(2,2);
-reset master;
+reset primary;
 UPDATE t4,t3 SET t4.a=t3.a + bug27417(1) /* top level non-ta table */;
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=6
-master-bin.000001	#	Query	#	#	use `test`; UPDATE t4,t3 SET t4.a=t3.a + bug27417(1) /* top level non-ta table */
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=6
+primary-bin.000001	#	Query	#	#	use `test`; UPDATE t4,t3 SET t4.a=t3.a + bug27417(1) /* top level non-ta table */
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from t1 /* must be 4 */;
 count(*)
 4
@@ -893,7 +893,7 @@ delete from t3;
 delete from t4;
 insert into t3 values (1,1),(2,2);
 insert into t4 values (1,1),(2,2);
-reset master;
+reset primary;
 UPDATE t3,t4 SET t3.a = t4.a + bug27417(1) where t3.a = 1;
 ERROR 23000: Duplicate entry '2' for key 'PRIMARY'
 select count(*) from t1 /* must be 1 */;
@@ -907,15 +907,15 @@ insert into t2 values (1);
 insert into t3 values (1,1);
 create trigger trg_del before delete on t2 for each row 
 insert into t3 values (bug27417(1), 2);
-reset master;
+reset primary;
 delete from t2;
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=9
-master-bin.000001	#	Query	#	#	use `test`; delete from t2
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=9
+primary-bin.000001	#	Query	#	#	use `test`; delete from t2
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from t1 /* must be 1 */;
 count(*)
 1
@@ -927,21 +927,21 @@ create trigger trg_del_t2 after  delete on t2 for each row
 insert into t1 values (1);
 insert into t2 values (2),(3);
 insert into t5 values (1),(2);
-reset master;
+reset primary;
 delete t2.* from t2,t5 where t2.a=t5.a + 1;
 ERROR 23000: Duplicate entry '1' for key 'PRIMARY'
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; delete t2.* from t2,t5 where t2.a=t5.a + 1
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; delete t2.* from t2,t5 where t2.a=t5.a + 1
+primary-bin.000001	#	Query	#	#	ROLLBACK
 select count(*) from t1 /* must be 1 */;
 count(*)
 1
 delete from t1;
 create table t4 (a int default 0, b int primary key) engine=innodb;
 insert into t4 values (0, 17);
-reset master;
+reset primary;
 load data infile '../../std_data/rpl_loaddata.dat' into table t4 (a, @b) set b= @b + bug27417(2);
 ERROR 23000: Duplicate entry '17' for key 'PRIMARY'
 select * from t4;
@@ -952,14 +952,14 @@ count(*)
 2
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=10
-master-bin.000001	#	User var	#	#	@`b`=_latin1 0x3135 COLLATE latin1_swedish_ci
-master-bin.000001	#	Begin_load_query	#	#	;file_id=#;block_len=#
-master-bin.000001	#	Intvar	#	#	INSERT_ID=10
-master-bin.000001	#	User var	#	#	@`b`=_latin1 0x3135 COLLATE latin1_swedish_ci
-master-bin.000001	#	Execute_load_query	#	#	use `test`; LOAD DATA INFILE '../../std_data/rpl_loaddata.dat' INTO TABLE `t4` FIELDS TERMINATED BY '\t' ENCLOSED BY '' ESCAPED BY '\\' LINES TERMINATED BY '\n' (`a`, @`b`) SET `b`= @b + bug27417(2) ;file_id=#
-master-bin.000001	#	Query	#	#	ROLLBACK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=10
+primary-bin.000001	#	User var	#	#	@`b`=_latin1 0x3135 COLLATE latin1_swedish_ci
+primary-bin.000001	#	Begin_load_query	#	#	;file_id=#;block_len=#
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=10
+primary-bin.000001	#	User var	#	#	@`b`=_latin1 0x3135 COLLATE latin1_swedish_ci
+primary-bin.000001	#	Execute_load_query	#	#	use `test`; LOAD DATA INFILE '../../std_data/rpl_loaddata.dat' INTO TABLE `t4` FIELDS TERMINATED BY '\t' ENCLOSED BY '' ESCAPED BY '\\' LINES TERMINATED BY '\n' (`a`, @`b`) SET `b`= @b + bug27417(2) ;file_id=#
+primary-bin.000001	#	Query	#	#	ROLLBACK
 drop trigger trg_del_t2;
 drop table t1,t2,t3,t4,t5;
 drop function bug27417;

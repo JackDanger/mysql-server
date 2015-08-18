@@ -14,7 +14,7 @@ SET timestamp=1000000000;
 #
 # Delete all existing binary logs.
 #
-RESET MASTER;
+RESET PRIMARY;
 #
 # Create a test table with all data types.
 #
@@ -2246,7 +2246,7 @@ FLUSH LOGS;
 # Call mysqlbinlog to display the log file contents.
 #
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # at #
@@ -3843,12 +3843,12 @@ COMMIT
 /*!*/;
 SET @@SESSION.GTID_NEXT= '#' /* added by mysqlbinlog */ /*!*/;
 # at #
-# # server id #  end_log_pos # CRC32 # 	Rotate to master-bin.000002  pos: 4
+# # server id #  end_log_pos # CRC32 # 	Rotate to primary-bin.000002  pos: 4
 DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 #
 # Cleanup.
 #
@@ -3860,7 +3860,7 @@ DROP TABLE t1;
 #
 # Delete all existing binary logs.
 #
-RESET MASTER;
+RESET PRIMARY;
 #
 # Create a test table with selected data types.
 #
@@ -3932,7 +3932,7 @@ FLUSH LOGS;
 # Call mysqlbinlog to display the log file contents.
 #
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # at #
@@ -4158,12 +4158,12 @@ COMMIT
 /*!*/;
 SET @@SESSION.GTID_NEXT= '#' /* added by mysqlbinlog */ /*!*/;
 # at #
-# # server id #  end_log_pos # CRC32 # 	Rotate to master-bin.000002  pos: 4
+# # server id #  end_log_pos # CRC32 # 	Rotate to primary-bin.000002  pos: 4
 DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 #
 # Cleanup.
 #
@@ -4175,7 +4175,7 @@ DROP TABLE t1;
 #
 # Delete all existing binary logs.
 #
-RESET MASTER;
+RESET PRIMARY;
 #
 # Create test tables with selected data types.
 #
@@ -4335,7 +4335,7 @@ FLUSH LOGS;
 # Call mysqlbinlog to display the log file contents.
 #
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # at #
@@ -4903,12 +4903,12 @@ COMMIT
 /*!*/;
 SET @@SESSION.GTID_NEXT= '#' /* added by mysqlbinlog */ /*!*/;
 # at #
-# # server id #  end_log_pos # CRC32 # 	Rotate to master-bin.000002  pos: 4
+# # server id #  end_log_pos # CRC32 # 	Rotate to primary-bin.000002  pos: 4
 DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 #
 # Cleanup.
 #
@@ -4920,7 +4920,7 @@ DROP TABLE t1, t2, t3;
 #
 # Delete all existing binary logs.
 #
-RESET MASTER;
+RESET PRIMARY;
 #
 # Create a test table with selected data types.
 #
@@ -4960,7 +4960,7 @@ FLUSH LOGS;
 # Call mysqlbinlog to display the log file contents.
 #
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 # at #
@@ -5024,12 +5024,12 @@ COMMIT
 /*!*/;
 SET @@SESSION.GTID_NEXT= '#' /* added by mysqlbinlog */ /*!*/;
 # at #
-# # server id #  end_log_pos # CRC32 # 	Rotate to master-bin.000002  pos: 4
+# # server id #  end_log_pos # CRC32 # 	Rotate to primary-bin.000002  pos: 4
 DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 #
 # Cleanup.
 #

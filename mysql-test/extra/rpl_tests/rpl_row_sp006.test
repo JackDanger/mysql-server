@@ -54,16 +54,16 @@ END|
 delimiter ;|
 
 CALL p2();
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 CALL p1();
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp006_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp006_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp006_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp006_replica.sql
 
 
 DROP TABLE t1;
@@ -77,8 +77,8 @@ DROP PROCEDURE p2;
 # the files your self to see what is not matching :-) Failed test 
 # Dump files will be located in $MYSQLTEST_VARDIR/tmp.
 
-diff_files $MYSQLTEST_VARDIR/tmp/sp006_master.sql $MYSQLTEST_VARDIR/tmp/sp006_slave.sql;
+diff_files $MYSQLTEST_VARDIR/tmp/sp006_primary.sql $MYSQLTEST_VARDIR/tmp/sp006_replica.sql;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 5.1 test case

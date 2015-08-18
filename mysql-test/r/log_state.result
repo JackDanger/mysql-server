@@ -94,8 +94,8 @@ slow_query_log_file	#
 show variables like 'log_output';
 Variable_name	Value
 log_output	FILE,TABLE
-set global general_log_file='/not existing path/log.master';
-ERROR 42000: Variable 'general_log_file' can't be set to the value of '/not existing path/log.master'
+set global general_log_file='/not existing path/log.primary';
+ERROR 42000: Variable 'general_log_file' can't be set to the value of '/not existing path/log.primary'
 set global general_log_file='MYSQLTEST_VARDIR';
 ERROR 42000: Variable 'general_log_file' can't be set to the value of 'MYSQLTEST_VARDIR'
 set global general_log_file='';
@@ -104,7 +104,7 @@ show variables like 'general_log_file';
 Variable_name	Value
 general_log_file	#
 set global general_log= OFF;
-set global general_log_file='MYSQLTEST_VARDIR/tmp/log.master';
+set global general_log_file='MYSQLTEST_VARDIR/tmp/log.primary';
 set global general_log= ON;
 create table t1(f1 int);
 drop table t1;
@@ -180,11 +180,11 @@ SET GLOBAL READ_ONLY = OFF;
 SET GLOBAL general_log = @old_general_log;
 SET GLOBAL slow_query_log = @old_slow_query_log;
 SET GLOBAL general_log_file= CONCAT('/not existing path/log.maste', 'r');
-ERROR 42000: Variable 'general_log_file' can't be set to the value of '/not existing path/log.master'
+ERROR 42000: Variable 'general_log_file' can't be set to the value of '/not existing path/log.primary'
 SET GLOBAL general_log_file= NULL;
 ERROR 42000: Variable 'general_log_file' can't be set to the value of 'NULL'
 SET GLOBAL slow_query_log_file= CONCAT('/not existing path/log.maste', 'r');
-ERROR 42000: Variable 'slow_query_log_file' can't be set to the value of '/not existing path/log.master'
+ERROR 42000: Variable 'slow_query_log_file' can't be set to the value of '/not existing path/log.primary'
 SET GLOBAL slow_query_log_file= NULL;
 ERROR 42000: Variable 'slow_query_log_file' can't be set to the value of 'NULL'
 SET GLOBAL general_log_file= @old_general_log_file;

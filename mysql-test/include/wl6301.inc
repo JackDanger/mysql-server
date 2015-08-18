@@ -3,7 +3,7 @@
 --perl
 my $MYSQL = $ENV{'MYSQL'};
 my $MYSQLADMIN = $ENV{'MYSQLADMIN'};
-my $MASTER_MYPORT = $ENV{'MASTER_MYPORT'};
+my $PRIMARY_MYPORT = $ENV{'PRIMARY_MYPORT'};
 my $MYSQLTEST_VARDIR = $ENV{'MYSQLTEST_VARDIR'};
 my $LOG_FILE = $ENV{'WL6301_LOG_FILE'};
 
@@ -25,7 +25,7 @@ foreach my $ip (@ipv4_addresses)
     system(
       "$MYSQL " .
       "--host=127.0.0.1 " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=root " .
       "test " .
       "-e 'CREATE USER u1@$ip;'");
@@ -38,7 +38,7 @@ foreach my $ip (@ipv4_addresses)
     system(
       "$MYSQL " .
       "--host=127.0.0.1 " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=root " .
       "test " .
       "-e 'GRANT ALL PRIVILEGES ON test.* TO u1@$ip;'");
@@ -51,7 +51,7 @@ foreach my $ip (@ipv4_addresses)
     system(
       "$MYSQLADMIN " .
       "--host=$ip " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=u1 " .
       "ping > /dev/null 2>&1");
 
@@ -63,7 +63,7 @@ foreach my $ip (@ipv4_addresses)
     system(
       "$MYSQL " .
       "--host=127.0.0.1 " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=root " .
       "test " .
       "-e 'DROP USER u1@$ip;'");
@@ -83,7 +83,7 @@ foreach my $ip (@ipv6_addresses)
     system(
       "$MYSQL " .
       "--host=127.0.0.1 " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=root " .
       "test " .
       "-e 'CREATE USER u1@$ip;'");
@@ -96,7 +96,7 @@ foreach my $ip (@ipv6_addresses)
     system(
       "$MYSQL " .
       "--host=127.0.0.1 " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=root " .
       "test " .
       "-e 'GRANT ALL PRIVILEGES ON test.* TO u1@$ip;'");
@@ -109,7 +109,7 @@ foreach my $ip (@ipv6_addresses)
     system(
       "$MYSQLADMIN " .
       "--host=$ip " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=u1 " .
       "ping > /dev/null 2>&1");
 
@@ -121,7 +121,7 @@ foreach my $ip (@ipv6_addresses)
     system(
       "$MYSQL " .
       "--host=127.0.0.1 " .
-      "--port=$MASTER_MYPORT " .
+      "--port=$PRIMARY_MYPORT " .
       "--user=root " .
       "test " .
       "-e 'DROP USER u1@$ip;'");

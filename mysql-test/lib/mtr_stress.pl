@@ -42,7 +42,7 @@ sub run_stress_test ()
 
   if ( ! $::glob_use_embedded_server )
   {
-    if ( ! mysqld_start($::master->[0],[],[]) )
+    if ( ! mysqld_start($::primary->[0],[],[]) )
     {
       mtr_error("Can't start the mysqld server");
     }
@@ -137,7 +137,7 @@ sub run_stress_test ()
 
   mtr_init_args(\$args);
   mtr_add_args($args, "$::glob_mysql_test_dir/mysql-stress-test.pl");
-  mtr_add_arg($args, "--server-socket=%s", $::master->[0]->{'path_sock'});
+  mtr_add_arg($args, "--server-socket=%s", $::primary->[0]->{'path_sock'});
   mtr_add_arg($args, "--server-user=%s", $::opt_user);
   mtr_add_arg($args, "--server-database=%s", "test");  
   mtr_add_arg($args, "--stress-suite-basedir=%s", $::glob_mysql_test_dir);  

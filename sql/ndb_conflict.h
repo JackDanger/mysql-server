@@ -233,8 +233,8 @@ public:
                const NdbRecord* keyRecord,
                const NdbRecord* dataRecord,
                uint32 server_id,
-               uint32 master_server_id,
-               uint64 master_epoch,
+               uint32 primary_server_id,
+               uint64 primary_epoch,
                const uchar* oldRowPtr,
                const uchar* newRowPtr,
                enum_conflicting_op_type op_type,
@@ -339,13 +339,13 @@ typedef struct st_ndbcluster_conflict_fn_share {
 #endif
 
 /**
- * enum_slave_conflict_role
+ * enum_replica_conflict_role
  *
- * These are the roles the Slave can play
+ * These are the roles the Replica can play
  * in asymmetric conflict algorithms
  */
 
-enum enum_slave_conflict_role
+enum enum_replica_conflict_role
 {
   SCR_NONE = 0,
   SCR_SECONDARY = 1,
@@ -353,7 +353,7 @@ enum enum_slave_conflict_role
   SCR_PASS = 3
 };
 
-enum enum_slave_trans_conflict_apply_state
+enum enum_replica_trans_conflict_apply_state
 {
   /* Normal with optional row-level conflict detection */
   SAS_NORMAL,
@@ -371,7 +371,7 @@ enum enum_slave_trans_conflict_apply_state
   SAS_APPLY_TRANS_DEPENDENCIES
 };
 
-enum enum_slave_conflict_flags
+enum enum_replica_conflict_flags
 {
   /* Conflict detection Ops defined */
   SCS_OPS_DEFINED = 1,
@@ -380,12 +380,12 @@ enum enum_slave_conflict_flags
 };
 
 /*
-  State associated with the Slave thread
+  State associated with the Replica thread
   (From the Ndb handler's point of view)
 */
-struct st_ndb_slave_state
+struct st_ndb_replica_state
 {
-  /* Counter values for current slave transaction */
+  /* Counter values for current replica transaction */
   Uint32 current_violation_count[CFT_NUMBER_OF_CFTS];
 
   /**
@@ -411,14 +411,14 @@ struct st_ndb_slave_state
    */
   Uint32 current_refresh_op_count;
   
-  /* Track the current epoch from the immediate master,
+  /* Track the current epoch from the immediate primary,
    * and whether we've committed it
    */
-  Uint64 current_master_server_epoch;
-  bool current_master_server_epoch_committed;
+  Uint64 current_primary_server_epoch;
+  bool current_primary_server_epoch_committed;
   
   Uint64 current_max_rep_epoch;
-  uint8 conflict_flags; /* enum_slave_conflict_flags */
+  uint8 conflict_flags; /* enum_replica_conflict_flags */
     /* Transactional conflict detection */
   Uint32 retry_trans_count;
   Uint32 current_trans_row_conflict_count;
@@ -449,48 +449,48 @@ struct st_ndb_slave_state
   static const Uint32 MAX_RETRY_TRANS_COUNT = 100;
 
   /*
-    Slave Apply State
+    Replica Apply State
 
     State of Binlog application from Ndb point of view.
   */
-  enum_slave_trans_conflict_apply_state trans_conflict_apply_state;
+  enum_replica_trans_conflict_apply_state trans_conflict_apply_state;
 
   MEM_ROOT conflict_mem_root;
   class DependencyTracker* trans_dependency_tracker;
 
   /* Methods */
-  void atStartSlave();
+  void atStartReplica();
   int  atPrepareConflictDetection(const NdbDictionary::Table* table,
                                   const NdbRecord* key_rec,
                                   const uchar* row_data,
                                   Uint64 transaction_id,
                                   bool& handle_conflict_now);
   int  atTransConflictDetected(Uint64 transaction_id);
-  int  atConflictPreCommit(bool& retry_slave_trans);
+  int  atConflictPreCommit(bool& retry_replica_trans);
 
   void atBeginTransConflictHandling();
   void atEndTransConflictHandling();
 
   void atTransactionCommit(Uint64 epoch);
   void atTransactionAbort();
-  void atResetSlave();
+  void atResetReplica();
 
-  int atApplyStatusWrite(Uint32 master_server_id,
+  int atApplyStatusWrite(Uint32 primary_server_id,
                          Uint32 row_server_id,
                          Uint64 row_epoch,
                          bool is_row_server_id_local);
   bool verifyNextEpoch(Uint64 next_epoch,
-                       Uint32 master_server_id) const;
+                       Uint32 primary_server_id) const;
 
   void resetPerAttemptCounters();
 
   static
-  bool checkSlaveConflictRoleChange(enum_slave_conflict_role old_role,
-                                    enum_slave_conflict_role new_role,
+  bool checkReplicaConflictRoleChange(enum_replica_conflict_role old_role,
+                                    enum_replica_conflict_role new_role,
                                     const char** failure_cause);
 
-  st_ndb_slave_state();
-  ~st_ndb_slave_state();
+  st_ndb_replica_state();
+  ~st_ndb_replica_state();
 };
 
 #ifdef HAVE_NDB_BINLOG
@@ -521,7 +521,7 @@ setup_conflict_fn(Ndb* ndb,
                   const Uint32 num_args);
 
 void 
-slave_reset_conflict_fn(NDB_CONFLICT_FN_SHARE *cfn_share);
+replica_reset_conflict_fn(NDB_CONFLICT_FN_SHARE *cfn_share);
 
 bool 
 is_exceptions_table(const char *table_name);

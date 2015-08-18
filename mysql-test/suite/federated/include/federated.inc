@@ -1,11 +1,11 @@
 --source include/not_embedded.inc
 --source suite/federated/include/have_federated_db.inc
 
-connect (master,127.0.0.1,root,,test,$MASTER_MYPORT,);
-connect (slave,127.0.0.1,root,,test,$SLAVE_MYPORT,);
+connect (primary,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+connect (replica,127.0.0.1,root,,test,$REPLICA_MYPORT,);
 
-connection master;
+connection primary;
 CREATE DATABASE federated;
 
-connection slave;
+connection replica;
 CREATE DATABASE federated;

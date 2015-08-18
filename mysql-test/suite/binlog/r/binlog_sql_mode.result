@@ -4,7 +4,7 @@ SET SESSION sql_mode=8;
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 Initialization 
-RESET MASTER;
+RESET PRIMARY;
 CREATE TABLE t1 (id INT);
 CREATE PROCEDURE testProc() SELECT * FROM t1;
 CREATE VIEW testView as SELECT * from t1;
@@ -125,7 +125,7 @@ wxyz\%ef
 wxyz\_ef
 "Dropping table test_table"
 DROP TABLE test_table;
-RESET MASTER;
+RESET PRIMARY;
 #"test_table" content after replaying the binlog
 SELECT * FROM test_table;
 c1

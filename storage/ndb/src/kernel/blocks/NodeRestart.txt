@@ -1,5 +1,5 @@
 				
-Master DIH			Starting DIH		  Starting DICT
+Primary DIH			Starting DIH		  Starting DICT
 ----------------------		----------------------	  ---------------------
 
                                 Check for sysfile
@@ -32,7 +32,7 @@ START_RECREQ -> starting LQH
 
 DICTSTARTREQ -> starting DICT
 			 				  GET_SCHEMA_INFOREQ
-							  (to master DICT)
+							  (to primary DICT)
 
 							  ->SCHEMA_INFO
 							    (schema file)

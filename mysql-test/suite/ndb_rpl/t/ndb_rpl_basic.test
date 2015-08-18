@@ -6,17 +6,17 @@
 --source include/have_ndb.inc
 #error message differs slightly with statement based replication
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 -- disable_query_log
-call mtr.add_suppression("Slave: Got error 146 during COMMIT Error_code: 1180");
+call mtr.add_suppression("Replica: Got error 146 during COMMIT Error_code: 1180");
 -- enable_query_log
 
 #
 # Bug #11087
 #
-# connect to the master and create tabe t1 in gotoslave database
---connection master
+# connect to the primary and create tabe t1 in gotoreplica database
+--connection primary
 CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
  	            `nom` char(4) default NULL,
   		    `prenom` char(4) default NULL,
@@ -26,24 +26,24 @@ CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
 INSERT INTO t1 VALUES(1,"XYZ1","ABC1");
 select * from t1 order by nid;
 
---sync_slave_with_master
-# connect to slave and ensure data it there.
---connection slave
+--sync_replica_with_primary
+# connect to replica and ensure data it there.
+--connection replica
 select * from t1 order by nid;
 
---connection master
+--connection primary
 delete from t1;
 INSERT INTO t1 VALUES(1,"XYZ2","ABC2");
-# Make sure all rows are on the master
+# Make sure all rows are on the primary
 select * from t1 order by nid;
 
-# make sure all rows are on the slave.
---sync_slave_with_master
---connection slave
+# make sure all rows are on the replica.
+--sync_replica_with_primary
+--connection replica
 # Bug #11087 would have row with nid 2 missing
 select * from t1 order by nid;
 
---connection master
+--connection primary
 delete from t1;
 insert into t1 values(1,"AA", "AA");
 insert into t1 values(2,"BB", "BB");
@@ -71,16 +71,16 @@ delete from t1 where nid = 5;
 
 commit;
 select * from t1 order by 1;
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select * from t1 order by 1;
---connection master
+--connection primary
 DROP table t1;
 
 #
 # Test replication of table with no primary key 
 #
---connection master
+--connection primary
 CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
  	            `nom` char(4) default NULL,
   		    `prenom` char(4) default NULL)
@@ -89,40 +89,40 @@ CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
 INSERT INTO t1 VALUES(1,"XYZ1","ABC1"),(2,"AAA","BBB"),(3,"CCC","DDD");
 select * from t1 order by nid;
 
---sync_slave_with_master
-# connect to slave and ensure data it there.
---connection slave
+--sync_replica_with_primary
+# connect to replica and ensure data it there.
+--connection replica
 select * from t1 order by nid;
 
---connection master
+--connection primary
 delete from t1 where nid = 2;
 INSERT INTO t1 VALUES(4,"EEE","FFF");
-# Make sure all rows are on the master
+# Make sure all rows are on the primary
 select * from t1 order by nid;
 
-# make sure all rows are on the slave.
---sync_slave_with_master
---connection slave
+# make sure all rows are on the replica.
+--sync_replica_with_primary
+--connection replica
 select * from t1 order by nid;
 
---connection master
+--connection primary
 UPDATE t1 set nid=nid+1;
 UPDATE t1 set nom="CCP" where nid = 4;
 select * from t1 order by nid;
 
-# make sure all rows are on the slave.
---sync_slave_with_master
---connection slave
+# make sure all rows are on the replica.
+--sync_replica_with_primary
+--connection replica
 select * from t1 order by nid;
 
---connection master
+--connection primary
 DROP table t1;
 
 #
-# Bug #27378 update becomes delete on slave
+# Bug #27378 update becomes delete on replica
 #
 
---connection master
+--connection primary
 CREATE TABLE `t1` (
   `prid` int(10) unsigned NOT NULL,
   `id_type` enum('IMSI','SIP') NOT NULL,
@@ -137,7 +137,7 @@ CREATE TABLE `t1` (
   `lac_cell_id` bigint(20) unsigned DEFAULT NULL,
   `ms_classmark1` int(10) unsigned DEFAULT NULL,
   `cipher_key` int(10) unsigned DEFAULT NULL,
-  `priid_master` int(10) unsigned DEFAULT NULL,
+  `priid_primary` int(10) unsigned DEFAULT NULL,
   PRIMARY KEY (`prid`),
   UNIQUE KEY `fkimssub` (`fkimssub`,`ptg_nbr`) USING HASH
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1;
@@ -146,30 +146,30 @@ INSERT INTO `t1` VALUES (183342,'IMSI','config3_sub_2Privates_3Publics_imssub_36
 
 select count(*) from t1;
 
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select count(*) from t1;
 
---connection master
+--connection primary
 update t1 set dev_oid=dev_oid+1;
 select count(*) from t1;
 
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select count(*) from t1;
 
---connection master
+--connection primary
 DROP table t1;
 
 ##################################################################
 #
-# Check that retries are made on the slave on some temporary errors
+# Check that retries are made on the replica on some temporary errors
 #
 
 #
 # 1. Deadlock
 #
---connection master
+--connection primary
 CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
  	            `nom` char(4) default NULL,
   		    `prenom` char(4) default NULL,
@@ -177,107 +177,107 @@ CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
     ENGINE=ndbcluster DEFAULT CHARSET=latin1;
 INSERT INTO t1 VALUES(1,"XYZ1","ABC1");
 
-# cause a lock on that row on the slave
---sync_slave_with_master
---connection slave
---echo **** On Slave ****
+# cause a lock on that row on the replica
+--sync_replica_with_primary
+--connection replica
+--echo **** On Replica ****
 BEGIN;
 UPDATE t1 SET `nom`="LOCK" WHERE `nid`=1;
 
 # set number of retries low so we fail the retries
-set GLOBAL slave_transaction_retries=1;
+set GLOBAL replica_transaction_retries=1;
 
-# now do a change to this row on the master
-# will deadlock on the slave because of lock above
---connection master
---echo **** On Master ****
+# now do a change to this row on the primary
+# will deadlock on the replica because of lock above
+--connection primary
+--echo **** On Primary ****
 UPDATE t1 SET `nom`="DEAD" WHERE `nid`=1;
 
 # Wait for deadlock to be detected.
-# When detected, the slave will stop, so we just wait for it to stop.
-# Use different connection to slave to avoid implicit commit
-# caused by START SLAVE
---connection slave1
---echo **** On Slave ****
+# When detected, the replica will stop, so we just wait for it to stop.
+# Use different connection to replica to avoid implicit commit
+# caused by START REPLICA
+--connection replica1
+--echo **** On Replica ****
 
 # Replication should have stopped, since max retries were not enough.
-# verify with show slave status
+# verify with show replica status
 # 1205 = ER_LOCK_WAIT_TIMEOUT 
---let $slave_sql_errno= 1205 
---let $show_slave_sql_error= 0
---source include/wait_for_slave_sql_error.inc
+--let $replica_sql_errno= 1205 
+--let $show_replica_sql_error= 0
+--source include/wait_for_replica_sql_error.inc
 
-# now set max retries high enough to succeed, and start slave again
-set GLOBAL slave_transaction_retries=10;
-source include/start_slave.inc;
+# now set max retries high enough to succeed, and start replica again
+set GLOBAL replica_transaction_retries=10;
+source include/start_replica.inc;
 # Wait for deadlock to be detected and retried.
 # We want to wait until at least one retry has been made, but before
-# the slave stops. currently, there is no safe way to do that: we
+# the replica stops. currently, there is no safe way to do that: we
 # would need to access the retry counter, but that is not exposed.
 # Failing that, we just wait sufficiently long that one but not all
 # retries have been made. See BUG#35183.
 sleep 5;
 
-# Switch back to the slave connection with the lock and commit the
+# Switch back to the replica connection with the lock and commit the
 # transaction to release lock on row and let replication succeed
---connection slave
+--connection replica
 select * from t1 order by nid;
 COMMIT;
 
-# verify that the row succeded to be applied on the slave
---connection master
---sync_slave_with_master
---connection slave
+# verify that the row succeded to be applied on the replica
+--connection primary
+--sync_replica_with_primary
+--connection replica
 select * from t1 order by nid;
 
 # cleanup
---connection master
+--connection primary
 DROP TABLE t1;
 
 
 #
 # BUG#18094
-# Slave caches invalid table definition after atlters causes select failure
+# Replica caches invalid table definition after atlters causes select failure
 #
---connection master
+--connection primary
 CREATE TABLE t1 (c1 INT KEY) ENGINE=NDB;
 
 INSERT INTO t1 VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10);
 
 ALTER TABLE t1 ADD c2 INT;
 
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 SELECT * FROM t1 ORDER BY c1;
 
-connection master;
+connection primary;
 
 INSERT INTO t1 VALUES (11,11),(12,12),(13,13),(14,14);
 
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 SELECT * FROM t1 ORDER BY c1;
 
-connection master;
+connection primary;
 ALTER TABLE t1 CHANGE c2 c2 TEXT CHARACTER SET utf8;
 ALTER TABLE t1 CHANGE c2 c2 BLOB;
 
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 # here we would get error 1412 prior to bug
 SELECT * FROM t1 ORDER BY c1 LIMIT 5;
 
---connection master
+--connection primary
 TRUNCATE t1;
 SELECT count(*) FROM t1;
 INSERT INTO t1 VALUES (101,NULL),(102,NULL),(103,NULL),(104,NULL),(105,NULL),(106,NULL),(107,NULL),(108,NULL),(109,NULL),(1010,NULL);
---sync_slave_with_master
-connection slave;
+--sync_replica_with_primary
+connection replica;
 SELECT count(*) FROM t1;
 SELECT c1 FROM t1 ORDER BY c1 LIMIT 5;
 
 # cleanup
---connection master
+--connection primary
 DROP TABLE t1;
 
 # bug#35208
@@ -294,19 +294,19 @@ b56 int,b57 int,b58 int,b59 int,b60 int,b61 int,b62 int,b63 int,
 b64 int,b65 int,b66 int,b67 int,b68 int,b69 int,b70 int) engine=ndb;
 
 insert into t1 (a,b00) values (1,1);
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 update t1 set b00 = 2 where a = 1;
---connection master
+--connection primary
 update t1 set b66 = 1 where a = 1;
---sync_slave_with_master
-# after bug fix result *should* be different on master/slave
---connection master
+--sync_replica_with_primary
+# after bug fix result *should* be different on primary/replica
+--connection primary
 select b00 from t1;
---connection slave
+--connection replica
 select b00 from t1;
 
---connection master
+--connection primary
 DROP TABLE t1;
 
 #
@@ -338,23 +338,23 @@ alter table t1 algorithm=copy, modify c1 int auto_increment;
 alter table t1 algorithm=inplace, add column c501 bit(1) column_format DYNAMIC;
 --error ER_TOO_BIG_ROWSIZE
 alter table t1 algorithm=inplace, add column c502 varchar(2000);
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select length(c500) from t1 order by 1;
---connection master
+--connection primary
 delete from t1;
 drop table t1;
---sync_slave_with_master
---connection master
+--sync_replica_with_primary
+--connection primary
 
 create table t1 (a int primary key, b varchar(13000)) engine = ndb;
 insert into t1 values (1,@v13000), (2,@v13000);
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select length(b) from t1 order by 1;
---connection master
+--connection primary
 drop table t1;
---sync_slave_with_master
---connection master
+--sync_replica_with_primary
+--connection primary
 
 --source include/rpl_end.inc

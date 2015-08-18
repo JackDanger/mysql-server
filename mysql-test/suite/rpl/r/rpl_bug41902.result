@@ -1,36 +1,36 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-include/sync_slave_sql_with_master.inc
-stop slave;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+include/sync_replica_sql_with_primary.inc
+stop replica;
 SET @@debug="d,simulate_find_log_pos_error";
-reset slave;
+reset replica;
 ERROR HY000: Target log not found in binlog index
 show warnings;
 Level	Code	Message
 Error	1373	Target log not found in binlog index
 Error	1371	Failed purging old relay logs: Failed during log reset
 SET @@debug="";
-reset slave;
-change master to master_host='dummy';
+reset replica;
+change primary to primary_host='dummy';
 SET @@debug="d,simulate_find_log_pos_error";
-change master to master_host='dummy';
+change primary to primary_host='dummy';
 ERROR HY000: Target log not found in binlog index
 SET @@debug="";
-reset slave;
-change master to master_host='dummy';
+reset replica;
+change primary to primary_host='dummy';
 SET @@debug="d,simulate_find_log_pos_error";
-reset master;
+reset primary;
 ERROR HY000: Target log not found in binlog index
 SET @@debug="";
-reset master;
+reset primary;
 SET @@debug="d,simulate_find_log_pos_error";
-purge binary logs to 'master-bin.000001';
+purge binary logs to 'primary-bin.000001';
 ERROR HY000: Target log not found in binlog index
 SET @@debug="";
-purge binary logs to 'master-bin.000001';
+purge binary logs to 'primary-bin.000001';
 ==== clean up ====
-CHANGE MASTER TO MASTER_HOST = '127.0.0.1';
+CHANGE PRIMARY TO PRIMARY_HOST = '127.0.0.1';
 include/rpl_end.inc

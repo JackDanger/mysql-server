@@ -52,7 +52,7 @@
 --source include/have_debug.inc
 --let $rpl_extra_connections_per_server= 3
 --let $rpl_gtid_utils= 1
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo #### Initialize ####
 
@@ -405,11 +405,11 @@ while ($id <= $max_id)
 
       --let $eval_no_result= 1
       --let $include_silent= 1
-      --let $eval_expr= SET @binlog_file_before= "[master:SHOW MASTER STATUS, File, 1]"
+      --let $eval_expr= SET @binlog_file_before= "[primary:SHOW PRIMARY STATUS, File, 1]"
       --source include/eval.inc
-      --let $eval_expr= SET @binlog_pos_before= [master:SHOW MASTER STATUS, Position, 1]
+      --let $eval_expr= SET @binlog_pos_before= [primary:SHOW PRIMARY STATUS, Position, 1]
       --source include/eval.inc
-      --let $eval_expr= SET @slave_global_gtid_executed= "[slave:SELECT @@GLOBAL.GTID_EXECUTED]"
+      --let $eval_expr= SET @replica_global_gtid_executed= "[replica:SELECT @@GLOBAL.GTID_EXECUTED]"
       --source include/eval.inc
       --let $include_silent= 0
       --let $eval_no_result= 0
@@ -441,7 +441,7 @@ while ($id <= $max_id)
     --let $last_send_stmt= $stmt
     --send
     eval $stmt;
-    --connection master
+    --connection primary
     --let $wait_condition= SELECT Info = '$last_send_stmt' FROM INFORMATION_SCHEMA.PROCESSLIST WHERE Id = $last_send_id
     --source include/wait_condition_or_abort.inc
   }
@@ -458,7 +458,7 @@ while ($id <= $max_id)
     }
   }
 
-  --let $rpl_connection_name= master
+  --let $rpl_connection_name= primary
   --source include/rpl_connection.inc
 
   # Check that thread is still running query
@@ -481,8 +481,8 @@ while ($id <= $max_id)
   {
     if ($send_reap != 'running')
     {
-      --source include/sync_slave_sql_with_master.inc
-      --connection master
+      --source include/sync_replica_sql_with_primary.inc
+      --connection primary
       # Concurrent tests require two or more connections and at least one connection sends  
       # the statements in async mode (via send/reap command). We need to make sure that
       # SET GTID_NEXT is completed for all connections before getting values of 
@@ -513,9 +513,9 @@ while ($id <= $max_id)
       --let $before_3= @global_gtid_owned
       --let $col_3= global_gtid_owned
 
-      --let $text_4= slave:@@GLOBAL.GTID_EXECUTED
-      --let $after_4= [slave: SELECT @@GLOBAL.GTID_EXECUTED]
-      --let $before_4= @slave_global_gtid_executed
+      --let $text_4= replica:@@GLOBAL.GTID_EXECUTED
+      --let $after_4= [replica: SELECT @@GLOBAL.GTID_EXECUTED]
+      --let $before_4= @replica_global_gtid_executed
       --let $col_4= global_gtid_executed
 
       --let $i= 0
@@ -537,7 +537,7 @@ while ($id <= $max_id)
         --let $rpl_connection_name= server_1_$connection
         --source include/rpl_connection.inc
         --let $before= `SELECT $before`
-        --let $rpl_connection_name= master
+        --let $rpl_connection_name= primary
         --source include/rpl_connection.inc
 
         # $diff = the expected change in the variable
@@ -563,14 +563,14 @@ while ($id <= $max_id)
       # Assert that binlog changed or didn't change (according to
       # whether gtid_executed changed/didn't change).
 
-      --let $rpl_connection_name= master
+      --let $rpl_connection_name= primary
       --source include/rpl_connection.inc
 
       --let $changed_binlog= `SELECT global_gtid_executed != '' FROM stmts WHERE id = $id`
       if ($changed_binlog)
       {
         let $assert_cond=
-          [SHOW MASTER STATUS, Position, 1] >
+          [SHOW PRIMARY STATUS, Position, 1] >
           [server_1_$connection:SELECT @binlog_pos_before];
         --let $assert_text= Something was written to the binlog
         --source include/assert.inc
@@ -587,13 +587,13 @@ while ($id <= $max_id)
       if (!$changed_binlog)
       {
         let $assert_cond=
-          "[SHOW MASTER STATUS, File, 1]" =
+          "[SHOW PRIMARY STATUS, File, 1]" =
           "[server_1_$connection:SELECT @binlog_file_before]";
         --let $assert_text= Binlog was not rotated
         --source include/assert.inc
 
         let $assert_cond=
-          [SHOW MASTER STATUS, Position, 1] =
+          [SHOW PRIMARY STATUS, Position, 1] =
           [server_1_$connection:SELECT @binlog_pos_before];
         --let $assert_text= Binlog position was not updated
         --source include/assert.inc

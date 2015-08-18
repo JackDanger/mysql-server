@@ -140,16 +140,16 @@ bool set_gtid_next(THD *thd, const Gtid_specification &spec)
           goto err;
         }
 #ifdef HAVE_REPLICATION
-        // If this thread is a slave SQL thread or slave SQL worker
+        // If this thread is a replica SQL thread or replica SQL worker
         // thread, we need this additional condition to determine if it
-        // has been stopped by STOP SLAVE [SQL_THREAD].
+        // has been stopped by STOP REPLICA [SQL_THREAD].
         if ((thd->system_thread &
-             (SYSTEM_THREAD_SLAVE_SQL | SYSTEM_THREAD_SLAVE_WORKER)) != 0)
+             (SYSTEM_THREAD_REPLICA_SQL | SYSTEM_THREAD_REPLICA_WORKER)) != 0)
         {
           // TODO: error is *not* reported on cancel
-          DBUG_ASSERT(thd->rli_slave!= NULL);
-          Relay_log_info *c_rli= thd->rli_slave->get_c_rli();
-          if (c_rli->abort_slave)
+          DBUG_ASSERT(thd->rli_replica!= NULL);
+          Relay_log_info *c_rli= thd->rli_replica->get_c_rli();
+          if (c_rli->abort_replica)
           {
             goto err;
           }
@@ -239,15 +239,15 @@ int gtid_acquire_ownership_multiple(THD *thd)
     if (thd->killed || abort_loop)
       DBUG_RETURN(1);
 #ifdef HAVE_REPLICATION
-    // If this thread is a slave SQL thread or slave SQL worker
+    // If this thread is a replica SQL thread or replica SQL worker
     // thread, we need this additional condition to determine if it
-    // has been stopped by STOP SLAVE [SQL_THREAD].
+    // has been stopped by STOP REPLICA [SQL_THREAD].
     if ((thd->system_thread &
-         (SYSTEM_THREAD_SLAVE_SQL | SYSTEM_THREAD_SLAVE_WORKER)) != 0)
+         (SYSTEM_THREAD_REPLICA_SQL | SYSTEM_THREAD_REPLICA_WORKER)) != 0)
     {
-      DBUG_ASSERT(thd->rli_slave != NULL);
-      Relay_log_info *c_rli= thd->rli_slave->get_c_rli();
-      if (c_rli->abort_slave)
+      DBUG_ASSERT(thd->rli_replica != NULL);
+      Relay_log_info *c_rli= thd->rli_replica->get_c_rli();
+      if (c_rli->abort_replica)
         DBUG_RETURN(1);
     }
 #endif // HAVE_REPLICATION
@@ -382,9 +382,9 @@ bool gtid_reacquire_ownership_if_anonymous(THD *thd)
   DBUG_ENTER("gtid_reacquire_ownership_if_anonymous(THD *)");
   Gtid_specification *gtid_next= &thd->variables.gtid_next;
   /*
-    When the slave applier thread executes a
-    Format_description_log_event originating from a master
-    (corresponding to a new master binary log), it sets gtid_next to
+    When the replica applier thread executes a
+    Format_description_log_event originating from a primary
+    (corresponding to a new primary binary log), it sets gtid_next to
     NOT_YET_DETERMINED_GROUP.  This allows any following
     Gtid_log_event to set the GTID appropriately, but if there is no
     Gtid_log_event, gtid_next will be converted to ANONYMOUS.
@@ -406,7 +406,7 @@ bool gtid_reacquire_ownership_if_anonymous(THD *thd)
       DBUG_RETURN(true);
 
 #ifdef HAVE_REPLICATION
-    thd->set_currently_executing_gtid_for_slave_thread();
+    thd->set_currently_executing_gtid_for_replica_thread();
 #endif
   }
   DBUG_RETURN(false);
@@ -488,21 +488,21 @@ enum_gtid_statement_status gtid_pre_statement_checks(THD *thd)
     If a transaction updates both non-transactional and transactional
     table; or if it updates more than one non-transactional tables;
     then the transaction must be stopped.  This is the case when on
-    master all updated tables are transactional but on slave at least
+    primary all updated tables are transactional but on replica at least
     one is non-transactional, e.g.:
 
-    On master, tables are transactional:
+    On primary, tables are transactional:
       CREATE TABLE t1 (a INT) Engine=InnoDB;
       CREATE TABLE t2 (a INT) Engine=InnoDB;
-    On slave, one table is non-transactional:
+    On replica, one table is non-transactional:
       CREATE TABLE t1 (a INT) Engine=MyISAM;
       CREATE TABLE t2 (a INT) Engine=InnoDB;
-    On master, user executes:
+    On primary, user executes:
       BEGIN;
       INSERT INTO t1 VALUES (1);
       INSERT INTO t2 VALUES (1);
       COMMIT;
-    On slave, the second statement must error due to a second statement
+    On replica, the second statement must error due to a second statement
     being executed after a statement that updated a non-transactional
     table.
   */

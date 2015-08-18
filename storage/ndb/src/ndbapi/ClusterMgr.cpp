@@ -1037,7 +1037,7 @@ ClusterMgr::execDISCONNECT_REP(const NdbApiSignal* sig,
 
     NodeFailRep * rep = CAST_PTR(NodeFailRep, signal.getDataPtrSend());
     rep->failNo = 0;
-    rep->masterNodeId = 0;
+    rep->primaryNodeId = 0;
     rep->noOfNodes = 1;
     NodeBitmask::clear(rep->theAllNodes);
     NodeBitmask::set(rep->theAllNodes, nodeId);
@@ -1068,7 +1068,7 @@ ClusterMgr::execNODE_FAILREP(const NdbApiSignal* sig,
 
   NodeFailRep * copy = CAST_PTR(NodeFailRep, signal.getDataPtrSend());
   copy->failNo = 0;
-  copy->masterNodeId = 0;
+  copy->primaryNodeId = 0;
   copy->noOfNodes = 0;
   NodeBitmask::clear(copy->theAllNodes);
 

@@ -22,7 +22,7 @@
 
 
 /**
- * This signal is sent from master DIH to all DIH's 
+ * This signal is sent from primary DIH to all DIH's 
  *   switches primary / backup nodes for replica(s)
  *
  */

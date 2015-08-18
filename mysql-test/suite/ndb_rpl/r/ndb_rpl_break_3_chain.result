@@ -1,10 +1,10 @@
 include/rpl_init.inc [topology=1->2->3]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 include/rpl_connect.inc [creating cluster1]
 include/rpl_connect.inc [creating cluster2]
 include/rpl_connect.inc [creating cluster3]
@@ -46,7 +46,7 @@ a	b
 1	Summertime
 Break Cluster3's link with Cluster2
 [connection cluster3]
-include/stop_slave.inc
+include/stop_replica.inc
 Make further changes on Cluster1
 [connection cluster1]
 insert into test.t1 values (2, "The cotton is high");
@@ -67,12 +67,12 @@ select * from mysql.ndb_apply_status order by server_id;
 server_id	epoch	log_name	start_pos	end_pos
 1	#	#	#	#
 2	#	#	#	#
-reset slave;
+reset replica;
 include/rpl_change_topology.inc [new topology=1->2,1->3]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
 [connection cluster1]
 Now show that cluster 3 is successfully replicating from Cluster1
 [connection cluster3]

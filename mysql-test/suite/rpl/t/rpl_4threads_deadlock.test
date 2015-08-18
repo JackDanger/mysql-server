@@ -3,7 +3,7 @@
 #                        SHOW BINLOGS
 # Problem:  A deadlock was occuring when 4 threads were involved in acquiring
 #                locks
-#     Thread 1: Dump thread ( Slave is reconnecting, so on Master, a new dump
+#     Thread 1: Dump thread ( Replica is reconnecting, so on Primary, a new dump
 #                    thread is trying kill zombie dump threads. It acquired
 #                    thread's LOCK_thd_data and it is about to acquire
 #                    mysys_var->current_mutex ( which LOCK_log)
@@ -30,11 +30,11 @@
 ###############################################################################
 --source include/have_debug_sync.inc
 --source include/have_binlog_format_statement.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-connect(master2,127.0.0.1,root,,test,$MASTER_MYPORT,);
-connect(master3,127.0.0.1,root,,test,$MASTER_MYPORT,);
---connection master
+connect(primary2,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+connect(primary3,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+--connection primary
 # Create atleast one binary log, otherwise purge logs command, show binary
 # logs command do not hit the DEBUG_SYNC points.
 FLUSH LOGS;
@@ -46,34 +46,34 @@ SET GLOBAL DEBUG='+d,before_dump_thread_acquires_current_mutex,processlist_acqui
 --let $iter=2
 while ($iter)
 {
-  --connection slave
-  --source include/stop_slave.inc
-  --source include/start_slave.inc
+  --connection replica
+  --source include/stop_replica.inc
+  --source include/start_replica.inc
   # Thread 1
-  --connection master
+  --connection primary
   --echo "Wait_for dump_thread_signal"
   SET DEBUG_SYNC='now WAIT_FOR dump_thread_signal';
 
   # Thread 2
-  --connection master1
+  --connection primary1
   SET DEBUG_SYNC='show_binlogs_after_lock_log_before_lock_index SIGNAL parked1 WAIT_FOR go_parked1';
   --send SHOW BINARY LOGS
 
-  --connection master
+  --connection primary
   echo "Wait_for parked1";
   SET DEBUG_SYNC='now WAIT_FOR parked1';
 
   # Thread 3
-  --connection master2
+  --connection primary2
   SET DEBUG_SYNC='purge_logs_after_lock_index_before_thread_count SIGNAL parked2 WAIT_FOR go_parked2';
   --send PURGE BINARY LOGS BEFORE '9999-12-31'
 
-  --connection master
+  --connection primary
   echo "Wait_for parked2";
   SET DEBUG_SYNC='now WAIT_FOR parked2';
 
   # Thread 4
-  --connection master3
+  --connection primary3
   SET DEBUG_SYNC='processlist_after_LOCK_thd_list_before_LOCK_thd_data SIGNAL parked3 WAIT_FOR go_parked3';
   if ($iter == 1)
   {
@@ -85,7 +85,7 @@ while ($iter)
   }
   --send_eval $query
 
-  --connection master
+  --connection primary
   echo "Wait_for parked3";
   SET DEBUG_SYNC='now WAIT_FOR parked3';
 
@@ -99,11 +99,11 @@ while ($iter)
   # in Pb2 runs), so lets ignore output. Anyways, we are interested in seeing
   # that there is no deadlock.
   --disable_result_log
-  --connection master1
+  --connection primary1
   --reap
-  --connection master2
+  --connection primary2
   --reap
-  --connection master3
+  --connection primary3
   --reap
   --enable_result_log
 
@@ -111,10 +111,10 @@ while ($iter)
 }
 
 --echo "Cleanup"
---disconnect master2
---disconnect master3
+--disconnect primary2
+--disconnect primary3
 
---connection master
+--connection primary
 SET DEBUG_SYNC='RESET';
 SET GLOBAL DEBUG=@save_debug;
 source include/rpl_end.inc;

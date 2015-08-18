@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP TRIGGER test.t1_bi;
 DROP TRIGGER test.t2_ai;
 DROP TRIGGER test.t1_bu;
@@ -66,12 +66,12 @@ DELETE FROM test.t1|
 INSERT INTO test.t1 VALUES(NULL,1,'Testing MySQL databases is a cool ', 'Must make it bug free for the customer',654321.4321,15.21,0,1965,NOW());
 INSERT INTO test.t2 VALUES(NULL,0,'Testing MySQL databases is a cool ', 'MySQL Customers ROCK!',654321.4321,1.24521,0,YEAR(NOW()),NOW());
 UPDATE test.t1 SET b1 = 0 WHERE b1 = 1;
-INSERT INTO test.t2 VALUES(NULL,1,'This is an after update test.', 'If this works, total will not be zero on the master or slave',1.4321,5.221,0,YEAR(NOW()),NOW());
+INSERT INTO test.t2 VALUES(NULL,1,'This is an after update test.', 'If this works, total will not be zero on the primary or replica',1.4321,5.221,0,YEAR(NOW()),NOW());
 UPDATE test.t2 SET b1 = 0 WHERE b1 = 1;
 INSERT INTO test.t1 VALUES(NULL,1,'add some more test data test.', 'and hope for the best', 3.321,5.221,0,YEAR(NOW()),NOW());
 DELETE FROM test.t1 WHERE id = 1;
 DELETE FROM test.t2 WHERE id = 1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP TRIGGER test.t1_bi;
 DROP TRIGGER test.t2_ai;
 DROP TRIGGER test.t1_bu;

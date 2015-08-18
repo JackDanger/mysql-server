@@ -1,14 +1,14 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET SQL_LOG_BIN= 0;
 set @orig_sql_mode= @@sql_mode;
 set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-grant replication slave on *.* to replssl@localhost require ssl;
+grant replication replica on *.* to replssl@localhost require ssl;
 Warnings:
 Warning	1287	Using GRANT for creating new user is deprecated and will be removed in future release. Create new user with CREATE USER statement.
 set sql_mode= @orig_sql_mode;
@@ -16,105 +16,105 @@ Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SET SQL_LOG_BIN= 1;
 create table t1 (t int);
-include/sync_slave_sql_with_master.inc
-stop slave;
-include/wait_for_slave_to_stop.inc
-change master to master_user='replssl',master_password='';
+include/sync_replica_sql_with_primary.inc
+stop replica;
+include/wait_for_replica_to_stop.inc
+change primary to primary_user='replssl',primary_password='';
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-start slave;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+start replica;
 insert into t1 values (1);
 select * from t1;
 t
-stop slave;
-include/wait_for_slave_to_stop.inc
-change master to master_ssl=1 , master_ssl_ca ='MYSQL_TEST_DIR/std_data/cacert.pem', master_ssl_cert='MYSQL_TEST_DIR/std_data/client-cert.pem', master_ssl_key='MYSQL_TEST_DIR/std_data/client-key.pem';
-start slave;
-include/wait_for_slave_to_start.inc
-include/sync_slave_sql_with_master.inc
+stop replica;
+include/wait_for_replica_to_stop.inc
+change primary to primary_ssl=1 , primary_ssl_ca ='MYSQL_TEST_DIR/std_data/cacert.pem', primary_ssl_cert='MYSQL_TEST_DIR/std_data/client-cert.pem', primary_ssl_key='MYSQL_TEST_DIR/std_data/client-key.pem';
+start replica;
+include/wait_for_replica_to_start.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 t
 1
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-Master_SSL_Allowed = 'Yes'
-Master_SSL_CA_Path = ''
-Master_SSL_CA_File = 'MYSQL_TEST_DIR/std_data/cacert.pem'
-Master_SSL_Cert = 'MYSQL_TEST_DIR/std_data/client-cert.pem'
-Master_SSL_Key = 'MYSQL_TEST_DIR/std_data/client-key.pem'
+Primary_SSL_Allowed = 'Yes'
+Primary_SSL_CA_Path = ''
+Primary_SSL_CA_File = 'MYSQL_TEST_DIR/std_data/cacert.pem'
+Primary_SSL_Cert = 'MYSQL_TEST_DIR/std_data/client-cert.pem'
+Primary_SSL_Key = 'MYSQL_TEST_DIR/std_data/client-key.pem'
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/check_slave_is_running.inc
-stop slave;
-include/wait_for_slave_to_stop.inc
-change master to master_user='root',master_password='', master_ssl=0;
+include/check_replica_is_running.inc
+stop replica;
+include/wait_for_replica_to_stop.inc
+change primary to primary_user='root',primary_password='', primary_ssl=0;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-start slave;
-include/wait_for_slave_to_start.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+start replica;
+include/wait_for_replica_to_start.inc
 SET SQL_LOG_BIN= 0;
 drop user replssl@localhost;
 SET SQL_LOG_BIN= 1;
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-Master_SSL_Allowed = 'No'
-Master_SSL_CA_Path = ''
-Master_SSL_CA_File = 'MYSQL_TEST_DIR/std_data/cacert.pem'
-Master_SSL_Cert = 'MYSQL_TEST_DIR/std_data/client-cert.pem'
-Master_SSL_Key = 'MYSQL_TEST_DIR/std_data/client-key.pem'
+Primary_SSL_Allowed = 'No'
+Primary_SSL_CA_Path = ''
+Primary_SSL_CA_File = 'MYSQL_TEST_DIR/std_data/cacert.pem'
+Primary_SSL_Cert = 'MYSQL_TEST_DIR/std_data/client-cert.pem'
+Primary_SSL_Key = 'MYSQL_TEST_DIR/std_data/client-key.pem'
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/check_slave_is_running.inc
-stop slave;
-include/wait_for_slave_to_stop.inc
-change master to
-master_host="localhost",
-master_ssl=1 ,
-master_ssl_ca ='MYSQL_TEST_DIR/std_data/cacert.pem',
-master_ssl_cert='MYSQL_TEST_DIR/std_data/client-cert.pem',
-master_ssl_key='MYSQL_TEST_DIR/std_data/client-key.pem',
-master_ssl_verify_server_cert=1;
-start slave;
-include/wait_for_slave_to_start.inc
+include/check_replica_is_running.inc
+stop replica;
+include/wait_for_replica_to_stop.inc
+change primary to
+primary_host="localhost",
+primary_ssl=1 ,
+primary_ssl_ca ='MYSQL_TEST_DIR/std_data/cacert.pem',
+primary_ssl_cert='MYSQL_TEST_DIR/std_data/client-cert.pem',
+primary_ssl_key='MYSQL_TEST_DIR/std_data/client-key.pem',
+primary_ssl_verify_server_cert=1;
+start replica;
+include/wait_for_replica_to_start.inc
 create table t1 (t int);
 insert into t1 values (1);
-include/sync_slave_sql_with_master.inc
-on slave
+include/sync_replica_sql_with_primary.inc
+on replica
 select * from t1;
 t
 1
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-Master_SSL_Allowed = 'Yes'
-Master_SSL_CA_Path = ''
-Master_SSL_CA_File = 'MYSQL_TEST_DIR/std_data/cacert.pem'
-Master_SSL_Cert = 'MYSQL_TEST_DIR/std_data/client-cert.pem'
-Master_SSL_Key = 'MYSQL_TEST_DIR/std_data/client-key.pem'
+Primary_SSL_Allowed = 'Yes'
+Primary_SSL_CA_Path = ''
+Primary_SSL_CA_File = 'MYSQL_TEST_DIR/std_data/cacert.pem'
+Primary_SSL_Cert = 'MYSQL_TEST_DIR/std_data/client-cert.pem'
+Primary_SSL_Key = 'MYSQL_TEST_DIR/std_data/client-key.pem'
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/check_slave_is_running.inc
+include/check_replica_is_running.inc
 drop table t1;
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-include/assert.inc [Master_SSL_Verify_Server_Cert should NOT change on STOP SLAVE.]
-RESET SLAVE;
-include/assert.inc [Master_SSL_Verify_Server_Cert should NOT change on RESET SLAVE.]
-CHANGE MASTER TO MASTER_PORT= MASTER_MYPORT;
-include/assert.inc [Master_SSL_Verify_Server_Cert should NOT change on CHANGE MASTER.]
-include/start_slave.inc
-include/assert.inc [Master_SSL_Verify_Server_Cert should NOT change on START SLAVE.]
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+include/assert.inc [Primary_SSL_Verify_Server_Cert should NOT change on STOP REPLICA.]
+RESET REPLICA;
+include/assert.inc [Primary_SSL_Verify_Server_Cert should NOT change on RESET REPLICA.]
+CHANGE PRIMARY TO PRIMARY_PORT= PRIMARY_MYPORT;
+include/assert.inc [Primary_SSL_Verify_Server_Cert should NOT change on CHANGE PRIMARY.]
+include/start_replica.inc
+include/assert.inc [Primary_SSL_Verify_Server_Cert should NOT change on START REPLICA.]
 DROP TABLE IF EXISTS t1;
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-CHANGE MASTER TO
-master_host="127.0.0.1",
-master_ssl_ca ='',
-master_ssl_cert='',
-master_ssl_key='',
-master_ssl_verify_server_cert=0,
-master_ssl=0;
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+CHANGE PRIMARY TO
+primary_host="127.0.0.1",
+primary_ssl_ca ='',
+primary_ssl_cert='',
+primary_ssl_key='',
+primary_ssl_verify_server_cert=0,
+primary_ssl=0;
 include/rpl_end.inc

@@ -1,7 +1,7 @@
 !include ../my.cnf
 
 [mysqld.3]
-log-slave-updates
+log-replica-updates
 
 [ENV]
 SERVER_MYPORT_3=		@mysqld.3.port

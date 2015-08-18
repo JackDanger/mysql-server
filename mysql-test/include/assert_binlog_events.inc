@@ -13,7 +13,7 @@
 # [--let $relay_log= 1]
 # [--let $include_header_events= 1]
 # [--let $wait_for_binlog_events= 1]
-# [--let $slave_timeout= 1]
+# [--let $replica_timeout= 1]
 # [--let $rpl_debug= 1]
 # [--let $keep_temp_files= 1]
 # [--let $dont_print_pattern= 1]
@@ -113,9 +113,9 @@
 #
 #   $wait_for_binlog_events
 #     If this is true, the script retries until the binlog contains
-#     the expected events. The timeout is given by $slave_timeout.
+#     the expected events. The timeout is given by $replica_timeout.
 #
-#   $slave_timeout
+#   $replica_timeout
 #     Timeout used if $wait_for_binlog_events is enabled.
 #
 #   $rpl_debug
@@ -170,7 +170,7 @@ if ($limit)
 if ($wait_for_binlog_events)
 {
   --let $_abe_counter= 0
-  --let $_abe_timeout= $slave_timeout
+  --let $_abe_timeout= $replica_timeout
   if (!$_abe_timeout)
   {
     --let $_abe_timeout= 300

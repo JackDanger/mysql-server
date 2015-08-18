@@ -94,10 +94,10 @@ protected:
     fmt(thd->lex->explain_format),
     context_type(context_type_arg),
     order_list(false),
-    explain_other(thd_arg != select_lex_arg->master_unit()->thd)
+    explain_other(thd_arg != select_lex_arg->primary_unit()->thd)
   {
     if (explain_other)
-      select_lex_arg->master_unit()
+      select_lex_arg->primary_unit()
         ->thd->query_plan.assert_plan_is_locked_if_other();
   }
 
@@ -280,7 +280,7 @@ public:
   {
     /* it's a UNION: */
     DBUG_ASSERT(select_lex_arg ==
-                select_lex_arg->master_unit()->fake_select_lex);
+                select_lex_arg->primary_unit()->fake_select_lex);
     // Use optimized values from fake_select_lex's join
     order_list= MY_TEST(select_lex_arg->join->order);
     // A plan exists so the reads above are safe:
@@ -365,7 +365,7 @@ public:
     need_order(need_order_arg), distinct(distinct_arg),
     join(select_lex_arg->join), used_tables(0)
   {
-    DBUG_ASSERT(select_lex->join->thd == select_lex->master_unit()->thd);
+    DBUG_ASSERT(select_lex->join->thd == select_lex->primary_unit()->thd);
     DBUG_ASSERT(join->get_plan_state() == JOIN::PLAN_READY);
     /* it is not UNION: */
     DBUG_ASSERT(join->select_lex != join->unit->fake_select_lex);
@@ -678,7 +678,7 @@ bool Explain::explain_select_type()
 {
   // ignore top-level SELECT_LEXes
   // Elaborate only when plan is ready
-  if (select_lex->master_unit()->outer_select() &&
+  if (select_lex->primary_unit()->outer_select() &&
       select_lex->join &&
       select_lex->join->get_plan_state() != JOIN::NO_PLAN)
   {
@@ -723,7 +723,7 @@ bool Explain_no_table::explain_extra()
 
 bool Explain_no_table::explain_modify_flags()
 {
-  THD *const query_thd= select_lex->master_unit()->thd;
+  THD *const query_thd= select_lex->primary_unit()->thd;
   switch (query_thd->query_plan.get_command()) {
   case SQLCOM_UPDATE_MULTI:
   case SQLCOM_UPDATE:
@@ -760,11 +760,11 @@ bool Explain_union_result::explain_table_name()
 {
   // Get the last of UNION's selects
   SELECT_LEX *last_select=
-    select_lex->master_unit()->first_select()->last_select();
+    select_lex->primary_unit()->first_select()->last_select();
   // # characters needed to print select_number of last select
   int last_length= (int)log10((double)last_select->select_number)+1;
 
-  SELECT_LEX *sl= select_lex->master_unit()->first_select();
+  SELECT_LEX *sl= select_lex->primary_unit()->first_select();
   size_t len= 6, lastop= 0;
   char table_name_buffer[NAME_LEN];
   memcpy(table_name_buffer, STRING_WITH_LEN("<union"));
@@ -1938,7 +1938,7 @@ bool explain_single_table_modification(THD *ethd,
 {
   DBUG_ENTER("explain_single_table_modification");
   Query_result_send result;
-  const THD *const query_thd= select->master_unit()->thd;
+  const THD *const query_thd= select->primary_unit()->thd;
   const bool other= (query_thd != ethd);
   bool ret;
 
@@ -2098,7 +2098,7 @@ explain_query_specification(THD *ethd, SELECT_LEX *select_lex,
       const bool need_order= flags->any(ESP_USING_FILESORT);
       const bool distinct= flags->get(ESC_DISTINCT, ESP_EXISTS);
 
-      if (select_lex == select_lex->master_unit()->fake_select_lex)
+      if (select_lex == select_lex->primary_unit()->fake_select_lex)
         ret= Explain_union_result(ethd, select_lex).send();
       else
         ret= Explain_join(ethd, select_lex, need_tmp_table, need_order,

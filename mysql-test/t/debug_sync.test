@@ -272,7 +272,7 @@ SET DEBUG_SYNC= 'now HIT_LIMIT 1';
 
 #
 # Many actions. Watch the array growing and shrinking in the debug trace:
-# egrep 'query:|debug_sync_action:' mysql-test/var/log/master.trace
+# egrep 'query:|debug_sync_action:' mysql-test/var/log/primary.trace
 #
 SET DEBUG_SYNC= 'RESET';
 SHOW VARIABLES LIKE 'DEBUG_SYNC';

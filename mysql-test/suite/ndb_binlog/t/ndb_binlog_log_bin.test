@@ -9,10 +9,10 @@
 --disable_warnings
 connection server2;
 drop table if exists t1,t2,t3;
-reset master;
+reset primary;
 connection server1;
 drop table if exists t1,t2,t3;
-reset master;
+reset primary;
 --enable_warnings
 
 # basic SQL_LOG_BIN functionality
@@ -30,13 +30,13 @@ insert into t1 values (1,1);
 alter table t1 add c int;
 # we should not see it in the local server
 -- source include/show_binlog_events.inc
-reset master;
+reset primary;
 # we should not see it in another server
 connection server2;
 use mysqltest;
 insert into t2 values (1,1);
 -- source include/show_binlog_events.inc
-reset master;
+reset primary;
 # but if you do stuff in "default" client setting
 connection con1;
 use mysqltest;

@@ -1,6 +1,6 @@
-################## mysql-test\t\slave_net_timeout_basic.test ##################
+################## mysql-test\t\replica_net_timeout_basic.test ##################
 #                                                                             #
-# Variable Name: slave_net_timeout                                            #
+# Variable Name: replica_net_timeout                                            #
 # Scope: GLOBAL                                                               #
 # Access Type: Dynamic                                                        #
 # Data Type: numeric                                                          #
@@ -11,7 +11,7 @@
 # Creation Date: 2008-02-07                                                   #
 # Author:  Rizwan                                                             #
 #                                                                             #
-# Description: Test Cases of Dynamic System Variable slave_net_timeout        #
+# Description: Test Cases of Dynamic System Variable replica_net_timeout        #
 #              that checks the behavior of this variable in the following ways#
 #              * Default Value                                                #
 #              * Valid & Invalid values                                       #
@@ -28,7 +28,7 @@
 --source include/not_embedded.inc
 --source include/load_sysvars.inc
 ###########################################################
-#           START OF slave_net_timeout TESTS              #
+#           START OF replica_net_timeout TESTS              #
 ###########################################################
 
 
@@ -36,45 +36,45 @@
 #                 Save initial value                        #
 #############################################################
 
-SET @start_global_value = @@global.slave_net_timeout;
+SET @start_global_value = @@global.replica_net_timeout;
 SELECT @start_global_value;
 
 --echo '#--------------------FN_DYNVARS_146_01-------------------------#'
 ###########################################################
-#     Display the DEFAULT value of slave_net_timeout      #
+#     Display the DEFAULT value of replica_net_timeout      #
 ###########################################################
 
-SET @@global.slave_net_timeout = 500000;
-SET @@global.slave_net_timeout = DEFAULT;
-SELECT @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = 500000;
+SET @@global.replica_net_timeout = DEFAULT;
+SELECT @@global.replica_net_timeout;
 
 --echo '#--------------------FN_DYNVARS_146_02-------------------------#'
 ############################################################
-#     Check the DEFAULT value of slave_net_timeout         #
+#     Check the DEFAULT value of replica_net_timeout         #
 ############################################################
 
-SET @@global.slave_net_timeout = DEFAULT;
-SELECT @@global.slave_net_timeout = 60;
+SET @@global.replica_net_timeout = DEFAULT;
+SELECT @@global.replica_net_timeout = 60;
 
 --echo '#--------------------FN_DYNVARS_146_03-------------------------#'
 ###########################################################################
-# Change the value of slave_net_timeout to a valid value for GLOBAL Scope #
+# Change the value of replica_net_timeout to a valid value for GLOBAL Scope #
 ###########################################################################
 
-SET @@global.slave_net_timeout = 0;
-SELECT @@global.slave_net_timeout;
-SET @@global.slave_net_timeout = 1;
-SELECT @@global.slave_net_timeout;
-SET @@global.slave_net_timeout = 15;
-SELECT @@global.slave_net_timeout;
-SET @@global.slave_net_timeout = 1024;
-SELECT @@global.slave_net_timeout;
-SET @@global.slave_net_timeout = 3600+1;
-SELECT @@global.slave_net_timeout;
-SET @@global.slave_net_timeout = 2147483648;
-SELECT @@global.slave_net_timeout;
-SET @@global.slave_net_timeout = 2147483648*2-1;
-SELECT @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = 0;
+SELECT @@global.replica_net_timeout;
+SET @@global.replica_net_timeout = 1;
+SELECT @@global.replica_net_timeout;
+SET @@global.replica_net_timeout = 15;
+SELECT @@global.replica_net_timeout;
+SET @@global.replica_net_timeout = 1024;
+SELECT @@global.replica_net_timeout;
+SET @@global.replica_net_timeout = 3600+1;
+SELECT @@global.replica_net_timeout;
+SET @@global.replica_net_timeout = 2147483648;
+SELECT @@global.replica_net_timeout;
+SET @@global.replica_net_timeout = 2147483648*2-1;
+SELECT @@global.replica_net_timeout;
 
 
 --echo '#--------------------FN_DYNVARS_146_04-------------------------#'
@@ -83,49 +83,49 @@ SELECT @@global.slave_net_timeout;
 ###############################################################################
 
 --Error ER_GLOBAL_VARIABLE
-SET @@slave_net_timeout = 2;
+SET @@replica_net_timeout = 2;
 
 --Error ER_GLOBAL_VARIABLE
-SET @@session.slave_net_timeout = 3;
+SET @@session.replica_net_timeout = 3;
 
 --Error ER_GLOBAL_VARIABLE
-SET @@local.slave_net_timeout = 4;
+SET @@local.replica_net_timeout = 4;
 
 
 
 --echo '#------------------FN_DYNVARS_146_05-----------------------#'
 #############################################################
-# Change the value of slave_net_timeout to an invalid value #
+# Change the value of replica_net_timeout to an invalid value #
 #############################################################
 
-SET @@global.slave_net_timeout = -1;
-SELECT @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = -1;
+SELECT @@global.replica_net_timeout;
 
-SET @@global.slave_net_timeout = -2147483648;
-SELECT @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = -2147483648;
+SELECT @@global.replica_net_timeout;
 
-SET @@global.slave_net_timeout = 2147483649*2;
-SELECT @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = 2147483649*2;
+SELECT @@global.replica_net_timeout;
 
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_net_timeout = 65530.34;
+SET @@global.replica_net_timeout = 65530.34;
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_net_timeout = 100s;
+SET @@global.replica_net_timeout = 100s;
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_net_timeout = 7483649.56;
+SET @@global.replica_net_timeout = 7483649.56;
 --Error ER_WRONG_TYPE_FOR_VAR
-SET @@global.slave_net_timeout = 0.6;
+SET @@global.replica_net_timeout = 0.6;
 
 --echo '#------------------FN_DYNVARS_146_06-----------------------#'
 ####################################################################
 #   Check if the value in GLOBAL Table matches value in variable   #
 ####################################################################
 
-SET @@global.slave_net_timeout = 3000;
+SET @@global.replica_net_timeout = 3000;
 --disable_warnings
-SELECT @@global.slave_net_timeout = VARIABLE_VALUE 
+SELECT @@global.replica_net_timeout = VARIABLE_VALUE 
 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES 
-WHERE VARIABLE_NAME='slave_net_timeout';
+WHERE VARIABLE_NAME='replica_net_timeout';
 --enable_warnings
 
 
@@ -137,7 +137,7 @@ WHERE VARIABLE_NAME='slave_net_timeout';
 --disable_warnings
 SELECT count(VARIABLE_VALUE) 
 FROM INFORMATION_SCHEMA.SESSION_VARIABLES 
-WHERE VARIABLE_NAME='slave_net_timeout';
+WHERE VARIABLE_NAME='replica_net_timeout';
 --enable_warnings
 
 
@@ -146,10 +146,10 @@ WHERE VARIABLE_NAME='slave_net_timeout';
 #     Check if TRUE and FALSE values can be used on variable       #
 ####################################################################
 
-SET @@global.slave_net_timeout = TRUE;
-SELECT @@global.slave_net_timeout;
-SET @@global.slave_net_timeout = FALSE;
-SELECT @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = TRUE;
+SELECT @@global.replica_net_timeout;
+SET @@global.replica_net_timeout = FALSE;
+SELECT @@global.replica_net_timeout;
 
 
 --echo '#---------------------FN_DYNVARS_001_09----------------------#'
@@ -158,33 +158,33 @@ SELECT @@global.slave_net_timeout;
 ###############################################################################
 
 
-SET @@global.slave_net_timeout = 60*60;
-SELECT @@slave_net_timeout = @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = 60*60;
+SELECT @@replica_net_timeout = @@global.replica_net_timeout;
 
 
 --echo '#---------------------FN_DYNVARS_001_10----------------------#'
 ##########################################################################
-#   Check if slave_net_timeout can be accessed without @@ sign and scope #
+#   Check if replica_net_timeout can be accessed without @@ sign and scope #
 ##########################################################################
 
 --Error ER_GLOBAL_VARIABLE
-SET slave_net_timeout = 2048;
+SET replica_net_timeout = 2048;
 --Error ER_BAD_FIELD_ERROR
-SELECT slave_net_timeout;
+SELECT replica_net_timeout;
 
-SELECT @@slave_net_timeout;
+SELECT @@replica_net_timeout;
 
 #verifying another another syntax for setting value
-SET global slave_net_timeout = 99;
+SET global replica_net_timeout = 99;
 
 ####################################
 #     Restore initial value        #
 ####################################
 
-SET @@global.slave_net_timeout = @start_global_value;
-SELECT @@global.slave_net_timeout;
+SET @@global.replica_net_timeout = @start_global_value;
+SELECT @@global.replica_net_timeout;
 
 ################################################
-#              END OF slave_net_timeout TESTS  #
+#              END OF replica_net_timeout TESTS  #
 ################################################
 

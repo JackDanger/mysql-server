@@ -1,11 +1,11 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 #
 # Bug#11940249: RBR: MYISAM TABLE CORRUPTION AFTER FIRST LARGE INSERT
-#               ON SLAVE
+#               ON REPLICA
 #
 # Must have > 100 rows in the first rpl event (to trigger bulk_insert
 # optimization for insert into an empty table, by disable all non-unique
@@ -28,21 +28,21 @@ b INT,
 KEY a (a))
 ENGINE = MyISAM;
 INSERT INTO t SELECT * FROM tmp;
-# on slave:
+# on replica:
 SELECT COUNT(*) FROM t WHERE b > -1;
 COUNT(*)
 192
-# on master:
+# on primary:
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t)
-master-bin.000001	#	Write_rows	#	#	table_id: #
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t)
+primary-bin.000001	#	Write_rows	#	#	table_id: #
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	COMMIT
 RENAME TABLE t to t_2;
 RENAME TABLE t_2 to t;
-# on slave:
+# on replica:
 SELECT COUNT(*) FROM t WHERE b > -1;
 COUNT(*)
 192
@@ -55,6 +55,6 @@ test.t	repair	status	OK
 SELECT COUNT(*) FROM t WHERE b > -1;
 COUNT(*)
 192
-include/diff_tables.inc [master:t, slave:t]
+include/diff_tables.inc [primary:t, replica:t]
 DROP TABLE t, tmp;
 include/rpl_end.inc

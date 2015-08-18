@@ -7,7 +7,7 @@
 # Test scenario :                                                    #
 # - Run bulk create index on replication setup                       #
 # - Run bulk create on partitioned table and see its replictaed      #
-#   to slave                                                         #
+#   to replica                                                         #
 # Creation:                                                          #
 # 2014-06-19 Implemented this test as part of WL#7277                #
 #                                                                    #
@@ -15,9 +15,9 @@
 
 --source include/not_embedded.inc
 -- source include/have_innodb.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
--- connection master
+-- connection primary
 # Create Insert Procedure
 DELIMITER |;
 CREATE PROCEDURE populate_t1(load_even INT)
@@ -140,8 +140,8 @@ SELECT * FROM t_part WHERE id = 101;
 SELECT * FROM t_part WHERE title = 'a101';
 
 
---source include/sync_slave_sql_with_master.inc
--- connection slave
+--source include/sync_replica_sql_with_primary.inc
+-- connection replica
 SHOW CREATE TABLE t1;
 SHOW CREATE TABLE t_part;
 SELECT COUNT(*) FROM t1;
@@ -174,7 +174,7 @@ SELECT * FROM t_part WHERE id = 101;
 SELECT * FROM t_part WHERE title = 'a101';
 
 
--- connection master
+-- connection primary
 DROP PROCEDURE populate_t1;
 DROP TABLE t1;
 DROP TABLE t_part;

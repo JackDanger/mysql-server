@@ -49,21 +49,21 @@ void Dbdih::initData()
   c_takeOverPool.setSize(max_takeover_threads);
   {
     Ptr<TakeOverRecord> ptr;
-    while (c_masterActiveTakeOverList.seizeFirst(ptr))
+    while (c_primaryActiveTakeOverList.seizeFirst(ptr))
     {
       new (ptr.p) TakeOverRecord;
     }
-    while (c_masterActiveTakeOverList.first(ptr))
+    while (c_primaryActiveTakeOverList.first(ptr))
     {
       releaseTakeOver(ptr, true);
     }
   }
   
   waitGCPProxyPool.setSize(ZPROXY_FILE_SIZE);
-  waitGCPMasterPool.setSize(ZPROXY_MASTER_FILE_SIZE);
+  waitGCPPrimaryPool.setSize(ZPROXY_PRIMARY_FILE_SIZE);
 
-  c_dictLockSlavePool.setSize(1); // assert single usage
-  c_dictLockSlavePtrI_nodeRestart = RNIL;
+  c_dictLockReplicaPool.setSize(1); // assert single usage
+  c_dictLockReplicaPtrI_nodeRestart = RNIL;
 
   cgcpOrderBlocked = 0;
   c_lcpState.ctcCounter = 0;
@@ -75,7 +75,7 @@ void Dbdih::initData()
   c_set_initial_start_flag = FALSE;
   c_sr_wait_to = false;
   c_2pass_inr = false;
-  c_handled_master_take_over_copy_gci = 0;
+  c_handled_primary_take_over_copy_gci = 0;
   
   c_lcpTabDefWritesControl.init(MAX_CONCURRENT_LCP_TAB_DEF_FLUSHES);
 }//Dbdih::initData()
@@ -140,10 +140,10 @@ Dbdih::Dbdih(Block_context& ctx):
   c_queued_for_commit_takeover_list(c_takeOverPool),
   c_active_copy_threads_list(c_takeOverPool),
   c_completed_copy_threads_list(c_takeOverPool),
-  c_masterActiveTakeOverList(c_takeOverPool),
+  c_primaryActiveTakeOverList(c_takeOverPool),
   c_waitGCPProxyList(waitGCPProxyPool),
-  c_waitGCPMasterList(waitGCPMasterPool),
-  c_waitEpochMasterList(waitGCPMasterPool)
+  c_waitGCPPrimaryList(waitGCPPrimaryPool),
+  c_waitEpochPrimaryList(waitGCPPrimaryPool)
 {
   BLOCK_CONSTRUCTOR(Dbdih);
 
@@ -178,15 +178,15 @@ Dbdih::Dbdih(Block_context& ctx):
   addRecSignal(GSN_DUMP_STATE_ORD, &Dbdih::execDUMP_STATE_ORD);
   addRecSignal(GSN_NDB_TAMPER, &Dbdih::execNDB_TAMPER, true);
   addRecSignal(GSN_DEBUG_SIG, &Dbdih::execDEBUG_SIG);
-  addRecSignal(GSN_MASTER_GCPREQ, &Dbdih::execMASTER_GCPREQ);
-  addRecSignal(GSN_MASTER_GCPREF, &Dbdih::execMASTER_GCPREF);
-  addRecSignal(GSN_MASTER_GCPCONF, &Dbdih::execMASTER_GCPCONF);
+  addRecSignal(GSN_PRIMARY_GCPREQ, &Dbdih::execPRIMARY_GCPREQ);
+  addRecSignal(GSN_PRIMARY_GCPREF, &Dbdih::execPRIMARY_GCPREF);
+  addRecSignal(GSN_PRIMARY_GCPCONF, &Dbdih::execPRIMARY_GCPCONF);
   addRecSignal(GSN_EMPTY_LCP_CONF, &Dbdih::execEMPTY_LCP_CONF);
   addRecSignal(GSN_EMPTY_LCP_REP, &Dbdih::execEMPTY_LCP_REP);
 
-  addRecSignal(GSN_MASTER_LCPREQ, &Dbdih::execMASTER_LCPREQ);
-  addRecSignal(GSN_MASTER_LCPREF, &Dbdih::execMASTER_LCPREF);
-  addRecSignal(GSN_MASTER_LCPCONF, &Dbdih::execMASTER_LCPCONF);
+  addRecSignal(GSN_PRIMARY_LCPREQ, &Dbdih::execPRIMARY_LCPREQ);
+  addRecSignal(GSN_PRIMARY_LCPREF, &Dbdih::execPRIMARY_LCPREF);
+  addRecSignal(GSN_PRIMARY_LCPCONF, &Dbdih::execPRIMARY_LCPCONF);
   addRecSignal(GSN_NF_COMPLETEREP, &Dbdih::execNF_COMPLETEREP);
   addRecSignal(GSN_START_PERMREQ, &Dbdih::execSTART_PERMREQ);
   addRecSignal(GSN_START_PERMCONF, &Dbdih::execSTART_PERMCONF);

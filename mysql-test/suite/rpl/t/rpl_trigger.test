@@ -3,16 +3,16 @@
 # Adding statement include due to Bug 12574
 # TODO: Remove statement include once 12574 is patched
 --source include/have_binlog_format_mixed_or_statement.inc 
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/not_gtid_enabled.inc
 --source include/have_myisam.inc
 
 disable_query_log;
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
---connection slave
-call mtr.add_suppression("The master's UUID has changed, although this should not happen unless you have changed it manually.");
-call mtr.add_suppression("Either event.*is from an old master");
---connection master
+--connection replica
+call mtr.add_suppression("The primary's UUID has changed, although this should not happen unless you have changed it manually.");
+call mtr.add_suppression("Either event.*is from an old primary");
+--connection primary
 enable_query_log;
 
 --disable_warnings
@@ -47,7 +47,7 @@ insert into t3 values(100,"log",0,0,0);
 # Ensure we always have same random numbers
 SET @@RAND_SEED1=658490765, @@RAND_SEED2=635893186;
 
-# Emulate that we have rows 2-9 deleted on the slave
+# Emulate that we have rows 2-9 deleted on the replica
 --disable_warnings
 insert into t1 values(1,1,rand()),(NULL,2,rand());
 insert into t2 (b) values(last_insert_id());
@@ -58,14 +58,14 @@ insert into t2 values(NULL,0),(500,0);
 select a,b, truncate(rand_value,4) from t1;
 select * from t2;
 select a,name, old_a, old_b, truncate(rand_value,4) from t3;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --disable_query_log
-select "--- On slave --" as "";
+select "--- On replica --" as "";
 --enable_query_log
 select a,b, truncate(rand_value,4) from t1;
 select * from t2;
 select a,name, old_a, old_b, truncate(rand_value,4) from t3;
-connection master;
+connection primary;
 drop table t1,t2,t3;
 
 #
@@ -110,9 +110,9 @@ select a=b && a=c from t1;
 let $time=`select a from t1`;
 
 # Check that definer attribute is replicated properly:
-#   - dump definers on the master;
-#   - wait for the slave to synchronize with the master;
-#   - dump definers on the slave;
+#   - dump definers on the primary;
+#   - wait for the replica to synchronize with the primary;
+#   - dump definers on the replica;
 
 SELECT routine_name, definer
 FROM information_schema.routines
@@ -122,9 +122,9 @@ SELECT trigger_name, definer
 FROM information_schema.triggers
 WHERE trigger_name = 't1_first';
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --disable_query_log
-select "--- On slave --" as "";
+select "--- On replica --" as "";
 --enable_query_log
 
 # XXX: Definers of stored procedures and functions are not replicated. WL#2897
@@ -145,7 +145,7 @@ select a=b && a=c from t1;
 eval select a='$time' as 'test' from t1;
 --enable_query_log
 
-connection master;
+connection primary;
 disconnect con2;
 
 truncate table t1;
@@ -181,9 +181,9 @@ create database other;
 use other;
 insert into test.t1 values (1);
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 use test;
 drop table t1,t2;
 drop database other;
@@ -192,7 +192,7 @@ drop database other;
 #
 # Test specific triggers including SELECT into var with replication
 # BUG#13227:
-# slave performs an update to the replicatable table, t1, 
+# replica performs an update to the replicatable table, t1, 
 # and modifies its local data, t3, by mean of its local trigger that uses
 # another local table t2.
 # Expected values are commented into queries.
@@ -213,13 +213,13 @@ while ($rnd)
 ### SETUP
 
 --disable_warnings
-  connection master;
+  connection primary;
   eval drop table if exists t1$rnd;
-  connection slave;
+  connection replica;
   eval drop table if exists t2$rnd,t3$rnd;
 --enable_warnings
 
-  connection master;
+  connection primary;
   eval create table t1$rnd (f1 int)  /* 2 replicate */;  
   let $i=$max_rows;
   while ($i)
@@ -228,11 +228,11 @@ while ($rnd)
     dec $i;
   }
 
-  --source include/sync_slave_sql_with_master.inc
-#connection slave;
+  --source include/sync_replica_sql_with_primary.inc
+#connection replica;
   eval select * from t1$rnd;
   delimiter |;
-  eval create trigger trg1$rnd before update on t1$rnd /* slave local */
+  eval create trigger trg1$rnd before update on t1$rnd /* replica local */
   for each row
   begin
     DECLARE r integer;
@@ -240,8 +240,8 @@ while ($rnd)
     INSERT INTO t3$rnd values (r);
   end|
   delimiter ;|
-  eval create table t2$rnd (f1 int, f2 int) /* slave local */;        
-  eval create table t3$rnd (f3 int) /* slave local */;                
+  eval create table t2$rnd (f1 int, f2 int) /* replica local */;        
+  eval create table t3$rnd (f3 int) /* replica local */;                
   let $i=$max_rows;
   while ($i) 
   {
@@ -251,15 +251,15 @@ while ($rnd)
 
 ### Test
 
-#connection slave;
+#connection replica;
 
-# trigger works as specified when updates from slave
+# trigger works as specified when updates from replica
   eval select * from t2$rnd;
   eval UPDATE t1$rnd SET f1=$max_rows where f1=-$max_rows;
   eval SELECT * from t1$rnd /* must be f1 $max_rows, 1 - $max_rows 2 - $max_rows ... -1 */;
   eval SELECT * from t3$rnd /* must be f3 $max_rows*100 */;
 
-  connection master;
+  connection primary;
   let $i=$max_rows;
   while ($i)
   {
@@ -267,20 +267,20 @@ while ($rnd)
     dec $i;
   }
   
-  --source include/sync_slave_sql_with_master.inc
-#connection slave;
+  --source include/sync_replica_sql_with_primary.inc
+#connection replica;
   eval SELECT * from t1$rnd /* must be f1 $max_rows ... 1 */;
   eval SELECT * from t3$rnd /* must be f3 $max_rows * 100 ...  100 */;
   
 ### CLEANUP
-#connection slave;
+#connection replica;
   eval drop trigger trg1$rnd;
   eval drop table t2$rnd,t3$rnd;
   
-  connection master;
+  connection primary;
   eval drop table t1$rnd;
-  --source include/sync_slave_sql_with_master.inc
-  connection master;
+  --source include/sync_replica_sql_with_primary.inc
+  connection primary;
   
   dec $rnd;
 }
@@ -290,14 +290,14 @@ while ($rnd)
 # BUG#16266: Definer is not fully qualified error during replication.
 #
 # The idea of this test is to emulate replication of a trigger from the old
-# master (master w/o "DEFINER in triggers" support) to the new slave and check
+# primary (primary w/o "DEFINER in triggers" support) to the new replica and check
 # that:
-#   1. the trigger on the slave will be replicated w/o errors;
-#   2. the trigger on the slave will be non-SUID (will have no DEFINER);
-#   3. the trigger can be activated later on the slave w/o errors.
+#   1. the trigger on the replica will be replicated w/o errors;
+#   2. the trigger on the replica will be non-SUID (will have no DEFINER);
+#   3. the trigger can be activated later on the replica w/o errors.
 #
-# In order to emulate this kind of replication, we make the slave playing the binlog,
-# recorded by 5.0.16 master. This binlog contains the following statements:
+# In order to emulate this kind of replication, we make the replica playing the binlog,
+# recorded by 5.0.16 primary. This binlog contains the following statements:
 #   CREATE TABLE t1(c INT);
 #   CREATE TABLE t2(s CHAR(200));
 #   CREATE TRIGGER trg1 AFTER INSERT ON t1
@@ -308,24 +308,24 @@ while ($rnd)
 
 # 1. Check that the trigger's replication is succeeded.
 
-# Stop the slave.
+# Stop the replica.
 
-connection slave;
-STOP SLAVE;
+connection replica;
+STOP REPLICA;
 
-# Replace master's binlog.
+# Replace primary's binlog.
 
-connection master;
+connection primary;
 let $MYSQLD_DATADIR= `select @@datadir`;
 FLUSH LOGS;
 
-# Stop master server
+# Stop primary server
 --let $rpl_server_number= 1
 --source include/rpl_stop_server.inc
 
 # Replace binlog
-remove_file $MYSQLD_DATADIR/master-bin.000001;
-copy_file $MYSQL_TEST_DIR/std_data/bug16266.000001 $MYSQLD_DATADIR/master-bin.000001;
+remove_file $MYSQLD_DATADIR/primary-bin.000001;
+copy_file $MYSQL_TEST_DIR/std_data/bug16266.000001 $MYSQLD_DATADIR/primary-bin.000001;
 
 --let $rpl_server_number= 1
 --source include/rpl_start_server.inc
@@ -333,16 +333,16 @@ copy_file $MYSQL_TEST_DIR/std_data/bug16266.000001 $MYSQLD_DATADIR/master-bin.00
 let $binlog_version= query_get_value(SHOW BINLOG EVENTS, Info, 1);
 
 
-# Make the slave to replay the new binlog.
---echo --> Master binlog: $binlog_version
+# Make the replica to replay the new binlog.
+--echo --> Primary binlog: $binlog_version
 
-# Make the slave to replay the new binlog.
+# Make the replica to replay the new binlog.
 
-connection slave;
-RESET SLAVE;
-START SLAVE;
+connection replica;
+RESET REPLICA;
+START REPLICA;
 
-SELECT MASTER_POS_WAIT('master-bin.000001', 513) >= 0;
+SELECT PRIMARY_POS_WAIT('primary-bin.000001', 513) >= 0;
 
 # Check that the replication succeeded.
 
@@ -356,8 +356,8 @@ disable_warnings;
 SELECT * FROM t1;
 SELECT * FROM t2;
 
-# 2. Check that the trigger is non-SUID on the slave;
-# 3. Check that the trigger can be activated on the slave.
+# 2. Check that the trigger is non-SUID on the replica;
+# 3. Check that the trigger can be activated on the replica.
 #
 INSERT INTO t1 VALUES(2);
 enable_warnings;
@@ -371,22 +371,22 @@ DROP TRIGGER trg1;
 DROP TABLE t1;
 DROP TABLE t2;
 
-STOP SLAVE;
-RESET SLAVE;
+STOP REPLICA;
+RESET REPLICA;
 
-# The master should be clean.
+# The primary should be clean.
 
-connection master;
+connection primary;
 SHOW TABLES LIKE 't_';
 --replace_column 6 #
 SHOW TRIGGERS;
 
-RESET MASTER;
+RESET PRIMARY;
 
-# Restart slave.
+# Restart replica.
 
-connection slave;
-START SLAVE;
+connection replica;
+START REPLICA;
 
 
 #
@@ -402,8 +402,8 @@ START SLAVE;
 
 --echo
 --echo ---> Preparing environment...
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 --disable_warnings
 DROP TABLE IF EXISTS t1;
@@ -411,13 +411,13 @@ DROP TABLE IF EXISTS t2;
 --enable_warnings
 
 --echo
---echo ---> Synchronizing slave with master...
+--echo ---> Synchronizing replica with primary...
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 # Test.
 
@@ -437,20 +437,20 @@ CREATE TABLE t2(c INT);
 INSERT INTO t1 VALUES(1);
 
 --echo
---echo ---> Checking on master...
+--echo ---> Checking on primary...
 
 SELECT * FROM t1;
 SELECT * FROM t2;
 
 --echo
---echo ---> Synchronizing slave with master...
+--echo ---> Synchronizing replica with primary...
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo ---> connection: master
+--echo ---> connection: primary
 
 --echo
---echo ---> Checking on slave...
+--echo ---> Checking on replica...
 
 SELECT * FROM t1;
 SELECT * FROM t2;
@@ -458,8 +458,8 @@ SELECT * FROM t2;
 # Cleanup.
 
 --echo
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 --echo
 --echo ---> Cleaning up...
@@ -467,14 +467,14 @@ SELECT * FROM t2;
 DROP TABLE t1;
 DROP TABLE t2;
 
---source include/sync_slave_sql_with_master.inc
---connection master
+--source include/sync_replica_sql_with_primary.inc
+--connection primary
 
 #
 # BUG#23703: DROP TRIGGER needs an IF EXISTS
 #
 
-connection master;
+connection primary;
 
 --disable_warnings
 drop table if exists t1;
@@ -497,27 +497,27 @@ drop trigger if exists t1_bi;
 insert into t1 values (3, "c");
 
 select * from t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
 
-connection master;
+connection primary;
 
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
-# Bug#40116: Uncommited changes are replicated and stay on slave after
-# rollback on master
+# Bug#40116: Uncommited changes are replicated and stay on replica after
+# rollback on primary
 #
 
-connection master;
+connection primary;
 --source include/rpl_reset.inc
 
 source include/have_innodb.inc;
-connection slave;
+connection replica;
 source include/have_innodb.inc;
 
-connection master;
+connection primary;
 create table t1 ( f int ) engine = innodb;
 create table log ( r int ) engine = myisam; 
 create trigger tr
@@ -529,23 +529,23 @@ set autocommit = 0;
 insert into t1 values ( 1 );
 --enable_warnings
 rollback;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-let $diff_tables= master:t1, slave:t1;
+let $diff_tables= primary:t1, replica:t1;
 --source include/diff_tables.inc
 
-let $diff_tables= master:log, slave:log;
+let $diff_tables= primary:log, replica:log;
 --source include/diff_tables.inc
 
-connection master;
+connection primary;
 drop table t1, log;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo #
 --echo # WL#3253: Multiple triggers with the same value TIME/ACTION per table 
 --echo #
 
-connection master;
+connection primary;
 --source include/rpl_reset.inc
 
 SET TIMESTAMP=UNIX_TIMESTAMP('2013-01-31 09:00:00');
@@ -558,21 +558,21 @@ CREATE TRIGGER tr1_1_bi BEFORE INSERT ON t1 FOR EACH ROW FOLLOWS tr1_bi SET @a:=
 CREATE TRIGGER tr1_bu BEFORE UPDATE ON t1 FOR EACH ROW SET @b:=1;
 CREATE TRIGGER tr2_bu BEFORE UPDATE ON t1 FOR EACH ROW SET @b:=2;
 --echo
---echo ---> Synchronizing slave with master...
+--echo ---> Synchronizing replica with primary...
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---echo ---> connection: slave
-connection slave;
+--echo ---> connection: replica
+connection replica;
 
 SHOW TRIGGERS;
 
 SELECT trigger_name, action_order, created FROM information_schema.triggers WHERE trigger_schema='test';
 
-connection master;
+connection primary;
 
 DROP TABLE t1;
---sync_slave_with_master
+--sync_replica_with_primary
 
 #
 # End of tests

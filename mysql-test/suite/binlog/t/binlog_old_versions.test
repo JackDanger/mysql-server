@@ -91,7 +91,7 @@ DROP TABLE t1, t3;
 
 #### The following commands were used to generate the binlogs ####
 #
-#source include/master-slave.inc;
+#source include/primary-replica.inc;
 #
 ## ==== initialize ====
 #USE test;

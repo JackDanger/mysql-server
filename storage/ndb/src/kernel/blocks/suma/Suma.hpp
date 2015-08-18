@@ -525,7 +525,7 @@ private:
   /**
    * Variables
    */
-  NodeId c_masterNodeId;
+  NodeId c_primaryNodeId;
   NdbNodeBitmask c_alive_nodes;
   
   /**

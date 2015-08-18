@@ -43,12 +43,12 @@
  - CREATE EVENT should not go into binary log! Does it now? The SQL statements
    issued by the EVENT are replicated.
    I have an idea how to solve the problem at failover. So the status field
-   will be ENUM('DISABLED', 'ENABLED', 'SLAVESIDE_DISABLED').
+   will be ENUM('DISABLED', 'ENABLED', 'REPLICASIDE_DISABLED').
    In this case when CREATE EVENT is replicated it should go into the binary
-   as SLAVESIDE_DISABLED if it is ENABLED, when it's created as DISABLEd it
+   as REPLICASIDE_DISABLED if it is ENABLED, when it's created as DISABLEd it
    should be replicated as disabled. If an event is ALTERed as DISABLED the
    query should go untouched into the binary log, when ALTERed as enable then
-   it should go as SLAVESIDE_DISABLED. This is regarding the SQL interface.
+   it should go as REPLICASIDE_DISABLED. This is regarding the SQL interface.
    TT routines however modify mysql.event internally and this does not go the
    log so in this case queries has to be injected into the log...somehow... or
    maybe a solution is RBR for this case, because the event may go only from
@@ -259,7 +259,7 @@ common_1_lev_code:
 /**
   Create a new query string for removing executable comments 
   for avoiding leak and keeping consistency of the execution 
-  on master and slave.
+  on primary and replica.
   
   @param[in] thd                 Thread handler
   @param[in] buf                 Query string
@@ -1126,7 +1126,7 @@ Events::load_events_from_db(THD *thd)
   READ_RECORD read_record_info;
   bool ret= TRUE;
   uint count= 0;
-  ulong saved_master_access;
+  ulong saved_primary_access;
 
   DBUG_ENTER("Events::load_events_from_db");
   DBUG_PRINT("enter", ("thd: 0x%lx", (long) thd));
@@ -1140,15 +1140,15 @@ Events::load_events_from_db(THD *thd)
     Temporarily reset it to read-write.
   */
 
-  saved_master_access= thd->security_context()->master_access();
-  thd->security_context()->set_master_access(saved_master_access | SUPER_ACL);
+  saved_primary_access= thd->security_context()->primary_access();
+  thd->security_context()->set_primary_access(saved_primary_access | SUPER_ACL);
   bool save_tx_read_only= thd->tx_read_only;
   thd->tx_read_only= false;
 
   ret= db_repository->open_event_table(thd, TL_WRITE, &table);
 
   thd->tx_read_only= save_tx_read_only;
-  thd->security_context()->set_master_access(saved_master_access);
+  thd->security_context()->set_primary_access(saved_primary_access);
 
   if (ret)
   {
@@ -1200,10 +1200,10 @@ Events::load_events_from_db(THD *thd)
         If not created, a stale event - drop if immediately if
         ON COMPLETION NOT PRESERVE.
         XXX: This won't be replicated, thus the drop won't appear in
-             in the slave. When the slave is restarted it will drop events.
-             However, as the slave will be "out of sync", it might happen that
-             an event created on the master, after master restart, won't be
-             replicated to the slave correctly, as the create will fail there.
+             in the replica. When the replica is restarted it will drop events.
+             However, as the replica will be "out of sync", it might happen that
+             an event created on the primary, after primary restart, won't be
+             replicated to the replica correctly, as the create will fail there.
       */
       int rc= table->file->ha_delete_row(table->record[0]);
       if (rc)

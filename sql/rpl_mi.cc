@@ -18,29 +18,29 @@
 
 #include "dynamic_ids.h"        // Server_ids
 #include "log.h"                // sql_print_error
-#include "rpl_slave.h"          // master_retry_count
+#include "rpl_replica.h"          // primary_retry_count
 
 
 enum {
-  LINES_IN_MASTER_INFO_WITH_SSL= 14,
+  LINES_IN_PRIMARY_INFO_WITH_SSL= 14,
 
-  /* 5.1.16 added value of master_ssl_verify_server_cert */
-  LINE_FOR_MASTER_SSL_VERIFY_SERVER_CERT= 15,
+  /* 5.1.16 added value of primary_ssl_verify_server_cert */
+  LINE_FOR_PRIMARY_SSL_VERIFY_SERVER_CERT= 15,
 
-  /* 5.5 added value of master_heartbeat_period */
-  LINE_FOR_MASTER_HEARTBEAT_PERIOD= 16,
+  /* 5.5 added value of primary_heartbeat_period */
+  LINE_FOR_PRIMARY_HEARTBEAT_PERIOD= 16,
 
-  /* MySQL Cluster 6.3 added master_bind */
-  LINE_FOR_MASTER_BIND = 17,
+  /* MySQL Cluster 6.3 added primary_bind */
+  LINE_FOR_PRIMARY_BIND = 17,
 
-  /* 6.0 added value of master_ignore_server_id */
+  /* 6.0 added value of primary_ignore_server_id */
   LINE_FOR_REPLICATE_IGNORE_SERVER_IDS= 18,
 
-  /* 6.0 added value of master_uuid */
-  LINE_FOR_MASTER_UUID= 19,
+  /* 6.0 added value of primary_uuid */
+  LINE_FOR_PRIMARY_UUID= 19,
 
-  /* line for master_retry_count */
-  LINE_FOR_MASTER_RETRY_COUNT= 20,
+  /* line for primary_retry_count */
+  LINE_FOR_PRIMARY_RETRY_COUNT= 20,
 
   /* line for ssl_crl */
   LINE_FOR_SSL_CRL= 21,
@@ -54,8 +54,8 @@ enum {
   /* line for channel */
   LINE_FOR_CHANNEL= 24,
 
-  /* Number of lines currently used when saving master info file */
-  LINES_IN_MASTER_INFO= LINE_FOR_CHANNEL
+  /* Number of lines currently used when saving primary info file */
+  LINES_IN_PRIMARY_INFO= LINE_FOR_CHANNEL
 };
 
 /*
@@ -66,8 +66,8 @@ enum {
 const char *info_mi_fields []=
 { 
   "number_of_lines",
-  "master_log_name",
-  "master_log_pos",
+  "primary_log_name",
+  "primary_log_pos",
   "host",
   "user",
   "password",
@@ -91,7 +91,7 @@ const char *info_mi_fields []=
   "channel_name"
 };
 
-Master_info::Master_info(
+Primary_info::Primary_info(
 #ifdef HAVE_PSI_INTERFACE
                          PSI_mutex_key *param_key_info_run_lock,
                          PSI_mutex_key *param_key_info_data_lock,
@@ -116,10 +116,10 @@ Master_info::Master_info(
    start_user_configured(false),
    ssl(0), ssl_verify_server_cert(0),
    port(MYSQL_PORT), connect_retry(DEFAULT_CONNECT_RETRY),
-   clock_diff_with_master(0), heartbeat_period(0),
-   received_heartbeats(0), last_heartbeat(0), master_id(0),
+   clock_diff_with_primary(0), heartbeat_period(0),
+   received_heartbeats(0), last_heartbeat(0), primary_id(0),
    checksum_alg_before_fd(binary_log::BINLOG_CHECKSUM_ALG_UNDEF),
-   retry_count(master_retry_count),
+   retry_count(primary_retry_count),
    mi_description_event(NULL),
    auto_position(false)
 {
@@ -128,7 +128,7 @@ Master_info::Master_info(
   ssl_ca[0]= 0; ssl_capath[0]= 0; ssl_cert[0]= 0;
   ssl_cipher[0]= 0; ssl_key[0]= 0;
   ssl_crl[0]= 0; ssl_crlpath[0]= 0;
-  master_uuid[0]= 0;
+  primary_uuid[0]= 0;
   start_plugin_auth[0]= 0; start_plugin_dir[0]= 0;
   start_user[0]= 0;
   ignore_server_ids= new Server_ids;
@@ -140,7 +140,7 @@ Master_info::Master_info(
              " FOR CHANNEL '%s'", channel);
 }
 
-Master_info::~Master_info()
+Primary_info::~Primary_info()
 {
   delete ignore_server_ids;
   delete mi_description_event;
@@ -150,34 +150,34 @@ Master_info::~Master_info()
    Reports if the s_id server has been configured to ignore events 
    it generates with
 
-      CHANGE MASTER IGNORE_SERVER_IDS= ( list of server ids )
+      CHANGE PRIMARY IGNORE_SERVER_IDS= ( list of server ids )
 
    Method is called from the io thread event receiver filtering.
 
-   @param      s_id    the master server identifier
+   @param      s_id    the primary server identifier
 
-   @retval   TRUE    if s_id is in the list of ignored master  servers,
+   @retval   TRUE    if s_id is in the list of ignored primary  servers,
    @retval   FALSE   otherwise.
  */
-bool Master_info::shall_ignore_server_id(ulong s_id)
+bool Primary_info::shall_ignore_server_id(ulong s_id)
 {
   return std::binary_search(ignore_server_ids->dynamic_ids.begin(),
                             ignore_server_ids->dynamic_ids.end(), s_id);
 }
 
-void Master_info::init_master_log_pos()
+void Primary_info::init_primary_log_pos()
 {
-  DBUG_ENTER("Master_info::init_master_log_pos");
+  DBUG_ENTER("Primary_info::init_primary_log_pos");
 
-  master_log_name[0]= 0;
-  master_log_pos= BIN_LOG_HEADER_SIZE;             // skip magic number
+  primary_log_name[0]= 0;
+  primary_log_pos= BIN_LOG_HEADER_SIZE;             // skip magic number
 
   DBUG_VOID_RETURN;
 }
 
-void Master_info::end_info()
+void Primary_info::end_info()
 {
-  DBUG_ENTER("Master_info::end_info");
+  DBUG_ENTER("Primary_info::end_info");
 
   if (!inited)
     DBUG_VOID_RETURN;
@@ -190,14 +190,14 @@ void Master_info::end_info()
 }
 
 /**
-  Store the file and position where the slave's SQL thread are in the
+  Store the file and position where the replica's SQL thread are in the
    relay log.
 
-  - This function should be called either from the slave SQL thread,
-    or when the slave thread is not running.  (It reads the
-    group_{relay|master}_log_{pos|name} and delay fields in the rli
-    object.  These may only be modified by the slave SQL thread or by
-    a client thread when the slave SQL thread is not running.)
+  - This function should be called either from the replica SQL thread,
+    or when the replica thread is not running.  (It reads the
+    group_{relay|primary}_log_{pos|name} and delay fields in the rli
+    object.  These may only be modified by the replica SQL thread or by
+    a client thread when the replica SQL thread is not running.)
 
   - If there is an active transaction, then we do not update the
     position in the relay log.  This is to ensure that we re-execute
@@ -218,21 +218,21 @@ void Master_info::end_info()
   @todo Change the log file information to a binary format to avoid
   calling longlong2str.
 */
-int Master_info::flush_info(bool force)
+int Primary_info::flush_info(bool force)
 {
-  DBUG_ENTER("Master_info::flush_info");
-  DBUG_PRINT("enter",("master_pos: %lu", (ulong) master_log_pos));
+  DBUG_ENTER("Primary_info::flush_info");
+  DBUG_PRINT("enter",("primary_pos: %lu", (ulong) primary_log_pos));
 
   if (!inited)
     DBUG_RETURN(0);
 
   /*
     We update the sync_period at this point because only here we
-    now that we are handling a master info. This needs to be
+    now that we are handling a primary info. This needs to be
     update every time we call flush because the option maybe
     dinamically set.
   */
-  handler->set_sync_period(sync_masterinfo_period);
+  handler->set_sync_period(sync_primaryinfo_period);
 
   if (write_info(handler))
     goto err;
@@ -243,11 +243,11 @@ int Master_info::flush_info(bool force)
   DBUG_RETURN(0);
 
 err:
-  sql_print_error("Error writing master configuration.");
+  sql_print_error("Error writing primary configuration.");
   DBUG_RETURN(1);
 }
 
-void Master_info::set_relay_log_info(Relay_log_info* info)
+void Primary_info::set_relay_log_info(Relay_log_info* info)
 {
   rli= info;
 }
@@ -255,11 +255,11 @@ void Master_info::set_relay_log_info(Relay_log_info* info)
 
 /**
   Creates or reads information from the repository, initializing the
-  Master_info.
+  Primary_info.
 */
-int Master_info::mi_init_info()
+int Primary_info::mi_init_info()
 {
-  DBUG_ENTER("Master_info::mi_init_info");
+  DBUG_ENTER("Primary_info::mi_init_info");
   enum_return_check check_return= ERROR_CHECKING_REPOSITORY;
 
   if (inited)
@@ -274,7 +274,7 @@ int Master_info::mi_init_info()
 
   if (check_return == REPOSITORY_DOES_NOT_EXIST)
   {
-    init_master_log_pos();
+    init_primary_log_pos();
   }
   else 
   {
@@ -291,43 +291,43 @@ int Master_info::mi_init_info()
 err:
   handler->end_info();
   inited= 0;
-  sql_print_error("Error reading master configuration.");
+  sql_print_error("Error reading primary configuration.");
   DBUG_RETURN(1);
 }
 
-size_t Master_info::get_number_info_mi_fields()
+size_t Primary_info::get_number_info_mi_fields()
 {
   return sizeof(info_mi_fields)/sizeof(info_mi_fields[0]); 
 }
 
-uint Master_info::get_channel_field_num()
+uint Primary_info::get_channel_field_num()
 {
   uint channel_field= LINE_FOR_CHANNEL;
   return channel_field;
 }
 
-bool Master_info::read_info(Rpl_info_handler *from)
+bool Primary_info::read_info(Rpl_info_handler *from)
 {
   int lines= 0;
   char *first_non_digit= NULL;
-  ulong temp_master_log_pos= 0;
+  ulong temp_primary_log_pos= 0;
   int temp_ssl= 0;
   int temp_ssl_verify_server_cert= 0;
   int temp_auto_position= 0;
 
-  DBUG_ENTER("Master_info::read_info");
+  DBUG_ENTER("Primary_info::read_info");
 
   /*
-     Starting from 4.1.x master.info has new format. Now its
+     Starting from 4.1.x primary.info has new format. Now its
      first line contains number of lines in file. By reading this
      number we will be always distinguish to which version our
-     master.info corresponds to. We can't simply count lines in
+     primary.info corresponds to. We can't simply count lines in
      file since versions before 4.1.x could generate files with more
      lines than needed.
      If first line doesn't contain a number or contain number less than
-     LINES_IN_MASTER_INFO_WITH_SSL then such file is treated like file
+     LINES_IN_PRIMARY_INFO_WITH_SSL then such file is treated like file
      from pre 4.1.1 version.
-     There is no ambiguity when reading an old master.info, as before
+     There is no ambiguity when reading an old primary.info, as before
      4.1.1, the first line contained the binlog's name, which is either
      empty or has an extension (contains a '.'), so can't be confused
      with an integer.
@@ -337,24 +337,24 @@ bool Master_info::read_info(Rpl_info_handler *from)
   */
 
   if (from->prepare_info_for_read() || 
-      from->get_info(master_log_name, sizeof(master_log_name),
+      from->get_info(primary_log_name, sizeof(primary_log_name),
                      (char *) ""))
     DBUG_RETURN(true);
 
-  lines= strtoul(master_log_name, &first_non_digit, 10);
+  lines= strtoul(primary_log_name, &first_non_digit, 10);
 
-  if (master_log_name[0]!='\0' &&
-      *first_non_digit=='\0' && lines >= LINES_IN_MASTER_INFO_WITH_SSL)
+  if (primary_log_name[0]!='\0' &&
+      *first_non_digit=='\0' && lines >= LINES_IN_PRIMARY_INFO_WITH_SSL)
   {
-    /* Seems to be new format => read master log name */
-    if (from->get_info(master_log_name, sizeof(master_log_name),
+    /* Seems to be new format => read primary log name */
+    if (from->get_info(primary_log_name, sizeof(primary_log_name),
                        (char *) ""))
       DBUG_RETURN(true);
   }
   else 
     lines= 7;
 
-  if (from->get_info(&temp_master_log_pos,
+  if (from->get_info(&temp_primary_log_pos,
                      (ulong) BIN_LOG_HEADER_SIZE) ||
       from->get_info(host, sizeof(host), (char *) 0) ||
       from->get_info(user, sizeof(user), (char *) "test") ||
@@ -367,10 +367,10 @@ bool Master_info::read_info(Rpl_info_handler *from)
   /*
     If file has ssl part use it even if we have server without
     SSL support. But these options will be ignored later when
-    slave will try connect to master, so in this case warning
+    replica will try connect to primary, so in this case warning
     is printed.
   */
-  if (lines >= LINES_IN_MASTER_INFO_WITH_SSL)
+  if (lines >= LINES_IN_PRIMARY_INFO_WITH_SSL)
   {
     if (from->get_info(&temp_ssl, 0) ||
         from->get_info(ssl_ca, sizeof(ssl_ca), (char *) 0) ||
@@ -385,26 +385,26 @@ bool Master_info::read_info(Rpl_info_handler *from)
     Starting from 5.1.16 ssl_verify_server_cert might be
     in the file
   */
-  if (lines >= LINE_FOR_MASTER_SSL_VERIFY_SERVER_CERT)
+  if (lines >= LINE_FOR_PRIMARY_SSL_VERIFY_SERVER_CERT)
   { 
     if (from->get_info(&temp_ssl_verify_server_cert, 0))
       DBUG_RETURN(true);
   }
 
   /*
-    Starting from 5.5 master_heartbeat_period might be
+    Starting from 5.5 primary_heartbeat_period might be
     in the file
   */
-  if (lines >= LINE_FOR_MASTER_HEARTBEAT_PERIOD)
+  if (lines >= LINE_FOR_PRIMARY_HEARTBEAT_PERIOD)
   {
     if (from->get_info(&heartbeat_period, (float) 0.0))
       DBUG_RETURN(true);
   }
 
   /*
-    Starting from 5.5 master_bind might be in the file
+    Starting from 5.5 primary_bind might be in the file
   */
-  if (lines >= LINE_FOR_MASTER_BIND)
+  if (lines >= LINE_FOR_PRIMARY_BIND)
   {
     if (from->get_info(bind_addr, sizeof(bind_addr), (char *) ""))
       DBUG_RETURN(true);
@@ -420,19 +420,19 @@ bool Master_info::read_info(Rpl_info_handler *from)
       DBUG_RETURN(true);
   }
 
-  /* Starting from 5.5 the master_uuid may be in the repository. */
-  if (lines >= LINE_FOR_MASTER_UUID)
+  /* Starting from 5.5 the primary_uuid may be in the repository. */
+  if (lines >= LINE_FOR_PRIMARY_UUID)
   {
-    if (from->get_info(master_uuid, sizeof(master_uuid),
+    if (from->get_info(primary_uuid, sizeof(primary_uuid),
                        (char *) 0))
       DBUG_RETURN(true);
   }
 
-  /* Starting from 5.5 the master_retry_count may be in the repository. */
-  retry_count= master_retry_count;
-  if (lines >= LINE_FOR_MASTER_RETRY_COUNT)
+  /* Starting from 5.5 the primary_retry_count may be in the repository. */
+  retry_count= primary_retry_count;
+  if (lines >= LINE_FOR_PRIMARY_RETRY_COUNT)
   {
-    if (from->get_info(&retry_count, master_retry_count))
+    if (from->get_info(&retry_count, primary_retry_count))
       DBUG_RETURN(true);
   }
 
@@ -456,13 +456,13 @@ bool Master_info::read_info(Rpl_info_handler *from)
   }
   ssl= (my_bool) MY_TEST(temp_ssl);
   ssl_verify_server_cert= (my_bool) MY_TEST(temp_ssl_verify_server_cert);
-  master_log_pos= (my_off_t) temp_master_log_pos;
+  primary_log_pos= (my_off_t) temp_primary_log_pos;
   auto_position= MY_TEST(temp_auto_position);
 
 #ifndef HAVE_OPENSSL
   if (ssl)
-    sql_print_warning("SSL information in the master info file "
-                      "are ignored because this MySQL slave was "
+    sql_print_warning("SSL information in the primary info file "
+                      "are ignored because this MySQL replica was "
                       "compiled without SSL support.");
 #endif /* HAVE_OPENSSL */
 
@@ -470,9 +470,9 @@ bool Master_info::read_info(Rpl_info_handler *from)
 }
 
 
-bool Master_info::set_info_search_keys(Rpl_info_handler *to)
+bool Primary_info::set_info_search_keys(Rpl_info_handler *to)
 {
-  DBUG_ENTER("Master_info::set_info_search_keys");
+  DBUG_ENTER("Primary_info::set_info_search_keys");
 
   if (to->set_info(LINE_FOR_CHANNEL-1, channel))
     DBUG_RETURN(TRUE);
@@ -481,21 +481,21 @@ bool Master_info::set_info_search_keys(Rpl_info_handler *to)
 }
 
 
-bool Master_info::write_info(Rpl_info_handler *to)
+bool Primary_info::write_info(Rpl_info_handler *to)
 {
-  DBUG_ENTER("Master_info::write_info");
+  DBUG_ENTER("Primary_info::write_info");
 
   /*
-     In certain cases this code may create master.info files that seems
+     In certain cases this code may create primary.info files that seems
      corrupted, because of extra lines filled with garbage in the end
      file (this happens if new contents take less space than previous
      contents of file). But because of number of lines in the first line
      of file we don't care about this garbage.
   */
   if (to->prepare_info_for_write() ||
-      to->set_info((int) LINES_IN_MASTER_INFO) ||
-      to->set_info(master_log_name) ||
-      to->set_info((ulong) master_log_pos) ||
+      to->set_info((int) LINES_IN_PRIMARY_INFO) ||
+      to->set_info(primary_log_name) ||
+      to->set_info((ulong) primary_log_pos) ||
       to->set_info(host) ||
       to->set_info(user) ||
       to->set_info(password) ||
@@ -511,7 +511,7 @@ bool Master_info::write_info(Rpl_info_handler *to)
       to->set_info(heartbeat_period) ||
       to->set_info(bind_addr) ||
       to->set_info(ignore_server_ids) ||
-      to->set_info(master_uuid) ||
+      to->set_info(primary_uuid) ||
       to->set_info(retry_count) ||
       to->set_info(ssl_crl) ||
       to->set_info(ssl_crlpath) ||
@@ -522,9 +522,9 @@ bool Master_info::write_info(Rpl_info_handler *to)
   DBUG_RETURN(FALSE);
 }
 
-void Master_info::set_password(const char* password_arg)
+void Primary_info::set_password(const char* password_arg)
 {
-  DBUG_ENTER("Master_info::set_password");
+  DBUG_ENTER("Primary_info::set_password");
 
   DBUG_ASSERT(password_arg);
 
@@ -536,10 +536,10 @@ void Master_info::set_password(const char* password_arg)
   DBUG_VOID_RETURN;
 }
 
-bool Master_info::get_password(char *password_arg, size_t *password_arg_size)
+bool Primary_info::get_password(char *password_arg, size_t *password_arg_size)
 {
   bool ret= true;
-  DBUG_ENTER("Master_info::get_password");
+  DBUG_ENTER("Primary_info::get_password");
 
   if (password_arg && start_user_configured)
   {
@@ -556,9 +556,9 @@ bool Master_info::get_password(char *password_arg, size_t *password_arg_size)
   DBUG_RETURN(ret);
 }
 
-void Master_info::reset_start_info()
+void Primary_info::reset_start_info()
 {
-  DBUG_ENTER("Master_info::reset_start_info");
+  DBUG_ENTER("Primary_info::reset_start_info");
   start_plugin_auth[0]= 0;
   start_plugin_dir[0]= 0;
   start_user_configured= false;

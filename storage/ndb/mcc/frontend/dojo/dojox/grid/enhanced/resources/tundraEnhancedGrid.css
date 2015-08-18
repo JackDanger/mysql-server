@@ -14,13 +14,13 @@
 .dojoxGrid td {
 	-moz-outline: none;
 }
-.dojoxGridMasterHeader {
+.dojoxGridPrimaryHeader {
 	position: relative;
 }
-.dojoxGridMasterView  {
+.dojoxGridPrimaryView  {
 	position: relative;
 }
-.dojoxGridMasterMessages {
+.dojoxGridPrimaryMessages {
 	position: relative;
 	padding: 1em;
 	text-align: center;
@@ -348,7 +348,7 @@
 	background-color: #e9e9e9;
 	font-size: 0.85em; 
 }
-.tundra .dojoxGridMasterMessages {
+.tundra .dojoxGridPrimaryMessages {
 	background-color: #fefefe;
 }
 .tundra .dojoxGridLoading, 
@@ -1318,7 +1318,7 @@ html > body .dojoxGridSorted .dojoxGridCellSortFocus .dojoxGridSortBtnNested {
 	
 	
 }
-.dj_ie6 .tundra .dojoxGridMasterView .dojoxGridCellOver{
+.dj_ie6 .tundra .dojoxGridPrimaryView .dojoxGridCellOver{
 	border: 1px dashed #e9e9e9;
 }
 .dj_ie6 .tundra .dojoxGridHeader .dojoxGridCellOver{

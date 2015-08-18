@@ -1959,24 +1959,24 @@ public:
 
 /* replication functions */
 
-class Item_master_pos_wait :public Item_int_func
+class Item_primary_pos_wait :public Item_int_func
 {
   typedef Item_int_func super;
   String value;
 public:
-  Item_master_pos_wait(const POS &pos, Item *a, Item *b)
+  Item_primary_pos_wait(const POS &pos, Item *a, Item *b)
     :Item_int_func(pos, a, b)
   {}
-  Item_master_pos_wait(const POS &pos, Item *a, Item *b, Item *c)
+  Item_primary_pos_wait(const POS &pos, Item *a, Item *b, Item *c)
     :Item_int_func(pos, a, b, c)
   {}
-  Item_master_pos_wait(const POS &pos, Item *a, Item *b, Item *c, Item *d)
+  Item_primary_pos_wait(const POS &pos, Item *a, Item *b, Item *c, Item *d)
     :Item_int_func(pos, a, b, c, d)
   {}
 
   virtual bool itemize(Parse_context *pc, Item **res);
   longlong val_int();
-  const char *func_name() const { return "master_pos_wait"; }
+  const char *func_name() const { return "primary_pos_wait"; }
   void fix_length_and_dec() { max_length=21; maybe_null=1;}
   bool check_gcol_func_processor(uchar *int_arg)
   { return true; }
@@ -1985,7 +1985,7 @@ public:
 /**
   This class is used for implementing the new wait_for_executed_gtid_set
   function and the functions related to them. This new function is independent
-  of the slave threads.
+  of the replica threads.
 */
 class Item_wait_for_executed_gtid_set :public Item_int_func
 {
@@ -2004,17 +2004,17 @@ public:
   void fix_length_and_dec() { max_length= 21; maybe_null= 1; }
 };
 
-class Item_master_gtid_set_wait :public Item_int_func
+class Item_primary_gtid_set_wait :public Item_int_func
 {
   typedef Item_int_func super;
 
   String value;
 public:
-  Item_master_gtid_set_wait(const POS &pos, Item *a) :Item_int_func(pos, a) {}
-  Item_master_gtid_set_wait(const POS &pos, Item *a, Item *b)
+  Item_primary_gtid_set_wait(const POS &pos, Item *a) :Item_int_func(pos, a) {}
+  Item_primary_gtid_set_wait(const POS &pos, Item *a, Item *b)
     :Item_int_func(pos, a, b)
   {}
-  Item_master_gtid_set_wait(const POS &pos, Item *a, Item *b, Item *c)
+  Item_primary_gtid_set_wait(const POS &pos, Item *a, Item *b, Item *c)
     :Item_int_func(pos, a, b, c)
   {}
 
@@ -2319,12 +2319,12 @@ public:
   FT_INFO *ft_handler;
   TABLE_LIST *table_ref;
   /**
-     Master item means that if idendical items are present in the
+     Primary item means that if idendical items are present in the
      statement, they use the same FT handler. FT handler is initialized
-     only for master item and slave items just use it. FT hints initialized
-     for master only, slave items HINTS are not accessed.
+     only for primary item and replica items just use it. FT hints initialized
+     for primary only, replica items HINTS are not accessed.
   */
-  Item_func_match *master;
+  Item_func_match *primary;
   Item *concat_ws;           // Item_func_concat_ws
   String value;              // value of concat_ws
   String search_value;       // key_item()'s value converted to cmp_collation
@@ -2340,7 +2340,7 @@ public:
     Item_real_func(pos, a), against(against_arg), key(0), flags(b),
     join_key(false),
     ft_handler(NULL), table_ref(NULL),
-    master(NULL), concat_ws(NULL), hints(NULL), simple_expression(false)
+    primary(NULL), concat_ws(NULL), hints(NULL), simple_expression(false)
   {}
   
   virtual bool itemize(Parse_context *pc, Item **res);
@@ -2349,7 +2349,7 @@ public:
   {
     DBUG_ENTER("Item_func_match::cleanup");
     Item_real_func::cleanup();
-    if (!master && ft_handler)
+    if (!primary && ft_handler)
     {
       ft_handler->please->close_search(ft_handler);
       delete hints;
@@ -2401,7 +2401,7 @@ public:
    */
   bool ordered_result()
   {
-    DBUG_ASSERT(!master);
+    DBUG_ASSERT(!primary);
     if (hints->get_flags() & FT_SORTED)
       return true;
 
@@ -2436,48 +2436,48 @@ public:
                              double rows_in_table);
 
   /**
-     Returns master MATCH function.
+     Returns primary MATCH function.
 
-     @return pointer to master MATCH function.
+     @return pointer to primary MATCH function.
   */
-  Item_func_match *get_master()
+  Item_func_match *get_primary()
   {
-    if (master)
-      return master->get_master();
+    if (primary)
+      return primary->get_primary();
     return this;
   }
 
   /**
-     Set master MATCH function and adjust used_in_where_only value.
+     Set primary MATCH function and adjust used_in_where_only value.
 
-     @param item item for which master should be set.
+     @param item item for which primary should be set.
   */
-  void set_master(Item_func_match *item)
+  void set_primary(Item_func_match *item)
   {
     used_in_where_only&= item->used_in_where_only;
-    item->master= this;
+    item->primary= this;
   }
 
   /**
-     Returns pointer to Ft_hints object belonging to master MATCH function.
+     Returns pointer to Ft_hints object belonging to primary MATCH function.
 
      @return pointer to Ft_hints object
   */
   Ft_hints *get_hints()
   {
-    DBUG_ASSERT(!master);
+    DBUG_ASSERT(!primary);
     return hints;
   }
 
   /**
-     Set comparison operation type and and value for master MATCH function.
+     Set comparison operation type and and value for primary MATCH function.
 
      @param type   comparison operation type
      @param value  comparison operation value
   */
   void set_hints_op(enum ft_operation type, double value_arg)
   {
-    DBUG_ASSERT(!master);
+    DBUG_ASSERT(!primary);
     hints->set_hint_op(type, value_arg);
   }
   
@@ -2494,7 +2494,7 @@ public:
   */
   bool can_skip_ranking()
   {
-    DBUG_ASSERT(!master);
+    DBUG_ASSERT(!primary);
     return (!(hints->get_flags() & FT_SORTED) && // FT_SORTED is no set
             used_in_where_only &&                // MATCH result is not used
                                                  // in expression
@@ -2508,7 +2508,7 @@ public:
   */
   void set_simple_expression(bool val)
   {
-    DBUG_ASSERT(!master);
+    DBUG_ASSERT(!primary);
     simple_expression= val;
   }
 
@@ -2520,13 +2520,13 @@ public:
   */
   bool is_simple_expression()
   {
-    DBUG_ASSERT(!master);
+    DBUG_ASSERT(!primary);
     return simple_expression;
   }
 
 private:
   /**
-     Fulltext index hints, initialized for master MATCH function only.
+     Fulltext index hints, initialized for primary MATCH function only.
   */
   Ft_hints *hints;
   /**
@@ -2538,8 +2538,8 @@ private:
   /**
      true if MATCH function is used in WHERE condition only.
      Used to dermine what hints can be used for FT handler. 
-     Note that only master MATCH function has valid value.
-     it's ok since only master function is involved in the hint processing.
+     Note that only primary MATCH function has valid value.
+     it's ok since only primary function is involved in the hint processing.
   */
   bool used_in_where_only;
   /**

@@ -1,7 +1,7 @@
 #########################################
 # Author: Serge Kozlov skozlov@mysql.com
 # Date: 07/10/2006
-# Purpose: Showing binlog_format variables on current server (master or slave)
+# Purpose: Showing binlog_format variables on current server (primary or replica)
 # Requirements: 
 #########################################
 

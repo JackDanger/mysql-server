@@ -1128,7 +1128,7 @@ void ha_kill_connection(THD *thd)
   Administrative and status information statements do not modify
   engine data, and thus do not start a statement transaction and
   also have no effect on the normal transaction. Examples of such
-  statements are SHOW STATUS and RESET SLAVE.
+  statements are SHOW STATUS and RESET REPLICA.
 
   Similarly DDL statements are not transactional,
   and therefore a transaction is [almost] never started for a DDL
@@ -1527,7 +1527,7 @@ ha_check_and_coalesce_trx_read_only(THD *thd, Ha_trx_info *ha_list,
   @param[in] ignore_global_read_lock   Allow commit to complete even if a
                                        global read lock is active. This can be
                                        used to allow changes to internal tables
-                                       (e.g. slave status tables).
+                                       (e.g. replica status tables).
 
   @retval
     0   ok
@@ -1549,10 +1549,10 @@ int ha_commit_trans(THD *thd, bool all, bool ignore_global_read_lock)
   bool need_clear_owned_gtid= false;
   /*
     Save transaction owned gtid into table before transaction prepare
-    if binlog is disabled, or binlog is enabled and log_slave_updates
-    is disabled with slave SQL thread or slave worker thread.
+    if binlog is disabled, or binlog is enabled and log_replica_updates
+    is disabled with replica SQL thread or replica worker thread.
   */
-  if ((!opt_bin_log || (thd->slave_thread && !opt_log_slave_updates)) &&
+  if ((!opt_bin_log || (thd->replica_thread && !opt_log_replica_updates)) &&
       (all || !thd->in_multi_stmt_transaction_mode()) &&
       thd->owned_gtid.sidno > 0 &&
       !thd->is_operating_gtid_table_implicitly &&
@@ -1730,8 +1730,8 @@ end:
     thd->server_status&= ~SERVER_STATUS_IN_TRANS;
     /*
       Release the owned GTID when binlog is disabled, or binlog is
-      enabled and log_slave_updates is disabled with slave SQL thread
-      or slave worker thread.
+      enabled and log_replica_updates is disabled with replica SQL thread
+      or replica worker thread.
     */
     if (error)
       gtid_state->update_on_rollback(thd);
@@ -1779,7 +1779,7 @@ int ha_commit_low(THD *thd, bool all, bool run_after_commit)
       have to restore its local thread native transaction
       context, previously saved at XA START.
     */
-    if (thd->variables.pseudo_slave_mode &&
+    if (thd->variables.pseudo_replica_mode &&
         thd->lex->sql_command == SQLCOM_XA_COMMIT)
     {
       DBUG_ASSERT(static_cast<Sql_cmd_xa_commit*>(thd->lex->m_sql_cmd)->
@@ -1960,17 +1960,17 @@ int ha_rollback_trans(THD *thd, bool all)
 
   /*
     If the transaction cannot be rolled back safely, warn; don't warn if this
-    is a slave thread (because when a slave thread executes a ROLLBACK, it has
+    is a replica thread (because when a replica thread executes a ROLLBACK, it has
     been read from the binary log, so it's 100% sure and normal to produce
     error ER_WARNING_NOT_COMPLETE_ROLLBACK. If we sent the warning to the
-    slave SQL thread, it would not stop the thread but just be printed in
+    replica SQL thread, it would not stop the thread but just be printed in
     the error log; but we don't want users to wonder why they have this
     message in the error log, so we don't send it.
   */
   if (is_real_trans &&
       trn_ctx->cannot_safely_rollback(
         Transaction_ctx::SESSION) &&
-      !thd->slave_thread && thd->killed != THD::KILL_CONNECTION)
+      !thd->replica_thread && thd->killed != THD::KILL_CONNECTION)
     trn_ctx->push_unsafe_rollback_warnings(thd);
 
   DBUG_RETURN(error);
@@ -3145,7 +3145,7 @@ prev_insert_id(ulonglong nr, struct system_variables *variables)
     Otherwise:
 
   - If a list of intervals has been provided to the statement via SET
-    INSERT_ID or via an Intvar_log_event (in a replication slave), we pick the
+    INSERT_ID or via an Intvar_log_event (in a replication replica), we pick the
     first unused interval from this list, consider it as reserved.
 
   - Otherwise we set the column for the first row to the value
@@ -5473,9 +5473,9 @@ int ha_reset_logs(THD *thd)
   return 0;
 }
 
-void ha_reset_slave(THD* thd)
+void ha_reset_replica(THD* thd)
 {
-  binlog_func_st bfn= {BFN_RESET_SLAVE, 0};
+  binlog_func_st bfn= {BFN_RESET_REPLICA, 0};
   binlog_func_foreach(thd, &bfn);
 }
 

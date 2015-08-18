@@ -1,32 +1,32 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[connection slave]
-include/sync_slave_sql_with_master.inc
-SET @slave_debug_save= @@GLOBAL.DEBUG;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[connection replica]
+include/sync_replica_sql_with_primary.inc
+SET @replica_debug_save= @@GLOBAL.DEBUG;
 #######################################################################
-# Call SHOW SLAVE STATUS NONBLOCKING while run locks are hold on
-# STOP SLAVE.
-include/stop_slave.inc
-SET @@GLOBAL.DEBUG = '+d,simulate_hold_run_locks_on_stop_slave';
-include/start_slave.inc
-STOP SLAVE;
-[connection slave1]
-include/assert.inc [SHOW SLAVE STATUS NONBLOCKING must not wait for locks, if it waits Slave_SQL_Running will be "No"]
-[connection slave]
-include/wait_for_slave_to_stop.inc
-SET GLOBAL DEBUG= @slave_debug_save;
+# Call SHOW REPLICA STATUS NONBLOCKING while run locks are hold on
+# STOP REPLICA.
+include/stop_replica.inc
+SET @@GLOBAL.DEBUG = '+d,simulate_hold_run_locks_on_stop_replica';
+include/start_replica.inc
+STOP REPLICA;
+[connection replica1]
+include/assert.inc [SHOW REPLICA STATUS NONBLOCKING must not wait for locks, if it waits Replica_SQL_Running will be "No"]
+[connection replica]
+include/wait_for_replica_to_stop.inc
+SET GLOBAL DEBUG= @replica_debug_save;
 #######################################################################
-# Hold SHOW SLAVE STATUS NONBLOCKING just before call
-# show_slave_status(), execute STOP SLAVE and resume SSS NONBLOCKING.
-SET @@GLOBAL.DEBUG = '+d,simulate_hold_show_slave_status_nonblocking';
-include/start_slave.inc
-SHOW SLAVE STATUS NONBLOCKING;
-[connection slave1]
-include/stop_slave.inc
-[connection slave]
-SET GLOBAL DEBUG= @slave_debug_save;
-include/start_slave.inc
+# Hold SHOW REPLICA STATUS NONBLOCKING just before call
+# show_replica_status(), execute STOP REPLICA and resume SSS NONBLOCKING.
+SET @@GLOBAL.DEBUG = '+d,simulate_hold_show_replica_status_nonblocking';
+include/start_replica.inc
+SHOW REPLICA STATUS NONBLOCKING;
+[connection replica1]
+include/stop_replica.inc
+[connection replica]
+SET GLOBAL DEBUG= @replica_debug_save;
+include/start_replica.inc
 include/rpl_end.inc

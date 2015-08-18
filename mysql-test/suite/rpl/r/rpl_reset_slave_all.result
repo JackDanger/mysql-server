@@ -1,43 +1,43 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE t1 (c1 INT KEY) ENGINE=InnoDB;
 include/save_binlog_position.inc
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-SET @saved_slave_transaction_retries = @@GLOBAL.slave_transaction_retries;
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+SET @saved_replica_transaction_retries = @@GLOBAL.replica_transaction_retries;
 SET @saved_innodb_lock_wait_timeout = @@GLOBAL.innodb_lock_wait_timeout;
-SET GLOBAL slave_transaction_retries = 1;
+SET GLOBAL replica_transaction_retries = 1;
 SET GLOBAL innodb_lock_wait_timeout = 1;
-include/start_slave.inc
+include/start_replica.inc
 BEGIN;
 INSERT INTO t1 VALUES(1);
-[connection master]
+[connection primary]
 INSERT INTO t1 VALUES(1);
-[connection slave1]
-include/wait_for_slave_sql_error.inc [errno=1205]
-include/stop_slave_io.inc
+[connection replica1]
+include/wait_for_replica_sql_error.inc [errno=1205]
+include/stop_replica_io.inc
 CALL mtr.add_suppression(".*worker thread retried transaction 1 time.*");
-CALL mtr.add_suppression(".*The slave coordinator and worker threads are "
+CALL mtr.add_suppression(".*The replica coordinator and worker threads are "
                          "stopped, possibly leaving data in inconsistent.*");
-include/assert.inc [slave_retried_transactions should be greater than 0]
-RESET SLAVE ALL;
-include/assert.inc [slave_retried_transactions should be 0]
-[connection slave]
+include/assert.inc [replica_retried_transactions should be greater than 0]
+RESET REPLICA ALL;
+include/assert.inc [replica_retried_transactions should be 0]
+[connection replica]
 ROLLBACK;
 #
 # Cleanup
 #
-SET GLOBAL slave_transaction_retries = @saved_slave_transaction_retries;
+SET GLOBAL replica_transaction_retries = @saved_replica_transaction_retries;
 SET GLOBAL innodb_lock_wait_timeout = @saved_innodb_lock_wait_timeout;
-CHANGE MASTER TO MASTER_LOG_FILE = "BINLOG_FILE", MASTER_LOG_POS = BINLOG_POS,
-MASTER_USER='root', MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT;
+CHANGE PRIMARY TO PRIMARY_LOG_FILE = "BINLOG_FILE", PRIMARY_LOG_POS = BINLOG_POS,
+PRIMARY_USER='root', PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT;
 Warnings:
 Note	1759	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	1760	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
-[connection master]
+Note	1760	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
+[connection primary]
 DROP TABLE t1;
 include/rpl_end.inc

@@ -144,7 +144,7 @@ static const char* const jamFileNames[] =
    "DropTabFile.hpp",                    // 14
    "BuildIndx.hpp",                      // 15
    "TcContinueB.hpp",                    // 16
-   "MasterGCP.hpp",                      // 17
+   "PrimaryGCP.hpp",                      // 17
    "UtilPrepare.hpp",                    // 18
    "DictSizeAltReq.hpp",                 // 19
    "TabCommit.hpp",                      // 20
@@ -159,7 +159,7 @@ static const char* const jamFileNames[] =
    "GetTabInfo.hpp",                     // 29
    "BuildIndxImpl.hpp",                  // 30
    "Sync.hpp",                           // 31
-   "CntrMasterReq.hpp",                  // 32
+   "CntrPrimaryReq.hpp",                  // 32
    "CreateIndxImpl.hpp",                 // 33
    "UtilLock.hpp",                       // 34
    "ApiVersion.hpp",                     // 35
@@ -175,7 +175,7 @@ static const char* const jamFileNames[] =
    "CopyFrag.hpp",                       // 45
    "CreateTab.hpp",                      // 46
    "BackupContinueB.hpp",                // 47
-   "MasterLCP.hpp",                      // 48
+   "PrimaryLCP.hpp",                      // 48
    "WaitGCP.hpp",                        // 49
    "LocalRouteOrd.hpp",                  // 50
    "StopMe.hpp",                         // 51
@@ -281,7 +281,7 @@ static const char* const jamFileNames[] =
    "CreateTable.hpp",                    // 151
    "StartMe.hpp",                        // 152
    "AccLock.hpp",                        // 153
-   "CntrMasterConf.hpp",                 // 154
+   "CntrPrimaryConf.hpp",                 // 154
    "DbspjErr.hpp",                       // 155
    "FsReadWriteReq.hpp",                 // 156
    "EmptyLcp.hpp",                       // 157

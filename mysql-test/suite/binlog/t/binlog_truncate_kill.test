@@ -6,19 +6,19 @@
 # ========
 # When truncate table fails while using transactional based engines even
 # though the operation errors out we still continue and log it to binlog.
-# Because of this master has data but the truncate will be written to binary
+# Because of this primary has data but the truncate will be written to binary
 # log which will cause inconsistency.
 #
 # Test:
 # =====
-# Make master to wait in "open_table" call during the execution of truncate
+# Make primary to wait in "open_table" call during the execution of truncate
 # table command and kill the truncate table from other connection. This causes
 # open table to return an error saying truncate failed during open table. This
 # statement should not be binlogged.
 ###############################################################################
 --source include/have_debug_sync.inc
 --source include/have_binlog_format_statement.inc
-RESET MASTER;
+RESET PRIMARY;
 --enable_connect_log
 --connection default
 CREATE TABLE t1(id INT AUTO_INCREMENT PRIMARY KEY, a INT, b INT) ENGINE=INNODB;

@@ -8,24 +8,24 @@
 # ndb/test programs compiled.
 # invoke with:  ./mysql-test-run --ndb-extra-test --do-test=rpl_ndb_bank
 #
-# 1. start a "bank" application running on the master cluster
-# 2. perform online sync of slave
-# 3. periodically check consistency of slave
+# 1. start a "bank" application running on the primary cluster
+# 2. perform online sync of replica
+# 3. periodically check consistency of replica
 # 4. stop the bank application
-# 5. check that the slave and master BANK databases are the same
+# 5. check that the replica and primary BANK databases are the same
 #
  
 --source include/have_ndb.inc
 --source include/have_ndb_extra.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 # kill any trailing processes
 --system killall lt-bankTransactionMaker lt-bankTimer lt-bankMakeGL || true
 
 --disable_warnings
-# initialize master
---connection master
+# initialize primary
+--connection primary
 CREATE DATABASE IF NOT EXISTS BANK;
 DROP DATABASE BANK;
 CREATE DATABASE BANK default charset=latin1 default collate=latin1_bin;
@@ -35,7 +35,7 @@ CREATE DATABASE BANK default charset=latin1 default collate=latin1_bin;
 # These tables should correspond to the table definitions in
 # storage/ndb/test/src/NDBT_Tables.cpp
 #
---connection master
+--connection primary
 USE BANK;
 CREATE TABLE GL ( TIME BIGINT UNSIGNED NOT NULL,
                   ACCOUNT_TYPE INT UNSIGNED NOT NULL,
@@ -103,10 +103,10 @@ while ($2)
 --sleep 5
 
 --disable_warnings
-# initialize slave for sync
---connection slave
-STOP SLAVE;
-RESET SLAVE;
+# initialize replica for sync
+--connection replica
+STOP REPLICA;
+RESET REPLICA;
 # to make sure we drop any ndbcluster tables
 CREATE DATABASE IF NOT EXISTS BANK;
 DROP DATABASE BANK;
@@ -115,10 +115,10 @@ CREATE DATABASE BANK;
 --enable_warnings
 
 #
-# Time to sync the slave:
-# start by taking a backup on master
---connection master
-RESET MASTER;
+# Time to sync the replica:
+# start by taking a backup on primary
+--connection primary
+RESET PRIMARY;
 --exec $NDB_MGM --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING" -e "start backup" >> $NDB_TOOLS_OUTPUT
 
 # there is no neat way to find the backupid, this is a hack to find it...
@@ -131,32 +131,32 @@ LOAD DATA INFILE '../tmp.dat' INTO TABLE mysql.backup_info FIELDS TERMINATED BY 
 SELECT @the_backup_id:=backup_id FROM mysql.backup_info;
 let the_backup_id=`select @the_backup_id`;
 
-# restore on slave, first check that nothing is there
---connection slave
---exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_SLAVE" -p 8 -b $the_backup_id -n 1 -m -r --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
---exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_SLAVE" -p 8 -b $the_backup_id -n 2 -r -e --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
+# restore on replica, first check that nothing is there
+--connection replica
+--exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_REPLICA" -p 8 -b $the_backup_id -n 1 -m -r --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
+--exec $NDB_RESTORE --no-defaults --ndb-connectstring="$NDB_CONNECTSTRING_REPLICA" -p 8 -b $the_backup_id -n 2 -r -e --print --print_meta $NDB_BACKUP_DIR/BACKUP/BACKUP-$the_backup_id >> $NDB_TOOLS_OUTPUT
 
 #
 # now setup replication to continue from last epoch
---source include/ndb_setup_slave.inc
---connection slave
-START SLAVE;
+--source include/ndb_setup_replica.inc
+--connection replica
+START REPLICA;
 
 
 #
-# Now loop and check consistency every 2 seconds on slave
+# Now loop and check consistency every 2 seconds on replica
 #
---connection slave
+--connection replica
 --let $1=10
 while ($1)
 {
   --sleep 2
-  --replace_result $MASTER_MYPORT MASTER_PORT
-  --replace_column 1 <Slave_IO_State> 7 <Read_Master_Log_Pos> 8 <Relay_Log_File> 9 <Relay_Log_Pos> 16 <Replicate_Ignore_Table> 22 <Exec_Master_Log_Pos> 23 <Relay_Log_Space> 33 <Seconds_Behind_Master> 34 <Last_IO_Errno> 35 <Last_IO_Error>
-  SHOW SLAVE STATUS;
-  STOP SLAVE;
-  --exec NDB_CONNECTSTRING=$NDB_CONNECTSTRING_SLAVE ../storage/ndb/test/ndbapi/bank/bankValidateAllGLs >> $NDB_TOOLS_OUTPUT
-  START SLAVE;
+  --replace_result $PRIMARY_MYPORT PRIMARY_PORT
+  --replace_column 1 <Replica_IO_State> 7 <Read_Primary_Log_Pos> 8 <Relay_Log_File> 9 <Relay_Log_Pos> 16 <Replicate_Ignore_Table> 22 <Exec_Primary_Log_Pos> 23 <Relay_Log_Space> 33 <Seconds_Behind_Primary> 34 <Last_IO_Errno> 35 <Last_IO_Error>
+  SHOW REPLICA STATUS;
+  STOP REPLICA;
+  --exec NDB_CONNECTSTRING=$NDB_CONNECTSTRING_REPLICA ../storage/ndb/test/ndbapi/bank/bankValidateAllGLs >> $NDB_TOOLS_OUTPUT
+  START REPLICA;
   --dec $1
 }
 
@@ -166,21 +166,21 @@ while ($1)
 --exec killall lt-bankTransactionMaker lt-bankTimer lt-bankMakeGL
 
 #
-# Check that the databases are the same on slave and master
-# 1. dump database BANK on both master and slave
+# Check that the databases are the same on replica and primary
+# 1. dump database BANK on both primary and replica
 # 2. compare, there should be no difference
 #
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info BANK ACCOUNT_TYPE ACCOUNT GL TRANSACTION > $MYSQLTEST_VARDIR/tmp/master_BANK.sql
---connection master
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info BANK ACCOUNT_TYPE ACCOUNT GL TRANSACTION > $MYSQLTEST_VARDIR/tmp/primary_BANK.sql
+--connection primary
 use test;
 create table t1 (a int primary key) engine=ndb;
 insert into t1 values (1);
---sync_slave_with_master
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info BANK ACCOUNT_TYPE ACCOUNT GL TRANSACTION > $MYSQLTEST_VARDIR/tmp/slave_BANK.sql
---connection master
+--sync_replica_with_primary
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info BANK ACCOUNT_TYPE ACCOUNT GL TRANSACTION > $MYSQLTEST_VARDIR/tmp/replica_BANK.sql
+--connection primary
 drop table t1;
 
-diff_files $MYSQLTEST_VARDIR/tmp/master_BANK.sql $MYSQLTEST_VARDIR/tmp/slave_BANK.sql;
+diff_files $MYSQLTEST_VARDIR/tmp/primary_BANK.sql $MYSQLTEST_VARDIR/tmp/replica_BANK.sql;
 
   --dec $2
 }

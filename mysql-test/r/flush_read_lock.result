@@ -36,7 +36,7 @@
 # with FTWRL. This is class #4 -- incompatible
 # becuase issue implicit COMMIT which is not a no-op.
 # Finally, there are administrative statements (such as 
-# RESET SLAVE) that do not take any locks and do not
+# RESET REPLICA) that do not take any locks and do not
 # issue COMMIT.
 # This is class #5.
 # The goal of this coverage is to test statements
@@ -88,7 +88,7 @@ create event e1 on schedule every 1 minute do begin end;
 # with various statements.
 #
 # These tests don't cover some classes of statements:
-# - Replication-related - CHANGE MASTER TO, START/STOP SLAVE and etc
+# - Replication-related - CHANGE PRIMARY TO, START/STOP REPLICA and etc
 #   (all compatible with FTWRL).
 # - Plugin-related - INSTALL/UNINSTALL (incompatible with FTWRL,
 #   require plugin support).
@@ -433,7 +433,7 @@ Success: Was able to run 'execute stmt1' under FTWRL.
 Success: Was able to run 'execute stmt1' with FTWRL active in another connection.
 Success: Was able to run FTWRL while 'execute stmt1' was active in another connection.
 deallocate prepare stmt1;
-call mtr.add_suppression("Slave SQL.*Can.t execute the query because you have a conflicting read lock., Error_code: 1223");
+call mtr.add_suppression("Replica SQL.*Can.t execute the query because you have a conflicting read lock., Error_code: 1223");
 #
 # 9.2.b) EXECUTE for statement which is incompatible with FTWRL
 #        should be also incompatible.

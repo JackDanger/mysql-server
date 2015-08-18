@@ -7,9 +7,9 @@
 #  Dynamic Variable: No
 
 --source include/not_embedded.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---connection slave
+--connection replica
 --let $rpl_log_var_name=relay_log_basename
 --source suite/sys_vars/inc/bin_relay_log_basename_index.inc
 

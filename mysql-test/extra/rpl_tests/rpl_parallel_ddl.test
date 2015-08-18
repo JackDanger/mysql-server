@@ -7,7 +7,7 @@
 #
 
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_binlog_format_statement.inc
 
 
@@ -15,11 +15,11 @@
 
 let $workers= 4;
 
-connection slave;
+connection replica;
 
-source include/stop_slave.inc;
-set @save.slave_parallel_workers= @@global.slave_parallel_workers;
-eval set @@global.slave_parallel_workers= $workers;
+source include/stop_replica.inc;
+set @save.replica_parallel_workers= @@global.replica_parallel_workers;
+eval set @@global.replica_parallel_workers= $workers;
 
 # Note, the number of db:s should be greater than MAX_DBS_IN_QUERY_MTS
 # in order to satisfy to the over-max final test.
@@ -39,7 +39,7 @@ let $queries= `select $dbs*$tables * 8`;
 let $n= $dbs;
 while ($n)
 {
-  connection master;
+  connection primary;
   eval create database d$n;
 
   let $m= $tables;
@@ -53,7 +53,7 @@ while ($n)
   }
   dec $n;
 
-  connection master1;
+  connection primary1;
   eval create database d$n;
 
   let $m= $tables;
@@ -92,7 +92,7 @@ while ($k)
 #
 # D3. CREATE/DROP Stored Proc, Stored Func, Trigger, Func
 
-connection master;
+connection primary;
 
 let $n= $dbs;
 # n'th db tables won't have any trigger to avoid circular dependency
@@ -150,14 +150,14 @@ DROP VIEW d1.v_1, d2.v_2;
 
 
 #
-# Run it on slave;
+# Run it on replica;
 #
 
-connection slave;
-source include/start_slave.inc;
+connection replica;
+source include/start_replica.inc;
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
 #
 # Consistency check
@@ -169,7 +169,7 @@ while($n)
   let $m= $tables;
   while ($m)
   {
-    let $diff_tables=master:d$n.t$m, slave:d$n.t$m;
+    let $diff_tables=primary:d$n.t$m, replica:d$n.t$m;
     source include/diff_tables.inc;
     dec $m;
   }
@@ -180,7 +180,7 @@ while($n)
 # Finally, over-the-max-limit updated db:s
 #
 
-connection master;
+connection primary;
 
 # Prepare the test with dropping the triggers
 
@@ -238,7 +238,7 @@ eval rename table $tables_2_rename d$n.t$m to d$n1.t$m;
 # Hunting after bug#13033076.
 # Let's see if rename leaves any garbage after its run
 #
-sync_slave_with_master;
+sync_replica_with_primary;
 let $MYSQLD_DATADIR= `SELECT @@datadir`;
 while ($n)
 {
@@ -252,12 +252,12 @@ while ($n)
 # Clean-up
 #
 
-connection master;
+connection primary;
 
 let $n= $dbs;
 --disable_query_log
 
-# Hunting after bug#13033076: to drop db:s on master concurrently as
+# Hunting after bug#13033076: to drop db:s on primary concurrently as
 # well through 4 connections.
 
 --connect(con1, localhost, root,,)
@@ -321,10 +321,10 @@ while ($n)
   --reap
   --disconnect con4
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
-set @@global.slave_parallel_workers= @save.slave_parallel_workers;
+set @@global.replica_parallel_workers= @save.replica_parallel_workers;
 
 --source include/rpl_end.inc
 

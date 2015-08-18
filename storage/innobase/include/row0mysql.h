@@ -438,7 +438,7 @@ row_table_add_foreign_constraints(
 	__attribute__((warn_unused_result));
 
 /*********************************************************************//**
-The master thread in srv0srv.cc calls this regularly to drop tables which
+The primary thread in srv0srv.cc calls this regularly to drop tables which
 we must drop in background after queries to them have ended. Such lazy
 dropping of tables is needed in ALTER TABLE on Unix.
 @return how many tables dropped + remaining tables in list */

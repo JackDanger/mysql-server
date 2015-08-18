@@ -105,13 +105,13 @@ public:
     NodeShutdownWouldCauseSystemCrash = 3,
     TransactionAbortFailed = 4,
     UnsupportedNodeShutdown = 5,
-    MultiNodeShutdownNotMaster = 6
+    MultiNodeShutdownNotPrimary = 6
   };
   
 public:
   Uint32 senderData;
   Uint32 errorCode;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 inline

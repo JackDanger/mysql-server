@@ -53,7 +53,7 @@ private:
   Uint32 nodeId;
   Uint32 internalStartPhase;
   Uint32 typeOfStart;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 unused;
   Uint32 config[DataLength];
 };

@@ -1,17 +1,17 @@
-RESET MASTER;
+RESET PRIMARY;
 
 # A first event in a new binlog has commit parent timestamp as zero
 # and itself as one.
 CREATE TABLE t1 (a int) ENGINE= innodb;
 
---let $binlog_file= master-bin.000001
+--let $binlog_file= primary-bin.000001
 
 --let $logical_timestamps= 0 1
 --source include/assert_logical_timestamps.inc
 
 # A next transaction increments either counter
 
---let $binlog_position= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_position= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 INSERT INTO t1 SET a=1;
 
 --let $logical_timestamps= 1 2
@@ -44,7 +44,7 @@ INSERT INTO t1 SET a=1;
 
 --let $rpl_connection_name=two
 --source include/rpl_connection.inc
---let $binlog_position= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_position= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 # (3,4)
 BEGIN;
 INSERT INTO t1 SET a=2;
@@ -57,7 +57,7 @@ COMMIT;
 --let $rpl_connection_name=one
 --source include/rpl_connection.inc
 # (3,5)
---let $binlog_position= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_position= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 COMMIT;
 --let $logical_timestamps= 3 5
 --source include/assert_logical_timestamps.inc
@@ -66,7 +66,7 @@ COMMIT;
 # have the same commit parent as the last committed of so far, or
 # one of them will be such to another.
 
---let $binlog_position= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_position= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 
 --let $rpl_connection_name=one
 --source include/rpl_connection.inc
@@ -95,7 +95,7 @@ COMMIT;
 
 --let $rpl_connection_name=one
 --source include/rpl_connection.inc
-RESET MASTER;
+RESET PRIMARY;
 INSERT INTO t1 SET a=1;
 
 --let $rpl_connection_name=two
@@ -127,19 +127,19 @@ COMMIT;
 # Now the proof: the "rotated" transaction is logged with uninitialized last committed
 # as expected. Its timestamp pair of (0,1) must be found.
 
---let $binlog_file= master-bin.000002
+--let $binlog_file= primary-bin.000002
 --let $logical_timestamps= 0 1
 --source include/assert_logical_timestamps.inc
 
 #
-# Testing logging of transaction that commits after RESET MASTER.
+# Testing logging of transaction that commits after RESET PRIMARY.
 # The last committed of "rotated" transactions
 # must be set to the uninitialized (0) value.
 #
 
 --let $rpl_connection_name=one
 --source include/rpl_connection.inc
-RESET MASTER;
+RESET PRIMARY;
 INSERT INTO t1 SET a=1;
 
 --let $rpl_connection_name=two
@@ -163,11 +163,11 @@ COMMIT;
 
 # Not "rotated" 2nd transaction is logged following the regular rule.
 # Its timestamp pair of (1,2) must be found.
---let $binlog_file= master-bin.000001
+--let $binlog_file= primary-bin.000001
 --let $logical_timestamps= 0 1;1 2
 --source include/assert_logical_timestamps.inc
 
-RESET MASTER;
+RESET PRIMARY;
 
 --let $rpl_connection_name=one
 --source include/rpl_connection.inc
@@ -197,7 +197,7 @@ DROP TABLE t1;
 
 CREATE TABLE t1 (a int) ENGINE= innodb;
 CREATE TABLE tm (a int) ENGINE= MyISAM;
-RESET MASTER;
+RESET PRIMARY;
 CREATE TEMPORARY TABLE ttm1 (a INT) ENGINE=MyISAM;
 CREATE TEMPORARY TABLE tti1 (a INT) ENGINE=Innodb;
 

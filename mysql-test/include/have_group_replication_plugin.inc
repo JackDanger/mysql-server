@@ -23,18 +23,18 @@ if (!`select count(*) from information_schema.plugins where PLUGIN_NAME like 'gr
   --skip Need Group Replication plugin
 }
 
-# Allow $SERVER_MYPORT_1 as alias for $MASTER_MYPORT
+# Allow $SERVER_MYPORT_1 as alias for $PRIMARY_MYPORT
 # necessary for the rpl_group_replication_default_connections.inc file.
 if (!$SERVER_MYPORT_1)
 {
-  --let SERVER_MYPORT_1= $MASTER_MYPORT
+  --let SERVER_MYPORT_1= $PRIMARY_MYPORT
 }
 
-# Allow $SERVER_MYPORT_2 as alias for $SLAVE_MYPORT
+# Allow $SERVER_MYPORT_2 as alias for $REPLICA_MYPORT
 # necessary for the rpl_group_replication_default_connections.inc file.
 if (!$SERVER_MYPORT_2)
 {
-  --let SERVER_MYPORT_2= $SLAVE_MYPORT
+  --let SERVER_MYPORT_2= $REPLICA_MYPORT
 }
 
 --source include/rpl_group_replication_default_connections.inc

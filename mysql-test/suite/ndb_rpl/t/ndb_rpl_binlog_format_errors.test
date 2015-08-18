@@ -11,7 +11,7 @@
 #
 # ==== Related bugs ====
 #
-# BUG#39934: Slave stops for engine that only support row-based logging
+# BUG#39934: Replica stops for engine that only support row-based logging
 # BUG#42829: binlogging enabled for all schemas regardless of binlog-db-db / binlog-ignore-db
 #
 # ==== Related test cases ====
@@ -29,7 +29,7 @@
 --source include/have_binlog_format_row.inc
 --source include/have_ndb.inc
 --source include/have_innodb.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 disable_query_log;
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
@@ -38,14 +38,14 @@ enable_query_log;
 
 --echo ==== Initialize ====
 
---echo [on slave]
---connection slave
+--echo [on replica]
+--connection replica
 
 SET @old_binlog_format= @@global.binlog_format;
 INSTALL PLUGIN example SONAME 'ha_example.so';
 
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 
 SET @old_binlog_format= @@global.binlog_format;
 INSTALL PLUGIN example SONAME 'ha_example.so';
@@ -54,7 +54,7 @@ CREATE TABLE t (a VARCHAR(100)) ENGINE = MYISAM;
 CREATE TABLE t_self_logging (a VARCHAR(100)) ENGINE = NDB;
 CREATE TABLE t_row (a VARCHAR(100)) ENGINE = INNODB;
 CREATE TABLE t_stmt (a VARCHAR(100)) ENGINE = EXAMPLE;
-CREATE TABLE t_slave_stmt (a VARCHAR(100)) ENGINE = MYISAM;
+CREATE TABLE t_replica_stmt (a VARCHAR(100)) ENGINE = MYISAM;
 CREATE TABLE t_autoinc (a INT KEY AUTO_INCREMENT) ENGINE = MYISAM;
 CREATE TABLE t_double_autoinc (a INT KEY AUTO_INCREMENT) ENGINE = MYISAM;
 
@@ -66,14 +66,14 @@ CREATE DATABASE other;
 # This makes the innodb table row-only
 SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
---echo [on slave]
---sync_slave_with_master
+--echo [on replica]
+--sync_replica_with_primary
 
-DROP TABLE t_slave_stmt;
-CREATE TABLE t_slave_stmt (a INT) ENGINE = EXAMPLE;
+DROP TABLE t_replica_stmt;
+CREATE TABLE t_replica_stmt (a INT) ENGINE = EXAMPLE;
 
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 
 # This is a format description event.  It is needed because any BINLOG
 # statement containing a row event must be preceded by a BINLOG
@@ -108,19 +108,19 @@ DROP TRIGGER trig_2;
 INSERT INTO t_stmt VALUES (1);
 SELECT * FROM t_stmt /* should be empty */;
 
---echo * Row injection and stmt-only table: in slave sql thread
-INSERT INTO t_slave_stmt VALUES (1);
---echo [on slave]
---connection slave
+--echo * Row injection and stmt-only table: in replica sql thread
+INSERT INTO t_replica_stmt VALUES (1);
+--echo [on replica]
+--connection replica
 # 1664 = ER_BINLOG_ROW_INJECTION_AND_STMT_ENGINE
---let $slave_sql_errno= 1664
---let $show_slave_sql_error= 1
---source include/wait_for_slave_sql_error_and_skip.inc
---connection slave
-SELECT * FROM t_slave_stmt /* should be empty */;
+--let $replica_sql_errno= 1664
+--let $show_replica_sql_error= 1
+--source include/wait_for_replica_sql_error_and_skip.inc
+--connection replica
+SELECT * FROM t_replica_stmt /* should be empty */;
 
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 --echo * Row injection and stmt-only table: use BINLOG statement
 # This is a Table_map_event and a Write_rows_event. Together, they are
 # equivalent to 'INSERT INTO t_stmt VALUES (1)'
@@ -134,13 +134,13 @@ SELECT * FROM t_stmt /* should be empty */;
 
 --echo ---- binlog_format=mixed ----
 
---echo [on slave]
---sync_slave_with_master
---source include/stop_slave.inc
+--echo [on replica]
+--sync_replica_with_primary
+--source include/stop_replica.inc
 SET @@global.binlog_format = MIXED;
---source include/start_slave.inc
---echo [on master]
---connection master
+--source include/start_replica.inc
+--echo [on primary]
+--connection primary
 SET @@global.binlog_format = MIXED;
 SET @@session.binlog_format = MIXED;
 
@@ -157,13 +157,13 @@ INSERT INTO t_double_autoinc SELECT CONCAT(UUID(), @@hostname, NULL) FROM mysql.
 
 --echo ---- binlog_format=statement ----
 
---echo [on slave]
---sync_slave_with_master
---source include/stop_slave.inc
+--echo [on replica]
+--sync_replica_with_primary
+--source include/stop_replica.inc
 SET @@global.binlog_format = STATEMENT;
---source include/start_slave.inc
---echo [on master]
---connection master
+--source include/start_replica.inc
+--echo [on primary]
+--connection primary
 SET @@global.binlog_format = STATEMENT;
 SET @@session.binlog_format = STATEMENT;
 
@@ -227,36 +227,36 @@ SELECT * FROM t /* should contain the value 1 */;
 DELETE FROM t;
 
 
---echo ---- master: binlog_format=mixed, slave: binlog_format=statement ----
+--echo ---- primary: binlog_format=mixed, replica: binlog_format=statement ----
 
 SET @@global.binlog_format = MIXED;
 SET @@session.binlog_format = MIXED;
 
---echo * Row injection and binlog_format=statement: in slave sql thread
+--echo * Row injection and binlog_format=statement: in replica sql thread
 INSERT INTO t VALUES (COALESCE(1, UUID()));
---echo [on slave]
---connection slave
+--echo [on replica]
+--connection replica
 # 1666 = ER_BINLOG_ROW_INJECTION_AND_STMT_MODE
---let $slave_sql_errno= 1666
+--let $replica_sql_errno= 1666
 --let $show_sql_error= 1
---source include/wait_for_slave_sql_error_and_skip.inc
---connection slave
+--source include/wait_for_replica_sql_error_and_skip.inc
+--connection replica
 SELECT * FROM t /* should be empty */;
---echo [on master]
---connection master
+--echo [on primary]
+--connection primary
 
 
 --echo ==== Clean up ====
 
 DROP TRIGGER trig_autoinc;
 DROP TRIGGER trig_double_autoinc;
-DROP TABLE t, t_self_logging, t_row, t_stmt, t_slave_stmt, t_autoinc, t_double_autoinc;
+DROP TABLE t, t_self_logging, t_row, t_stmt, t_replica_stmt, t_autoinc, t_double_autoinc;
 DROP DATABASE other;
 SET @@global.binlog_format = @old_binlog_format;
 SET @@session.binlog_format = @old_binlog_format;
 UNINSTALL PLUGIN example;
---echo [on slave]
---sync_slave_with_master
+--echo [on replica]
+--sync_replica_with_primary
 SET @@global.binlog_format = @old_binlog_format;
 SET @@session.binlog_format = @old_binlog_format;
 UNINSTALL PLUGIN example;

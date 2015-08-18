@@ -78,7 +78,7 @@ void Item_subselect::init(st_select_lex *select_lex,
 
   DBUG_ENTER("Item_subselect::init");
   DBUG_PRINT("enter", ("select_lex: 0x%lx", (long) select_lex));
-  unit= select_lex->master_unit();
+  unit= select_lex->primary_unit();
 
   if (unit->item)
   {
@@ -2740,7 +2740,7 @@ bool Item_subselect::subq_opt_away_processor(uchar *arg)
    Clean up after removing the subquery from the item tree.
 
    Call st_select_lex_unit::exclude_tree() to unlink it from its
-   master and to unlink direct st_select_lex children from
+   primary and to unlink direct st_select_lex children from
    all_selects_list.
 
    Don't unlink subqueries that are not descendants of the starting
@@ -2832,7 +2832,7 @@ subselect_single_select_engine(st_select_lex *select,
 			       Item_subselect *item_arg)
   :subselect_engine(item_arg, result_arg), select_lex(select)
 {
-  select_lex->master_unit()->item= item_arg;
+  select_lex->primary_unit()->item= item_arg;
 }
 
 
@@ -3472,7 +3472,7 @@ uint8 subselect_union_engine::uncacheable() const
 
 void subselect_single_select_engine::exclude()
 {
-  select_lex->master_unit()->exclude_level();
+  select_lex->primary_unit()->exclude_level();
 }
 
 void subselect_union_engine::exclude()
@@ -4012,7 +4012,7 @@ bool subselect_hash_sj_engine::exec()
     THD * const thd= item->unit->thd;
     SELECT_LEX *save_select= thd->lex->current_select();
     thd->lex->set_current_select(materialize_engine->select_lex);
-    DBUG_ASSERT(materialize_engine->select_lex->master_unit()->is_optimized());
+    DBUG_ASSERT(materialize_engine->select_lex->primary_unit()->is_optimized());
 
     JOIN *join= materialize_engine->select_lex->join;
 

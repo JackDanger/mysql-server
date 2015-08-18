@@ -1,20 +1,20 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 ***************** Test 1 ************************
 
 CREATE TABLE t1 (a INT NOT NULL auto_increment,b INT, PRIMARY KEY (a)) ENGINE=NDB auto_increment=3;
 insert into t1 values (NULL,1),(NULL,2),(NULL,3);
-******* Select from Master *************
+******* Select from Primary *************
 
 select * from t1 ORDER BY a;
 a	b
 3	1
 4	2
 5	3
-******* Select from Slave *************
+******* Select from Replica *************
 
 select * from t1 ORDER BY a;
 a	b
@@ -26,7 +26,7 @@ create table t1 (a int not null auto_increment,b int, primary key (a)) engine=ND
 insert into t1 values (1,1),(NULL,2),(3,3),(NULL,4);
 delete from t1 where b=4;
 insert into t1 values (NULL,5),(NULL,6);
-******* Select from Master *************
+******* Select from Primary *************
 
 select * from t1 ORDER BY a;
 a	b
@@ -35,7 +35,7 @@ a	b
 3	3
 5	5
 6	6
-******* Select from Slave *************
+******* Select from Replica *************
 
 select * from t1 ORDER BY a;
 a	b
@@ -48,7 +48,7 @@ drop table t1;
 create table t1 (a int not null auto_increment, primary key (a)) engine=NDB;
 insert into t1 values (NULL),(5),(NULL);
 insert into t1 values (250),(NULL);
-******* Select from Master *************
+******* Select from Primary *************
 
 select * from t1 ORDER BY a;
 a
@@ -60,7 +60,7 @@ a
 insert into t1 values (1000);
 set @@insert_id=400;
 insert into t1 values(NULL),(NULL);
-******* Select from Master *************
+******* Select from Primary *************
 
 select * from t1 ORDER BY a;
 a
@@ -72,7 +72,7 @@ a
 400
 401
 1000
-******* Select from Slave *************
+******* Select from Replica *************
 
 select * from t1 ORDER BY a;
 a
@@ -88,7 +88,7 @@ drop table t1;
 create table t1 (a int not null auto_increment, primary key (a)) engine=NDB;
 insert into t1 values (NULL),(5),(NULL),(NULL);
 insert into t1 values (500),(NULL),(502),(NULL),(600);
-******* Select from Master *************
+******* Select from Primary *************
 
 select * from t1 ORDER BY a;
 a
@@ -110,7 +110,7 @@ Warnings:
 Warning	1062	Duplicate entry '600' for key 'PRIMARY'
 Warning	1062	Duplicate entry '600' for key 'PRIMARY'
 Warning	1062	Duplicate entry '600' for key 'PRIMARY'
-******* Select from Master *************
+******* Select from Primary *************
 
 select * from t1 ORDER BY a;
 a
@@ -125,7 +125,7 @@ a
 600
 610
 611
-******* Select from Slave *************
+******* Select from Replica *************
 
 select * from t1 ORDER BY a;
 a
@@ -145,7 +145,7 @@ create table t1 (a int not null auto_increment, primary key (a)) engine=NDB;
 insert into t1 values(2),(12),(22),(32),(42);
 insert into t1 values (NULL),(NULL);
 insert into t1 values (3),(NULL),(NULL);
-******* Select from Master *************
+******* Select from Primary *************
 
 select * from t1 ORDER BY a;
 a
@@ -154,10 +154,10 @@ a
 3
 4
 5
-******* Select from Slave *************
+******* Select from Replica *************
 
-** Slave should have 2, 12, 22, 32, 42 **
-** Master will have 2 but not 12, 22, 32, 42 **
+** Replica should have 2, 12, 22, 32, 42 **
+** Primary will have 2 but not 12, 22, 32, 42 **
 
 select * from t1 ORDER BY a;
 a

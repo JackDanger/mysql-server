@@ -56,7 +56,7 @@ struct BuildIndxImplRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     BadRequestType = 4247,
     InvalidPrimaryTable = 4249,
     InvalidIndexType = 4250,
@@ -72,7 +72,7 @@ struct BuildIndxImplRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 struct mt_BuildIndxReq

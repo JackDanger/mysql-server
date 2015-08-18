@@ -257,16 +257,16 @@ sub mtr_report_stats ($) {
           {
             # Skip some non fatal warnings from the log files
             if (
-		/\"SELECT UNIX_TIMESTAMP\(\)\" failed on master/ or
+		/\"SELECT UNIX_TIMESTAMP\(\)\" failed on primary/ or
 		/Aborted connection/ or
-		/Client requested master to start replication from impossible position/ or
+		/Client requested primary to start replication from impossible position/ or
 		/Could not find first log file name in binary log/ or
 		/Enabling keys got errno/ or
-		/Error reading master configuration/ or
+		/Error reading primary configuration/ or
 		/Error reading packet/ or
 		/Event Scheduler/ or
 		/Failed to open log/ or
-		/Failed to open the existing master info file/ or
+		/Failed to open the existing primary info file/ or
 		/Forcing shutdown of [0-9]* plugins/ or
                 /Can't open shared library .*\bha_example\b/ or
                 /Couldn't load plugin .*\bha_example\b/ or
@@ -282,7 +282,7 @@ sub mtr_report_stats ($) {
 		/InnoDB: Warning: we did not need to do crash recovery/ or
 		/Invalid \(old\?\) table or database name/ or
 		/Lock wait timeout exceeded/ or
-		/Log entry on master is longer than max_allowed_packet/ or
+		/Log entry on primary is longer than max_allowed_packet/ or
                 /unknown option '--loose-/ or
                 /unknown variable 'loose-/ or
 		/You have forced lower_case_table_names to 0 through a command-line option/ or
@@ -292,27 +292,27 @@ sub mtr_report_stats ($) {
 		/NDB: only row based binary logging/ or
 		/Neither --relay-log nor --relay-log-index were used/ or
 		/Query partially completed/ or
-		/Slave I.O thread aborted while waiting for relay log/ or
-		/Slave SQL thread is stopped because UNTIL condition/ or
-		/Slave SQL thread retried transaction/ or
-		/Slave \(additional info\)/ or
-		/Slave: .*Duplicate column name/ or
-		/Slave: .*master may suffer from/ or
-		/Slave: According to the master's version/ or
-		/Slave: Column [0-9]* type mismatch/ or
-		/Slave: Error .* doesn't exist/ or
-		/Slave: Deadlock found/ or
-		/Slave: Error .*Unknown table/ or
-		/Slave: Error in Write_rows event: / or
-		/Slave: Field .* of table .* has no default value/ or
-                /Slave: Field .* doesn't have a default value/ or
-		/Slave: Query caused different errors on master and slave/ or
-		/Slave: Table .* doesn't exist/ or
-		/Slave: Table width mismatch/ or
-		/Slave: The incident LOST_EVENTS occured on the master/ or
-		/Slave: Unknown error.* 1105/ or
-		/Slave: Can't drop database.* database doesn't exist/ or
-                /Slave SQL:.*(?:Error_code: \d+|Query:.*)/ or
+		/Replica I.O thread aborted while waiting for relay log/ or
+		/Replica SQL thread is stopped because UNTIL condition/ or
+		/Replica SQL thread retried transaction/ or
+		/Replica \(additional info\)/ or
+		/Replica: .*Duplicate column name/ or
+		/Replica: .*primary may suffer from/ or
+		/Replica: According to the primary's version/ or
+		/Replica: Column [0-9]* type mismatch/ or
+		/Replica: Error .* doesn't exist/ or
+		/Replica: Deadlock found/ or
+		/Replica: Error .*Unknown table/ or
+		/Replica: Error in Write_rows event: / or
+		/Replica: Field .* of table .* has no default value/ or
+                /Replica: Field .* doesn't have a default value/ or
+		/Replica: Query caused different errors on primary and replica/ or
+		/Replica: Table .* doesn't exist/ or
+		/Replica: Table width mismatch/ or
+		/Replica: The incident LOST_EVENTS occured on the primary/ or
+		/Replica: Unknown error.* 1105/ or
+		/Replica: Can't drop database.* database doesn't exist/ or
+                /Replica SQL:.*(?:Error_code: \d+|Query:.*)/ or
 		/Sort aborted/ or
 		/Time-out in NDB/ or
 		/One can only use the --user.*root/ or
@@ -321,12 +321,12 @@ sub mtr_report_stats ($) {
 		/deprecated/ or
 		/description of time zone/ or
 		/equal MySQL server ids/ or
-		/error .*connecting to master/ or
+		/error .*connecting to primary/ or
 		/error reading log entry/ or
 		/lower_case_table_names is set/ or
 		/skip-name-resolve mode/ or
-		/slave SQL thread aborted/ or
-		/Slave: .*Duplicate entry/ or
+		/replica SQL thread aborted/ or
+		/Replica: .*Duplicate entry/ or
 		# Special case for Bug #26402 in show_check.test
 		# Question marks are not valid file name parts
 		# on Windows platforms. Ignore this error message. 
@@ -358,17 +358,17 @@ sub mtr_report_stats ($) {
                 #             change the size of core files
                 /setrlimit could not change the size of core files to 'infinity'/ or
 
-		# rpl_extrColmaster_*.test, the slave thread produces warnings
+		# rpl_extrColprimary_*.test, the replica thread produces warnings
 		# when it get updates to a table that has more columns on the
-		# master
-		/Slave: Unknown column 'c7' in 't15' Error_code: 1054/ or
-		/Slave: Can't DROP 'c7'.* 1091/ or
-		/Slave: Key column 'c6'.* 1072/ or
+		# primary
+		/Replica: Unknown column 'c7' in 't15' Error_code: 1054/ or
+		/Replica: Can't DROP 'c7'.* 1091/ or
+		/Replica: Key column 'c6'.* 1072/ or
 
-		# rpl_idempotency.test produces warnings for the slave.
+		# rpl_idempotency.test produces warnings for the replica.
 		($testname eq 'rpl.rpl_idempotency' and
-		 (/Slave: Can\'t find record in \'t1\' Error_code: 1032/ or
-                  /Slave: Cannot add or update a child row: a foreign key constraint fails .* Error_code: 1452/
+		 (/Replica: Can\'t find record in \'t1\' Error_code: 1032/ or
+                  /Replica: Cannot add or update a child row: a foreign key constraint fails .* Error_code: 1452/
 		 )) or
 
 		# These tests does "kill" on queries, causing sporadic errors when writing to logs
@@ -381,12 +381,12 @@ sub mtr_report_stats ($) {
 
 		# rpl_bug33931 has deliberate failures
 		($testname eq 'rpl.rpl_bug33931' and
-		 (/Failed during slave.*thread initialization/
+		 (/Failed during replica.*thread initialization/
 		  )) or
 
-		# rpl_temporary has an error on slave that can be ignored
+		# rpl_temporary has an error on replica that can be ignored
 		($testname eq 'rpl.rpl_temporary' and
-		 (/Slave: Can\'t find record in \'user\' Error_code: 1032/
+		 (/Replica: Can\'t find record in \'user\' Error_code: 1032/
 		 )) or
 
                 # Test case for Bug#31590 produces the following error:

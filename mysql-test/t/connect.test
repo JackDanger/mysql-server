@@ -26,10 +26,10 @@ show tables;
 connect (con2,localhost,root,,test);
 show tables;
 
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (fail_con,localhost,root,z,test2);
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (fail_con,localhost,root,z,);
 
@@ -56,26 +56,26 @@ disconnect con4;
 --source include/wait_until_disconnected.inc
 connection default;
 
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (fail_con,localhost,test,,test2);
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 # Need to protect "" within '' so it's interpreted literally
 connect (fail_con,localhost,test,,'""');
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (fail_con,localhost,test,zorro,test2);
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (fail_con,localhost,test,zorro,);
 
 connection default;
 
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (fail_con,localhost,test,,test2);
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (fail_con,localhost,test,,);
 
@@ -439,10 +439,10 @@ ALTER USER wl6587@localhost PASSWORD EXPIRE;
 --echo # mysqladmin non-password should fail
 --replace_regex /.*mysqladmin.*: connect/mysqladmin: connect/
 --error 1
---exec $MYSQLADMIN -S $MASTER_MYSOCK -P $MASTER_MYPORT -uwl6587 --password=wl6587 status 2>&1
+--exec $MYSQLADMIN -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT -uwl6587 --password=wl6587 status 2>&1
 
 --echo # mysqladmin password should work
---exec $MYSQLADMIN -S $MASTER_MYSOCK -P $MASTER_MYPORT -uwl6587 --password=wl6587 password wl6587-2 --ssl 2>&1
+--exec $MYSQLADMIN -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT -uwl6587 --password=wl6587 password wl6587-2 --ssl 2>&1
 
 DROP USER wl6587@localhost;
 

@@ -2,27 +2,27 @@
 # rpl_colSize                                                    #
 #                                                                #
 # This test is designed to test the changes included in WL#3228. #
-# The changes include the ability to replicate with the master   #
-# having columns that are smaller (shorter) than the slave.      #
+# The changes include the ability to replicate with the primary   #
+# having columns that are smaller (shorter) than the replica.      #
 ##################################################################
 
 -- source include/not_group_replication_plugin.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 --disable_warnings
 DROP TABLE IF EXISTS t1;
 --enable_warnings
 
 --echo **** Testing WL#3228 changes. ****
---echo *** Create "wider" table on slave ***
---source include/sync_slave_sql_with_master.inc
-STOP SLAVE;
---source include/wait_for_slave_to_stop.inc
-RESET SLAVE;
-RESET MASTER;
+--echo *** Create "wider" table on replica ***
+--source include/sync_replica_sql_with_primary.inc
+STOP REPLICA;
+--source include/wait_for_replica_to_stop.inc
+RESET REPLICA;
+RESET PRIMARY;
 
-SET @saved_slave_type_conversions = @@slave_type_conversions;
-SET GLOBAL SLAVE_TYPE_CONVERSIONS = 'ALL_NON_LOSSY';
+SET @saved_replica_type_conversions = @@replica_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS = 'ALL_NON_LOSSY';
 
 #Get default engine value          WL#6921
 --let $DEFAULT_ENGINE = `select @@global.default_storage_engine`
@@ -49,8 +49,8 @@ eval CREATE TABLE t1 (
   t LONGTEXT
 );
 
---echo *** Create same table on master but with narrow columns ***
-connection master;
+--echo *** Create same table on primary but with narrow columns ***
+connection primary;
 eval CREATE TABLE t1 (
   a float     (44),
   b double    (10,3),
@@ -73,15 +73,15 @@ eval CREATE TABLE t1 (
   t LONGTEXT
 );
 
-RESET MASTER;
+RESET PRIMARY;
 
 --echo *** Start replication ***
-connection slave;
-START SLAVE;
---source include/wait_for_slave_to_start.inc
+connection replica;
+START REPLICA;
+--source include/wait_for_replica_to_start.inc
 
---echo *** Insert data on master and display it. ***
-connection master;
+--echo *** Insert data on primary and display it. ***
+connection primary;
 
 INSERT INTO t1 () VALUES (
   17.567, 
@@ -108,31 +108,31 @@ INSERT INTO t1 () VALUES (
 --replace_column 5 # 8 #
 SELECT * FROM t1 ORDER BY a;
 
---echo *** Select data from slave to compare ***
---source include/sync_slave_sql_with_master.inc
+--echo *** Select data from replica to compare ***
+--source include/sync_replica_sql_with_primary.inc
 
 # Replace values in columns that display differently between SBR & RBR
 --replace_column 5 # 8 #
 SELECT * FROM t1 ORDER BY a;
 
 # Test boundary limits of varchar and char fields
-# Master/Slave
+# Primary/Replica
 # <256/<256 with m < s, m > s, and m == s <-- col a
 # >255/<256 with m < s, m > s, and m == s <-- error will be caught in BUG#22086
 # <256/>255 with m < s, m > s, and m == s <-- col b
 # >255/>255 with m < s, m > s, and m == s <-- col c
 #
 # Test boundary limits of CHAR fields
-# Master/Slave
+# Primary/Replica
 # <256/<256 with m < s, m > s, and m == s <-- col d
 # >255/<256 with m < s, m > s, and m == s <-- error char limited to 255 chars
 # <256/>255 with m < s, m > s, and m == s <-- error char limited to 255 chars
 # >255/>255 with m < s, m > s, and m == s <-- error char limited to 255 chars
 
-connection master;
+connection primary;
 DROP TABLE t1;
 
---echo Create varchar table on master
+--echo Create varchar table on primary
 CREATE TABLE t1 (
   a VARCHAR(50),
   b VARCHAR(100),
@@ -140,18 +140,18 @@ CREATE TABLE t1 (
   d CHAR(5)
 );
 
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
---echo Alter varchar table on slave
+--echo Alter varchar table on replica
 ALTER TABLE t1 CHANGE COLUMN a a VARCHAR(100);
 ALTER TABLE t1 CHANGE COLUMN b b VARCHAR(400);
 ALTER TABLE t1 CHANGE COLUMN c c VARCHAR(500);
 ALTER TABLE t1 CHANGE COLUMN d d CHAR(100);
 
-connection master;
+connection primary;
 
---echo Insert some values and select them on master
+--echo Insert some values and select them on primary
 INSERT INTO t1 VALUES ("This is a test of col a.", 
                        "This is another test of col b.",
                        "This is a test of the large col c.",
@@ -161,10 +161,10 @@ SELECT * FROM t1;
 --replace_result $DEFAULT_ENGINE ENGINE default DEFAULT
 SHOW CREATE TABLE t1;
 
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
---echo Insert some values and select them on slave
+--echo Insert some values and select them on replica
 SELECT * FROM t1;
 #Replace default engine value with static engine string          WL#6921
 --replace_result $DEFAULT_ENGINE ENGINE default DEFAULT
@@ -179,10 +179,10 @@ SHOW CREATE TABLE t1;
 # m > s, m % 8 == 0, and s % 8 != 0 <-- error will be caught in BUG#22086
 # m > s, m % 8 != 0, and s % 8 != 0 <-- error will be caught in BUG#22086
 
-connection master;
+connection primary;
 DROP TABLE t1;
 
---echo Create bit table on master
+--echo Create bit table on primary
 CREATE TABLE t1 (
   a BIT(7),
   b BIT(8),
@@ -191,8 +191,8 @@ CREATE TABLE t1 (
   e BIT(11)
 );
 
---echo Create bit table on slave
---source include/sync_slave_sql_with_master.inc
+--echo Create bit table on replica
+--source include/sync_replica_sql_with_primary.inc
 
 DROP TABLE t1;
 CREATE TABLE t1 (
@@ -203,9 +203,9 @@ CREATE TABLE t1 (
   e BIT(13)
 );
 
-connection master;
+connection primary;
 
---echo Insert some values and select them on master
+--echo Insert some values and select them on primary
 INSERT INTO t1 VALUES (
   b'1010101',
   b'10101011',
@@ -219,38 +219,38 @@ SELECT BIN(a), BIN(b), BIN(c), BIN(d), BIN(e) FROM t1;
 --replace_result $DEFAULT_ENGINE ENGINE default DEFAULT
 SHOW CREATE TABLE t1;
 
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
---echo Insert some values and select them on master
+--echo Insert some values and select them on primary
 SELECT BIN(a), BIN(b), BIN(c), BIN(d), BIN(e) FROM t1;
 #Replace default engine value with static engine string          WL#6921
 --replace_result $DEFAULT_ENGINE ENGINE default DEFAULT
 SHOW CREATE TABLE t1;
 
 ###############################################################################
-# Bug#19704825 TEMPORARY SLAVE TYPE CONVERSION TABLES RELEASED TO EARLY
-# Problem: Memory used in preparing slave type conversion
+# Bug#19704825 TEMPORARY REPLICA TYPE CONVERSION TABLES RELEASED TO EARLY
+# Problem: Memory used in preparing replica type conversion
 # temporary table is getting released early and causing unexpected results
 # in case of nested events.
 # Eg: If a insert statement is calling a trigger which contains another
 # insert statement.
 # Steps to reproduce:
 #  1) Create a table t1
-#  2) Change it's definition on slave, so that insert will create conversion
-#     temporary table on slave (set SLAVE_TYPE_CONVERSIONS appropriately to
+#  2) Change it's definition on replica, so that insert will create conversion
+#     temporary table on replica (set REPLICA_TYPE_CONVERSIONS appropriately to
 #     allow the scenario)
 #  3) Create a table t2
 #  4) Create a trigger on top of table t1. Inside the trigger, insert a tuple
 #      into table t2
-#  5) Insert a tuple into table t1 on Master
+#  5) Insert a tuple into table t1 on Primary
 #  6) Make sure this insert is replicated without any issues.
 ###############################################################################
 
 # Step 1, 2 are already done by above test code.
 
 # Step 3: Create a table t2
-connection master;
+connection primary;
 CREATE TABLE t2(i INTEGER);
 
 # Step 4: Create a trigger on top of table t1. Inside the trigger, insert a
@@ -262,7 +262,7 @@ INSERT INTO t2 VALUES(1);
 END $$
 --delimiter ;
 
-# Step 5: Insert a tuple into table t1 on Master
+# Step 5: Insert a tuple into table t1 on Primary
 INSERT INTO t1 VALUES (
   b'1010101',
   b'10101011',
@@ -272,17 +272,17 @@ INSERT INTO t1 VALUES (
   );
 
 # Step 6) Make sure this insert is replicated without any issues.
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of test for Bug#19704825
 
 --echo *** Cleanup  ***
-connection master;
+connection primary;
 DROP TABLE t1;
 DROP TABLE t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-SET GLOBAL SLAVE_TYPE_CONVERSIONS = @saved_slave_type_conversions;
+SET GLOBAL REPLICA_TYPE_CONVERSIONS = @saved_replica_type_conversions;
 
 # END 5.1 Test Case
 --source include/rpl_end.inc

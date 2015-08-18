@@ -17,7 +17,7 @@
 ##SERVER_MYPORT_4=    @mysqld.4.port
 ##SERVER_MYSOCK_4=    @mysqld.4.socket
 #
-# If master.opt file exists, it will be applied to servers 3 and
+# If primary.opt file exists, it will be applied to servers 3 and
 # greater.
 #
 # ==== Usage ====

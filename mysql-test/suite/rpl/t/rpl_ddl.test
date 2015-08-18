@@ -1,7 +1,7 @@
 ######################## rpl_ddl.test ########################
 #                                                            #
 # DDL statements (sometimes with implicit COMMIT) executed   #
-# by the master and it's propagation into the slave          #
+# by the primary and it's propagation into the replica          #
 #                                                            #
 ##############################################################
 
@@ -19,11 +19,11 @@
 #         If one preceding test sequence hits a (sometimes not good visible,
 #         because the sql error code of the statement might be 0) bug
 #         and these rules are ignored, a following test sequence might earn ugly
-#         effects like failing 'sync_slave_with_master', crashes of the slave or
+#         effects like failing 'sync_replica_with_primary', crashes of the replica or
 #         abort of the test case etc..
 #
 --source include/not_ndb_default.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_innodb.inc
 let $engine_type= InnoDB;
 let $temp_engine_type= MEMORY;

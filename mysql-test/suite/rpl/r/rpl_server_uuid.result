@@ -1,137 +1,137 @@
-include/master-slave.inc [rpl_server_count=3]
+include/primary-replica.inc [rpl_server_count=3]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-call mtr.add_suppression("Slave I/O thread .* register on master");
-call mtr.add_suppression("Slave I/O: Master command COM_REGISTER_SLAVE failed: .*");
-CALL mtr.add_suppression(".*master and slave have equal MySQL server UUIDs.*");
-CALL mtr.add_suppression("Master's UUID has changed, although this should not happen unless you have changed it manually");
-CALL mtr.add_suppression("Slave I/O: SET @master_heartbeat_period to master failed with error: Lost connection to MySQL server during query");
-CALL mtr.add_suppression("Notifying master by SET @master_binlog_checksum= @@global.binlog_checksum failed with error");
-CALL mtr.add_suppression("A slave with the same server_uuid as this slave has connected to the master");
-include/sync_slave_sql_with_master.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+call mtr.add_suppression("Replica I/O thread .* register on primary");
+call mtr.add_suppression("Replica I/O: Primary command COM_REGISTER_REPLICA failed: .*");
+CALL mtr.add_suppression(".*primary and replica have equal MySQL server UUIDs.*");
+CALL mtr.add_suppression("Primary's UUID has changed, although this should not happen unless you have changed it manually");
+CALL mtr.add_suppression("Replica I/O: SET @primary_heartbeat_period to primary failed with error: Lost connection to MySQL server during query");
+CALL mtr.add_suppression("Notifying primary by SET @primary_binlog_checksum= @@global.binlog_checksum failed with error");
+CALL mtr.add_suppression("A replica with the same server_uuid as this replica has connected to the primary");
+include/sync_replica_sql_with_primary.inc
 
 # Case 1:
-# Master's UUID appears in the result of 'SHOW SLAVE STATUS'.
-# Slave's UUID appears in the result of 'SHOW SLAVE HOSTS'.
+# Primary's UUID appears in the result of 'SHOW REPLICA STATUS'.
+# Replica's UUID appears in the result of 'SHOW REPLICA HOSTS'.
 -----------------------------------------------------------------------------
-include/assert.inc ["Slave's SHOW SLAVE HOST should contain the correct value for master's server_uuid]
-include/assert.inc [Master's SHOW SLAVE HOSTS should contain the correct value for slave's server_uuid]
+include/assert.inc ["Replica's SHOW REPLICA HOST should contain the correct value for primary's server_uuid]
+include/assert.inc [Primary's SHOW REPLICA HOSTS should contain the correct value for replica's server_uuid]
 
 # Case 2: 
-# After executing 'STOP SLAVE [IO_THREAD|SQL_THREAD]' successfully, Master's UUID
-# is still kept into Slave status.
+# After executing 'STOP REPLICA [IO_THREAD|SQL_THREAD]' successfully, Primary's UUID
+# is still kept into Replica status.
 -----------------------------------------------------------------------------
-include/stop_slave_io.inc
-include/check_slave_param.inc [Slave_IO_Running]
-include/stop_slave_sql.inc
-include/check_slave_param.inc [Slave_SQL_Running]
-include/start_slave.inc
-include/stop_slave.inc
-include/check_slave_param.inc [Slave_IO_Running]
+include/stop_replica_io.inc
+include/check_replica_param.inc [Replica_IO_Running]
+include/stop_replica_sql.inc
+include/check_replica_param.inc [Replica_SQL_Running]
+include/start_replica.inc
+include/stop_replica.inc
+include/check_replica_param.inc [Replica_IO_Running]
 
 # Case 3:
-# Slave generates an error and aborts, if master's UUID is
-# equal to slave's UUID unless --replicate-same-server-id
+# Replica generates an error and aborts, if primary's UUID is
+# equal to replica's UUID unless --replicate-same-server-id
 # option is set.
 -----------------------------------------------------------------------------
 include/rpl_restart_server.inc [server_number=1]
-START SLAVE IO_THREAD;
-include/wait_for_slave_io_error.inc [errno=1593]
+START REPLICA IO_THREAD;
+include/wait_for_replica_io_error.inc [errno=1593]
 include/rpl_restart_server.inc [server_number=1]
 
 # server_3 is running with --replicate-same-server-id option 
-CHANGE MASTER TO MASTER_HOST= '127.0.0.1',
-MASTER_PORT= MASTER_PORT,
-MASTER_USER= 'root',
-MASTER_LOG_FILE='master-bin.000001';
+CHANGE PRIMARY TO PRIMARY_HOST= '127.0.0.1',
+PRIMARY_PORT= PRIMARY_PORT,
+PRIMARY_USER= 'root',
+PRIMARY_LOG_FILE='primary-bin.000001';
 Warnings:
-Warning	####	CHANGE MASTER TO with a MASTER_LOG_FILE clause but no MASTER_LOG_POS clause may not be safe. The old position value may not be valid for the new binary log file.
+Warning	####	CHANGE PRIMARY TO with a PRIMARY_LOG_FILE clause but no PRIMARY_LOG_POS clause may not be safe. The old position value may not be valid for the new binary log file.
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
-include/check_slave_no_error.inc
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
+include/check_replica_no_error.inc
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
 include/rpl_restart_server.inc [server_number=1]
 
 # Case 4:
-# When executing 'CHANGE MASTER ...', master's UUID and server_id will be
-# cleared if master_host or/and master_port are changed.
-# Master's UUID and server_id will not be cleared if both master_port
-# and master_host are not changed.
+# When executing 'CHANGE PRIMARY ...', primary's UUID and server_id will be
+# cleared if primary_host or/and primary_port are changed.
+# Primary's UUID and server_id will not be cleared if both primary_port
+# and primary_host are not changed.
 -----------------------------------------------------------------------------
-START SLAVE IO_THREAD;
-include/wait_for_slave_param.inc [Master_UUID]
-include/stop_slave.inc
+START REPLICA IO_THREAD;
+include/wait_for_replica_param.inc [Primary_UUID]
+include/stop_replica.inc
 
-# Only change MASTER_PORT
-CHANGE MASTER TO MASTER_PORT= 1111;
-include/check_slave_param.inc [Master_UUID]
-include/check_slave_param.inc [Master_Server_Id]
-CHANGE MASTER TO MASTER_PORT= MASTER_PORT,
-MASTER_LOG_FILE= 'MASTER_LOG_FILE', MASTER_LOG_POS= MASTER_POS;
-START SLAVE IO_THREAD;
-include/wait_for_slave_param.inc [Master_UUID]
+# Only change PRIMARY_PORT
+CHANGE PRIMARY TO PRIMARY_PORT= 1111;
+include/check_replica_param.inc [Primary_UUID]
+include/check_replica_param.inc [Primary_Server_Id]
+CHANGE PRIMARY TO PRIMARY_PORT= PRIMARY_PORT,
+PRIMARY_LOG_FILE= 'PRIMARY_LOG_FILE', PRIMARY_LOG_POS= PRIMARY_POS;
+START REPLICA IO_THREAD;
+include/wait_for_replica_param.inc [Primary_UUID]
 
-# Only change MASTER_HOST
-STOP SLAVE IO_THREAD;
-include/wait_for_slave_io_to_stop.inc
-CHANGE MASTER TO MASTER_HOST= 'localhost';
-include/check_slave_param.inc [Master_UUID]
-include/check_slave_param.inc [Master_Server_Id]
-CHANGE MASTER TO MASTER_HOST= '127.0.0.1',
-MASTER_LOG_FILE= 'MASTER_LOG_FILE', MASTER_LOG_POS= MASTER_POS;
-START SLAVE IO_THREAD;
-include/wait_for_slave_param.inc [Master_UUID]
+# Only change PRIMARY_HOST
+STOP REPLICA IO_THREAD;
+include/wait_for_replica_io_to_stop.inc
+CHANGE PRIMARY TO PRIMARY_HOST= 'localhost';
+include/check_replica_param.inc [Primary_UUID]
+include/check_replica_param.inc [Primary_Server_Id]
+CHANGE PRIMARY TO PRIMARY_HOST= '127.0.0.1',
+PRIMARY_LOG_FILE= 'PRIMARY_LOG_FILE', PRIMARY_LOG_POS= PRIMARY_POS;
+START REPLICA IO_THREAD;
+include/wait_for_replica_param.inc [Primary_UUID]
 
-# Both MASTER_HOST and MASTER_PORT are changed
-STOP SLAVE IO_THREAD;
-include/wait_for_slave_io_to_stop.inc
-CHANGE MASTER TO MASTER_HOST= '127.0.0.1', MASTER_PORT= 1111;
-include/check_slave_param.inc [Master_UUID]
-include/check_slave_param.inc [Master_Server_Id]
-CHANGE MASTER TO MASTER_HOST= '127.0.0.1', MASTER_PORT= MASTER_PORT,
-MASTER_LOG_FILE= 'MASTER_LOG_FILE', MASTER_LOG_POS= MASTER_POS;
-START SLAVE IO_THREAD;
-include/wait_for_slave_param.inc [Master_UUID]
+# Both PRIMARY_HOST and PRIMARY_PORT are changed
+STOP REPLICA IO_THREAD;
+include/wait_for_replica_io_to_stop.inc
+CHANGE PRIMARY TO PRIMARY_HOST= '127.0.0.1', PRIMARY_PORT= 1111;
+include/check_replica_param.inc [Primary_UUID]
+include/check_replica_param.inc [Primary_Server_Id]
+CHANGE PRIMARY TO PRIMARY_HOST= '127.0.0.1', PRIMARY_PORT= PRIMARY_PORT,
+PRIMARY_LOG_FILE= 'PRIMARY_LOG_FILE', PRIMARY_LOG_POS= PRIMARY_POS;
+START REPLICA IO_THREAD;
+include/wait_for_replica_param.inc [Primary_UUID]
 
-# Both MASTER_HOST and MASTER_PORT are NOT changed
-STOP SLAVE IO_THREAD;
-include/wait_for_slave_io_to_stop.inc
-CHANGE MASTER TO MASTER_HOST= '127.0.0.1', MASTER_PORT= MASTER_PORT;
-include/check_slave_param.inc [Slave_IO_Running]
-CHANGE MASTER TO 
-MASTER_LOG_FILE= 'MASTER_LOG_FILE', MASTER_LOG_POS= MASTER_POS;
-include/check_slave_param.inc [Slave_IO_Running]
+# Both PRIMARY_HOST and PRIMARY_PORT are NOT changed
+STOP REPLICA IO_THREAD;
+include/wait_for_replica_io_to_stop.inc
+CHANGE PRIMARY TO PRIMARY_HOST= '127.0.0.1', PRIMARY_PORT= PRIMARY_PORT;
+include/check_replica_param.inc [Replica_IO_Running]
+CHANGE PRIMARY TO 
+PRIMARY_LOG_FILE= 'PRIMARY_LOG_FILE', PRIMARY_LOG_POS= PRIMARY_POS;
+include/check_replica_param.inc [Replica_IO_Running]
 
 # Case 5:
-# After executing 'RESET SLAVE' successfully, Master's UUID is still kept 
-# into Slave status.
+# After executing 'RESET REPLICA' successfully, Primary's UUID is still kept 
+# into Replica status.
 -----------------------------------------------------------------------------
-RESET SLAVE;
-include/check_slave_param.inc [Slave_IO_Running]
-CHANGE MASTER TO 
-MASTER_LOG_FILE= 'MASTER_LOG_FILE', MASTER_LOG_POS= MASTER_POS;
-include/start_slave.inc
+RESET REPLICA;
+include/check_replica_param.inc [Replica_IO_Running]
+CHANGE PRIMARY TO 
+PRIMARY_LOG_FILE= 'PRIMARY_LOG_FILE', PRIMARY_LOG_POS= PRIMARY_POS;
+include/start_replica.inc
 
 # Case 6:
-# In an existing master-slave replication forum (M->S1), if another
-# slave (S2) with the same UUID as S1 joins the forum and connects
-# to Master(M), the master will throw an error to the first slave
+# In an existing primary-replica replication forum (M->S1), if another
+# replica (S2) with the same UUID as S1 joins the forum and connects
+# to Primary(M), the primary will throw an error to the first replica
 # connection that will not try to reconnect.
 -----------------------------------------------------------------------------
 include/rpl_restart_server.inc [server_number=3]
 [connection server_2]
-include/wait_for_slave_io_error.inc [errno=1236]
-include/assert_grep.inc [Found the expected line in master's error log for server 2 disconnection]
-include/start_slave_io.inc
+include/wait_for_replica_io_error.inc [errno=1236]
+include/assert_grep.inc [Found the expected line in primary's error log for server 2 disconnection]
+include/start_replica_io.inc
 [connection server_3]
-include/wait_for_slave_io_error.inc [errno=1236]
-include/assert_grep.inc [Found the expected line in master's error log for server 3 disconnection]
+include/wait_for_replica_io_error.inc [errno=1236]
+include/assert_grep.inc [Found the expected line in primary's error log for server 3 disconnection]
 include/assert_grep.inc [Found the expected line in server 2 error log]
 include/assert_grep.inc [Found the expected line in server 3 error log]
 include/rpl_restart_server.inc [server_number=3]
-include/stop_slave.inc
+include/stop_replica.inc
 include/rpl_end.inc

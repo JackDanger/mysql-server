@@ -63,9 +63,9 @@ pack_row_old(TABLE *table, MY_BITMAP const* cols,
     cols    Pointer to columns data to fill in
     row_end Pointer to variable that will hold the value of the
             one-after-end position for the row
-    master_reclength
+    primary_reclength
             Pointer to variable that will be set to the length of the
-            record on the master side
+            record on the primary side
     rw_set  Pointer to bitmap that holds either the read_set or the
             write_set of the table
 
@@ -84,51 +84,51 @@ pack_row_old(TABLE *table, MY_BITMAP const* cols,
       be returned:
 
       ER_NO_DEFAULT_FOR_FIELD
-        Returned if one of the fields existing on the slave but not on
-        the master does not have a default value (and isn't nullable)
+        Returned if one of the fields existing on the replica but not on
+        the primary does not have a default value (and isn't nullable)
  */
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
 int
 unpack_row_old(Relay_log_info *rli,
                TABLE *table, uint const colcnt, uchar *record,
                uchar const *row, MY_BITMAP const *cols,
-               uchar const **row_end, ulong *master_reclength,
+               uchar const **row_end, ulong *primary_reclength,
                MY_BITMAP* const rw_set, Log_event_type const event_type)
 {
   DBUG_ASSERT(record && row);
   my_ptrdiff_t const offset= record - table->record[0];
-  size_t master_null_bytes= table->s->null_bytes;
+  size_t primary_null_bytes= table->s->null_bytes;
 
   if (colcnt != table->s->fields)
   {
     Field **fptr= &table->field[colcnt-1];
     do
-      master_null_bytes= (*fptr)->last_null_byte();
-    while (master_null_bytes == Field::LAST_NULL_BYTE_UNDEF &&
+      primary_null_bytes= (*fptr)->last_null_byte();
+    while (primary_null_bytes == Field::LAST_NULL_BYTE_UNDEF &&
            fptr-- > table->field);
 
     /*
-      If master_null_bytes is LAST_NULL_BYTE_UNDEF (0) at this time,
+      If primary_null_bytes is LAST_NULL_BYTE_UNDEF (0) at this time,
       there were no nullable fields nor BIT fields at all in the
-      columns that are common to the master and the slave. In that
+      columns that are common to the primary and the replica. In that
       case, there is only one null byte holding the X bit.
 
       OBSERVE! There might still be nullable columns following the
       common columns, so table->s->null_bytes might be greater than 1.
      */
-    if (master_null_bytes == Field::LAST_NULL_BYTE_UNDEF)
-      master_null_bytes= 1;
+    if (primary_null_bytes == Field::LAST_NULL_BYTE_UNDEF)
+      primary_null_bytes= 1;
   }
 
-  DBUG_ASSERT(master_null_bytes <= table->s->null_bytes);
-  memcpy(record, row, master_null_bytes);            // [1]
+  DBUG_ASSERT(primary_null_bytes <= table->s->null_bytes);
+  memcpy(record, row, primary_null_bytes);            // [1]
   int error= 0;
 
   bitmap_set_all(rw_set);
 
   Field **const begin_ptr = table->field;
   Field **field_ptr;
-  uchar const *ptr= row + master_null_bytes;
+  uchar const *ptr= row + primary_null_bytes;
   Field **const end_ptr= begin_ptr + colcnt;
   for (field_ptr= begin_ptr ; field_ptr < end_ptr ; ++field_ptr)
   {
@@ -147,12 +147,12 @@ unpack_row_old(Relay_log_info *rli,
   }
 
   *row_end = ptr;
-  if (master_reclength)
+  if (primary_reclength)
   {
     if (*field_ptr)
-      *master_reclength = (*field_ptr)->ptr - table->record[0];
+      *primary_reclength = (*field_ptr)->ptr - table->record[0];
     else
-      *master_reclength = table->s->reclength;
+      *primary_reclength = table->s->reclength;
   }
 
   /*

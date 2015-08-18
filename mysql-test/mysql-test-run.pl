@@ -396,8 +396,8 @@ sub main {
        # No result_file => Prints result
        path           => 'include/report-features.test',
        template_path  => "include/default_my.cnf",
-       master_opt     => [],
-       slave_opt      => [],
+       primary_opt     => [],
+       replica_opt      => [],
       );
     unshift(@$tests, $tinfo);
   }
@@ -457,7 +457,7 @@ sub main {
   }
 
   # Simplify reference to semisync plugins
-  $ENV{'SEMISYNC_PLUGIN_OPT'}= $ENV{'SEMISYNC_MASTER_PLUGIN_OPT'};
+  $ENV{'SEMISYNC_PLUGIN_OPT'}= $ENV{'SEMISYNC_PRIMARY_PLUGIN_OPT'};
 
   if (IS_WINDOWS) {
     $ENV{'PLUGIN_SUFFIX'}= "dll";
@@ -1804,7 +1804,7 @@ sub command_line_setup {
 # an environment variable can be used to control all ports. A small
 # number is to be used, 0 - 16 or similar.
 #
-# Note the MASTER_MYPORT has to be set the same in all 4.x and 5.x
+# Note the PRIMARY_MYPORT has to be set the same in all 4.x and 5.x
 # versions of this script, else a 4.0 test run might conflict with a
 # 5.1 test run, even if different MTR_BUILD_THREAD is used. This means
 # all port numbers might not be used in this version of the script.
@@ -2414,7 +2414,7 @@ sub environment_setup {
   $ENV{'LC_COLLATE'}=         "C";
   $ENV{'USE_RUNNING_SERVER'}= using_extern();
   $ENV{'MYSQL_TEST_DIR'}=     $glob_mysql_test_dir;
-  $ENV{'DEFAULT_MASTER_PORT'}= $mysqld_variables{'port'};
+  $ENV{'DEFAULT_PRIMARY_PORT'}= $mysqld_variables{'port'};
   $ENV{'MYSQL_TMP_DIR'}=      $opt_tmpdir;
   $ENV{'MYSQLTEST_VARDIR'}=   $opt_vardir;
   $ENV{'MYSQL_BINDIR'}=       "$bindir";
@@ -2502,7 +2502,7 @@ sub environment_setup {
   # ----------------------------------------------------
   $ENV{'MYSQL_CHECK'}=                 client_arguments("mysqlcheck");
   $ENV{'MYSQL_DUMP'}=                  mysqldump_arguments(".1");
-  $ENV{'MYSQL_DUMP_SLAVE'}=            mysqldump_arguments(".2");
+  $ENV{'MYSQL_DUMP_REPLICA'}=            mysqldump_arguments(".2");
   $ENV{'MYSQL_SLAP'}=                  mysqlslap_arguments();
   $ENV{'MYSQL_IMPORT'}=                client_arguments("mysqlimport");
   $ENV{'MYSQL_SHOW'}=                  client_arguments("mysqlshow");
@@ -2515,7 +2515,7 @@ sub environment_setup {
   }
   $ENV{'MYSQL_BINLOG'}=                client_arguments("mysqlbinlog");
   $ENV{'MYSQL'}=                       client_arguments("mysql");
-  $ENV{'MYSQL_SLAVE'}=                 client_arguments("mysql", ".2");
+  $ENV{'MYSQL_REPLICA'}=                 client_arguments("mysql", ".2");
   $ENV{'MYSQL_UPGRADE'}=               client_arguments("mysql_upgrade");
   $ENV{'MYSQL_SECURE_INSTALLATION'}=   "$path_client_bindir/mysql_secure_installation";
   $ENV{'MYSQLADMIN'}=                  native_path($exe_mysqladmin);
@@ -3829,7 +3829,7 @@ sub mysql_install_db {
   }
 
   # Remove the auto.cnf so that a new auto.cnf is generated
-  # for master and slaves when the server is restarted
+  # for primary and replicas when the server is restarted
   if (-f "$datadir/auto.cnf")
   {
     unlink "$datadir/auto.cnf";
@@ -4570,7 +4570,7 @@ sub run_testcase ($) {
       }
 
       # Remove testcase .log file produce in var/log/ to save space since
-      # relevant part of logfile has already been appended to master log
+      # relevant part of logfile has already been appended to primary log
       {
 	my $log_file_name= $opt_vardir."/log/".$tinfo->{shortname}.".log";
 	if (-e $log_file_name && ($tinfo->{'result'} ne 'MTR_RES_FAILED')) {
@@ -5521,7 +5521,7 @@ sub mysqld_arguments ($$$) {
       $found_log_error= 1;
     }
 
-    # Allow --skip-core-file to be set in <testname>-[master|slave].opt file
+    # Allow --skip-core-file to be set in <testname>-[primary|replica].opt file
     if ($arg eq "--skip-core-file")
     {
       $found_skip_core= 1;
@@ -5535,9 +5535,9 @@ sub mysqld_arguments ($$$) {
       ; # Dont add --binlog-format when running without binlog
     }
     elsif ($arg eq "--loose-skip-log-bin" and
-           $mysqld->option("log-slave-updates"))
+           $mysqld->option("log-replica-updates"))
     {
-      ; # Dont add --skip-log-bin when mysqld have --log-slave-updates in config
+      ; # Dont add --skip-log-bin when mysqld have --log-replica-updates in config
     }
     elsif ($arg eq "")
     {
@@ -5724,18 +5724,18 @@ sub stop_all_servers () {
 }
 
 
-sub is_slave {
+sub is_replica {
   my ($server) = @_;
   # There isn't really anything in a configuration which tells if
-  # a mysqld is master or slave. Best guess is to treat all which haven't
-  # got '#!use-slave-opt' as masters.
+  # a mysqld is primary or replica. Best guess is to treat all which haven't
+  # got '#!use-replica-opt' as primarys.
   # At least be consistent
-  return $server->option('#!use-slave-opt');
+  return $server->option('#!use-replica-opt');
 }
 
 # Find out if server should be restarted for this test
 sub server_need_restart {
-  my ($tinfo, $server, $master_restarted)= @_;
+  my ($tinfo, $server, $primary_restarted)= @_;
 
   if ( using_extern() )
   {
@@ -5759,7 +5759,7 @@ sub server_need_restart {
     return 1;
   }
 
-  if ( $tinfo->{'master_sh'}  || $tinfo->{'slave_sh'} )
+  if ( $tinfo->{'primary_sh'}  || $tinfo->{'replica_sh'} )
   {
     mtr_verbose_restart($server, "sh script to run");
     return 1;
@@ -5827,10 +5827,10 @@ sub server_need_restart {
       $server->{'started_opts'}= $extra_opts;
     }
 
-    if (is_slave($server) && $master_restarted)
+    if (is_replica($server) && $primary_restarted)
     {
-      # At least one master restarted and this is a slave, restart
-      mtr_verbose_restart($server, " master restarted");
+      # At least one primary restarted and this is a replica, restart
+      mtr_verbose_restart($server, " primary restarted");
       return 1;
     }
   }
@@ -5845,46 +5845,46 @@ sub servers_need_restart($) {
 
   my @restart_servers;
 
-  # Build list of master and slave mysqlds to be able to restart
-  # all slaves whenever a master restarts.
-  my @masters;
-  my @slaves;
+  # Build list of primary and replica mysqlds to be able to restart
+  # all replicas whenever a primary restarts.
+  my @primarys;
+  my @replicas;
   foreach my $server (mysqlds())
   {
-    if (is_slave($server))
+    if (is_replica($server))
     {
-      push(@slaves, $server);
+      push(@replicas, $server);
     }
     else
     {
-      push(@masters, $server);
+      push(@primarys, $server);
     }
   }
 
-  # Check masters
-  my $master_restarted = 0;
-  foreach my $master (@masters)
+  # Check primarys
+  my $primary_restarted = 0;
+  foreach my $primary (@primarys)
   {
-    if (server_need_restart($tinfo, $master, $master_restarted))
+    if (server_need_restart($tinfo, $primary, $primary_restarted))
     {
-      $master_restarted = 1;
-      push(@restart_servers, $master);
+      $primary_restarted = 1;
+      push(@restart_servers, $primary);
     }
   }
 
-  # Check slaves
-  foreach my $slave (@slaves)
+  # Check replicas
+  foreach my $replica (@replicas)
   {
-    if (server_need_restart($tinfo, $slave, $master_restarted))
+    if (server_need_restart($tinfo, $replica, $primary_restarted))
     {
-      push(@restart_servers, $slave);
+      push(@restart_servers, $replica);
     }
   }
 
   # Check if any remaining servers need restart
   foreach my $server (ndb_mgmds(), ndbds(), memcacheds())
   {
-    if (server_need_restart($tinfo, $server, $master_restarted))
+    if (server_need_restart($tinfo, $server, $primary_restarted))
     {
       push(@restart_servers, $server);
     }
@@ -5956,8 +5956,8 @@ sub get_extra_opts {
   my ($mysqld, $tinfo)= @_;
 
   my $opts=
-    $mysqld->option("#!use-slave-opt") ?
-      $tinfo->{slave_opt} : $tinfo->{master_opt};
+    $mysqld->option("#!use-replica-opt") ?
+      $tinfo->{replica_opt} : $tinfo->{primary_opt};
 
   # Expand environment variables
   foreach my $opt ( @$opts )
@@ -6107,19 +6107,19 @@ sub start_servers($) {
     # Write start of testcase to log file
     mark_log($mysqld->value('#log-error'), $tinfo);
 
-    # Run <tname>-master.sh
-    if ($mysqld->option('#!run-master-sh') and
-       run_sh_script($tinfo->{master_sh}) )
+    # Run <tname>-primary.sh
+    if ($mysqld->option('#!run-primary-sh') and
+       run_sh_script($tinfo->{primary_sh}) )
     {
-      $tinfo->{'comment'}= "Failed to execute '$tinfo->{master_sh}'";
+      $tinfo->{'comment'}= "Failed to execute '$tinfo->{primary_sh}'";
       return 1;
     }
 
-    # Run <tname>-slave.sh
-    if ($mysqld->option('#!run-slave-sh') and
-	run_sh_script($tinfo->{slave_sh}))
+    # Run <tname>-replica.sh
+    if ($mysqld->option('#!run-replica-sh') and
+	run_sh_script($tinfo->{replica_sh}))
     {
-      $tinfo->{'comment'}= "Failed to execute '$tinfo->{slave_sh}'";
+      $tinfo->{'comment'}= "Failed to execute '$tinfo->{replica_sh}'";
       return 1;
     }
 

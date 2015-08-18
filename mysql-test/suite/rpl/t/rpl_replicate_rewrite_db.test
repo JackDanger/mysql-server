@@ -3,11 +3,11 @@
 ##--------------------------------------------------------------------------
 
 #check single character databases. Bug#11747866
---let $rpl_skip_reset_master_and_slave= 1
---let $rpl_skip_change_master= 1
---let $rpl_skip_start_slave= 1
---source include/master-slave.inc
---connection master
+--let $rpl_skip_reset_primary_and_replica= 1
+--let $rpl_skip_change_primary= 1
+--let $rpl_skip_start_replica= 1
+--source include/primary-replica.inc
+--connection primary
 
 #check for normal functionality
 --echo testing for normal fuctionality

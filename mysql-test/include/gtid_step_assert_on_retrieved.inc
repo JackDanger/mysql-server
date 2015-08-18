@@ -33,19 +33,19 @@
 # ==== Example ====
 #
 # # (1) Remember the current position.
-# --source include/rpl_connection_slave.inc
+# --source include/rpl_connection_replica.inc
 # --source include/gtid_step_reset_on_retrieved.inc
-# --source include/rpl_connection_master.inc
+# --source include/rpl_connection_primary.inc
 # CREATE TABLE t1 (a INT);
 # # (2) Assert that exactly one GTID was generated since (1).
-# --source include/rpl_connection_slave.inc
+# --source include/rpl_connection_replica.inc
 # --source include/gtid_step_assert_on_retrieved.inc
-# --source include/rpl_connection_master.inc
+# --source include/rpl_connection_primary.inc
 # INSERT INTO t1 VALUES (1);
 # INSERT INTO t1 VALUES (2);
 # # (3) Assert that exactly 2 GTIDs were generated since (2).
 # --let $gtid_step_count= 2
-# --source include/rpl_connection_slave.inc
+# --source include/rpl_connection_replica.inc
 # --source include/gtid_step_assert_on_retrieved.inc
 # # (4) Assert that no GTID was generated since (3).
 # --let $gtid_step_count= 0
@@ -79,8 +79,8 @@ if ($_gtid_step_uuid == '')
 
 --let $_gsa_extra_debug_eval_old= $extra_debug_eval
 
---let $local_gtid_set= query_get_value(SHOW SLAVE STATUS, Retrieved_Gtid_Set, 1)
---echo Asserting based on SHOW SLAVE STATUS(Retrieved_Gtid_Set)
+--let $local_gtid_set= query_get_value(SHOW REPLICA STATUS, Retrieved_Gtid_Set, 1)
+--echo Asserting based on SHOW REPLICA STATUS(Retrieved_Gtid_Set)
 
 --let $extra_debug_eval= "$local_gtid_set", GTID_NEXT_GENERATED_MULTIPLE("$gtid_step_last", "$_gtid_step_uuid", $_gtid_step_count), GTID_SUBTRACT("$local_gtid_set", "$gtid_step_last")
 

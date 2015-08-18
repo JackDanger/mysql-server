@@ -1,15 +1,15 @@
 include/rpl_init.inc [topology=1->2,4->3]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/rpl_connect.inc [creating master]
-include/rpl_connect.inc [creating master1]
-include/rpl_connect.inc [creating slave]
-include/rpl_connect.inc [creating slave1]
-include/rpl_start_slaves.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/rpl_connect.inc [creating primary]
+include/rpl_connect.inc [creating primary1]
+include/rpl_connect.inc [creating replica]
+include/rpl_connect.inc [creating replica1]
+include/rpl_start_replicas.inc
 
 *** Check server_id of mysqld servers ***
 SHOW VARIABLES LIKE "server_id";
@@ -39,26 +39,26 @@ CREATE TABLE t1 (a INT NOT NULL AUTO_INCREMENT, b VARCHAR(100), c INT NOT NULL, 
 *** Basic testing  ***
 Insert rows via all hosts
 Check data on both clusters 
-include/diff_tables.inc [master:t1, slave:t1]
+include/diff_tables.inc [primary:t1, replica:t1]
 *** Transaction testing ***
 BEGIN;
 BEGIN;
 COMMIT;
 COMMIT;
 Check data on both clusters 
-include/diff_tables.inc [master:t1, slave:t1]
+include/diff_tables.inc [primary:t1, replica:t1]
 BEGIN;
 BEGIN;
 ROLLBACK;
 ROLLBACK;
 Check data on both clusters 
-include/diff_tables.inc [master:t1, slave:t1]
+include/diff_tables.inc [primary:t1, replica:t1]
 DROP TABLE IF EXISTS t1;
 
-include/rpl_stop_slaves.inc
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
-include/rpl_start_slaves.inc
+include/rpl_stop_replicas.inc
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+include/rpl_start_replicas.inc
 include/rpl_end.inc

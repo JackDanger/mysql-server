@@ -1,9 +1,9 @@
 # test case for BUG#4680 -- if there are extra files in the db directory
-# dropping the db on the master causes replication problems
+# dropping the db on the primary causes replication problems
 
 -- source include/not_group_replication_plugin.inc
--- source include/master-slave.inc
-connection master;
+-- source include/primary-replica.inc
+connection primary;
 
 --disable_warnings
 drop database if exists mysqltest1;
@@ -39,16 +39,16 @@ show tables;
 use test;
 create table t1 (n int);
 insert into t1 values (1234);
-sync_slave_with_master;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 use mysqltest1;
 show tables;
 use test;
 select * from t1;
 
 #cleanup
-connection master;
+connection primary;
 
 # Remove the "extra" file created above
 let $MYSQLD_DATADIR= `select @@datadir`;
@@ -58,6 +58,6 @@ use test;
 drop table t1;
 drop database mysqltest1;
 
-sync_slave_with_master;
+sync_replica_with_primary;
 
 --source include/rpl_end.inc

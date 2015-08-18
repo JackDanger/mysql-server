@@ -391,10 +391,10 @@ IF (MERGE_UNITTESTS)
 
   TARGET_LINK_LIBRARIES(merge_small_tests-t
     gunit_small sqlgunitlib strings dbug regex)
-  TARGET_LINK_LIBRARIES(merge_large_tests-t sql binlog rpl master slave sql)
+  TARGET_LINK_LIBRARIES(merge_large_tests-t sql binlog rpl primary replica sql)
   TARGET_LINK_LIBRARIES(merge_large_tests-t
     gunit_large strings dbug regex mysys)
-  TARGET_LINK_LIBRARIES(merge_large_tests-t sql binlog rpl master slave sql)
+  TARGET_LINK_LIBRARIES(merge_large_tests-t sql binlog rpl primary replica sql)
 
   IF(WITH_PERFSCHEMA_STORAGE_ENGINE)
     TARGET_LINK_LIBRARIES(merge_large_tests-t perfschema)
@@ -455,9 +455,9 @@ ENDIF(MERGE_UNITTESTS)
       )
     ENDIF()
     ADD_EXECUTABLE(${test}-t ${SRC_FILES})
-    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl master slave sql)
+    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl primary replica sql)
     TARGET_LINK_LIBRARIES(${test}-t gunit_large strings dbug regex mysys)
-    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl master slave sql)
+    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl primary replica sql)
 
     IF(WITH_PERFSCHEMA_STORAGE_ENGINE)
       TARGET_LINK_LIBRARIES(${test}-t perfschema)

@@ -167,7 +167,7 @@ while($i)
   }  
   if ($i == 12)
   {
-    let $step= One Composite NOT NULL Unique key with holes in master, but NULLABLE on first slave;
+    let $step= One Composite NOT NULL Unique key with holes in primary, but NULLABLE on first replica;
     --echo ****** TEST: $step
     -- connection server_1
     --eval CREATE TABLE t (c1 int NOT NULL, c2 char(1), c3 char(1) NOT NULL, c4 char(1), unique key(c1,c3)) engine= $server_1_engine;

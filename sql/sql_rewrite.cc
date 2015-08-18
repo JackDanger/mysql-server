@@ -36,7 +36,7 @@
 #include "sql_parse.h"  // get_current_user
 #include "sql_show.h"   // append_identifier
 #include "sp_head.h"    // struct set_var_base
-#include "rpl_slave.h"  // SLAVE_SQL, SLAVE_IO
+#include "rpl_replica.h"  // REPLICA_SQL, REPLICA_IO
 #include "mysqld.h"     // opt_log_backward_compatible_user_definitions
 
 
@@ -409,88 +409,88 @@ void mysql_rewrite_create_alter_user(THD *thd, String *rlb)
 }
 
 /**
-  Rewrite a CHANGE MASTER statement.
+  Rewrite a CHANGE PRIMARY statement.
 
   @param thd      The THD to rewrite for.
   @param rlb      An empty String object to put the rewritten query in.
 */
 
-static void mysql_rewrite_change_master(THD *thd, String *rlb)
+static void mysql_rewrite_change_primary(THD *thd, String *rlb)
 {
   LEX *lex= thd->lex;
 
-  rlb->append(STRING_WITH_LEN("CHANGE MASTER TO"));
+  rlb->append(STRING_WITH_LEN("CHANGE PRIMARY TO"));
 
   if (lex->mi.host)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_HOST = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_HOST = '"));
     rlb->append(lex->mi.host);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.user)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_USER = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_USER = '"));
     rlb->append(lex->mi.user);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.password)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_PASSWORD = <secret>"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_PASSWORD = <secret>"));
   }
   if (lex->mi.port)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_PORT = "));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_PORT = "));
     rlb->append_ulonglong(lex->mi.port);
   }
   if (lex->mi.connect_retry)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_CONNECT_RETRY = "));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_CONNECT_RETRY = "));
     rlb->append_ulonglong(lex->mi.connect_retry);
   }
   if (lex->mi.ssl)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_SSL = "));
-    rlb->append(lex->mi.ssl == LEX_MASTER_INFO::LEX_MI_ENABLE ? "1" : "0");
+    rlb->append(STRING_WITH_LEN(" PRIMARY_SSL = "));
+    rlb->append(lex->mi.ssl == LEX_PRIMARY_INFO::LEX_MI_ENABLE ? "1" : "0");
   }
   if (lex->mi.ssl_ca)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_SSL_CA = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_SSL_CA = '"));
     rlb->append(lex->mi.ssl_ca);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.ssl_capath)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_SSL_CAPATH = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_SSL_CAPATH = '"));
     rlb->append(lex->mi.ssl_capath);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.ssl_cert)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_SSL_CERT = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_SSL_CERT = '"));
     rlb->append(lex->mi.ssl_cert);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.ssl_cipher)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_SSL_CIPHER = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_SSL_CIPHER = '"));
     rlb->append(lex->mi.ssl_cipher);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.ssl_key)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_SSL_KEY = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_SSL_KEY = '"));
     rlb->append(lex->mi.ssl_key);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.log_file_name)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_LOG_FILE = '"));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_LOG_FILE = '"));
     rlb->append(lex->mi.log_file_name);
     rlb->append(STRING_WITH_LEN("'"));
   }
   if (lex->mi.pos)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_LOG_POS = "));
+    rlb->append(STRING_WITH_LEN(" PRIMARY_LOG_POS = "));
     rlb->append_ulonglong(lex->mi.pos);
   }
   if (lex->mi.relay_log_name)
@@ -507,8 +507,8 @@ static void mysql_rewrite_change_master(THD *thd, String *rlb)
 
   if (lex->mi.ssl_verify_server_cert)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_SSL_VERIFY_SERVER_CERT = "));
-    rlb->append(lex->mi.ssl_verify_server_cert == LEX_MASTER_INFO::LEX_MI_ENABLE ? "1" : "0");
+    rlb->append(STRING_WITH_LEN(" PRIMARY_SSL_VERIFY_SERVER_CERT = "));
+    rlb->append(lex->mi.ssl_verify_server_cert == LEX_PRIMARY_INFO::LEX_MI_ENABLE ? "1" : "0");
   }
   if (lex->mi.repl_ignore_server_ids_opt)
   {
@@ -525,10 +525,10 @@ static void mysql_rewrite_change_master(THD *thd, String *rlb)
     }
     rlb->append(STRING_WITH_LEN(" )"));
   }
-  if (lex->mi.heartbeat_opt != LEX_MASTER_INFO::LEX_MI_UNCHANGED)
+  if (lex->mi.heartbeat_opt != LEX_PRIMARY_INFO::LEX_MI_UNCHANGED)
   {
-    rlb->append(STRING_WITH_LEN(" MASTER_HEARTBEAT_PERIOD = "));
-    if (lex->mi.heartbeat_opt == LEX_MASTER_INFO::LEX_MI_DISABLE)
+    rlb->append(STRING_WITH_LEN(" PRIMARY_HEARTBEAT_PERIOD = "));
+    if (lex->mi.heartbeat_opt == LEX_PRIMARY_INFO::LEX_MI_DISABLE)
       rlb->append(STRING_WITH_LEN("0"));
     else
     {
@@ -541,30 +541,30 @@ static void mysql_rewrite_change_master(THD *thd, String *rlb)
 
 
 /**
-  Rewrite a START SLAVE statement.
+  Rewrite a START REPLICA statement.
 
   @param thd      The THD to rewrite for.
   @param rlb      An empty String object to put the rewritten query in.
 */
 
-static void mysql_rewrite_start_slave(THD *thd, String *rlb)
+static void mysql_rewrite_start_replica(THD *thd, String *rlb)
 {
   LEX *lex= thd->lex;
 
-  if (!lex->slave_connection.password)
+  if (!lex->replica_connection.password)
     return;
 
-  rlb->append(STRING_WITH_LEN("START SLAVE"));
+  rlb->append(STRING_WITH_LEN("START REPLICA"));
 
-  if (lex->slave_thd_opt & SLAVE_IO)
+  if (lex->replica_thd_opt & REPLICA_IO)
     rlb->append(STRING_WITH_LEN(" IO_THREAD"));
 
   /* we have printed the IO THREAD related options */
-  if (lex->slave_thd_opt & SLAVE_IO && 
-      lex->slave_thd_opt & SLAVE_SQL)
+  if (lex->replica_thd_opt & REPLICA_IO && 
+      lex->replica_thd_opt & REPLICA_SQL)
     rlb->append(STRING_WITH_LEN(","));
 
-  if (lex->slave_thd_opt & SLAVE_SQL)
+  if (lex->replica_thd_opt & REPLICA_SQL)
     rlb->append(STRING_WITH_LEN(" SQL_THREAD"));
 
   /* until options */
@@ -573,10 +573,10 @@ static void mysql_rewrite_start_slave(THD *thd, String *rlb)
     rlb->append(STRING_WITH_LEN(" UNTIL"));
     if (lex->mi.log_file_name)
     {
-      rlb->append(STRING_WITH_LEN(" MASTER_LOG_FILE = '"));
+      rlb->append(STRING_WITH_LEN(" PRIMARY_LOG_FILE = '"));
       rlb->append(lex->mi.log_file_name);
       rlb->append(STRING_WITH_LEN("', "));
-      rlb->append(STRING_WITH_LEN("MASTER_LOG_POS = "));
+      rlb->append(STRING_WITH_LEN("PRIMARY_LOG_POS = "));
       rlb->append_ulonglong(lex->mi.pos);
     }
 
@@ -591,27 +591,27 @@ static void mysql_rewrite_start_slave(THD *thd, String *rlb)
   }
 
   /* connection options */
-  if (lex->slave_connection.user)
+  if (lex->replica_connection.user)
   {
     rlb->append(STRING_WITH_LEN(" USER = '"));
-    rlb->append(lex->slave_connection.user);
+    rlb->append(lex->replica_connection.user);
     rlb->append(STRING_WITH_LEN("'"));
   }
 
-  if (lex->slave_connection.password)
+  if (lex->replica_connection.password)
     rlb->append(STRING_WITH_LEN(" PASSWORD = '<secret>'"));
 
-  if (lex->slave_connection.plugin_auth)
+  if (lex->replica_connection.plugin_auth)
   {
     rlb->append(STRING_WITH_LEN(" DEFAULT_AUTH = '"));
-    rlb->append(lex->slave_connection.plugin_auth);
+    rlb->append(lex->replica_connection.plugin_auth);
     rlb->append(STRING_WITH_LEN("'"));
   }
 
-  if (lex->slave_connection.plugin_dir)
+  if (lex->replica_connection.plugin_dir)
   {
     rlb->append(STRING_WITH_LEN(" PLUGIN_DIR = '"));
-    rlb->append(lex->slave_connection.plugin_dir);
+    rlb->append(lex->replica_connection.plugin_dir);
     rlb->append(STRING_WITH_LEN("'"));
   }
 }
@@ -744,8 +744,8 @@ void mysql_rewrite_query(THD *thd)
     case SQLCOM_CREATE_USER:
     case SQLCOM_ALTER_USER:
                         mysql_rewrite_create_alter_user(thd, rlb);    break;
-    case SQLCOM_CHANGE_MASTER: mysql_rewrite_change_master(thd, rlb); break;
-    case SQLCOM_SLAVE_START:   mysql_rewrite_start_slave(thd, rlb);   break;
+    case SQLCOM_CHANGE_PRIMARY: mysql_rewrite_change_primary(thd, rlb); break;
+    case SQLCOM_REPLICA_START:   mysql_rewrite_start_replica(thd, rlb);   break;
     case SQLCOM_CREATE_SERVER: mysql_rewrite_create_server(thd, rlb); break;
     case SQLCOM_ALTER_SERVER:  mysql_rewrite_alter_server(thd, rlb);  break;
 

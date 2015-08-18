@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 ***** Test 1 RPL of CDD and Alter *****
 ***** Test 1 setup *****
 CREATE LOGFILE GROUP lg1
@@ -30,7 +30,7 @@ c3 INT NOT NULL)
 TABLESPACE ts1 STORAGE DISK
 ENGINE=NDB;
 ***** insert some data *****
-***** Select from Master *****
+***** Select from Primary *****
 SELECT * FROM t1 ORDER BY c1 LIMIT 5;
 c1	c2	c3
 1	2	4
@@ -38,7 +38,7 @@ c1	c2	c3
 3	6	6
 4	8	7
 5	10	8
-***** Select from Slave *****
+***** Select from Replica *****
 SELECT * FROM t1 ORDER BY c1 LIMIT 5;
 c1	c2	c3
 1	2	4
@@ -53,7 +53,7 @@ datafile.dat	DATAFILE	ts1	lg1
 datafile02.dat	DATAFILE	ts1	lg1
 undofile.dat	UNDO LOG	NULL	lg1
 undofile02.dat	UNDO LOG	NULL	lg1
-**** Do First Set of ALTERs in the master table ****
+**** Do First Set of ALTERs in the primary table ****
 CREATE INDEX t1_i ON t1(c2, c3);
 CREATE UNIQUE INDEX t1_i2 ON t1(c2);
 ALTER TABLE t1 ADD c4 TIMESTAMP;
@@ -72,7 +72,7 @@ t1	CREATE TABLE `t1` (
   KEY `t1_i` (`c2`,`c3`),
   KEY `c5` (`c5`)
 ) /*!50100 TABLESPACE `ts1` STORAGE DISK */ ENGINE=ndbcluster DEFAULT CHARSET=latin1
-**** Show first set of ALTERs on SLAVE ****
+**** Show first set of ALTERs on REPLICA ****
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -93,7 +93,7 @@ CREATE TABLE t1(c1 INT)ENGINE=NDB;
 INSERT INTO t1 VALUES(1);
 DROP TABLE t1;
 ALTER TABLE t2 RENAME t1;
-**** Show second set of ALTERs on MASTER ****
+**** Show second set of ALTERs on PRIMARY ****
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -106,7 +106,7 @@ t1	CREATE TABLE `t1` (
   UNIQUE KEY `t1_i2` (`c2`),
   KEY `t1_i` (`c2`,`c3`)
 ) /*!50100 TABLESPACE `ts1` STORAGE DISK */ ENGINE=ndbcluster DEFAULT CHARSET=latin1
-**** Show second set of ALTERs on SLAVE ****
+**** Show second set of ALTERs on REPLICA ****
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -130,7 +130,7 @@ set @b1 = 'b1';
 set @b1 = concat(@b1,@b1,@b1,@b1,@b1,@b1,@b1,@b1,@b1,@b1);
 UPDATE t1 SET c3=@b1 where c1 = 1;
 UPDATE t1 SET c3=@b1 where c1 = 2;
-**** Show last set of ALTERs on MASTER ****
+**** Show last set of ALTERs on PRIMARY ****
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -149,7 +149,7 @@ c1	c2	c3	c5
 3	6.00	<c4_timestamp_value>	NULL
 4	8.00	<c4_timestamp_value>	NULL
 5	10.00	<c4_timestamp_value>	NULL
-**** Show last set of ALTERs on SLAVE ****
+**** Show last set of ALTERs on REPLICA ****
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
@@ -172,10 +172,10 @@ SELECT * FROM t1 where c1 = 1;
 c1	c2	c3	c5
 1	2.00	b1b1b1b1b1b1b1b1b1b1	NULL
 DROP TABLE t1;
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-START SLAVE;
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+START REPLICA;
 ******** Create additional TABLESPACE test 2 **************
 CREATE TABLESPACE ts2
 ADD DATAFILE 'datafile03.dat'
@@ -222,7 +222,7 @@ ENGINE=NDBCLUSTER;
 USE tpcb;
 *********** Load up the database ******************
 CALL tpcb.load();
-********** Check load master and slave **************
+********** Check load primary and replica **************
 SELECT COUNT(*) FROM account;
 COUNT(*)
 1000
@@ -231,10 +231,10 @@ SELECT COUNT(*) FROM account;
 COUNT(*)
 1000
 ******** Run in some transactions ***************
-***** Time to try slave sync ***********
-**** Must make sure slave is clean *****
-STOP SLAVE;
-RESET SLAVE;
+***** Time to try replica sync ***********
+**** Must make sure replica is clean *****
+STOP REPLICA;
+RESET REPLICA;
 DROP PROCEDURE IF EXISTS tpcb.load;
 DROP PROCEDURE IF EXISTS tpcb.trans;
 DROP TABLE IF EXISTS tpcb.account;
@@ -257,45 +257,45 @@ DROP DATAFILE 'datafile04.dat'
 ENGINE=NDB;
 DROP TABLESPACE ts2 ENGINE=NDB;
 DROP LOGFILE GROUP lg1 ENGINE=NDB;
-********** Take a backup of the Master *************
+********** Take a backup of the Primary *************
 SELECT COUNT(*) FROM history;
 COUNT(*)
 100
 SELECT COUNT(*) FROM history;
 COUNT(*)
 200
-************ Restore the slave ************************
+************ Restore the replica ************************
 CREATE DATABASE tpcb;
-***** Check a few slave restore values ***************
+***** Check a few replica restore values ***************
 USE tpcb;
 SELECT COUNT(*) FROM account;
 COUNT(*)
 1000
-***** Add some more records to master *********
-***** Finsh the slave sync process *******
+***** Add some more records to primary *********
+***** Finsh the replica sync process *******
 @the_epoch:=MAX(epoch)
 <the_epoch>
 @the_pos:=Position	@the_file:=SUBSTRING_INDEX(REPLACE(FILE,'\\','/'), '/', -1)
-<the_pos>	master-bin.000001
-CHANGE MASTER TO
-master_log_file = 'master-bin.000001',
-master_log_pos = <the_pos> ;
+<the_pos>	primary-bin.000001
+CHANGE PRIMARY TO
+primary_log_file = 'primary-bin.000001',
+primary_log_pos = <the_pos> ;
 * 4. *
 * 5. *
-START SLAVE;
+START REPLICA;
 **** We should be ready to continue on *************
 ****** Let's make sure we match *******
-***** MASTER *******
+***** PRIMARY *******
 USE tpcb;
 SELECT COUNT(*) FROM history;
 COUNT(*)
 400
-****** SLAVE ********
+****** REPLICA ********
 USE tpcb;
 SELECT COUNT(*) FROM history;
 COUNT(*)
 400
-*** DUMP MASTER & SLAVE FOR COMPARE ********
+*** DUMP PRIMARY & REPLICA FOR COMPARE ********
 *************** TEST 2 CLEANUP SECTION ********************
 DROP PROCEDURE IF EXISTS tpcb.load;
 DROP PROCEDURE IF EXISTS tpcb.trans;

@@ -8843,8 +8843,8 @@ var PlotEvents = dojox.charting.plot2d._PlotEvents;
 				});
 				return anim;
 			});
-			var masterAnimation = coreFx.combine(anims.concat(anims1)); //dojo.fx.chain(anims);
-			masterAnimation.play();
+			var primaryAnimation = coreFx.combine(anims.concat(anims1)); //dojo.fx.chain(anims);
+			primaryAnimation.play();
 			return {group :ts, poly: spoly, circles: scircle};
 		},
 		plotEvent: function(o){
@@ -16501,10 +16501,10 @@ define("dijit/Tooltip", [
 	// module:
 	//		dijit/Tooltip
 	// summary:
-	//		Defines dijit.Tooltip widget (to display a tooltip), showTooltip()/hideTooltip(), and _MasterTooltip
+	//		Defines dijit.Tooltip widget (to display a tooltip), showTooltip()/hideTooltip(), and _PrimaryTooltip
 
 
-	var MasterTooltip = declare("dijit._MasterTooltip", [_Widget, _TemplatedMixin], {
+	var PrimaryTooltip = declare("dijit._PrimaryTooltip", [_Widget, _TemplatedMixin], {
 		// summary:
 		//		Internal widget that holds the actual tooltip markup,
 		//		which occurs once per page.
@@ -16745,14 +16745,14 @@ define("dijit/Tooltip", [
 		//		means "rtl"; specifies GUI direction, not text direction.
 		// textDir: String?
 		//		Corresponds to `WidgetBase.textdir` attribute; specifies direction of text.
-		if(!Tooltip._masterTT){ dijit._masterTT = Tooltip._masterTT = new MasterTooltip(); }
-		return Tooltip._masterTT.show(innerHTML, aroundNode, position, rtl, textDir);
+		if(!Tooltip._primaryTT){ dijit._primaryTT = Tooltip._primaryTT = new PrimaryTooltip(); }
+		return Tooltip._primaryTT.show(innerHTML, aroundNode, position, rtl, textDir);
 	};
 
 	dijit.hideTooltip = function(aroundNode){
 		// summary:
 		//		Static method to hide the tooltip displayed via showTooltip()
-		return Tooltip._masterTT && Tooltip._masterTT.hide(aroundNode);
+		return Tooltip._primaryTT && Tooltip._primaryTT.hide(aroundNode);
 	};
 
 	var Tooltip = declare("dijit.Tooltip", _Widget, {
@@ -16931,7 +16931,7 @@ define("dijit/Tooltip", [
 		}
 	});
 
-	Tooltip._MasterTooltip = MasterTooltip;		// for monkey patching
+	Tooltip._PrimaryTooltip = PrimaryTooltip;		// for monkey patching
 	Tooltip.show = dijit.showTooltip;		// export function through module return value
 	Tooltip.hide = dijit.hideTooltip;		// export function through module return value
 

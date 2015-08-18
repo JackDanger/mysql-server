@@ -108,7 +108,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -153,7 +153,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -198,7 +198,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -267,7 +267,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -312,7 +312,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -357,7 +357,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -412,7 +412,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -457,7 +457,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -502,7 +502,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -579,7 +579,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -624,7 +624,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -669,7 +669,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -738,7 +738,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -783,7 +783,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -828,7 +828,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -883,7 +883,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -928,7 +928,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -973,7 +973,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1080,7 +1080,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1125,7 +1125,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1170,7 +1170,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1272,7 +1272,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1317,7 +1317,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1362,7 +1362,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1417,7 +1417,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1462,7 +1462,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1507,7 +1507,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1569,7 +1569,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1614,7 +1614,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1659,7 +1659,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1736,7 +1736,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1781,7 +1781,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -1826,7 +1826,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N

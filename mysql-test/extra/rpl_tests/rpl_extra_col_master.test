@@ -1,18 +1,18 @@
 #############################################################
-# Purpose: To test having extra columns on the master WL#3915
+# Purpose: To test having extra columns on the primary WL#3915
 # engine inspecific sourced part
 #############################################################
 
 #
-# Setup differently defined tables on master and slave
+# Setup differently defined tables on primary and replica
 #
 
-# Def on master: t (f_1 type_m_1,... f_s type_m_s, f_s1, f_m)
-# Def on slave:  t (f_1 type_s_1,... f_s type_s_s)
+# Def on primary: t (f_1 type_m_1,... f_s type_m_s, f_s1, f_m)
+# Def on replica:  t (f_1 type_s_1,... f_s type_s_s)
 # where type_mi,type_si (0 < i-1 <s1) pairs are compatible types (WL#3228)
 # Arbitrary paramaters of the test are:
 # 1. the tables type
-# 2. the types of the extra master's column f_s1,..., f_m
+# 2. the types of the extra primary's column f_s1,..., f_m
 # 3. the numbers of common columns `s' 
 # 4. and  extra columns `m' are par
 #
@@ -72,9 +72,9 @@ let $binformat = `SHOW VARIABLES LIKE '%binlog_format%'`;
 --echo ***********************************************************
 --echo ***********************************************************
 --echo
---echo ***** Testing more columns on the Master *****
+--echo ***** Testing more columns on the Primary *****
 --echo
-connection master;
+connection primary;
 eval CREATE TABLE t1 (f1 INT, f2 INT, f3 INT PRIMARY KEY, f4 CHAR(20),
                       /* extra */
                       f5 FLOAT DEFAULT '2.00', 
@@ -85,15 +85,15 @@ eval CREATE TABLE t1 (f1 INT, f2 INT, f3 INT PRIMARY KEY, f4 CHAR(20),
                       f10 BIT(63),
                       f11 VARBINARY(64))ENGINE=$engine_type;
 --echo
---echo * Alter Table on Slave and drop columns f5 through f11 *
+--echo * Alter Table on Replica and drop columns f5 through f11 *
 --echo
-sync_slave_with_master;
+sync_replica_with_primary;
 alter table t1 drop f5, drop f6, drop f7, drop f8, drop f9, drop f10, drop f11;
 
 --echo
---echo * Insert data in Master then update and delete some rows*
+--echo * Insert data in Primary then update and delete some rows*
 --echo
-connection master;
+connection primary;
 let $j= 50;
 --disable_query_log
 while ($j)
@@ -115,40 +115,40 @@ while ($j)
 }
 --enable_query_log
 
---echo * Select count and 20 rows from Master *
+--echo * Select count and 20 rows from Primary *
 --echo
 SELECT COUNT(*) FROM t1;
 --echo
 SELECT f1,f2,f3,f4,f5,f6,f7,f8,f9,
        hex(f10),hex(f11) FROM t1 ORDER BY f3 LIMIT 20;
 
-#connection slave;
+#connection replica;
 
 --disable_query_log
-call mtr.add_suppression("Slave SQL.*Table definition on master and slave does not match: Column 2 type mismatch.* 1535");
-call mtr.add_suppression("Slave.*Can.t DROP .c7.; check that column.key exists.* Error_code: 1091");
-call mtr.add_suppression("Slave.*Unknown column .c7. in .t15.* Error_code: 1054");
-call mtr.add_suppression("Slave.*Key column .c6. doesn.t exist in table.* Error_code: 1072");
-call mtr.add_suppression("Slave SQL.*Column 2 of table .test.t1.. cannot be converted from type.* Error_code: 1677");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+call mtr.add_suppression("Replica SQL.*Table definition on primary and replica does not match: Column 2 type mismatch.* 1535");
+call mtr.add_suppression("Replica.*Can.t DROP .c7.; check that column.key exists.* Error_code: 1091");
+call mtr.add_suppression("Replica.*Unknown column .c7. in .t15.* Error_code: 1054");
+call mtr.add_suppression("Replica.*Key column .c6. doesn.t exist in table.* Error_code: 1072");
+call mtr.add_suppression("Replica SQL.*Column 2 of table .test.t1.. cannot be converted from type.* Error_code: 1677");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 --enable_query_log
 
-sync_slave_with_master;
+sync_replica_with_primary;
 --echo
---echo * Select count and 20 rows from Slave *
+--echo * Select count and 20 rows from Replica *
 --echo
 SELECT COUNT(*) FROM t1;
 --echo
 SELECT * FROM t1 ORDER BY f3 LIMIT 20;
 
---source include/check_slave_is_running.inc
+--source include/check_replica_is_running.inc
 
 ### Altering table def scenario
 --echo
 --echo ***** Testing Altering table def scenario *****
 --echo
 
-connection master;
+connection primary;
 
    eval CREATE TABLE t2 (f1 INT, f2 INT, f3 INT PRIMARY KEY, f4 CHAR(20),
                       /* extra */
@@ -223,10 +223,10 @@ connection master;
 		       f35 VARCHAR(257)       
                        ) ENGINE=$engine_type;
 --echo
---echo ** Alter tables on slave and drop columns **
+--echo ** Alter tables on replica and drop columns **
 --echo
-#connection slave;
-    sync_slave_with_master;
+#connection replica;
+    sync_replica_with_primary;
     alter table t2 drop f5, drop f6, drop f7, drop f8, drop f9, drop f10, drop f11, drop
 f12;
     alter table t3 drop f5, drop f6, drop f8, drop f10, drop f11, drop f12;
@@ -240,8 +240,8 @@ f12;
        drop f33, drop f34, drop f35;
                  
 --echo
---echo ** Insert Data into Master **
-connection master;
+--echo ** Insert Data into Primary **
+connection primary;
    INSERT into t2 set f1=1, f2=1, f3=1, f4='first', f8='f8: medium size blob', f10='f10:
 some var char';
    INSERT into t2 values (2, 2, 2, 'second',
@@ -390,11 +390,11 @@ binary data';
        /*f35 VARCHAR(257),*/         NULL
        );
 --echo 
---echo ** Sync slave with master ** 
+--echo ** Sync replica with primary ** 
 --echo ** Do selects from tables **
 --echo  
-#connection slave;
-   sync_slave_with_master;
+#connection replica;
+   sync_replica_with_primary;
 
    select * from t1 order by f3;
    select * from t2 order by f1;
@@ -402,9 +402,9 @@ binary data';
    select * from t4 order by f1;
    select * from t31 order by f3;
    
-connection master;
+connection primary;
 --echo
---echo ** Do updates master **
+--echo ** Do updates primary **
 --echo
    update t31 set f5=555555555555555 where f3=6;
    update t31 set f2=2 where f3=2;
@@ -412,7 +412,7 @@ connection master;
    update ignore t31 set f3=NULL, f27=NULL, f35='f35 new value' where f3=3;
 
 --echo
---echo ** Delete from Master **
+--echo ** Delete from Primary **
 --echo
 
    delete from t1;
@@ -421,59 +421,59 @@ connection master;
    delete from t4;
    delete from t31;
 
-#connection slave;
-   sync_slave_with_master;
+#connection replica;
+   sync_replica_with_primary;
    select * from t31;
 
 --echo
---echo ** Check slave status **
+--echo ** Check replica status **
 --echo
---source include/check_slave_is_running.inc
+--source include/check_replica_is_running.inc
 
 #### Clean Up ####
 
-connection master;
+connection primary;
 --disable_warnings
 --disable_query_log
   DROP TABLE t1,t2,t3,t4,t31;
 
 ######################################################
-#connection slave;
-  sync_slave_with_master;
+#connection replica;
+  sync_replica_with_primary;
 --enable_query_log
 --enable_warnings
 --echo
 --echo ****************************************
---echo * columns in master at middle of table *
+--echo * columns in primary at middle of table *
 --echo * Expect: Proper error message         *
 --echo ****************************************
 --echo
---echo ** Stop and Reset Slave **
+--echo ** Stop and Reset Replica **
 --echo
-STOP SLAVE;
+STOP REPLICA;
 --echo
---echo ** create table slave side **
+--echo ** create table replica side **
 eval CREATE TABLE t10 (a INT PRIMARY KEY, b BLOB, c CHAR(5)
                        ) ENGINE=$engine_type;
 
 --echo
---echo ** Connect to master and create table **
+--echo ** Connect to primary and create table **
 --echo
---connection master
+--connection primary
 eval CREATE TABLE t10 (a INT KEY, b BLOB, f DOUBLE DEFAULT '233',
                       c CHAR(5), e INT DEFAULT '1')ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t10 () VALUES(1,@b1,DEFAULT,'Kyle',DEFAULT),
@@ -482,52 +482,52 @@ INSERT INTO t10 () VALUES(1,@b1,DEFAULT,'Kyle',DEFAULT),
 
 --echo
 --echo ********************************************
---echo *** Expect slave to fail with Error 1677 ***
+--echo *** Expect replica to fail with Error 1677 ***
 --echo ********************************************
 --echo
-connection slave;
---let $slave_skip_counter= 2
---let $slave_sql_errno= convert_error(ER_SLAVE_CONVERSION_FAILED)
---source include/wait_for_slave_sql_error_and_skip.inc
+connection replica;
+--let $replica_skip_counter= 2
+--let $replica_sql_errno= convert_error(ER_REPLICA_CONVERSION_FAILED)
+--source include/wait_for_replica_sql_error_and_skip.inc
 
 --echo
 --echo *** Drop t10  ***
-connection master;
+connection primary;
 DROP TABLE t10;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 ############################################
 ############## Continued ###################
 ############################################
 --echo
 --echo *********************************************
---echo * More columns in master at middle of table *
+--echo * More columns in primary at middle of table *
 --echo * Expect: Proper error message              *
 --echo *********************************************
 --echo
---echo  *** Create t11 on slave  ***
-STOP SLAVE;
+--echo  *** Create t11 on replica  ***
+STOP REPLICA;
 
 eval CREATE TABLE t11 (a INT PRIMARY KEY, b BLOB, c VARCHAR(254)
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t11 on Master ***
-connection master;
+--echo *** Create t11 on Primary ***
+connection primary;
 eval CREATE TABLE t11 (a INT KEY, b BLOB, f TEXT,
                       c CHAR(5) DEFAULT 'test', e INT DEFAULT '1')ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t11 () VALUES(1,@b1,'Testing is fun','Kyle',DEFAULT),
@@ -536,51 +536,51 @@ INSERT INTO t11 () VALUES(1,@b1,'Testing is fun','Kyle',DEFAULT),
 
 --echo
 --echo ********************************************
---echo *** Expect slave to fail with Error 1677 ***
+--echo *** Expect replica to fail with Error 1677 ***
 --echo ********************************************
 --echo
-connection slave;
---let $slave_skip_counter= 2
---let $slave_sql_errno= convert_error(ER_SLAVE_CONVERSION_FAILED)
---source include/wait_for_slave_sql_error_and_skip.inc
+connection replica;
+--let $replica_skip_counter= 2
+--let $replica_sql_errno= convert_error(ER_REPLICA_CONVERSION_FAILED)
+--source include/wait_for_replica_sql_error_and_skip.inc
 
 --echo
 --echo *** Drop t11  ***
-connection master;
+connection primary;
 DROP TABLE t11;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 ############################################
 ############## Continued ###################
 ############################################
 --echo
 --echo *********************************************
---echo * More columns in master at middle of table *
+--echo * More columns in primary at middle of table *
 --echo * Expect: This one should pass blob-text    *
 --echo *********************************************
 --echo
---echo  *** Create t12 on slave  ***
-STOP SLAVE;
+--echo  *** Create t12 on replica  ***
+STOP REPLICA;
 eval CREATE TABLE t12 (a INT PRIMARY KEY, b BLOB, c BLOB
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t12 on Master ***
-connection master;
+--echo *** Create t12 on Primary ***
+connection primary;
 eval CREATE TABLE t12 (a INT KEY, b BLOB, f TEXT,
                       c CHAR(5) DEFAULT 'test', e INT DEFAULT '1')ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t12 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -590,50 +590,50 @@ INSERT INTO t12 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
 SELECT a,hex(b),f,c,e FROM t12 ORDER BY a;
 
 --echo
---echo *** Select on Slave ***
-sync_slave_with_master;
+--echo *** Select on Replica ***
+sync_replica_with_primary;
 SELECT a,hex(b),c FROM t12 ORDER BY a;
 
 --echo
 --echo *** Drop t12  ***
-connection master;
+connection primary;
 DROP TABLE t12;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 ############################################
 ############## Continued ###################
 ############################################
 --echo
 --echo ****************************************************
---echo * - Alter Master adding columns at middle of table *
+--echo * - Alter Primary adding columns at middle of table *
 --echo *   Expect: columns added                          *
 --echo ****************************************************
 --echo
 --echo
---echo *** Create t14 on slave  ***
-STOP SLAVE;
+--echo *** Create t14 on replica  ***
+STOP REPLICA;
 eval CREATE TABLE t14 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t14 on Master ***
-connection master;
+--echo *** Create t14 on Primary ***
+connection primary;
 eval CREATE TABLE t14 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
                       c6 INT DEFAULT '1',
                       c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
                       )ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 ALTER TABLE t14 ADD COLUMN c2 DECIMAL(8,2) AFTER c1;
 ALTER TABLE t14 ADD COLUMN c3 TEXT AFTER c2;
 --echo
@@ -647,23 +647,23 @@ INSERT INTO t14 () VALUES(1,1.00,'Replication Testing Extra Col',@b1,'Kyle',DEFA
 SELECT c1,c2,c3,hex(c4),c5,c6,c7 FROM t14 ORDER BY c1;
 
 --echo
---echo *** Select on Slave ****
-sync_slave_with_master;
+--echo *** Select on Replica ****
+sync_replica_with_primary;
 SELECT c1,c2,c3,hex(c4),c5 FROM t14 ORDER BY c1;
 
 ####################################################
 --echo
 --echo ****************************************************
---echo * - Alter Master Dropping columns from the middle. *
+--echo * - Alter Primary Dropping columns from the middle. *
 --echo *   Expect: columns dropped                        *
 --echo ****************************************************
 --echo
---echo *** connect to master and drop columns ***
-connection master;
+--echo *** connect to primary and drop columns ***
+connection primary;
 ALTER TABLE t14 DROP COLUMN c2;
 ALTER TABLE t14 DROP COLUMN c7;
 --echo
---echo *** Select from Master ***
+--echo *** Select from Primary ***
 SELECT c1,c3,hex(c4),c5,c6 FROM t14 ORDER BY c1;
 --echo
 
@@ -672,64 +672,64 @@ SELECT c1,c3,hex(c4),c5,c6 FROM t14 ORDER BY c1;
 --echo ************
 # Uncomment below once fixed
 
-#--echo *** Select from Slave ***
-#sync_slave_with_master;
+#--echo *** Select from Replica ***
+#sync_replica_with_primary;
 #SELECT c1,c2,c3,hex(c4),c5 FROM t14 ORDER BY c1;
 
 # Bug30415
 # Remove below once fixed
 #***************************
-connection slave;
---let $slave_sql_errno= convert_error(ER_CANT_DROP_FIELD_OR_KEY)
---source include/wait_for_slave_sql_error.inc
+connection replica;
+--let $replica_sql_errno= convert_error(ER_CANT_DROP_FIELD_OR_KEY)
+--source include/wait_for_replica_sql_error.inc
 #***************************
 
-STOP SLAVE;
+STOP REPLICA;
 
 --echo
 --echo *** Drop t14  ***
 DROP TABLE t14;
 
-connection master;
+connection primary;
 DROP TABLE t14;
 
-connection slave;
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 #################################################
 --echo
 --echo *************************************************
---echo * - Alter Master adding columns at end of table *
+--echo * - Alter Primary adding columns at end of table *
 --echo *   Expect: Error 1054                          *
 --echo *************************************************
 --echo
---echo *** Create t15 on slave  ***
-STOP SLAVE;
+--echo *** Create t15 on replica  ***
+STOP REPLICA;
 eval CREATE TABLE t15 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t15 on Master ***
-connection master;
+--echo *** Create t15 on Primary ***
+connection primary;
 eval CREATE TABLE t15 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
                       c6 INT DEFAULT '1',
                       c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
                       )ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 ALTER TABLE t15 ADD COLUMN c2 DECIMAL(8,2) AFTER c7;
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
@@ -741,58 +741,58 @@ SELECT c1,hex(c4),c5,c6,c7,c2 FROM t15 ORDER BY c1;
 
 --echo
 --echo ********************************************
---echo *** Expect slave to fail with Error 1054 ***
+--echo *** Expect replica to fail with Error 1054 ***
 --echo ********************************************
 --echo
-connection slave;
---let $slave_sql_errno= convert_error(ER_BAD_FIELD_ERROR)
---source include/wait_for_slave_sql_error.inc
-STOP SLAVE;
+connection replica;
+--let $replica_sql_errno= convert_error(ER_BAD_FIELD_ERROR)
+--source include/wait_for_replica_sql_error.inc
+STOP REPLICA;
 
 --echo
 --echo *** Drop t15  ***
 DROP TABLE t15;
 
-connection master;
+connection primary;
 DROP TABLE t15;
 
-connection slave;
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 ####################################################
 --echo
 --echo ************************************************
---echo * - Create index on Master column not on slave *
+--echo * - Create index on Primary column not on replica *
 --echo *   Expect:Warning                             *
 --echo ************************************************
 --echo
---echo *** Create t16 on slave  ***
-STOP SLAVE;
+--echo *** Create t16 on replica  ***
+STOP REPLICA;
 eval CREATE TABLE t16 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t16 on Master ***
-connection master;
+--echo *** Create t16 on Primary ***
+connection primary;
 eval CREATE TABLE t16 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
                       c6 INT DEFAULT '1',
                       c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
                       )ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Create Index and Data Insert ***
-connection master;
+--echo *** Primary Create Index and Data Insert ***
+connection primary;
 CREATE INDEX part_of_c6 ON t16 (c6);
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
@@ -804,14 +804,14 @@ SELECT c1,hex(c4),c5,c6,c7 FROM t16 ORDER BY c1;
 
 # Uncomment the below when bug 30434 is patched
 
-#--echo *** Select on Slave ****
-#sync_slave_with_master;
+#--echo *** Select on Replica ****
+#sync_replica_with_primary;
 #SELECT c1,hex(c4),c5 FROM t16 ORDER BY c1;
 #
 #--echo *** Drop t16  ***
-#connection master;
+#connection primary;
 #DROP TABLE t16;
-#sync_slave_with_master;
+#sync_replica_with_primary;
 
 # Remove the below when bug 30434 is patched
 #*******************************************
@@ -820,55 +820,55 @@ SELECT c1,hex(c4),c5,c6,c7 FROM t16 ORDER BY c1;
 --echo *** BUG 30434 ***
 --echo *****************
 --echo
-connection slave;
---let $slave_sql_errno= convert_error(ER_KEY_COLUMN_DOES_NOT_EXITS)
---source include/wait_for_slave_sql_error.inc
-STOP SLAVE;
+connection replica;
+--let $replica_sql_errno= convert_error(ER_KEY_COLUMN_DOES_NOT_EXITS)
+--source include/wait_for_replica_sql_error.inc
+STOP REPLICA;
 
 --echo
 --echo *** Drop t16  ***
 DROP TABLE t16;
 
-connection master;
+connection primary;
 DROP TABLE t16;
 
-connection slave;
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 ####################################################
 --echo
 --echo *****************************************************
---echo * - Delete rows using column on Master not on slave *
+--echo * - Delete rows using column on Primary not on replica *
 --echo *   Expect: Rows Deleted                            *
 --echo *****************************************************
 --echo
---echo *** Create t17 on slave  ***
-STOP SLAVE;
+--echo *** Create t17 on replica  ***
+STOP REPLICA;
 eval CREATE TABLE t17 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t17 on Master ***
-connection master;
+--echo *** Create t17 on Primary ***
+connection primary;
 eval CREATE TABLE t17 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
                       c6 INT DEFAULT '1',
                       c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
                       )ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 INSERT INTO t17 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
@@ -878,63 +878,63 @@ INSERT INTO t17 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
 SELECT c1,hex(c4),c5,c6,c7 FROM t17 ORDER BY c1;
 
 --echo
---echo ** Select * from Slave **
-sync_slave_with_master;
+--echo ** Select * from Replica **
+sync_replica_with_primary;
 SELECT c1,hex(c4),c5 FROM t17 ORDER BY c1;
 
 --echo
---echo ** Delete from master **
-connection master;
+--echo ** Delete from primary **
+connection primary;
 DELETE FROM t17 WHERE c6 = 3;
 --replace_column 5 CURRENT_TIMESTAMP
 SELECT c1,hex(c4),c5,c6,c7 FROM t17 ORDER BY c1;
 
 --echo 
---echo ** Check slave **
-sync_slave_with_master;
+--echo ** Check replica **
+sync_replica_with_primary;
 SELECT c1,hex(c4),c5 FROM t17 ORDER BY c1;
 
 
-connection master;
+connection primary;
 DROP TABLE t17;
-sync_slave_with_master;
+sync_replica_with_primary;
 --echo
 
 ####################################################
 --echo
 --echo *****************************************************
---echo * - Update row using column on Master not on slave *
+--echo * - Update row using column on Primary not on replica *
 --echo *   Expect: Rows updated                           *
 --echo *****************************************************
 --echo
 --echo ** Bug30674 **
 --echo
---echo *** Create t18 on slave  ***
+--echo *** Create t18 on replica  ***
 --echo 
 
-STOP SLAVE;
+STOP REPLICA;
 eval CREATE TABLE t18 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t18 on Master ***
-connection master;
+--echo *** Create t18 on Primary ***
+connection primary;
 eval CREATE TABLE t18 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
                       c6 INT DEFAULT '1',
                       c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
                       )ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 set @b1 = 'b1b1b1b1';
 set @b1 = concat(@b1,@b1);
 
@@ -945,59 +945,59 @@ INSERT INTO t18 () VALUES(1,@b1,'Kyle',DEFAULT,DEFAULT),
 SELECT c1,hex(c4),c5,c6,c7 FROM t18 ORDER BY c1;
 
 --echo
---echo ** Select * from Slave **
-sync_slave_with_master;
+--echo ** Select * from Replica **
+sync_replica_with_primary;
 SELECT c1,hex(c4),c5 FROM t18 ORDER BY c1;
 
 --echo
---echo ** update from master **
-connection master;
+--echo ** update from primary **
+connection primary;
 UPDATE t18 SET c5 = 'TEST' WHERE c6 = 3;
 
 --replace_column 5 CURRENT_TIMESTAMP
 SELECT c1,hex(c4),c5,c6,c7 FROM t18 ORDER BY c1;
 
 --echo
---echo ** Check slave **
-sync_slave_with_master;
+--echo ** Check replica **
+sync_replica_with_primary;
 SELECT c1,hex(c4),c5 FROM t18 ORDER BY c1;
 
-connection master;
+connection primary;
 DROP TABLE t18;
-sync_slave_with_master;
+sync_replica_with_primary;
 --echo
 
 ####################################################
 --echo
 --echo *****************************************************
---echo * - Insert UUID  column on Master not on slave *
+--echo * - Insert UUID  column on Primary not on replica *
 --echo *   Expect: Rows inserted                      *
 --echo *****************************************************
 --echo
---echo *** Create t5 on slave  ***
-STOP SLAVE;
+--echo *** Create t5 on replica  ***
+STOP REPLICA;
 eval CREATE TABLE t5 (c1 INT PRIMARY KEY, c4 BLOB, c5 CHAR(5)
                        ) ENGINE=$engine_type;
 
 --echo
---echo *** Create t5 on Master ***
-connection master;
+--echo *** Create t5 on Primary ***
+connection primary;
 eval CREATE TABLE t5 (c1 INT KEY, c4 BLOB, c5 CHAR(5),
                       c6 LONG, 
                       c7 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
                       )ENGINE=$engine_type;
 
 --echo
---echo *** Start Slave ***
-connection slave;
+--echo *** Start Replica ***
+connection replica;
 
-# reset master and slave and start slave
+# reset primary and replica and start replica
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
 --echo
---echo *** Master Data Insert ***
-connection master;
+--echo *** Primary Data Insert ***
+connection primary;
 set @b1 = 'b1b1b1b1';
 INSERT INTO t5 () VALUES(1,@b1,'Kyle',UUID(),DEFAULT),
                         (2,@b1,'JOE',UUID(),DEFAULT),
@@ -1006,34 +1006,34 @@ INSERT INTO t5 () VALUES(1,@b1,'Kyle',UUID(),DEFAULT),
 SELECT c1,hex(c4),c5,c6,c7 FROM t5 ORDER BY c1;
 
 --echo
---echo ** Select * from Slave **
-sync_slave_with_master;
+--echo ** Select * from Replica **
+sync_replica_with_primary;
 SELECT c1,hex(c4),c5 FROM t5 ORDER BY c1;
 
-connection master;
+connection primary;
 DROP TABLE t5;
-sync_slave_with_master;
+sync_replica_with_primary;
 --echo
 
 # END of 5.1 tests case
 
 #
-# BUG#53386: HA_ERR_CORRUPT_EVENT or debug assertion with different table on slave
+# BUG#53386: HA_ERR_CORRUPT_EVENT or debug assertion with different table on replica
 #
 
 -- source include/rpl_reset.inc
--- connection master
+-- connection primary
 SET NAMES utf8;
 
-# CREATE Different tables on master and slave
+# CREATE Different tables on primary and replica
 SET SQL_LOG_BIN=0;
 -- eval CREATE TABLE t1 (c1 INT NOT NULL, c2 CHAR(255) CHARACTER SET UTF8 NOT NULL) ENGINE=$engine_type
 SET SQL_LOG_BIN=1;
--- connection slave
+-- connection replica
 -- eval CREATE TABLE t1 (c1 INT) ENGINE=$engine_type
 
 # insert empty row (c2 gets an empty string)
--- connection master
+-- connection primary
 
 -- disable_warnings
 INSERT IGNORE INTO t1 VALUES (); 
@@ -1044,12 +1044,12 @@ INSERT INTO t1 VALUES (1, @text);
 -- enable_warnings
 
 SELECT * FROM t1 ORDER BY c1; 
--- sync_slave_with_master
+-- sync_replica_with_primary
 SELECT * FROM t1 ORDER BY c1; 
 
 # clean up
--- connection master
+-- connection primary
 DROP TABLE t1; 
--- sync_slave_with_master
+-- sync_replica_with_primary
 
 --connection $_saved_conn

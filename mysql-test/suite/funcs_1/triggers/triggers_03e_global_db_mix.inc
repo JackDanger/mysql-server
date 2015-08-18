@@ -38,9 +38,9 @@ let $message= #### Testcase for mix of user(global) and db level: ####;
         grant SELECT,INSERT  on *.* to test_noprivs@localhost;
         show grants for test_noprivs@localhost;
 
-	connect (yes_privs,localhost,test_yesprivs,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+	connect (yes_privs,localhost,test_yesprivs,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 
-	connect (no_privs,localhost,test_noprivs,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+	connect (no_privs,localhost,test_noprivs,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 
 	connection yes_privs;
 	select current_user;
@@ -81,7 +81,7 @@ let $message= trigger privilege on user level for create:;
 	--disable_warnings
         disconnect yes_privs;
 	--enable_warnings
-        connect (yes_privs,localhost,test_yesprivs,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+        connect (yes_privs,localhost,test_yesprivs,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 	select current_user;
         use priv_db;
 --replace_column 6 #
@@ -183,7 +183,7 @@ let $message= trigger privilege on db level for create:;
 	--disable_warnings
         disconnect yes_privs;
 	--enable_warnings
-        connect (yes_privs,localhost,test_yesprivs,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+        connect (yes_privs,localhost,test_yesprivs,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
         select current_user;
 	use no_priv_db;
         create trigger trg1_2 before INSERT  on t1 for each row

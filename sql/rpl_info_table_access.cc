@@ -36,7 +36,7 @@ void Rpl_info_table_access::before_open(THD *thd)
     This is equivalent to a new "statement". For that reason, we call both
     lex_start() and mysql_reset_thd_for_next_command.
   */
-  if (thd->slave_thread || !current_thd)
+  if (thd->replica_thread || !current_thd)
   {
     lex_start(thd);
     mysql_reset_thd_for_next_command(thd);

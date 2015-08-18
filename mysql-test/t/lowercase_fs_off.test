@@ -12,8 +12,8 @@ set @orig_sql_mode_global= @@GLOBAL.sql_mode;
 set GLOBAL sql_mode= (select replace(@@GLOBAL.sql_mode,'NO_AUTO_CREATE_USER',''));
 set SESSION sql_mode= (select replace(@@SESSION.sql_mode,'NO_AUTO_CREATE_USER',''));
 
-connect (master,localhost,root,,);
-connection master;
+connect (primary,localhost,root,,);
+connection primary;
 create database d1;
 grant all on d1.* to 'sample'@'localhost' identified by 'password';
 flush privileges;
@@ -28,10 +28,10 @@ create database D1;
 disconnect sample;
 --source include/wait_until_disconnected.inc
 
-connection master;
+connection primary;
 drop user 'sample'@'localhost';
 drop database if exists d1;
-disconnect master;
+disconnect primary;
 --source include/wait_until_disconnected.inc
 connection default;
 

@@ -8,11 +8,11 @@
 
 # Includes
 -- source include/have_binlog_format_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 
 # Begin clean up test section
-connection master;
+connection primary;
 --disable_warnings
 create database if not exists mysqltest1;
 DROP TABLE IF EXISTS mysqltest1.t1;
@@ -46,12 +46,12 @@ delimiter ;|
 
 INSERT INTO mysqltest1.t1 SET n = NULL, a = now();
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info mysqltest1 > $MYSQLTEST_VARDIR/tmp/NOW_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info mysqltest1 > $MYSQLTEST_VARDIR/tmp/NOW_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info mysqltest1 > $MYSQLTEST_VARDIR/tmp/NOW_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info mysqltest1 > $MYSQLTEST_VARDIR/tmp/NOW_replica.sql
 
 # lets cleanup
 DROP TABLE IF EXISTS mysqltest1.t1;
@@ -64,12 +64,12 @@ DROP DATABASE mysqltest1;
 # the files your self to see what is not matching :-) The failed dump 
 # files will be located in $MYSQLTEST_VARDIR/tmp
 
-diff_files $MYSQLTEST_VARDIR/tmp/NOW_master.sql $MYSQLTEST_VARDIR/tmp/NOW_slave.sql;
+diff_files $MYSQLTEST_VARDIR/tmp/NOW_primary.sql $MYSQLTEST_VARDIR/tmp/NOW_replica.sql;
 
 # If all is good, when can cleanup our dump files.
---remove_file $MYSQLTEST_VARDIR/tmp/NOW_master.sql
---remove_file $MYSQLTEST_VARDIR/tmp/NOW_slave.sql
+--remove_file $MYSQLTEST_VARDIR/tmp/NOW_primary.sql
+--remove_file $MYSQLTEST_VARDIR/tmp/NOW_replica.sql
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 # End of 5.1 test case
 --source include/rpl_end.inc

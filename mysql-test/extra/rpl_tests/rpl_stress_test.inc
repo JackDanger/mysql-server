@@ -1,9 +1,9 @@
 ################################################################################
-# Build connections to master server
+# Build connections to primary server
 # Stress test that execute massive queries on every connection
 #
 # ################################################################################
---connection master
+--connection primary
 --disable_query_log
 --disable_result_log
 --let $n= $connections
@@ -16,15 +16,15 @@ while ($i < $n)
 --enable_result_log
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo # Build connections to master server
+--echo # Build connections to primary server
 --disable_query_log
 --disable_result_log
 --let $i= 1
 while ($i < $n)
 {
-  --connect(con$i,127.0.0.1,root,,test,$MASTER_MYPORT,)
+  --connect(con$i,127.0.0.1,root,,test,$PRIMARY_MYPORT,)
   --inc $i
 }
 --let $i= 1
@@ -74,22 +74,22 @@ while ($i < $connections)
 --enable_result_log
 --enable_query_log
 
---let $slave_timeout= 3600
+--let $replica_timeout= 3600
 if ($enable_diff_table)
 {
---source include/sync_slave_sql_with_master.inc
-  --echo # Test if the results are consistent on master and slave
+--source include/sync_replica_sql_with_primary.inc
+  --echo # Test if the results are consistent on primary and replica
   --let $i= 1
   while ($i < $n)
   {
-    --let $diff_tables= master:t$i, slave:t$i
+    --let $diff_tables= primary:t$i, replica:t$i
     --source include/diff_tables.inc
     --inc $i
   }
 }
 
 # clean up
---connection master
+--connection primary
 --disable_query_log
 --disable_result_log
 # disconnect connections
@@ -108,4 +108,4 @@ while ($i < $n)
 }
 --enable_result_log
 --enable_query_log
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc

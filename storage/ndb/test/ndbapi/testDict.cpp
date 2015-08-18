@@ -34,9 +34,9 @@
 #include <Bitmask.hpp>
 #include <../src/kernel/ndbd.hpp>
 
-#define ERR_INSERT_MASTER_FAILURE1 6013
-#define ERR_INSERT_MASTER_FAILURE2 6014
-#define ERR_INSERT_MASTER_FAILURE3 6015
+#define ERR_INSERT_PRIMARY_FAILURE1 6013
+#define ERR_INSERT_PRIMARY_FAILURE2 6014
+#define ERR_INSERT_PRIMARY_FAILURE3 6015
 
 #define ERR_INSERT_PARTIAL_START_FAIL 6140
 #define ERR_INSERT_PARTIAL_PARSE_FAIL 6141
@@ -56,7 +56,7 @@
 #define SUCCEED_COMMIT 3
 #define SUCCEED_ABORT 4
 
-#define ndb_master_failure 1
+#define ndb_primary_failure 1
 
 char f_tablename[256];
  
@@ -835,7 +835,7 @@ int runUseTableUntilStopped3(NDBT_Context* ctx, NDBT_Step* step){
 /**
  * This is a regression test for bug 14190114 
  * "CLUSTER CRASH DUE TO NDBREQUIRE IN ./LOCALPROXY.HPP DBLQH (LINE: 234)".
- * This bug occurs if there is a takeover (i.e. the master node crashes) 
+ * This bug occurs if there is a takeover (i.e. the primary node crashes) 
  * while an LQH block is executing a DROP_TAB_REQ signal. It only affects
  * multi-threaded ndb.
  */
@@ -865,12 +865,12 @@ runDropTakeoverTest(NDBT_Context* ctx, NDBT_Step* step)
   }
 
   /**
-   * Find the node id of the master node and another data node that is not 
-   * the master.
+   * Find the node id of the primary node and another data node that is not 
+   * the primary.
    */
-  const int masterNodeId = restarter.getMasterNodeId();
-  const int nonMasterNodeId =
-    masterNodeId == restarter.getDbNodeId(0) ?
+  const int primaryNodeId = restarter.getPrimaryNodeId();
+  const int nonPrimaryNodeId =
+    primaryNodeId == restarter.getDbNodeId(0) ?
     restarter.getDbNodeId(1) : 
     restarter.getDbNodeId(0);
 
@@ -880,17 +880,17 @@ runDropTakeoverTest(NDBT_Context* ctx, NDBT_Step* step)
    * This makes it appear as if though the LQH block spends a long time 
    * executing the DROP_TAB_REQ signal.
    */
-  g_info << "Insert error 5076 in node " << nonMasterNodeId << endl;
-  restarter.insertErrorInNode(nonMasterNodeId, 5076);
+  g_info << "Insert error 5076 in node " << nonPrimaryNodeId << endl;
+  restarter.insertErrorInNode(nonPrimaryNodeId, 5076);
   /**
-   * This error insert makes the master node crash when one of its LQH 
+   * This error insert makes the primary node crash when one of its LQH 
    * blocks tries to execute a DROP_TAB_REQ signal. This will then trigger
    * a takeover.
    */
-  g_info << "Insert error 5077 in node " << masterNodeId << endl;
-  restarter.insertErrorInNode(masterNodeId, 5077);
+  g_info << "Insert error 5077 in node " << primaryNodeId << endl;
+  restarter.insertErrorInNode(primaryNodeId, 5077);
 
-  // dropTable should succeed with the new master.
+  // dropTable should succeed with the new primary.
   g_info << "Trying to drop table " << copyName << endl;
   if (dict->dropTable(copyName))
   {
@@ -899,17 +899,17 @@ runDropTakeoverTest(NDBT_Context* ctx, NDBT_Step* step)
   }
 
   /** 
-   * Check that only old master is dead. Bug 14190114 would cause other nodes
+   * Check that only old primary is dead. Bug 14190114 would cause other nodes
    * to die as well.
    */
-  const int deadNodeId = restarter.checkClusterAlive(&masterNodeId, 1);
+  const int deadNodeId = restarter.checkClusterAlive(&primaryNodeId, 1);
   if (deadNodeId != 0)
   {
     g_err << "NodeId " << deadNodeId << " is down." << endl;
     return NDBT_FAILED;
   }
   
-  // Verify that old master comes back up, and that no other node crashed.
+  // Verify that old primary comes back up, and that no other node crashed.
   g_info << "Waiting for all nodes to be up." << endl;
   if (restarter.waitClusterStarted() != 0)
   {
@@ -2203,7 +2203,7 @@ int runFailAddFragment(NDBT_Context* ctx, NDBT_Step* step){
   static unsigned tuxcnt = sizeof(tuxlst)/sizeof(tuxlst[0]);
 
   NdbRestarter restarter;
-  int nodeId = restarter.getMasterNodeId();
+  int nodeId = restarter.getPrimaryNodeId();
   Ndb* pNdb = GETNDB(step);  
   NdbDictionary::Dictionary* pDic = pNdb->getDictionary();
   NdbDictionary::Table tab(*ctx->getTab());
@@ -2403,17 +2403,17 @@ recv_dict_ops_run(NDBT_Context* ctx)
 int
 runRestarts(NDBT_Context* ctx, NDBT_Step* step)
 {
-  static int errlst_master[] = {   // non-crashing
+  static int errlst_primary[] = {   // non-crashing
     7175,       // send one fake START_PERMREF
     0 
   };
   static int errlst_node[] = {
     7174,       // crash before sending DICT_LOCK_REQ
-    7176,       // pretend master does not support DICT lock
+    7176,       // pretend primary does not support DICT lock
     7121,       // crash at receive START_PERMCONF
     0
   };
-  const uint errcnt_master = sizeof(errlst_master)/sizeof(errlst_master[0]);
+  const uint errcnt_primary = sizeof(errlst_primary)/sizeof(errlst_primary[0]);
   const uint errcnt_node = sizeof(errlst_node)/sizeof(errlst_node[0]);
 
   myRandom48Init((long)NdbTick_CurrentMillisecond());
@@ -2431,8 +2431,8 @@ runRestarts(NDBT_Context* ctx, NDBT_Step* step)
     if (numnodes == 1)
       break;
 
-    int masterNodeId = restarter.getMasterNodeId();
-    CHECK(masterNodeId != -1);
+    int primaryNodeId = restarter.getPrimaryNodeId();
+    CHECK(primaryNodeId != -1);
 
     // for more complex cases need more restarter support methods
 
@@ -2441,7 +2441,7 @@ runRestarts(NDBT_Context* ctx, NDBT_Step* step)
 
     if (numnodes >= 2) {
       int rand = myRandom48(numnodes);
-      int nodeId = restarter.getRandomNotMasterNodeId(rand);
+      int nodeId = restarter.getRandomNotPrimaryNodeId(rand);
       CHECK(nodeId != -1);
       nodeIdList[nodeIdCnt++] = nodeId;
     }
@@ -2450,11 +2450,11 @@ runRestarts(NDBT_Context* ctx, NDBT_Step* step)
       int rand = myRandom48(numnodes);
       int nodeId = restarter.getRandomNodeOtherNodeGroup(nodeIdList[0], rand);
       CHECK(nodeId != -1);
-      if (nodeId != masterNodeId)
+      if (nodeId != primaryNodeId)
         nodeIdList[nodeIdCnt++] = nodeId;
     }
 
-    g_info << "1: master=" << masterNodeId << " nodes=" << nodeIdList[0] << "," << nodeIdList[1] << endl;
+    g_info << "1: primary=" << primaryNodeId << " nodes=" << nodeIdList[0] << "," << nodeIdList[1] << endl;
 
     const uint timeout = 60; //secs for node wait
     const unsigned maxsleep = 2000; //ms
@@ -2493,11 +2493,11 @@ runRestarts(NDBT_Context* ctx, NDBT_Step* step)
     CHECK(restarter.waitNodesNoStart(nodeIdList, nodeIdCnt, timeout) == 0);
     NdbSleep_MilliSleep(myRandom48(maxsleep));
 
-    int err_master = 0;
+    int err_primary = 0;
     int err_node[2] = { 0, 0 };
 
     if (NR_error) {
-      err_master = errlst_master[l % errcnt_master];
+      err_primary = errlst_primary[l % errcnt_primary];
 
       // limitation: cannot have 2 node restarts and crash_insert
       // one node may die for real (NF during startup)
@@ -2525,10 +2525,10 @@ runRestarts(NDBT_Context* ctx, NDBT_Step* step)
 
     if (NR_error) {
       {
-        int err = err_master;
+        int err = err_primary;
         if (err != 0) {
-          g_info << "1: insert master error " << err << endl;
-          CHECK(restarter.insertErrorInNode(masterNodeId, err) == 0);
+          g_info << "1: insert primary error " << err << endl;
+          CHECK(restarter.insertErrorInNode(primaryNodeId, err) == 0);
         }
       }
 
@@ -2807,7 +2807,7 @@ runBug21755(NDBT_Context* ctx, NDBT_Step* step)
     t1.loadTable(pNdb, 1000);
   }
   
-  int node = res.getRandomNotMasterNodeId(rand());
+  int node = res.getRandomNotPrimaryNodeId(rand());
   res.restartOneDbNode(node, false, true, true);
   
   if (pDic->dropTable(pTab1.getName()))
@@ -2947,7 +2947,7 @@ runBug24631(NDBT_Context* ctx, NDBT_Step* step)
     return NDBT_FAILED;
 
   
-  int node = res.getRandomNotMasterNodeId(rand());
+  int node = res.getRandomNotPrimaryNodeId(rand());
   res.restartOneDbNode(node, false, true, true);
   NdbSleep_SecSleep(3);
 
@@ -3625,7 +3625,7 @@ runBug29501(NDBT_Context* ctx, NDBT_Step* step) {
   Ndb* pNdb = GETNDB(step);
   NdbDictionary::Dictionary* pDict = pNdb->getDictionary();
 
-  int node = res.getRandomNotMasterNodeId(rand());
+  int node = res.getRandomNotPrimaryNodeId(rand());
   res.restartOneDbNode(node, true, true, false);
 
   if(pDict->createLogfileGroup(lg) != 0){
@@ -4896,18 +4896,18 @@ err:
 struct ST_Errins {
   int value;              // error value to insert
   int code;               // ndb error code to expect
-  int master;             // insert on master / non-master (-1 = random)
+  int primary;             // insert on primary / non-primary (-1 = random)
   int node;               // insert on node id
   const ST_Errins* list;  // include another list
   bool ends;              // end list
   ST_Errins() :
-    value(0), code(0), master(-1), node(0), list(0), ends(true)
+    value(0), code(0), primary(-1), node(0), list(0), ends(true)
   {}
   ST_Errins(const ST_Errins* l) :
-    value(0), code(0), master(-1), node(0), list(l), ends(false)
+    value(0), code(0), primary(-1), node(0), list(l), ends(false)
   {}
   ST_Errins(int v, int c, int m = -1) :
-    value(v), code(c), master(m), node(0), list(0), ends(false)
+    value(v), code(c), primary(m), node(0), list(0), ends(false)
   {}
 };
 
@@ -4916,7 +4916,7 @@ operator<<(NdbOut& out, const ST_Errins& errins)
 {
   out << "value:" << errins.value;
   out << " code:" << errins.code;
-  out << " master:" << errins.master;
+  out << " primary:" << errins.primary;
   out << " node:" << errins.node;
   return out;
 }
@@ -4942,14 +4942,14 @@ st_do_errins(ST_Con& c, ST_Errins& errins)
 {
   require(errins.value != 0);
   if (c.numdbnodes < 2)
-    errins.master = 1;
-  else if (errins.master == -1)
-    errins.master = randomly(1, 2);
-  if (errins.master) {
-    errins.node = c.restarter->getMasterNodeId();
+    errins.primary = 1;
+  else if (errins.primary == -1)
+    errins.primary = randomly(1, 2);
+  if (errins.primary) {
+    errins.node = c.restarter->getPrimaryNodeId();
   } else {
     uint rand = urandom(c.numdbnodes);
-    errins.node = c.restarter->getRandomNotMasterNodeId(rand);
+    errins.node = c.restarter->getRandomNotPrimaryNodeId(rand);
   }
   g_info << "errins: " << errins << endl;
   chk2(c.restarter->insertErrorInNode(errins.node, errins.value) == 0, errins);
@@ -5854,19 +5854,19 @@ st_errins_begin_trans[] = {
 
 static const ST_Errins
 st_errins_end_trans1[] = {
-  ST_Errins(ERR_INSERT_MASTER_FAILURE1, 0, 1),
+  ST_Errins(ERR_INSERT_PRIMARY_FAILURE1, 0, 1),
   ST_Errins()
 };
 
 static const ST_Errins
 st_errins_end_trans2[] = {
-  ST_Errins(ERR_INSERT_MASTER_FAILURE2, 0, 1),
+  ST_Errins(ERR_INSERT_PRIMARY_FAILURE2, 0, 1),
   ST_Errins()
 };
 
 static const ST_Errins
 st_errins_end_trans3[] = {
-  ST_Errins(ERR_INSERT_MASTER_FAILURE3, 0, 1),
+  ST_Errins(ERR_INSERT_PRIMARY_FAILURE3, 0, 1),
   ST_Errins()
 };
 
@@ -6661,8 +6661,8 @@ st_test_anf_fail_begin(ST_Con& c, int arg = -1)
   {
     ST_Con& xc = *c.xcon;
 
-    ST_Errins errins1(6102, -1, 1); // master kills us at begin
-    ST_Errins errins2(6103, -1, 0); // slave delays conf
+    ST_Errins errins1(6102, -1, 1); // primary kills us at begin
+    ST_Errins errins2(6103, -1, 0); // replica delays conf
     chk1(st_do_errins(xc, errins1) == 0);
     chk1(st_do_errins(xc, errins2) == 0);
 
@@ -6701,7 +6701,7 @@ st_test_snf_parse(ST_Con& c, int arg = -1)
     if (i == midcount) {
       require(c.numdbnodes > 1);
       uint rand = urandom(c.numdbnodes);
-      node_id = c.restarter->getRandomNotMasterNodeId(rand);
+      node_id = c.restarter->getRandomNotPrimaryNodeId(rand);
       g_info << "restart node " << node_id << " (async)" << endl;
       const int flags = NdbRestarter::NRRF_NOSTART;
       chk1(c.restarter->restartOneDbNode2(node_id, flags) == 0);
@@ -6741,7 +6741,7 @@ st_test_mnf_parse(ST_Con& c, int arg = -1)
     chk1(st_create_table_index(c, tab) == 0);
     if (i == midcount) {
       require(c.numdbnodes > 1);
-      node_id = c.restarter->getMasterNodeId();
+      node_id = c.restarter->getPrimaryNodeId();
       g_info << "restart node " << node_id << " (async)" << endl;
       const int flags = NdbRestarter::NRRF_NOSTART;
       chk1(c.restarter->restartOneDbNode2(node_id, flags) == 0);
@@ -6778,7 +6778,7 @@ static int
 st_test_mnf_prepare(ST_Con& c, int arg = -1)
 {
   NdbRestarter restarter;
-  //int master = restarter.getMasterNodeId();
+  //int primary = restarter.getPrimaryNodeId();
   ST_Errins errins = st_get_errins(c, st_errins_end_trans1);
   int i;
 
@@ -6795,7 +6795,7 @@ st_test_mnf_prepare(ST_Con& c, int arg = -1)
   else
     chk1(st_end_trans_aborted(c, errins, ST_CommitFlag) == 0);
   chk1(c.restarter->waitClusterStarted() == 0);
-  //st_wait_db_node_up(c, master);
+  //st_wait_db_node_up(c, primary);
   for (i = 0; i < c.tabcount; i++) {
     ST_Tab& tab = c.tab(i);
     // Verify that table is not in db
@@ -6813,7 +6813,7 @@ static int
 st_test_mnf_commit1(ST_Con& c, int arg = -1)
 {
   NdbRestarter restarter;
-  //int master = restarter.getMasterNodeId();
+  //int primary = restarter.getPrimaryNodeId();
   ST_Errins errins = st_get_errins(c, st_errins_end_trans2);
   int i;
 
@@ -6830,7 +6830,7 @@ st_test_mnf_commit1(ST_Con& c, int arg = -1)
   else
     chk1(st_end_trans(c, errins, ST_CommitFlag) == 0);
   chk1(c.restarter->waitClusterStarted() == 0);
-  //st_wait_db_node_up(c, master);
+  //st_wait_db_node_up(c, primary);
   for (i = 0; i < c.tabcount; i++) {
     ST_Tab& tab = c.tab(i);
     chk1(st_verify_table(c, tab) == 0);
@@ -6845,7 +6845,7 @@ static int
 st_test_mnf_commit2(ST_Con& c, int arg = -1)
 {
   NdbRestarter restarter;
-  //int master = restarter.getMasterNodeId();
+  //int primary = restarter.getPrimaryNodeId();
   ST_Errins errins = st_get_errins(c, st_errins_end_trans3);
   int i;
 
@@ -6862,7 +6862,7 @@ st_test_mnf_commit2(ST_Con& c, int arg = -1)
   else
     chk1(st_end_trans(c, errins, ST_CommitFlag) == 0);
   chk1(c.restarter->waitClusterStarted() == 0);
-  //st_wait_db_node_up(c, master);
+  //st_wait_db_node_up(c, primary);
   chk1(st_verify_all(c) == 0);
   for (i = 0; i < c.tabcount; i++) {
     ST_Tab& tab = c.tab(i);
@@ -6879,7 +6879,7 @@ st_test_mnf_run_commit(ST_Con& c, int arg = -1)
 {
   const NdbDictionary::Table* pTab;
   NdbRestarter restarter;
-  //int master = restarter.getMasterNodeId();
+  //int primary = restarter.getPrimaryNodeId();
   int i;
 
   if (arg == FAIL_BEGIN)
@@ -6910,9 +6910,9 @@ st_test_mnf_run_commit(ST_Con& c, int arg = -1)
     chk1(st_end_trans(c, ST_CommitFlag) == 0);
 
 verify:
-  g_info << "wait for master node to come up" << endl;
+  g_info << "wait for primary node to come up" << endl;
   chk1(c.restarter->waitClusterStarted() == 0);
-  //st_wait_db_node_up(c, master);
+  //st_wait_db_node_up(c, primary);
   g_info << "verify all" << endl;
   for (i = 0; i < c.tabcount; i++) {
     ST_Tab& tab = c.tab(i);
@@ -6942,7 +6942,7 @@ static int
 st_test_mnf_run_abort(ST_Con& c, int arg = -1)
 {
   NdbRestarter restarter;
-  //int master = restarter.getMasterNodeId();
+  //int primary = restarter.getPrimaryNodeId();
   const NdbDictionary::Table* pTab;
   bool do_abort = (arg == SUCCEED_ABORT);
   int i;
@@ -6957,9 +6957,9 @@ st_test_mnf_run_abort(ST_Con& c, int arg = -1)
   else
     chk1(st_end_trans_aborted(c, ST_AbortFlag) == 0);
 
-  g_info << "wait for master node to come up" << endl;
+  g_info << "wait for primary node to come up" << endl;
   chk1(c.restarter->waitClusterStarted() == 0);
-  //st_wait_db_node_up(c, master);
+  //st_wait_db_node_up(c, primary);
   g_info << "verify all" << endl;
   for (i = 0; i < c.tabcount; i++) {
     ST_Tab& tab = c.tab(i);
@@ -6978,7 +6978,7 @@ err:
 static int
 st_test_mnf_start_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_START_FAIL, 0, 1); // slave skips start
+  ST_Errins errins(ERR_INSERT_PARTIAL_START_FAIL, 0, 1); // replica skips start
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -6988,7 +6988,7 @@ err:
 static int
 st_test_mnf_parse_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_PARSE_FAIL, 0, 1); // slave skips parse
+  ST_Errins errins(ERR_INSERT_PARTIAL_PARSE_FAIL, 0, 1); // replica skips parse
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -6998,7 +6998,7 @@ err:
 static int
 st_test_mnf_flush_prepare_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_FLUSH_PREPARE_FAIL, 0, 1); // slave skips flush prepare
+  ST_Errins errins(ERR_INSERT_PARTIAL_FLUSH_PREPARE_FAIL, 0, 1); // replica skips flush prepare
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -7008,7 +7008,7 @@ err:
 static int
 st_test_mnf_prepare_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_PREPARE_FAIL, 0, 1); // slave skips prepare
+  ST_Errins errins(ERR_INSERT_PARTIAL_PREPARE_FAIL, 0, 1); // replica skips prepare
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -7018,7 +7018,7 @@ err:
 static int
 st_test_mnf_abort_parse_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_ABORT_PARSE_FAIL, 0, 1); // slave skips abort parse
+  ST_Errins errins(ERR_INSERT_PARTIAL_ABORT_PARSE_FAIL, 0, 1); // replica skips abort parse
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_abort(c, arg);
 err:
@@ -7028,7 +7028,7 @@ err:
 static int
 st_test_mnf_abort_prepare_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_ABORT_PREPARE_FAIL, 0, 1); // slave skips abort prepare
+  ST_Errins errins(ERR_INSERT_PARTIAL_ABORT_PREPARE_FAIL, 0, 1); // replica skips abort prepare
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_abort(c, arg);
 err:
@@ -7039,10 +7039,10 @@ static int
 st_test_mnf_flush_commit_partial(ST_Con& c, int arg = -1)
 {
   NdbRestarter restarter;
-  ST_Errins errins(ERR_INSERT_PARTIAL_FLUSH_COMMIT_FAIL, 0, 1); // slave skips flush commit
+  ST_Errins errins(ERR_INSERT_PARTIAL_FLUSH_COMMIT_FAIL, 0, 1); // replica skips flush commit
   chk1(st_do_errins(c, errins) == 0);
   if (restarter.getNumDbNodes() < 3)
-    // If new master is only node and it hasn't flush commit, we abort
+    // If new primary is only node and it hasn't flush commit, we abort
     return st_test_mnf_run_commit(c, FAIL_END);
   else
     return st_test_mnf_run_commit(c, arg);
@@ -7053,7 +7053,7 @@ err:
 static int
 st_test_mnf_commit_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_COMMIT_FAIL, 0, 1); // slave skips commit
+  ST_Errins errins(ERR_INSERT_PARTIAL_COMMIT_FAIL, 0, 1); // replica skips commit
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -7063,7 +7063,7 @@ err:
 static int
 st_test_mnf_flush_complete_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_FLUSH_COMPLETE_FAIL, 0, 1); // slave skips flush complete
+  ST_Errins errins(ERR_INSERT_PARTIAL_FLUSH_COMPLETE_FAIL, 0, 1); // replica skips flush complete
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -7073,7 +7073,7 @@ err:
 static int
 st_test_mnf_complete_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_COMPLETE_FAIL, 0, 1); // slave skips complete
+  ST_Errins errins(ERR_INSERT_PARTIAL_COMPLETE_FAIL, 0, 1); // replica skips complete
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -7083,7 +7083,7 @@ err:
 static int
 st_test_mnf_end_partial(ST_Con& c, int arg = -1)
 {
-  ST_Errins errins(ERR_INSERT_PARTIAL_END_FAIL, 0, 1); // slave skips end
+  ST_Errins errins(ERR_INSERT_PARTIAL_END_FAIL, 0, 1); // replica skips end
   chk1(st_do_errins(c, errins) == 0);
   return st_test_mnf_run_commit(c, arg);
 err:
@@ -7196,22 +7196,22 @@ st_test_list[] = {
     "build index on non-empty table" },
   { "e1", 1, 0,
     func(st_test_local_create),
-    "fail trigger create in TC, master errins 8033" },
+    "fail trigger create in TC, primary errins 8033" },
   { "e2", 2, 1,
     func(st_test_local_create),
-    "fail trigger create in TC, slave errins 8033" },
+    "fail trigger create in TC, replica errins 8033" },
   { "e3", 1, 2,
     func(st_test_local_create),
-    "fail trigger create in TUP, master errins 4003" },
+    "fail trigger create in TUP, primary errins 4003" },
   { "e4", 2, 3,
     func(st_test_local_create),
-    "fail trigger create in TUP, slave errins 4003" },
+    "fail trigger create in TUP, replica errins 4003" },
   { "e5", 1, 4,
     func(st_test_local_create),
-    "fail index create in TC, master errins 8034" },
+    "fail index create in TC, primary errins 8034" },
   { "e6", 2, 5,
     func(st_test_local_create),
-    "fail index create in TC, slave errins 8034" },
+    "fail index create in TC, replica errins 8034" },
   // random ops
   { "o1", 1, 0,
     func(st_test_trans),
@@ -7275,74 +7275,74 @@ st_test_list[] = {
   //
   { "v1", 2, 0,
     func(st_test_snf_parse),
-    "slave node fail in parse phase, commit" },
+    "replica node fail in parse phase, commit" },
   { "v2", 2, 1,
     func(st_test_snf_parse),
-    "slave node fail in parse phase, abort" },
+    "replica node fail in parse phase, abort" },
   { "w1", 1, 0,
     func(st_test_sr_parse),
     "system restart in parse phase, commit" },
   { "w2", 1, 1,
     func(st_test_sr_parse),
     "system restart in parse phase, abort" },
-#ifdef ndb_master_failure
+#ifdef ndb_primary_failure
   { "x1", 2, 0,
     func(st_test_mnf_parse),
-    "master node fail in parse phase, commit" },
+    "primary node fail in parse phase, commit" },
   { "x2", 2, 1,
     func(st_test_mnf_parse),
-    "master node fail in parse phase, abort" },
+    "primary node fail in parse phase, abort" },
   { "x3", 2, 0,
     func(st_test_mnf_prepare),
-    "master node fail in prepare phase" },
+    "primary node fail in prepare phase" },
   { "x4", 2, 0,
     func(st_test_mnf_commit1),
-    "master node fail in start of commit phase" },
+    "primary node fail in start of commit phase" },
   { "x5", 2, 0,
     func(st_test_mnf_commit2),
-    "master node fail in end of commit phase" },
+    "primary node fail in end of commit phase" },
   { "y1", 2, SUCCEED_COMMIT,
     func(st_test_mnf_start_partial),
-    "master node fail in start phase, retry will succeed" },
+    "primary node fail in start phase, retry will succeed" },
   { "y2", 2, FAIL_CREATE,
     func(st_test_mnf_parse_partial),
-    "master node fail in parse phase, partial rollback" },
+    "primary node fail in parse phase, partial rollback" },
   { "y3", 2, FAIL_END,
     func(st_test_mnf_flush_prepare_partial),
-    "master node fail in flush prepare phase, partial rollback" },
+    "primary node fail in flush prepare phase, partial rollback" },
   { "y4", 2, FAIL_END,
     func(st_test_mnf_prepare_partial),
-    "master node fail in prepare phase, partial rollback" },
+    "primary node fail in prepare phase, partial rollback" },
   { "y5", 2, SUCCEED_COMMIT,
     func(st_test_mnf_flush_commit_partial),
-    "master node fail in flush commit phase, partial rollback" },
+    "primary node fail in flush commit phase, partial rollback" },
   { "y6", 2, SUCCEED_COMMIT,
     func(st_test_mnf_commit_partial),
-    "master node fail in commit phase, commit, partial rollforward" },
+    "primary node fail in commit phase, commit, partial rollforward" },
   { "y7", 2, SUCCEED_COMMIT,
     func(st_test_mnf_flush_complete_partial),
-    "master node fail in flush complete phase, commit, partial rollforward" },
+    "primary node fail in flush complete phase, commit, partial rollforward" },
   { "y8", 2, SUCCEED_COMMIT,
     func(st_test_mnf_complete_partial),
-    "master node fail in complete phase, commit, partial rollforward" },
+    "primary node fail in complete phase, commit, partial rollforward" },
   { "y9", 2, SUCCEED_COMMIT,
     func(st_test_mnf_end_partial),
-    "master node fail in end phase, commit, partial rollforward" },
+    "primary node fail in end phase, commit, partial rollforward" },
   { "z1", 2, SUCCEED_ABORT,
     func(st_test_mnf_abort_parse_partial),
-    "master node fail in abort parse phase, partial rollback" },
+    "primary node fail in abort parse phase, partial rollback" },
   { "z2", 2, FAIL_END,
     func(st_test_mnf_abort_prepare_partial),
-    "master node fail in abort prepare phase, partial rollback" },
+    "primary node fail in abort prepare phase, partial rollback" },
   { "z3", 2, 1,
     func(st_test_mnf_prepare),
-    "master node fail in prepare phase in background" },
+    "primary node fail in prepare phase in background" },
   { "z4", 2, 1,
     func(st_test_mnf_commit1),
-    "master node fail in start of commit phase in background" },
+    "primary node fail in start of commit phase in background" },
   { "z5", 2, 1,
     func(st_test_mnf_commit2),
-    "master node fail in end of commit phase in background" },
+    "primary node fail in end of commit phase in background" },
 
 #endif
 #undef func
@@ -7482,7 +7482,7 @@ runFailCreateHashmap(NDBT_Context* ctx, NDBT_Step* step)
   static int lst[] = { 6204, 6205, 6206, 6207, 6208, 6209, 6210, 6211, 0 };
   
   NdbRestarter restarter;
-  int nodeId = restarter.getMasterNodeId();
+  int nodeId = restarter.getPrimaryNodeId();
   Ndb* pNdb = GETNDB(step);  
   NdbDictionary::Dictionary* pDic = pNdb->getDictionary();
 
@@ -7544,7 +7544,7 @@ int
 runCreateHashmaps(NDBT_Context* ctx, NDBT_Step* step)
 {
   NdbRestarter restarter;
-  // int nodeId = restarter.getMasterNodeId();
+  // int nodeId = restarter.getPrimaryNodeId();
   Ndb* pNdb = GETNDB(step);
   NdbDictionary::Dictionary* pDic = pNdb->getDictionary();
 
@@ -7600,7 +7600,7 @@ runFailAddPartition(NDBT_Context* ctx, NDBT_Step* step)
   NdbDictionary::Dictionary* pDic = pNdb->getDictionary();
   NdbDictionary::Table tab(*ctx->getTab());
   NdbRestarter restarter;
-  int nodeId = restarter.getMasterNodeId();
+  int nodeId = restarter.getPrimaryNodeId();
 
   int errNo = 0;
 #ifdef NDB_USE_GET_ENV
@@ -11055,14 +11055,14 @@ runDictTO_1(NDBT_Context* ctx, NDBT_Step* step)
 
   for (int i = 0; i < ctx->getNumLoops(); i++)
   {
-    int master = restarter.getMasterNodeId();
-    int next = restarter.getNextMasterNodeId(master);
+    int primary = restarter.getPrimaryNodeId();
+    int next = restarter.getNextPrimaryNodeId(primary);
     int val2[] = { DumpStateOrd::CmvmiSetRestartOnErrorInsert, 1 };
 
-    restarter.dumpStateOneNode(master, val2, 2);
-    restarter.insertError2InNode(master, 6050, next);
+    restarter.dumpStateOneNode(primary, val2, 2);
+    restarter.insertError2InNode(primary, 6050, next);
 
-    ndbout_c("master: %d next: %d", master, next);
+    ndbout_c("primary: %d next: %d", primary, next);
     {
       g_info << "save all resource usage" << endl;
       int dump1[] = { DumpStateOrd::SchemaResourceSnapshot };
@@ -11090,7 +11090,7 @@ runDictTO_1(NDBT_Context* ctx, NDBT_Step* step)
         }
       }
 
-      // this should give master failuer...but trans should rollforward
+      // this should give primary failuer...but trans should rollforward
       if (pDic->endSchemaTrans() != 0)
       {
         ndbout << "ERROR: line: " << __LINE__ << endl;
@@ -11108,7 +11108,7 @@ runDictTO_1(NDBT_Context* ctx, NDBT_Step* step)
       g_info << "check all resource usage" << endl;
       for (int j = 0; j < restarter.getNumDbNodes(); j++)
       {
-        if (restarter.getDbNodeId(j) == master)
+        if (restarter.getDbNodeId(j) == primary)
           continue;
 
         int dump1[] = { DumpStateOrd::SchemaResourceCheckLeak };
@@ -11116,8 +11116,8 @@ runDictTO_1(NDBT_Context* ctx, NDBT_Step* step)
       }
     }
 
-    restarter.waitNodesNoStart(&master, 1);
-    restarter.startNodes(&master, 1);
+    restarter.waitNodesNoStart(&primary, 1);
+    restarter.startNodes(&primary, 1);
     restarter.waitClusterStarted();
   }
 
@@ -11271,27 +11271,27 @@ TESTCASE("FailAddFragment",
   INITIALIZER(runFailAddFragment);
 }
 TESTCASE("Restart_NF1",
-         "DICT ops during node graceful shutdown (not master)"){
+         "DICT ops during node graceful shutdown (not primary)"){
   TC_PROPERTY("Restart_NF_ops", 1);
   TC_PROPERTY("Restart_NF_type", 1);
   STEP(runRestarts);
   STEP(runDictOps);
 }
 TESTCASE("Restart_NF2",
-         "DICT ops during node shutdown abort (not master)"){
+         "DICT ops during node shutdown abort (not primary)"){
   TC_PROPERTY("Restart_NF_ops", 1);
   TC_PROPERTY("Restart_NF_type", 2);
   STEP(runRestarts);
   STEP(runDictOps);
 }
 TESTCASE("Restart_NR1",
-         "DICT ops during node startup (not master)"){
+         "DICT ops during node startup (not primary)"){
   TC_PROPERTY("Restart_NR_ops", 1);
   STEP(runRestarts);
   STEP(runDictOps);
 }
 TESTCASE("Restart_NR2",
-         "DICT ops during node startup with crash inserts (not master)"){
+         "DICT ops during node startup with crash inserts (not primary)"){
   TC_PROPERTY("Restart_NR_ops", 1);
   TC_PROPERTY("Restart_NR_error", 1);
   STEP(runRestarts);

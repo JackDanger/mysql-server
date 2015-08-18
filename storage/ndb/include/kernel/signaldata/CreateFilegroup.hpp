@@ -73,7 +73,7 @@ struct CreateFilegroupRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     NoMoreObjectRecords = 710,
     InvalidFormat = 740,
     OutOfFilegroupRecords = 765,
@@ -86,7 +86,7 @@ struct CreateFilegroupRef {
   
   Uint32 senderData;
   Uint32 senderRef;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorCode;
   Uint32 errorLine; 
   Uint32 errorNodeId;
@@ -182,7 +182,7 @@ struct CreateFileRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     NoMoreObjectRecords = 710,
     InvalidFormat = 752,
     NoSuchFilegroup = 753,
@@ -197,7 +197,7 @@ struct CreateFileRef {
   
   Uint32 senderData;
   Uint32 senderRef;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorCode;
   Uint32 errorLine; 
   Uint32 errorKey;

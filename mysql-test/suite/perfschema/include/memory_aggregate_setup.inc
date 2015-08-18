@@ -26,7 +26,7 @@
 # --source ../include/memory_aggregate_setup.inc
 # --source ../include/memory_aggregate_load.inc
 # --source ../include/memory_aggregate_cleanup.inc
-# and a t/memory_aggregate_xxx-master.opt file
+# and a t/memory_aggregate_xxx-primary.opt file
 #
 # Naming conventions for t/memory_aggregate_xxx.test are as follows:
 # t/memory_aggregate_<account><user><host>

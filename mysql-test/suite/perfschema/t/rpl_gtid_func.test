@@ -2,10 +2,10 @@
 --source include/have_perfschema.inc
 --source include/no_protocol.inc
 
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
-connection master;
---echo **** On Master ****
+connection primary;
+--echo **** On Primary ****
 
 --disable_warnings
 drop table if exists test.marker;
@@ -21,8 +21,8 @@ truncate table performance_schema.events_statements_summary_by_digest;
 update performance_schema.setup_instruments
   set enabled='YES', timed='YES';
 
-sync_slave_with_master;
---echo **** On Slave ****
+sync_replica_with_primary;
+--echo **** On Replica ****
 
 truncate table performance_schema.events_waits_history_long;
 truncate table performance_schema.events_statements_summary_by_digest;
@@ -30,16 +30,16 @@ truncate table performance_schema.events_statements_summary_by_digest;
 update performance_schema.setup_instruments
   set enabled='YES', timed='NO';
 
-connection master;
---echo **** On Master ****
+connection primary;
+--echo **** On Primary ****
 
 select * from performance_schema.setup_instruments
   where timed='NO';
 
-select "This better be in the master" as in_master_digest;
+select "This better be in the primary" as in_primary_digest;
 
 insert into performance_schema.setup_objects
-  values ('TABLE', 'master', 'foo', 'YES', 'YES');
+  values ('TABLE', 'primary', 'foo', 'YES', 'YES');
 
 select * from performance_schema.setup_objects
   order by object_type, object_schema, object_name;
@@ -50,18 +50,18 @@ select digest, digest_text, count_star
 
 insert into test.marker values (2);
 
-sync_slave_with_master;
---echo **** On Slave ****
+sync_replica_with_primary;
+--echo **** On Replica ****
 
 select * from test.marker;
 
 select * from performance_schema.setup_instruments
   where timed='YES';
 
-select "This better be in the slave" as in_slave_digest;
+select "This better be in the replica" as in_replica_digest;
 
 insert into performance_schema.setup_objects
-  values ('TABLE', 'slave', 'foo', 'YES', 'YES');
+  values ('TABLE', 'replica', 'foo', 'YES', 'YES');
 
 select * from performance_schema.setup_objects
   order by object_type, object_schema, object_name;
@@ -70,22 +70,22 @@ select digest, digest_text, count_star
   from performance_schema.events_statements_summary_by_digest
   where digest_text like "%in_%_digest%";
 
-connection master;
---echo **** On Master ****
+connection primary;
+--echo **** On Primary ****
 delete from performance_schema.setup_objects
-  where object_schema='master';
-sync_slave_with_master;
---echo **** On Slave ****
+  where object_schema='primary';
+sync_replica_with_primary;
+--echo **** On Replica ****
 
 delete from performance_schema.setup_objects
-  where object_schema='slave';
+  where object_schema='replica';
 select * from performance_schema.setup_objects;
 
 --disable_query_log
 --disable_warnings
-connection master;
+connection primary;
 drop table test.marker;
-sync_slave_with_master;
+sync_replica_with_primary;
 --enable_warnings
 --enable_query_log
 --source include/rpl_end.inc

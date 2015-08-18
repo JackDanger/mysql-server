@@ -9,7 +9,7 @@
 #      1.3 - Single statement on both transactional and non-transactional tables.
 #
 #    In both 1.2 and 1.3, an incident event is logged to notify the user that the
-#    master and slave are diverging.
+#    primary and replica are diverging.
 #
 #    2 - Transactions ended by an implicit commit.
 #
@@ -19,8 +19,8 @@
 #
 #    5 - Transactions with a failing statement that updates a non-transactional
 #    table. In this case, a failure means that the statement does not get into
-#    the cache and an incident event is logged to notify the user that the master
-#    and slave are diverging.
+#    the cache and an incident event is logged to notify the user that the primary
+#    and replica are diverging.
 #
 #    Then it checks what happens when we try to set BINLOG_CACHE_SIZE to a value that
 #    is greater than MAX_BINLOG_CACHE_SIZE and vice-versa. In both cases, We expect
@@ -29,17 +29,17 @@
 --source include/have_myisam.inc
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 call mtr.add_suppression("Option binlog_cache_size ");
-call mtr.add_suppression("Slave SQL for channel '': The incident LOST_EVENTS occured on the master.");
+call mtr.add_suppression("Replica SQL for channel '': The incident LOST_EVENTS occured on the primary.");
 call mtr.add_suppression("The content of the statement cache is corrupted "
                          "while writing a rollback record of the transaction "
                          "to the binary log. An incident event has been "
                          "written to the binary log which will stop the "
-                         "slaves.");
+                         "replicas.");
 call mtr.add_suppression("Error happend while resetting the transaction "
                          "cache for a rolled back transaction or a single "
                          "statement not inside a transaction. An incident "
                          "event has been written to the binary log which "
-                         "will stop the slaves.");
+                         "will stop the replicas.");
 
 
 let $old_max_binlog_cache_size= query_get_value(SHOW VARIABLES LIKE "max_binlog_cache_size", Value, 1);
@@ -51,8 +51,8 @@ SET GLOBAL max_binlog_cache_size = 4096;
 SET GLOBAL binlog_cache_size = 4096;
 SET GLOBAL max_binlog_stmt_cache_size = 4096;
 SET GLOBAL binlog_stmt_cache_size = 4096;
-disconnect master;
-connect (master,127.0.0.1,root,,test,$MASTER_MYPORT,);
+disconnect primary;
+connect (primary,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 
 CREATE TABLE t1(a INT PRIMARY KEY, data VARCHAR(30000)) ENGINE=Innodb;
 CREATE TABLE t2(a INT PRIMARY KEY, data VARCHAR(30000)) ENGINE=MyIsam;
@@ -62,7 +62,7 @@ let $data = `select concat('"', repeat('a',2000), '"')`;
 
 --echo ###### 1 - SINGLE STATEMENT  ######
 
-connection master;
+connection primary;
 
 --echo *** Single statement on transactional table ***
 --disable_query_log
@@ -79,9 +79,9 @@ eval INSERT INTO t2 (a, data) VALUES (2,
 --enable_query_log
 
 # Incident event
-# 1590=ER_SLAVE_INCIDENT
---let $slave_sql_errno= 1590
---source include/wait_for_slave_sql_error_and_skip.inc
+# 1590=ER_REPLICA_INCIDENT
+--let $replica_sql_errno= 1590
+--source include/wait_for_replica_sql_error_and_skip.inc
 
 --disable_query_log
 eval INSERT INTO t1 (a, data) VALUES (3, $data);
@@ -99,17 +99,17 @@ eval UPDATE t2, t1 SET t2.data = CONCAT($data, $data, $data, $data),
                        t1.data = CONCAT($data, $data, $data, $data);
 --enable_query_log
 
-# 1590=ER_SLAVE_INCIDENT
---let $slave_sql_errno= 1590
---let $slave_skip_counter= `SELECT IF(@@binlog_format = 'ROW', 2, 1)`
---source include/wait_for_slave_sql_error_and_skip.inc
+# 1590=ER_REPLICA_INCIDENT
+--let $replica_sql_errno= 1590
+--let $replica_skip_counter= `SELECT IF(@@binlog_format = 'ROW', 2, 1)`
+--source include/wait_for_replica_sql_error_and_skip.inc
 
---let $diff_tables= master:t1,slave:t1
+--let $diff_tables= primary:t1,replica:t1
 --source include/diff_tables.inc
 
 --echo #########  2 - BEGIN - IMPLICIT COMMIT by DDL #########
 
-connection master;
+connection primary;
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
 TRUNCATE TABLE t3;
@@ -191,13 +191,13 @@ BEGIN;
 CREATE TABLE t5 (a int);
 --enable_query_log
 
---sync_slave_with_master
---let $diff_tables= master:t1,slave:t1
+--sync_replica_with_primary
+--let $diff_tables= primary:t1,replica:t1
 --source include/diff_tables.inc
 
 --echo ###### 3 - BEGIN - COMMIT ######
 
-connection master;
+connection primary;
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
 TRUNCATE TABLE t3;
@@ -219,13 +219,13 @@ BEGIN;
 --enable_query_log
 COMMIT;
 
---sync_slave_with_master
---let $diff_tables= master:t1,slave:t1
+--sync_replica_with_primary
+--let $diff_tables= primary:t1,replica:t1
 --source include/diff_tables.inc
 
 --echo ####### 4 - BEGIN - ROLLBACK  #######
 
-connection master;
+connection primary;
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
 TRUNCATE TABLE t3;
@@ -247,13 +247,13 @@ BEGIN;
 --enable_query_log
 ROLLBACK;
 
---sync_slave_with_master
---let $diff_tables= master:t1,slave:t1
+--sync_replica_with_primary
+--let $diff_tables= primary:t1,replica:t1
 --source include/diff_tables.inc
 
 --echo ###### 5 - PROCEDURE  #######
 
-connection master;
+connection primary;
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
 TRUNCATE TABLE t3;
@@ -295,13 +295,13 @@ eval CALL p1($data);
 --enable_query_log
 ROLLBACK;
 
---sync_slave_with_master
---let $diff_tables= master:t1,slave:t1
+--sync_replica_with_primary
+--let $diff_tables= primary:t1,replica:t1
 --source include/diff_tables.inc
 
 --echo ####### 6 - XID ######
 
-connection master;
+connection primary;
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
 TRUNCATE TABLE t3;
@@ -325,13 +325,13 @@ SAVEPOINT sv;
 ROLLBACK TO sv;
 COMMIT;
 
---sync_slave_with_master
---let $diff_tables= master:t1,slave:t1
+--sync_replica_with_primary
+--let $diff_tables= primary:t1,replica:t1
 --source include/diff_tables.inc
 
 --echo ####### 7 - NON-TRANS TABLE #######
 
-connection master;
+connection primary;
 TRUNCATE TABLE t1;
 TRUNCATE TABLE t2;
 TRUNCATE TABLE t3;
@@ -367,35 +367,35 @@ BEGIN;
 --enable_query_log
 COMMIT;
 
---sync_slave_with_master
---let $diff_tables= master:t1,slave:t1
+--sync_replica_with_primary
+--let $diff_tables= primary:t1,replica:t1
 --source include/diff_tables.inc
 
 --echo ######### 8 - Bug#55375(Regression Bug) Transaction bigger than  ##########
---echo #########     max_binlog_cache_size crashes slave                ##########
+--echo #########     max_binlog_cache_size crashes replica                ##########
 
---echo # [ On Slave ]
+--echo # [ On Replica ]
 SET GLOBAL max_binlog_cache_size = 4096;
 SET GLOBAL binlog_cache_size = 4096;
 SET GLOBAL max_binlog_stmt_cache_size = 4096;
 SET GLOBAL binlog_stmt_cache_size = 4096;
 
-source include/stop_slave.inc;
-source include/start_slave.inc;
+source include/stop_replica.inc;
+source include/start_replica.inc;
 CALL mtr.add_suppression("Multi-statement transaction required more than 'max_binlog_cache_size' bytes of storage.*");
 CALL mtr.add_suppression("Multi-statement transaction required more than 'max_binlog_stmt_cache_size' bytes of storage.*");
 CALL mtr.add_suppression("Writing one row to the row-based binary log failed.*");
-CALL mtr.add_suppression("Slave SQL.*The incident LOST_EVENTS occured on the master. Message: error writing to the binary log");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+CALL mtr.add_suppression("Replica SQL.*The incident LOST_EVENTS occured on the primary. Message: error writing to the binary log");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
-connection master;
+connection primary;
 TRUNCATE t1;
 
-sync_slave_with_master;
---let binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
---let binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+sync_replica_with_primary;
+--let binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
+--let binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
 
-connection master;
+connection primary;
 --replace_result $old_max_binlog_cache_size ORIGINAL_VALUE
 --eval SET GLOBAL max_binlog_cache_size= $old_max_binlog_cache_size
 --replace_result $old_binlog_cache_size ORIGINAL_VALUE
@@ -404,8 +404,8 @@ connection master;
 --eval SET GLOBAL max_binlog_stmt_cache_size= $old_max_binlog_stmt_cache_size
 --replace_result $old_binlog_stmt_cache_size ORIGINAL_VALUE
 --eval SET GLOBAL binlog_stmt_cache_size= $old_binlog_stmt_cache_size
-disconnect master;
-connect (master,127.0.0.1,root,,test,$MASTER_MYPORT,);
+disconnect primary;
+connect (primary,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 
 --let $n=128
 BEGIN;
@@ -419,9 +419,9 @@ while ($n)
 --enable_query_log
 COMMIT;
 
---connection slave
---let $slave_sql_errno= 1534,1197
-source include/wait_for_slave_sql_error.inc;
+--connection replica
+--let $replica_sql_errno= 1534,1197
+source include/wait_for_replica_sql_error.inc;
 
 SELECT count(*) FROM t1;
 source include/show_binlog_events.inc;
@@ -435,11 +435,11 @@ source include/show_binlog_events.inc;
 --replace_result $old_binlog_stmt_cache_size ORIGINAL_VALUE
 --eval SET GLOBAL binlog_stmt_cache_size= $old_binlog_stmt_cache_size
 
-source include/stop_slave.inc;
-source include/start_slave.inc;
+source include/stop_replica.inc;
+source include/start_replica.inc;
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 SELECT count(*) FROM t1;
 
 --echo ######## CHECK MAX_BINLOG_CACHE_SIZE and BINLOG_CACHE_SIZE #########
@@ -448,7 +448,7 @@ SELECT count(*) FROM t1;
 # greater than MAX_BINLOG_CACHE_SIZE and vice-versa. In both cases, We expect
 # that BINLOG_CACHE_SIZE will be set to MAX_BINLOG_CACHE_SIZE. (BUG#55377)
 # 
-connection master;
+connection primary;
 
 SET @@GLOBAL.MAX_BINLOG_CACHE_SIZE= 8192;
 SHOW VARIABLES LIKE 'MAX_BINLOG_CACHE_SIZE';

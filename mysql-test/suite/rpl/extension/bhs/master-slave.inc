@@ -1,23 +1,23 @@
 # Replication tests need binlog
 #
-# $skip_slave_start  If true, the slave will not be started
+# $skip_replica_start  If true, the replica will not be started
 source include/have_log_bin.inc;
 
-connect (master,127.0.0.1,root,,test,$MASTER_MYPORT,);
-connect (master1,127.0.0.1,root,,test,$MASTER_MYPORT,);
-connect (slave,127.0.0.1,root,,test,$SLAVE_MYPORT,);
-connect (slave1,127.0.0.1,root,,test,$SLAVE_MYPORT,);
+connect (primary,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+connect (primary1,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+connect (replica,127.0.0.1,root,,test,$REPLICA_MYPORT,);
+connect (replica1,127.0.0.1,root,,test,$REPLICA_MYPORT,);
 
--- source include/master-slave-reset.inc
+-- source include/primary-replica-reset.inc
 
-source suite/rpl_bhs/extension/bhs/master-slave-bhs.inc;
+source suite/rpl_bhs/extension/bhs/primary-replica-bhs.inc;
 
-if (!$skip_slave_start) {
-  connection master;
-  sync_slave_with_master blackhole_slave;
-  sync_slave_with_master;
+if (!$skip_replica_start) {
+  connection primary;
+  sync_replica_with_primary blackhole_replica;
+  sync_replica_with_primary;
 }
 
 
-# Set the default connection to 'master'
-connection master;
+# Set the default connection to 'primary'
+connection primary;

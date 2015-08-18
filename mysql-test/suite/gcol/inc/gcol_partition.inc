@@ -37,7 +37,7 @@ insert into t1 values ('2005-01-01',default);
 select * from t1;
 
 # Specifically for MyISAM, check that data is written into correct 
-# $MYSQLTEST_VARDIR/master-data/test/t1*p?.MYD files
+# $MYSQLTEST_VARDIR/primary-data/test/t1*p?.MYD files
 
 --echo # Modify the expression of generated column b
 ALTER TABLE t1 modify b int generated always as (year(a)-1) virtual;
@@ -99,7 +99,7 @@ select * from t1;
 #{
 # --echo # Check how data is physically partitioned.
 # --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
-# --exec du -b $MYSQLTEST_VARDIR/master-data/test/t1*p?.MYD
+# --exec du -b $MYSQLTEST_VARDIR/primary-data/test/t1*p?.MYD
 #}
 
 select * from t1;

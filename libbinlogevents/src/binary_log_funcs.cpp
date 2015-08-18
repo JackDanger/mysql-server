@@ -84,7 +84,7 @@ unsigned int my_timestamp_binary_length(unsigned int dec)
    Compute the maximum display length of a field.
 
    @param sql_type Type of the field
-   @param metadata The metadata from the master for the field.
+   @param metadata The metadata from the primary for the field.
    @return Maximum length of the field in bytes.
  */
 unsigned int
@@ -152,7 +152,7 @@ max_display_length_for_field(enum_field_types sql_type, unsigned int metadata)
 
   case MYSQL_TYPE_BIT:
     /*
-      Decode the size of the bit field from the master.
+      Decode the size of the bit field from the primary.
     */
     BAPI_ASSERT((metadata & 0xff) <= 7);
     return 8 * (metadata >> 8U) + (metadata & 0x00ff);
@@ -211,12 +211,12 @@ int decimal_binary_size(int precision, int scale)
  This helper function calculates the size in bytes of a particular field in a
  row type event as defined by the field_ptr and metadata_ptr arguments.
  @param col Field type code
- @param master_data The field data
+ @param primary_data The field data
  @param metadata The field metadata
 
  @return The size in bytes of a particular field
 */
-uint32_t calc_field_size(unsigned char col, const unsigned char *master_data,
+uint32_t calc_field_size(unsigned char col, const unsigned char *primary_data,
                          unsigned int metadata)
 {
   uint32_t length= 0;
@@ -246,18 +246,18 @@ uint32_t calc_field_size(unsigned char col, const unsigned char *master_data,
     else
     {
       /*
-        We are reading the actual size from the master_data record
+        We are reading the actual size from the primary_data record
         because this field has the actual lengh stored in the first
         one or two bytes.
       */
       length= max_display_length_for_field(MYSQL_TYPE_STRING, metadata) > 255 ? 2 : 1;
 
       if (length == 1)
-        length+= *master_data;
+        length+= *primary_data;
       else
       {
         uint32_t temp= 0;
-        memcpy(&temp, master_data, 2);
+        memcpy(&temp, primary_data, 2);
         length= length + le32toh(temp);
       }
     }
@@ -331,9 +331,9 @@ uint32_t calc_field_size(unsigned char col, const unsigned char *master_data,
   case MYSQL_TYPE_BIT:
   {
     /*
-      Decode the size of the bit field from the master.
-        from_len is the length in bytes from the master
-        from_bit_len is the number of extra bits stored in the master record
+      Decode the size of the bit field from the primary.
+        from_len is the length in bytes from the primary
+        from_bit_len is the number of extra bits stored in the primary record
       If from_bit_len is not 0, add 1 to the length to account for accurate
       number of bytes needed.
     */
@@ -347,11 +347,11 @@ uint32_t calc_field_size(unsigned char col, const unsigned char *master_data,
   {
     length= metadata > 255 ? 2 : 1;
     if (length == 1)
-      length+= (uint32_t) *master_data;
+      length+= (uint32_t) *primary_data;
     else
     {
       uint32_t temp= 0;
-      memcpy(&temp, master_data, 2);
+      memcpy(&temp, primary_data, 2);
       length= length + le32toh(temp);
     }
     break;
@@ -371,18 +371,18 @@ uint32_t calc_field_size(unsigned char col, const unsigned char *master_data,
     */
     switch (metadata) {
     case 1:
-      length= *master_data;
+      length= *primary_data;
       break;
     case 2:
-      memcpy(&length, master_data, 2);
+      memcpy(&length, primary_data, 2);
       length= le32toh(length);
       break;
     case 3:
-      memcpy(&length, master_data, 3);
+      memcpy(&length, primary_data, 3);
       length= le32toh(length);
       break;
     case 4:
-      memcpy(&length, master_data, 4);
+      memcpy(&length, primary_data, 4);
       length= le32toh(length);
       break;
     default:

@@ -180,12 +180,12 @@ ADD Super_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER 
 ADD Create_tmp_table_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER Super_priv,
 ADD Lock_tables_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER Create_tmp_table_priv,
 ADD Execute_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER Lock_tables_priv,
-ADD Repl_slave_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER Execute_priv,
-ADD Repl_client_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER Repl_slave_priv;
+ADD Repl_replica_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER Execute_priv,
+ADD Repl_client_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL AFTER Repl_replica_priv;
 
 # Convert privileges so that users have similar privileges as before
 
-UPDATE user SET Show_db_priv= Select_priv, Super_priv=Process_priv, Execute_priv=Process_priv, Create_tmp_table_priv='Y', Lock_tables_priv='Y', Repl_slave_priv=file_priv, Repl_client_priv=File_priv where user<>"" AND @hadShowDbPriv = 0;
+UPDATE user SET Show_db_priv= Select_priv, Super_priv=Process_priv, Execute_priv=Process_priv, Create_tmp_table_priv='Y', Lock_tables_priv='Y', Repl_replica_priv=file_priv, Repl_client_priv=File_priv where user<>"" AND @hadShowDbPriv = 0;
 
 
 #  Add fields that can be used to limit number of questions and connections
@@ -238,7 +238,7 @@ ALTER TABLE user
   MODIFY Create_tmp_table_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL,
   MODIFY Lock_tables_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL,
   MODIFY Execute_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL,
-  MODIFY Repl_slave_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL,
+  MODIFY Repl_replica_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL,
   MODIFY Repl_client_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL,
   MODIFY ssl_type enum('','ANY','X509', 'SPECIFIED') COLLATE utf8_general_ci DEFAULT '' NOT NULL;
 
@@ -586,7 +586,7 @@ ALTER TABLE event MODIFY name char(64) CHARACTER SET utf8 NOT NULL default '';
 ALTER TABLE event MODIFY COLUMN originator INT UNSIGNED NOT NULL;
 ALTER TABLE event ADD COLUMN originator INT UNSIGNED NOT NULL AFTER comment;
 
-ALTER TABLE event MODIFY COLUMN status ENUM('ENABLED','DISABLED','SLAVESIDE_DISABLED') NOT NULL default 'ENABLED';
+ALTER TABLE event MODIFY COLUMN status ENUM('ENABLED','DISABLED','REPLICASIDE_DISABLED') NOT NULL default 'ENABLED';
 
 ALTER TABLE event ADD COLUMN time_zone char(64) CHARACTER SET latin1
         NOT NULL DEFAULT 'SYSTEM' AFTER originator;
@@ -787,29 +787,29 @@ DROP PREPARE stmt;
 
 flush privileges;
 
-ALTER TABLE slave_master_info ADD Ssl_crl TEXT CHARACTER SET utf8 COLLATE utf8_bin COMMENT 'The file used for the Certificate Revocation List (CRL)';
-ALTER TABLE slave_master_info ADD Ssl_crlpath TEXT CHARACTER SET utf8 COLLATE utf8_bin COMMENT 'The path used for Certificate Revocation List (CRL) files';
-ALTER TABLE slave_master_info STATS_PERSISTENT=0;
-ALTER TABLE slave_worker_info STATS_PERSISTENT=0;
-ALTER TABLE slave_relay_log_info STATS_PERSISTENT=0;
+ALTER TABLE replica_primary_info ADD Ssl_crl TEXT CHARACTER SET utf8 COLLATE utf8_bin COMMENT 'The file used for the Certificate Revocation List (CRL)';
+ALTER TABLE replica_primary_info ADD Ssl_crlpath TEXT CHARACTER SET utf8 COLLATE utf8_bin COMMENT 'The path used for Certificate Revocation List (CRL) files';
+ALTER TABLE replica_primary_info STATS_PERSISTENT=0;
+ALTER TABLE replica_worker_info STATS_PERSISTENT=0;
+ALTER TABLE replica_relay_log_info STATS_PERSISTENT=0;
 ALTER TABLE gtid_executed STATS_PERSISTENT=0;
 
 #
-# From 5.7 onwards, all slave info tables have Channel_Name as a column.
+# From 5.7 onwards, all replica info tables have Channel_Name as a column.
 # This column is needed  for multi-source replication
 #
-ALTER TABLE slave_master_info
-  ADD Channel_name CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT 'The channel on which the slave is connected to a source. Used in Multisource Replication',
+ALTER TABLE replica_primary_info
+  ADD Channel_name CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT 'The channel on which the replica is connected to a source. Used in Multisource Replication',
   DROP PRIMARY KEY,
   ADD PRIMARY KEY(Channel_name);
 
-ALTER TABLE slave_relay_log_info
-  ADD Channel_name CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT 'The channel on which the slave is connected to a source. Used in Multisource Replication',
+ALTER TABLE replica_relay_log_info
+  ADD Channel_name CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT 'The channel on which the replica is connected to a source. Used in Multisource Replication',
   DROP PRIMARY KEY,
   ADD PRIMARY KEY(Channel_name);
 
-ALTER TABLE slave_worker_info
-  ADD Channel_name CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT 'The channel on which the slave is connected to a source. Used in Multisource Replication',
+ALTER TABLE replica_worker_info
+  ADD Channel_name CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT 'The channel on which the replica is connected to a source. Used in Multisource Replication',
   DROP PRIMARY KEY,
   ADD PRIMARY KEY(Channel_name, Id);
 

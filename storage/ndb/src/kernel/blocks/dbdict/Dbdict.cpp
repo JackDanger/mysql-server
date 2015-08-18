@@ -387,7 +387,7 @@ void Dbdict::execDBINFO_SCANREQ(Signal *signal)
   case Ndbinfo::DICT_OBJ_INFO_TABLEID:
   {
     jam();
-    if (c_masterNodeId != getOwnNodeId())
+    if (c_primaryNodeId != getOwnNodeId())
     {
       jam();
       break;
@@ -536,9 +536,9 @@ void Dbdict::execCONTINUEB(Signal* signal)
     jam();
     {
       Uint32* data = &signal->theData[0];
-      Uint32 masterRef = data[1];
+      Uint32 primaryRef = data[1];
       memmove(&data[0], &data[2], SchemaTransImplConf::SignalLength << 2);
-      sendSignal(masterRef, GSN_SCHEMA_TRANS_IMPL_CONF, signal,
+      sendSignal(primaryRef, GSN_SCHEMA_TRANS_IMPL_CONF, signal,
                  SchemaTransImplConf::SignalLength, JBB);
     }
     break;
@@ -551,10 +551,10 @@ void Dbdict::execCONTINUEB(Signal* signal)
     trans_commit_wait_gci(signal);
     break;
   case ZGET_TABINFO_RETRY:
-    // We have waited a while. Now we send a new request to the master.
+    // We have waited a while. Now we send a new request to the primary.
     memmove(signal->theData, signal->theData+1, 
             GetTabInfoReq::SignalLength * sizeof *signal->theData);
-    sendSignal(calcDictBlockRef(c_masterNodeId), GSN_GET_TABINFOREQ, signal,
+    sendSignal(calcDictBlockRef(c_primaryNodeId), GSN_GET_TABINFOREQ, signal,
                GetTabInfoReq::SignalLength, JBB);
     break;
   default :
@@ -1442,9 +1442,9 @@ void Dbdict::closeWriteTableConf(Signal* signal,
   c_writeTableRecord.tableWriteState = WriteTableRecord::IDLE;
   switch (state) {
   case WriteTableRecord::IDLE:
-  case WriteTableRecord::WRITE_ADD_TABLE_MASTER :
-  case WriteTableRecord::WRITE_ADD_TABLE_SLAVE :
-  case WriteTableRecord::WRITE_RESTART_FROM_MASTER :
+  case WriteTableRecord::WRITE_ADD_TABLE_PRIMARY :
+  case WriteTableRecord::WRITE_ADD_TABLE_REPLICA :
+  case WriteTableRecord::WRITE_RESTART_FROM_PRIMARY :
   case WriteTableRecord::WRITE_RESTART_FROM_OWN :
     ndbrequire(false);
     break;
@@ -2377,7 +2377,7 @@ void Dbdict::initCommonData()
   initReadSchemaRecord();
   initWriteSchemaRecord();
 
-  c_masterNodeId = ZNIL;
+  c_primaryNodeId = ZNIL;
   c_numberNode = 0;
   c_noNodesFailed = 0;
   c_failureNr = 0;
@@ -3090,7 +3090,7 @@ void Dbdict::execREAD_NODESCONF(Signal* signal)
 
   ReadNodesConf * const readNodes = (ReadNodesConf *)&signal->theData[0];
   c_numberNode   = readNodes->noOfNodes;
-  c_masterNodeId = readNodes->masterNodeId;
+  c_primaryNodeId = readNodes->primaryNodeId;
 
   c_noNodesFailed = 0;
   c_aliveNodes.clear();
@@ -3178,8 +3178,8 @@ Dbdict::activateIndexes(Signal* signal, Uint32 id)
   switch (c_restartType) {
   case NodeState::ST_SYSTEM_RESTART:
     // activate in a distributed trans but do not build yet
-    if (c_masterNodeId != getOwnNodeId()) {
-      D("activateIndexes not master");
+    if (c_primaryNodeId != getOwnNodeId()) {
+      D("activateIndexes not primary");
       goto out;
     }
     requestFlags |= DictSignal::RF_NO_BUILD;
@@ -3255,7 +3255,7 @@ out:
   else
   {
     g_eventLogger->info("Copying of dictionary information"
-                        " from master Completed");
+                        " from primary Completed");
   }
 
   signal->theData[0] = reference();
@@ -3750,24 +3750,24 @@ void Dbdict::execDICTSTARTREQ(Signal* signal)
     CRASH_INSERTION(6000);
 
     g_eventLogger->info("Copying of dictionary information"
-                        " from master Starting");
+                        " from primary Starting");
 
-    BlockReference dictRef = calcDictBlockRef(c_masterNodeId);
+    BlockReference dictRef = calcDictBlockRef(c_primaryNodeId);
     signal->theData[0] = getOwnNodeId();
     sendSignal(dictRef, GSN_GET_SCHEMA_INFOREQ, signal, 1, JBB);
     return;
   }
   ndbrequire(c_systemRestart);
-  ndbrequire(c_masterNodeId == getOwnNodeId());
+  ndbrequire(c_primaryNodeId == getOwnNodeId());
 
   infoEvent("Restore dictionary information from disk Starting");
 
   c_schemaRecord.m_callback.m_callbackData = 0;
   c_schemaRecord.m_callback.m_callbackFunction =
-    safe_cast(&Dbdict::masterRestart_checkSchemaStatusComplete);
+    safe_cast(&Dbdict::primaryRestart_checkSchemaStatusComplete);
 
   /**
-   * master has same new/old schema file...
+   * primary has same new/old schema file...
    *   copy old(read from disk) to new
    */
   {
@@ -3781,12 +3781,12 @@ void Dbdict::execDICTSTARTREQ(Signal* signal)
   }
 
   Callback cb =
-    { safe_cast(&Dbdict::masterRestart_checkSchemaStatusComplete), 0 };
+    { safe_cast(&Dbdict::primaryRestart_checkSchemaStatusComplete), 0 };
   startRestoreSchema(signal, cb);
 }//execDICTSTARTREQ()
 
 void
-Dbdict::masterRestart_checkSchemaStatusComplete(Signal* signal,
+Dbdict::primaryRestart_checkSchemaStatusComplete(Signal* signal,
 						Uint32 callbackData,
 						Uint32 returnCode)
 {
@@ -3859,7 +3859,7 @@ Dbdict::sendSchemaComplete(Signal * signal,
 
 
 /* ---------------------------------------------------------------- */
-// We receive the schema info from master as part of all restarts
+// We receive the schema info from primary as part of all restarts
 // except the initial start where no tables exists.
 /* ---------------------------------------------------------------- */
 void Dbdict::execSCHEMA_INFO(Signal* signal)
@@ -3939,7 +3939,7 @@ Dbdict::restart_checkSchemaStatusComplete(Signal * signal,
   {
     jam();
     signal->theData[0] = getOwnNodeId();
-    sendSignal(calcDictBlockRef(c_masterNodeId), GSN_SCHEMA_INFOCONF,
+    sendSignal(calcDictBlockRef(c_primaryNodeId), GSN_SCHEMA_INFOCONF,
 	       signal, 1, JBB);
     return;
   }
@@ -3956,9 +3956,9 @@ void Dbdict::execSCHEMA_INFOCONF(Signal* signal)
   ndbrequire(signal->getNoOfSections() == 0);
 
 /* ---------------------------------------------------------------- */
-// This signal is received in the master as part of system restart
-// from all nodes (including the master) after they have synchronised
-// their data with the master node's schema information.
+// This signal is received in the primary as part of system restart
+// from all nodes (including the primary) after they have synchronised
+// their data with the primary node's schema information.
 /* ---------------------------------------------------------------- */
   const Uint32 nodeId = signal->theData[0];
   c_sendSchemaRecord.m_SCHEMAINFO_Counter.clearWaitingFor(nodeId);
@@ -4076,13 +4076,13 @@ void Dbdict::initRestartRecord(Uint32 startpass, Uint32 lastpass,
 
 void Dbdict::checkSchemaStatus(Signal* signal)
 {
-  // masterxsf == schema file of master (i.e what's currently in cluster)
+  // primaryxsf == schema file of primary (i.e what's currently in cluster)
   // ownxsf = schema file read from disk
-  XSchemaFile * masterxsf = &c_schemaFile[SchemaRecord::OLD_SCHEMA_FILE];
+  XSchemaFile * primaryxsf = &c_schemaFile[SchemaRecord::OLD_SCHEMA_FILE];
   XSchemaFile * ownxsf = &c_schemaFile[SchemaRecord::NEW_SCHEMA_FILE];
 
-  ndbrequire(masterxsf->noOfPages == ownxsf->noOfPages);
-  const Uint32 noOfEntries = masterxsf->noOfPages * NDB_SF_PAGE_ENTRIES;
+  ndbrequire(primaryxsf->noOfPages == ownxsf->noOfPages);
+  const Uint32 noOfEntries = primaryxsf->noOfPages * NDB_SF_PAGE_ENTRIES;
 
   for (; c_restartRecord.activeTable < noOfEntries;
        c_restartRecord.activeTable++)
@@ -4090,30 +4090,30 @@ void Dbdict::checkSchemaStatus(Signal* signal)
     jam();
 
     Uint32 tableId = c_restartRecord.activeTable;
-    SchemaFile::TableEntry *masterEntry = getTableEntry(masterxsf, tableId);
+    SchemaFile::TableEntry *primaryEntry = getTableEntry(primaryxsf, tableId);
     SchemaFile::TableEntry *ownEntry = getTableEntry(ownxsf, tableId);
-    SchemaFile::EntryState masterState =
-      (SchemaFile::EntryState)masterEntry->m_tableState;
+    SchemaFile::EntryState primaryState =
+      (SchemaFile::EntryState)primaryEntry->m_tableState;
     SchemaFile::EntryState ownState =
       (SchemaFile::EntryState)ownEntry->m_tableState;
 
     if (c_restartRecord.activeTable >= c_noOfMetaTables)
     {
       jam();
-      ndbrequire(masterState == SchemaFile::SF_UNUSED);
+      ndbrequire(primaryState == SchemaFile::SF_UNUSED);
       ndbrequire(ownState == SchemaFile::SF_UNUSED);
       continue;
     }//if
 
     D("checkSchemaStatus" << V(c_restartRecord.m_pass) << V(c_restartRecord.activeTable));
     D("own" << *ownEntry);
-    D("mst" << *masterEntry);
+    D("mst" << *primaryEntry);
 
 //#define PRINT_SCHEMA_RESTART
 #ifdef PRINT_SCHEMA_RESTART
     printf("checkSchemaStatus: pass: %d table: %d",
            c_restartRecord.m_pass, tableId);
-    ndbout << "old: " << *ownEntry << " new: " << *masterEntry << endl;
+    ndbout << "old: " << *ownEntry << " new: " << *primaryEntry << endl;
 #endif
 
     if (c_restartRecord.m_pass <= CREATE_OLD_PASS)
@@ -4137,7 +4137,7 @@ void Dbdict::checkSchemaStatus(Signal* signal)
       if (ownState != SchemaFile::SF_IN_USE)
         continue;
 
-      if (* ownEntry == * masterEntry)
+      if (* ownEntry == * primaryEntry)
         continue;
 
       restartDropObj(signal, tableId, ownEntry);
@@ -4146,10 +4146,10 @@ void Dbdict::checkSchemaStatus(Signal* signal)
 
     if (c_restartRecord.m_pass <= CREATE_NEW_PASS)
     {
-      if (!::checkSchemaStatus(masterEntry->m_tableType, c_restartRecord.m_pass))
+      if (!::checkSchemaStatus(primaryEntry->m_tableType, c_restartRecord.m_pass))
         continue;
 
-      if (masterState != SchemaFile::SF_IN_USE)
+      if (primaryState != SchemaFile::SF_IN_USE)
       {
         if (ownEntry->m_tableType != DictTabInfo::SchemaTransaction)
         {
@@ -4163,20 +4163,20 @@ void Dbdict::checkSchemaStatus(Signal* signal)
        * handle table(index) special as DIH has already copied
        *   table (using COPY_TABREQ)
        */
-      if (DictTabInfo::isIndex(masterEntry->m_tableType) ||
-          DictTabInfo::isTable(masterEntry->m_tableType))
+      if (DictTabInfo::isIndex(primaryEntry->m_tableType) ||
+          DictTabInfo::isTable(primaryEntry->m_tableType))
       {
-        bool file = * ownEntry == *masterEntry &&
-          (!DictTabInfo::isIndex(masterEntry->m_tableType) || c_systemRestart);
+        bool file = * ownEntry == *primaryEntry &&
+          (!DictTabInfo::isIndex(primaryEntry->m_tableType) || c_systemRestart);
 
-        restartCreateObj(signal, tableId, masterEntry, file);
+        restartCreateObj(signal, tableId, primaryEntry, file);
         return;
       }
 
-      if (* ownEntry == *masterEntry)
+      if (* ownEntry == *primaryEntry)
         continue;
 
-      restartCreateObj(signal, tableId, masterEntry, false);
+      restartCreateObj(signal, tableId, primaryEntry, false);
       return;
     }
   }
@@ -4572,8 +4572,8 @@ Dbdict::execGET_TABINFOREF(Signal* signal){
     jam();
 
     /**
-     * Master is busy. Send delayed CONTINUEB to self to add some delay, then
-     * send new GET_TABINFOREQ to master.
+     * Primary is busy. Send delayed CONTINUEB to self to add some delay, then
+     * send new GET_TABINFOREQ to primary.
      */
     signal->getDataPtrSend()[0] = ZGET_TABINFO_RETRY;
 
@@ -4713,7 +4713,7 @@ Dbdict::restartCreateObj(Signal* signal,
   else
   {
     /**
-     * Get from master
+     * Get from primary
      */
     GetTabInfoReq * const req = (GetTabInfoReq *)&signal->theData[0];
     req->senderRef = reference();
@@ -4721,7 +4721,7 @@ Dbdict::restartCreateObj(Signal* signal,
     req->requestType = GetTabInfoReq::RequestById |
       GetTabInfoReq::LongSignalConf;
     req->tableId = tableId;
-    sendSignal(calcDictBlockRef(c_masterNodeId), GSN_GET_TABINFOREQ, signal,
+    sendSignal(calcDictBlockRef(c_primaryNodeId), GSN_GET_TABINFOREQ, signal,
 	       GetTabInfoReq::SignalLength, JBB);
   }
 }
@@ -4813,7 +4813,7 @@ Dbdict::restartCreateObj_parse(Signal* signal,
   }
 
   op_ptr.p->m_restart = file ? 1 : 2;
-  op_ptr.p->m_state = SchemaOp::OS_PARSE_MASTER;
+  op_ptr.p->m_state = SchemaOp::OS_PARSE_PRIMARY;
 
   SectionHandle handle(this, ptr.i);
   ErrorInfo error;
@@ -4898,7 +4898,7 @@ Dbdict::restartDropObj(Signal* signal,
   ndbout_c("restartDropObj(%u)", tableId);
 
   op_ptr.p->m_restart = 1; //
-  op_ptr.p->m_state = SchemaOp::OS_PARSE_MASTER;
+  op_ptr.p->m_state = SchemaOp::OS_PARSE_PRIMARY;
 
   SectionHandle handle(this);
   ErrorInfo error;
@@ -4997,8 +4997,8 @@ void Dbdict::execNODE_FAILREP(Signal* signal)
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
   c_failureNr  = nodeFail->failNo;
   const Uint32 numberOfFailedNodes  = nodeFail->noOfNodes;
-  const bool masterFailed = (c_masterNodeId != nodeFail->masterNodeId);
-  c_masterNodeId = nodeFail->masterNodeId;
+  const bool primaryFailed = (c_primaryNodeId != nodeFail->primaryNodeId);
+  c_primaryNodeId = nodeFail->primaryNodeId;
 
   c_noNodesFailed += numberOfFailedNodes;
   Uint32 theFailedNodes[NdbNodeBitmask::Size];
@@ -5008,18 +5008,18 @@ void Dbdict::execNODE_FAILREP(Signal* signal)
   NdbNodeBitmask failedNodes;
   failedNodes.assign(NdbNodeBitmask::Size, theFailedNodes);
   c_aliveNodes.bitANDC(failedNodes);
-  if (masterFailed && c_masterNodeId == getOwnNodeId())
+  if (primaryFailed && c_primaryNodeId == getOwnNodeId())
   {
     /*
-      Master node has failed, we need to take over
+      Primary node has failed, we need to take over
       any pending transaction(s) and decide if to
       rollforward or rollback.
      */
     jam();
-    ownNodePtr.p->nodeState = NodeRecord::NDB_MASTER_TAKEOVER;
+    ownNodePtr.p->nodeState = NodeRecord::NDB_PRIMARY_TAKEOVER;
     ownNodePtr.p->nodeFailRep = nodeFailRep;
-    infoEvent("Node %u taking over as DICT master", c_masterNodeId);
-    handle_master_takeover(signal);
+    infoEvent("Node %u taking over as DICT primary", c_primaryNodeId);
+    handle_primary_takeover(signal);
     return;
   }
 
@@ -5061,7 +5061,7 @@ void Dbdict::send_nf_complete_rep(Signal* signal, const NodeFailRep* nodeFail)
    * NODE_FAILREP guarantees that no "in flight" signal from
    * a dead node is accepted, and also that the job buffer contains
    * no such (un-executed) signals.  Therefore no DICT_UNLOCK_ORD
-   * from a dead node (leading to master crash) is possible after
+   * from a dead node (leading to primary crash) is possible after
    * this clean-up removes the lock record.
    */
   removeStaleDictLocks(signal, theFailedNodes);
@@ -5069,23 +5069,23 @@ void Dbdict::send_nf_complete_rep(Signal* signal, const NodeFailRep* nodeFail)
   c_sub_startstop_lock.bitANDC(tmp);
 }//send_nf_complete_rep
 
-void Dbdict::handle_master_takeover(Signal* signal)
+void Dbdict::handle_primary_takeover(Signal* signal)
 {
   /*
-    This is the new master, handle take-over of
+    This is the new primary, handle take-over of
     pending schema transactions.
-    Ask all slave nodes about state of any pending
+    Ask all replica nodes about state of any pending
     transactions
   */
   jam();
-  NodeRecordPtr masterNodePtr;
-  c_nodes.getPtr(masterNodePtr, c_masterNodeId);
+  NodeRecordPtr primaryNodePtr;
+  c_nodes.getPtr(primaryNodePtr, c_primaryNodeId);
 
-  masterNodePtr.p->m_nodes = c_aliveNodes;
-  NodeReceiverGroup rg(DBDICT, masterNodePtr.p->m_nodes);
+  primaryNodePtr.p->m_nodes = c_aliveNodes;
+  NodeReceiverGroup rg(DBDICT, primaryNodePtr.p->m_nodes);
   {
-    SafeCounter sc(c_counterMgr, masterNodePtr.p->m_counter);
-    bool ok = sc.init<DictTakeoverRef>(rg, c_masterNodeId);
+    SafeCounter sc(c_counterMgr, primaryNodePtr.p->m_counter);
+    bool ok = sc.init<DictTakeoverRef>(rg, c_primaryNodeId);
     ndbrequire(ok);
   }
   DictTakeoverReq* req = (DictTakeoverReq*)signal->getDataPtrSend();
@@ -6231,7 +6231,7 @@ Dbdict::create_fragmentation(Signal* signal,
 }
 
 void
-Dbdict::createTable_parse(Signal* signal, bool master,
+Dbdict::createTable_parse(Signal* signal, bool primary,
                           SchemaOpPtr op_ptr,
                           SectionHandle& handle, ErrorInfo& error)
 {
@@ -6243,13 +6243,13 @@ Dbdict::createTable_parse(Signal* signal, bool master,
   CreateTabReq* impl_req = &createTabPtr.p->m_request;
 
   /*
-   * Master parses client DictTabInfo (sec 0) into new table record.
+   * Primary parses client DictTabInfo (sec 0) into new table record.
    * DIH is called to create fragmentation.  The table record is
    * then dumped back into DictTabInfo to produce a canonical format.
    * The new DictTabInfo (sec 0) and the fragmentation (sec 1) are
-   * sent to all participants when master parse returns.
+   * sent to all participants when primary parse returns.
    */
-  if (master)
+  if (primary)
   {
     jam();
 
@@ -6396,8 +6396,8 @@ Dbdict::createTable_parse(Signal* signal, bool master,
     ndbrequire(ok);
   }
 
-  // wl3600_todo parse the rewritten DictTabInfo in master too
-  if (!master)
+  // wl3600_todo parse the rewritten DictTabInfo in primary too
+  if (!primary)
   {
     jam();
     createTabPtr.p->m_request.tableId = tableId;
@@ -6459,7 +6459,7 @@ Dbdict::createTable_parse(Signal* signal, bool master,
     return;
   }
   tabPtr.p->packedSize = tabInfoPtr.sz;
-  // wl3600_todo verify version on slave
+  // wl3600_todo verify version on replica
   tabPtr.p->tableVersion = tableVersion;
   tabPtr.p->gciTableCreated = gci;
 
@@ -7325,7 +7325,7 @@ Dbdict::createTab_localComplete(Signal* signal,
   ndbrequire(!op_ptr.isNull());
   //const CreateTabReq* impl_req = &createTabPtr.p->m_request;
 
-  //@todo check for master failed
+  //@todo check for primary failed
 
   if (ERROR_INSERTED(6131)) {
     jam();
@@ -7456,7 +7456,7 @@ Dbdict::createTab_alterComplete(Signal* signal,
   D("createTab_alterComplete" << *op_ptr.p);
 
   //@todo check error
-  //@todo check master failed
+  //@todo check primary failed
 
   // inform SUMA
   {
@@ -7833,7 +7833,7 @@ Dbdict::execDROP_TABLE_REQ(Signal* signal)
 // DropTable: PARSE
 
 void
-Dbdict::dropTable_parse(Signal* signal, bool master,
+Dbdict::dropTable_parse(Signal* signal, bool primary,
                         SchemaOpPtr op_ptr,
                         SectionHandle& handle, ErrorInfo& error)
 {
@@ -8330,7 +8330,7 @@ Dbdict::dropTable_complete_done(Signal* signal,
     DropTabConf* conf = (DropTabConf*)signal->getDataPtrSend();
 
     // special use of senderRef
-    if (trans_ptr.p->m_isMaster) {
+    if (trans_ptr.p->m_isPrimary) {
       jam();
       conf->senderRef = trans_ptr.p->m_clientRef;
     } else {
@@ -8496,11 +8496,11 @@ Dbdict::execALTER_TABLE_REQ(Signal* signal)
 
     impl_req->tableId = req->tableId;
     impl_req->tableVersion = req->tableVersion;
-    impl_req->newTableVersion = 0; // set in master parse
+    impl_req->newTableVersion = 0; // set in primary parse
     impl_req->gci = 0;
     impl_req->changeMask = req->changeMask;
     impl_req->connectPtr = RNIL; // set from TUP
-    impl_req->noOfNewAttr = 0; // set these in master parse
+    impl_req->noOfNewAttr = 0; // set these in primary parse
     impl_req->newNoOfCharsets = 0;
     impl_req->newNoOfKeyAttrs = 0;
 
@@ -8522,7 +8522,7 @@ Dbdict::execALTER_TABLE_REQ(Signal* signal)
 // AlterTable: PARSE
 
 void
-Dbdict::alterTable_parse(Signal* signal, bool master,
+Dbdict::alterTable_parse(Signal* signal, bool primary,
                          SchemaOpPtr op_ptr,
                          SectionHandle& handle, ErrorInfo& error)
 {
@@ -8539,7 +8539,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     /**
      * This should only be a sub-op to AddFragFrag
      */
-    if (master && op_ptr.p->m_base_op_ptr_i == RNIL)
+    if (primary && op_ptr.p->m_base_op_ptr_i == RNIL)
     {
       jam();
       setError(error, AlterTableRef::Inconsistency, __LINE__);
@@ -8651,7 +8651,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
         return;
       }
 
-      if (master)
+      if (primary)
       {
         jam();
         AlterTableReq::setNameFlag(impl_req->changeMask, 1);
@@ -8677,7 +8677,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     ConstRope r2(c_rope_pool, newTablePtr.p->frmData);
     if (!r1.equal(r2))
     {
-      if (master)
+      if (primary)
       {
         jam();
         AlterTableReq::setFrmFlag(impl_req->changeMask, 1);
@@ -8704,7 +8704,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
 
     if (newTablePtr.p->noOfAttributes > tablePtr.p->noOfAttributes)
     {
-      if (master)
+      if (primary)
       {
         jam();
         AlterTableReq::setAddAttrFlag(impl_req->changeMask, 1);
@@ -8729,7 +8729,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
       return;
     }
 
-    if (master)
+    if (primary)
     {
       jam();
       impl_req->noOfNewAttr = noOfNewAttr;
@@ -8800,7 +8800,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
       AlterTableReq::setReorgFragFlag(impl_req->changeMask, 1);
     }
 
-    if (master)
+    if (primary)
     {
       /**
        * 1) Create fragmentation for new table
@@ -8898,8 +8898,8 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     return;
   }
 
-  // master rewrites DictTabInfo (it is re-parsed only on slaves)
-  if (master)
+  // primary rewrites DictTabInfo (it is re-parsed only on replicas)
+  if (primary)
   {
     jam();
     releaseSections(handle);
@@ -10045,7 +10045,7 @@ Dbdict::alterTable_fromCommitComplete(Signal* signal,
     SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
     // special use of senderRef
-    if (trans_ptr.p->m_isMaster)
+    if (trans_ptr.p->m_isPrimary)
       req->senderRef = trans_ptr.p->m_clientRef;
     else
       req->senderRef = 0;
@@ -11544,7 +11544,7 @@ Dbdict::execCREATE_INDX_REQ(Signal* signal)
 // CreateIndex: PARSE
 
 void
-Dbdict::createIndex_parse(Signal* signal, bool master,
+Dbdict::createIndex_parse(Signal* signal, bool primary,
                           SchemaOpPtr op_ptr,
                           SectionHandle& handle, ErrorInfo& error)
 {
@@ -11759,7 +11759,7 @@ Dbdict::createIndex_parse(Signal* signal, bool master,
     }
   }
 
-  if (master)
+  if (primary)
   {
     jam();
     impl_req->indexId = getFreeObjId();
@@ -12306,7 +12306,7 @@ Dbdict::execDROP_INDX_REQ(Signal* signal)
 // DropIndex: PARSE
 
 void
-Dbdict::dropIndex_parse(Signal* signal, bool master,
+Dbdict::dropIndex_parse(Signal* signal, bool primary,
                         SchemaOpPtr op_ptr,
                         SectionHandle& handle, ErrorInfo& error)
 {
@@ -12364,8 +12364,8 @@ Dbdict::dropIndex_parse(Signal* signal, bool master,
     return;
   }
 
-  // master sets primary table, slave verifies it agrees
-  if (master)
+  // primary sets primary table, replica verifies it agrees
+  if (primary)
   {
     jam();
     impl_req->tableId = tablePtr.p->tableId;
@@ -12819,7 +12819,7 @@ Dbdict::g_fkTriggerTmpl[2] = {
 // AlterIndex: PARSE
 
 void
-Dbdict::alterIndex_parse(Signal* signal, bool master,
+Dbdict::alterIndex_parse(Signal* signal, bool primary,
                          SchemaOpPtr op_ptr,
                          SectionHandle& handle, ErrorInfo& error)
 {
@@ -12890,7 +12890,7 @@ Dbdict::alterIndex_parse(Signal* signal, bool master,
     return;
   }
 
-  if (master)
+  if (primary)
   {
     jam();
     impl_req->indexType = indexPtr.p->tableType;
@@ -12906,8 +12906,8 @@ Dbdict::alterIndex_parse(Signal* signal, bool master,
   ok = find_object(tablePtr, indexPtr.p->primaryTableId);
   ndbrequire(ok); // TODO:msundell set error
 
-  // master sets primary table, participant verifies it agrees
-  if (master)
+  // primary sets primary table, participant verifies it agrees
+  if (primary)
   {
     jam();
     impl_req->tableId = tablePtr.p->tableId;
@@ -14041,7 +14041,7 @@ Dbdict::execBUILDINDXREQ(Signal* signal)
 // BuildIndex: PARSE
 
 void
-Dbdict::buildIndex_parse(Signal* signal, bool master,
+Dbdict::buildIndex_parse(Signal* signal, bool primary,
                          SchemaOpPtr op_ptr,
                          SectionHandle& handle, ErrorInfo& error)
 {
@@ -14827,7 +14827,7 @@ Dbdict::execINDEX_STAT_REQ(Signal* signal)
 // IndexStat: PARSE
 
 void
-Dbdict::indexStat_parse(Signal* signal, bool master,
+Dbdict::indexStat_parse(Signal* signal, bool primary,
                         SchemaOpPtr op_ptr,
                         SectionHandle& handle, ErrorInfo& error)
 {
@@ -14894,7 +14894,7 @@ Dbdict::indexStat_parse(Signal* signal, bool master,
   case IndexStatReq::RT_STOP_MON:
     jam();
     // sub-operations can be invoked only by DICT
-    if (master && refToBlock(op_ptr.p->m_clientRef) != DBDICT) {
+    if (primary && refToBlock(op_ptr.p->m_clientRef) != DBDICT) {
       jam();
       setError(error, IndexStatRef::InvalidRequest, __LINE__);
       return;
@@ -15298,8 +15298,8 @@ Dbdict::execINDEX_STAT_IMPL_REF(Signal* signal)
 
 /*
  * Receive report that an index needs stats update.  Request to
- * non-master is sent to master.  Index is marked for stats update.
- * Invalid request is simply ignored.  Master-NF really need not be
+ * non-primary is sent to primary.  Index is marked for stats update.
+ * Invalid request is simply ignored.  Primary-NF really need not be
  * handled but could be, by broadcasting all reports to all DICTs.
  */
 void
@@ -15307,10 +15307,10 @@ Dbdict::execINDEX_STAT_REP(Signal* signal)
 {
   const IndexStatRep* rep = (const IndexStatRep*)signal->getDataPtr();
 
-  // non-master
-  if (c_masterNodeId != getOwnNodeId()) {
+  // non-primary
+  if (c_primaryNodeId != getOwnNodeId()) {
     jam();
-    BlockReference dictRef = calcDictBlockRef(c_masterNodeId);
+    BlockReference dictRef = calcDictBlockRef(c_primaryNodeId);
     sendSignal(dictRef, GSN_INDEX_STAT_REP, signal,
                IndexStatRep::SignalLength, JBB);
     return;
@@ -15359,7 +15359,7 @@ void
 Dbdict::indexStatBg_process(Signal* signal)
 {
   if (!c_indexStatAutoUpdate ||
-      c_masterNodeId != getOwnNodeId() ||
+      c_primaryNodeId != getOwnNodeId() ||
       getNodeState().startLevel != NodeState::SL_STARTED) {
     jam();
     indexStatBg_sendContinueB(signal);
@@ -15600,7 +15600,7 @@ Dbdict::execCOPY_DATA_REQ(Signal* signal)
 // CopyData: PARSE
 
 void
-Dbdict::copyData_parse(Signal* signal, bool master,
+Dbdict::copyData_parse(Signal* signal, bool primary,
                        SchemaOpPtr op_ptr,
                        SectionHandle& handle, ErrorInfo& error)
 {
@@ -16149,7 +16149,7 @@ Dbdict::prepareUtilTransaction(Callback *pcallback,
 /*****************************************************************
  *
  * CREATE_EVNT_REQ has three types RT_CREATE, RT_GET (from user)
- * and RT_DICT_AFTER_GET send from master DICT to slaves
+ * and RT_DICT_AFTER_GET send from primary DICT to replicas
  *
  * This function just dscpaches these to
  *
@@ -16178,17 +16178,17 @@ Dbdict::execCREATE_EVNT_REQ(Signal* signal)
   SectionHandle handle(this, signal);
 
   if (refToBlock(signal->senderBlockRef()) != DBDICT &&
-      getOwnNodeId() != c_masterNodeId)
+      getOwnNodeId() != c_primaryNodeId)
   {
     jam();
     releaseSections(handle);
 
     CreateEvntRef * ref = (CreateEvntRef *)signal->getDataPtrSend();
     ref->setUserRef(reference());
-    ref->setErrorCode(CreateEvntRef::NotMaster);
+    ref->setErrorCode(CreateEvntRef::NotPrimary);
     ref->setErrorLine(__LINE__);
     ref->setErrorNode(reference());
-    ref->setMasterNode(c_masterNodeId);
+    ref->setPrimaryNode(c_primaryNodeId);
     sendSignal(signal->senderBlockRef(), GSN_CREATE_EVNT_REF, signal,
 	       CreateEvntRef::SignalLength2, JBB);
     return;
@@ -17094,7 +17094,7 @@ void Dbdict::execCREATE_EVNT_CONF(Signal* signal)
 
   evntRecPtr.p->m_reqTracker.reportConf(c_counterMgr, refToNode(conf->senderRef));
 
-  // we will only have a valid tablename if it the master DICT sending this
+  // we will only have a valid tablename if it the primary DICT sending this
   // but that's ok
   LinearSectionPtr ptr[2];
   ptr[0].p = (Uint32 *)evntRecPtr.p->m_eventRec.TABLE_NAME;
@@ -17130,7 +17130,7 @@ Dbdict::createEvent_RT_DICT_AFTER_GET(Signal* signal, OpCreateEventPtr evntRecPt
   // Seize a Create Event record, the Coordinator will now have two seized
   // but that's ok, it's like a recursion
 
-  CRASH_INSERTION2(6009, getOwnNodeId() != c_masterNodeId);
+  CRASH_INSERTION2(6009, getOwnNodeId() != c_primaryNodeId);
 
   SubCreateReq * sumaReq = (SubCreateReq *)signal->getDataPtrSend();
 
@@ -17226,7 +17226,7 @@ void Dbdict::createEvent_sendReply(Signal* signal,
   EVENT_TRACE;
 
   // check if we're ready to sent reply
-  // if we are the master dict we might be waiting for conf/ref
+  // if we are the primary dict we might be waiting for conf/ref
 
   if (!evntRecPtr.p->m_reqTracker.done()) {
     jam();
@@ -17247,8 +17247,8 @@ void Dbdict::createEvent_sendReply(Signal* signal,
     }
   }
 
-  // reference to API if master DICT
-  // else reference to master DICT
+  // reference to API if primary DICT
+  // else reference to primary DICT
   Uint32 senderRef = evntRecPtr.p->m_request.getUserRef();
   Uint32 signalLength;
   Uint32 gsn;
@@ -17327,15 +17327,15 @@ void Dbdict::execSUB_START_REQ(Signal* signal)
   Uint32 origSenderRef = signal->senderBlockRef();
 
   if (refToBlock(origSenderRef) != DBDICT &&
-      getOwnNodeId() != c_masterNodeId)
+      getOwnNodeId() != c_primaryNodeId)
   {
     /*
-     * Coordinator but not master
+     * Coordinator but not primary
      */
     SubStartRef * ref = (SubStartRef *)signal->getDataPtrSend();
     ref->senderRef = reference();
-    ref->errorCode = SubStartRef::NotMaster;
-    ref->m_masterNodeId = c_masterNodeId;
+    ref->errorCode = SubStartRef::NotPrimary;
+    ref->m_primaryNodeId = c_primaryNodeId;
     sendSignal(origSenderRef, GSN_SUB_START_REF, signal,
 	       SubStartRef::SignalLength2, JBB);
     return;
@@ -17359,10 +17359,10 @@ busy:
     //      ret->setErrorNode(reference());
     ref->senderRef = reference();
     ref->errorCode = errCode;
-    ref->m_masterNodeId = c_masterNodeId;
+    ref->m_primaryNodeId = c_primaryNodeId;
 
     sendSignal(origSenderRef, GSN_SUB_START_REF, signal,
-	       SubStartRef::SL_MasterNode, JBB);
+	       SubStartRef::SL_PrimaryNode, JBB);
     return;
   }
 
@@ -17385,11 +17385,11 @@ busy:
      */
     jam();
 
-    if (c_masterNodeId != getOwnNodeId())
+    if (c_primaryNodeId != getOwnNodeId())
     {
       jam();
       c_opSubEvent.release(subbPtr);
-      errCode = SubStartRef::NotMaster;
+      errCode = SubStartRef::NotPrimary;
       goto busy;
     }
 
@@ -17692,10 +17692,10 @@ busy:
     //      ret->setErrorNode(reference());
     ref->senderRef = reference();
     ref->errorCode = errCode;
-    ref->m_masterNodeId = c_masterNodeId;
+    ref->m_primaryNodeId = c_primaryNodeId;
 
     sendSignal(origSenderRef, GSN_SUB_STOP_REF, signal,
-	       SubStopRef::SL_MasterNode, JBB);
+	       SubStopRef::SL_PrimaryNode, JBB);
     return;
   }
 
@@ -17724,11 +17724,11 @@ busy:
      */
     jam();
 
-    if (c_masterNodeId != getOwnNodeId())
+    if (c_primaryNodeId != getOwnNodeId())
     {
       jam();
       c_opSubEvent.release(subbPtr);
-      errCode = SubStopRef::NotMaster;
+      errCode = SubStopRef::NotPrimary;
       goto busy;
     }
 
@@ -17967,17 +17967,17 @@ Dbdict::execDROP_EVNT_REQ(Signal* signal)
   SectionHandle handle(this, signal);
 
   if (refToBlock(senderRef) != DBDICT &&
-      getOwnNodeId() != c_masterNodeId)
+      getOwnNodeId() != c_primaryNodeId)
   {
     jam();
     releaseSections(handle);
 
     DropEvntRef * ref = (DropEvntRef *)signal->getDataPtrSend();
     ref->setUserRef(reference());
-    ref->setErrorCode(DropEvntRef::NotMaster);
+    ref->setErrorCode(DropEvntRef::NotPrimary);
     ref->setErrorLine(__LINE__);
     ref->setErrorNode(reference());
-    ref->setMasterNode(c_masterNodeId);
+    ref->setPrimaryNode(c_primaryNodeId);
     sendSignal(senderRef, GSN_DROP_EVNT_REF, signal,
 	       DropEvntRef::SignalLength2, JBB);
     DBUG_VOID_RETURN;
@@ -18153,7 +18153,7 @@ Dbdict::execSUB_REMOVE_REQ(Signal* signal)
     subbPtr.p->m_subscriberData = RNIL;
   }
 
-  CRASH_INSERTION2(6010, getOwnNodeId() != c_masterNodeId);
+  CRASH_INSERTION2(6010, getOwnNodeId() != c_primaryNodeId);
 
   SubRemoveReq* req = (SubRemoveReq*) signal->getDataPtrSend();
   req->senderRef = reference();
@@ -18541,7 +18541,7 @@ Dbdict::execCREATE_TRIG_REQ(Signal* signal)
 // CreateTrigger: PARSE
 
 void
-Dbdict::createTrigger_parse(Signal* signal, bool master,
+Dbdict::createTrigger_parse(Signal* signal, bool primary,
                             SchemaOpPtr op_ptr,
                             SectionHandle& handle, ErrorInfo& error)
 {
@@ -18637,7 +18637,7 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
   }
 
   TriggerRecordPtr triggerPtr;
-  if (master)
+  if (primary)
   {
     jam();
     if (impl_req->triggerId == RNIL)
@@ -18657,7 +18657,7 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
         setError(error, CreateTrigRef::TriggerExists, __LINE__);
         return;
       }
-      D("master allocated triggerId " << impl_req->triggerId);
+      D("primary allocated triggerId " << impl_req->triggerId);
     }
     else
     {
@@ -18674,13 +18674,13 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
         setError(error, CreateTrigRef::TriggerExists, __LINE__);
         return;
       }
-      D("master forced triggerId " << impl_req->triggerId);
+      D("primary forced triggerId " << impl_req->triggerId);
     }
   }
   else
   {
     jam();
-    // slave receives trigger id from master
+    // replica receives trigger id from primary
     if (! (impl_req->triggerId < c_triggerRecordPool_.getSize()))
     {
       jam();
@@ -18694,7 +18694,7 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
       setError(error, CreateTrigRef::TriggerExists, __LINE__);
       return;
     }
-    D("slave allocated triggerId " << hex << impl_req->triggerId);
+    D("replica allocated triggerId " << hex << impl_req->triggerId);
   }
 
   bool ok = seizeTriggerRecord(triggerPtr, impl_req->triggerId);
@@ -19531,7 +19531,7 @@ Dbdict::execDROP_TRIG_REQ(Signal* signal)
 // DropTrigger: PARSE
 
 void
-Dbdict::dropTrigger_parse(Signal* signal, bool master,
+Dbdict::dropTrigger_parse(Signal* signal, bool primary,
                           SchemaOpPtr op_ptr,
                           SectionHandle& handle, ErrorInfo& error)
 {
@@ -20197,7 +20197,7 @@ Dbdict::getIndexAttrMask(TableRecordPtr indexPtr, AttributeMask& mask)
   }
 }
 
-// DICT lock master
+// DICT lock primary
 
 const Dbdict::DictLockType*
 Dbdict::getDictLockType(Uint32 lockType)
@@ -20329,12 +20329,12 @@ Dbdict::execDICT_LOCK_REQ(Signal* signal)
     lockReq.requestInfo |= UtilLockReq::SharedLock;
   }
 
-  // make sure bad request crashes slave, not master (us)
+  // make sure bad request crashes replica, not primary (us)
   Uint32 res;
-  if (getOwnNodeId() != c_masterNodeId)
+  if (getOwnNodeId() != c_primaryNodeId)
   {
     jam();
-    err = DictLockRef::NotMaster;
+    err = DictLockRef::NotPrimary;
     goto ref;
   }
 
@@ -20437,9 +20437,9 @@ Dbdict::execDICT_UNLOCK_ORD(Signal* signal)
     if (ord->lockType == DictLockReq::SumaHandOver)
     {
       /**
-       * Inform the master DIH that the SUMA handover is now completed, this
+       * Inform the primary DIH that the SUMA handover is now completed, this
        * is the very last phase of the node recovery. This code is only
-       * executed in the master node.
+       * executed in the primary node.
        */
       SumaHandoverCompleteRep *rep =
         (SumaHandoverCompleteRep*)signal->getDataPtrSend();
@@ -20473,7 +20473,7 @@ Dbdict::execDICT_UNLOCK_ORD(Signal* signal)
   }
 }
 
-// Master take-over
+// Primary take-over
 
 void
 Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
@@ -20487,7 +20487,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
    }
 
    DictTakeoverReq* req = (DictTakeoverReq*)signal->getDataPtr();
-   Uint32 masterRef = req->senderRef;
+   Uint32 primaryRef = req->senderRef;
    Uint32 op_count = 0;
    Uint32 rollforward_op = 0;
    Uint32 rollforward_op_state = SchemaOp::OS_COMPLETED;
@@ -20507,20 +20507,20 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
    if (!pending_trans)
    {
      /*
-       Slave has no pending transaction
+       Replica has no pending transaction
      */
      jam();
      DictTakeoverRef* ref = (DictTakeoverRef*)signal->getDataPtrSend();
      ref->senderRef = reference();
-     ref->masterRef = masterRef;
+     ref->primaryRef = primaryRef;
      ref->errorCode = DictTakeoverRef::NoTransaction;
-     sendSignal(masterRef, GSN_DICT_TAKEOVER_REF, signal,
+     sendSignal(primaryRef, GSN_DICT_TAKEOVER_REF, signal,
                 DictTakeoverRef::SignalLength, JBB);
      return;
    }
    while (pending_trans)
    {
-     trans_ptr.p->m_masterRef = masterRef;
+     trans_ptr.p->m_primaryRef = primaryRef;
 #ifdef VM_TRACE
       ndbout_c("Dbdict::execDICT_TAKEOVER_REQ: trans %u(0x%8x), state %u, op_list %s", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state, (trans_ptr.p->m_op_list.in_use)?"yes":"no");
 #endif
@@ -20535,7 +20535,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
        jam();
        /*
          We were ending (releasing) operations, check how
-         far slave got by finding lowest operation.
+         far replica got by finding lowest operation.
        */
        ending = true;
        lowest_op = op_ptr.p->op_key;
@@ -20543,7 +20543,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
        /*
          Find the OpInfo gsn for the next operation to
          be removed,
-         this might be needed by new master to create missing operation.
+         this might be needed by new primary to create missing operation.
        */
        lowest_op_impl_req_gsn = getOpInfo(op_ptr).m_impl_req_gsn;
      }
@@ -20588,19 +20588,19 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
          pending_op = list.next(op_ptr);
          continue;
        }
-       if (trans_ptr.p->m_state == SchemaTrans::TS_STARTED || // master
+       if (trans_ptr.p->m_state == SchemaTrans::TS_STARTED || // primary
            trans_ptr.p->m_state == SchemaTrans::TS_PARSING)
        {
          jam();
          /*
            We were parsing operations from client, check how
-           far slave got by finding highest operation.
+           far replica got by finding highest operation.
          */
          highest_op = op_ptr.p->op_key;
          highest_op_state = op_ptr.p->m_state;
          /*
            Find the OpInfo gsn for the latest created operation,
-           this might be needed by new master to create missing operation.
+           this might be needed by new primary to create missing operation.
          */
          highest_op_impl_req_gsn = getOpInfo(op_ptr).m_impl_req_gsn;
        }
@@ -20634,7 +20634,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
        pending_op = list.next(op_ptr);
      }
 #ifdef VM_TRACE
-     ndbout_c("Slave transaction %u has %u schema operations, rf %u/%u, rb %u/%u", trans_ptr.p->trans_key, op_count, rollforward_op, rollforward_op_state, rollback_op, rollback_op_state);
+     ndbout_c("Replica transaction %u has %u schema operations, rf %u/%u, rb %u/%u", trans_ptr.p->trans_key, op_count, rollforward_op, rollforward_op_state, rollback_op, rollback_op_state);
 #endif
      DictTakeoverConf* conf = (DictTakeoverConf*)signal->getDataPtrSend();
      conf->senderRef = reference();
@@ -20650,7 +20650,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
          trans_ptr.p->m_state == SchemaTrans::TS_PARSING)
      {
        /*
-         New master might not have parsed highest found operation yet.
+         New primary might not have parsed highest found operation yet.
         */
        conf->highest_op = highest_op;
        conf->highest_op_state = highest_op_state;
@@ -20659,13 +20659,13 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
      if (ending)
      {
        /*
-         New master might already have released lowest operation found.
+         New primary might already have released lowest operation found.
         */
        conf->lowest_op = lowest_op;
        conf->lowest_op_state = lowest_op_state;
        conf->lowest_op_impl_req_gsn = lowest_op_impl_req_gsn;
      }
-     sendSignal(masterRef, GSN_DICT_TAKEOVER_CONF, signal,
+     sendSignal(primaryRef, GSN_DICT_TAKEOVER_CONF, signal,
                 DictTakeoverConf::SignalLength, JBB);
      ndbrequire(!(pending_trans = c_schemaTransList.next(trans_ptr)));
    }
@@ -20677,7 +20677,7 @@ Dbdict::execDICT_TAKEOVER_REF(Signal* signal)
   DictTakeoverRef* ref = (DictTakeoverRef*)signal->getDataPtr();
   Uint32 senderRef = ref->senderRef;
   Uint32 nodeId = refToNode(senderRef);
-  NodeRecordPtr masterNodePtr;
+  NodeRecordPtr primaryNodePtr;
   jamEntry();
 #ifdef VM_TRACE
   ndbout_c("Dbdict::execDICT_TAKEOVER_REF: error %u, from %u",
@@ -20685,17 +20685,17 @@ Dbdict::execDICT_TAKEOVER_REF(Signal* signal)
            nodeId);
 #endif
   /*
-    Slave has died (didn't reply) or doesn't not have any transaction
-    Ignore it during rest of master takeover.
+    Replica has died (didn't reply) or doesn't not have any transaction
+    Ignore it during rest of primary takeover.
   */
-  ndbassert(refToNode(ref->masterRef) == c_masterNodeId);
-  c_nodes.getPtr(masterNodePtr, c_masterNodeId);
-  masterNodePtr.p->m_nodes.clear(nodeId);
+  ndbassert(refToNode(ref->primaryRef) == c_primaryNodeId);
+  c_nodes.getPtr(primaryNodePtr, c_primaryNodeId);
+  primaryNodePtr.p->m_nodes.clear(nodeId);
   /*
     Check if we got replies from all nodes
   */
   {
-    SafeCounter sc(c_counterMgr, masterNodePtr.p->m_counter);
+    SafeCounter sc(c_counterMgr, primaryNodePtr.p->m_counter);
     if (!sc.clearWaitingFor(nodeId)) {
       jam();
       return;
@@ -20720,7 +20720,7 @@ Dbdict::execDICT_TAKEOVER_CONF(Signal* signal)
   //Uint32 rollforward_op_state = conf->rollforward_op_state;
   //Uint32 rollback_op = conf->rollback_op;
   //Uint32 rollback_op_state = conf->rollback_op_state;
-  NodeRecordPtr masterNodePtr;
+  NodeRecordPtr primaryNodePtr;
 
   /*
     Accumulate all responses
@@ -20729,8 +20729,8 @@ Dbdict::execDICT_TAKEOVER_CONF(Signal* signal)
   c_nodes.getPtr(nodePtr, nodeId);
   nodePtr.p->takeOverConf = *conf;
 
-  ndbassert(getOwnNodeId() == c_masterNodeId);
-  c_nodes.getPtr(masterNodePtr, c_masterNodeId);
+  ndbassert(getOwnNodeId() == c_primaryNodeId);
+  c_nodes.getPtr(primaryNodePtr, c_primaryNodeId);
 #ifdef VM_TRACE
   ndbout_c("execDICT_TAKEOVER_CONF: Node %u, trans %u(%u), count %u, rollf %u/%u, rb %u/%u",
            nodeId, conf->trans_key, conf->trans_state, conf->op_count, conf->rollforward_op,
@@ -20741,7 +20741,7 @@ Dbdict::execDICT_TAKEOVER_CONF(Signal* signal)
     Check that we got reply from all nodes
   */
   {
-    SafeCounter sc(c_counterMgr, masterNodePtr.p->m_counter);
+    SafeCounter sc(c_counterMgr, primaryNodePtr.p->m_counter);
     if (!sc.clearWaitingFor(nodeId)) {
       jam();
       return;
@@ -20754,17 +20754,17 @@ Dbdict::execDICT_TAKEOVER_CONF(Signal* signal)
 void Dbdict::check_takeover_replies(Signal* signal)
 {
   SchemaTransPtr trans_ptr;
-  NodeRecordPtr masterNodePtr;
+  NodeRecordPtr primaryNodePtr;
   ErrorInfo error;
 
-  c_nodes.getPtr(masterNodePtr, c_masterNodeId); // this node
-  if (masterNodePtr.p->m_nodes.isclear())
+  c_nodes.getPtr(primaryNodePtr, c_primaryNodeId); // this node
+  if (primaryNodePtr.p->m_nodes.isclear())
   {
     /*
-      No slave found any pending transactions, we are done
+      No replica found any pending transactions, we are done
      */
     jam();
-    send_nf_complete_rep(signal, &masterNodePtr.p->nodeFailRep);
+    send_nf_complete_rep(signal, &primaryNodePtr.p->nodeFailRep);
     return;
   }
   /*
@@ -20788,7 +20788,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
     {
       jam();
 #ifdef VM_TRACE
-      ndbout_c("New master failed locking transaction %u, error %u", trans_key, lockError);
+      ndbout_c("New primary failed locking transaction %u, error %u", trans_key, lockError);
 #endif
       ndbassert(false);
     }
@@ -20796,10 +20796,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
     {
       jam();
 #ifdef VM_TRACE
-      ndbout_c("New master locked transaction %u", trans_key);
+      ndbout_c("New primary locked transaction %u", trans_key);
 #endif
     }
-    trans_ptr.p->m_isMaster = true;
+    trans_ptr.p->m_isPrimary = true;
     trans_ptr.p->m_nodes.clear();
     trans_ptr.p->m_rollforward_op = -1;
     trans_ptr.p->m_rollforward_op_state = SchemaOp::OS_COMPLETED;
@@ -20817,7 +20817,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
   for (unsigned i = 1; i < MAX_NDB_NODES; i++) {
     jam();
     NodeRecordPtr nodePtr;
-    if (masterNodePtr.p->m_nodes.get(i))
+    if (primaryNodePtr.p->m_nodes.get(i))
     {
       jam();
       c_nodes.getPtr(nodePtr, i);
@@ -20836,7 +20836,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
         {
           jam();
           /*
-            New master doesn't know about the transaction.
+            New primary doesn't know about the transaction.
           */
           if (!seizeSchemaTrans(trans_ptr, trans_key))
           {
@@ -20844,7 +20844,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
             ndbassert(false);
           }
 #ifdef VM_TRACE
-          ndbout_c("New master seized transaction %u", trans_key);
+          ndbout_c("New primary seized transaction %u", trans_key);
 #endif
           /*
             Take schema trans lock.
@@ -20861,7 +20861,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
           {
             jam();
 #ifdef VM_TRACE
-            ndbout_c("New master failed locking transaction %u, error %u", trans_key, lockError);
+            ndbout_c("New primary failed locking transaction %u, error %u", trans_key, lockError);
 #endif
             ndbassert(false);
           }
@@ -20869,7 +20869,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
           {
             jam();
 #ifdef VM_TRACE
-            ndbout_c("New master locked transaction %u", trans_key);
+            ndbout_c("New primary locked transaction %u", trans_key);
 #endif
           }
           trans_ptr.p->m_nodes.clear();
@@ -20883,8 +20883,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
           trans_ptr.p->ressurected_op = false;
         }
 
-        trans_ptr.p->m_isMaster = true;
-        trans_ptr.p->m_masterRef = reference();
+        trans_ptr.p->m_isPrimary = true;
+        trans_ptr.p->m_primaryRef = reference();
         trans_ptr.p->m_clientRef = clientRef;
         trans_ptr.p->m_nodes.set(i);
 #ifdef VM_TRACE
@@ -20958,7 +20958,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
     case SchemaTrans::TS_ABORTING_PREPARE:
     case SchemaTrans::TS_ABORTING_PARSE:
       jam();
-      trans_ptr.p->m_master_recovery_state = SchemaTrans::TRS_ROLLBACK;
+      trans_ptr.p->m_primary_recovery_state = SchemaTrans::TRS_ROLLBACK;
       break;
     case SchemaTrans::TS_FLUSH_COMMIT:
     case SchemaTrans::TS_COMMITTING:
@@ -20966,15 +20966,15 @@ void Dbdict::check_takeover_replies(Signal* signal)
     case SchemaTrans::TS_COMPLETING:
     case SchemaTrans::TS_ENDING:
       jam();
-      trans_ptr.p->m_master_recovery_state = SchemaTrans::TRS_ROLLFORWARD;
+      trans_ptr.p->m_primary_recovery_state = SchemaTrans::TRS_ROLLFORWARD;
       break;
     }
 
-    if (trans_ptr.p->m_master_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
+    if (trans_ptr.p->m_primary_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
     {
       /*
-        We must start rolling forward from lowest state of any slave
-        and partially skip more progressed slaves.
+        We must start rolling forward from lowest state of any replica
+        and partially skip more progressed replicas.
        */
       jam();
       infoEvent("Pending schema transaction %u will be rolled forward", trans_ptr.p->trans_key);
@@ -20987,8 +20987,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
     else
     {
       /*
-        We must start rolling back from highest state of any slave
-        and partially skip less progressed slaves.
+        We must start rolling back from highest state of any replica
+        and partially skip less progressed replicas.
        */
       jam();
       infoEvent("Pending schema transaction %u will be rolled back", trans_ptr.p->trans_key);
@@ -21018,7 +21018,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
   {
     /*
       Find nodes that need partial rollforward/rollback,
-      create any missing operations on new master
+      create any missing operations on new primary
     */
 
     for (unsigned i = 1; i < MAX_NDB_NODES; i++) {
@@ -21029,14 +21029,14 @@ void Dbdict::check_takeover_replies(Signal* signal)
         jam();
         c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-        ndbout_c("Node %u had %u operations, master has %u",i , nodePtr.p->takeOverConf.op_count, masterNodePtr.p->takeOverConf.op_count);
+        ndbout_c("Node %u had %u operations, primary has %u",i , nodePtr.p->takeOverConf.op_count, primaryNodePtr.p->takeOverConf.op_count);
 #endif
 
         /** BEWARE:
          * 'takeOverConf' is not valid if a node replied TAKEOVER_REF,
-         * in that case node was cleared from 'masterNodePtr.p->m_nodes'.
+         * in that case node was cleared from 'primaryNodePtr.p->m_nodes'.
          */
-        ndbassert(masterNodePtr.p->m_nodes.get(i));
+        ndbassert(primaryNodePtr.p->m_nodes.get(i));
         if (nodePtr.p->takeOverConf.op_count == 0)
         {
           if (SchemaTrans::weight(trans_ptr.p->m_state)
@@ -21062,29 +21062,29 @@ void Dbdict::check_takeover_replies(Signal* signal)
             // Is this possible??
           }
         }
-        else if (!masterNodePtr.p->m_nodes.get(c_masterNodeId) ||
+        else if (!primaryNodePtr.p->m_nodes.get(c_primaryNodeId) ||
                  nodePtr.p->takeOverConf.op_count >
-                 masterNodePtr.p->takeOverConf.op_count)
+                 primaryNodePtr.p->takeOverConf.op_count)
         {
           /*
-            Operation missing on new master
+            Operation missing on new primary
            */
           jam();
           if (SchemaTrans::weight(trans_ptr.p->m_state)
               < SchemaTrans::weight(SchemaTrans::TS_PREPARING))
           {
             /*
-              Last parsed operation is missing on new master
+              Last parsed operation is missing on new primary
              */
             jam();
-            if (masterNodePtr.p->recoveryState !=
+            if (primaryNodePtr.p->recoveryState !=
                 NodeRecord::RS_PARTIAL_ROLLBACK)
             {
               /*
-                We haven't decided to partially rollback master yet.
-                Operation is missing on new master (not yet parsed).
-                Create it so new master can tell slaves to abort it,
-                but skip it on master.
+                We haven't decided to partially rollback primary yet.
+                Operation is missing on new primary (not yet parsed).
+                Create it so new primary can tell replicas to abort it,
+                but skip it on primary.
               */
               jam();
               SchemaOpPtr missing_op_ptr;
@@ -21097,22 +21097,22 @@ void Dbdict::check_takeover_replies(Signal* signal)
               {
                 jam();
 #ifdef VM_TRACE
-                ndbout_c("Created missing operation %u, on new master", missing_op_ptr.p->op_key);
+                ndbout_c("Created missing operation %u, on new primary", missing_op_ptr.p->op_key);
 #endif
-                ndbassert(masterNodePtr.p->m_nodes.get(c_masterNodeId));
+                ndbassert(primaryNodePtr.p->m_nodes.get(c_primaryNodeId));
                 missing_op_ptr.p->m_state = nodePtr.p->takeOverConf.highest_op_state;
-                masterNodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLBACK;
-                masterNodePtr.p->start_op = masterNodePtr.p->takeOverConf.highest_op;
-                masterNodePtr.p->start_op_state = masterNodePtr.p->takeOverConf.highest_op_state;
+                primaryNodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLBACK;
+                primaryNodePtr.p->start_op = primaryNodePtr.p->takeOverConf.highest_op;
+                primaryNodePtr.p->start_op_state = primaryNodePtr.p->takeOverConf.highest_op_state;
               }
               else
               {
                 jam();
                 ndbassert(false);
               }
-              trans_ptr.p->m_nodes.set(c_masterNodeId);
+              trans_ptr.p->m_nodes.set(c_primaryNodeId);
 #ifdef VM_TRACE
-              ndbout_c("Adding master node %u to transaction %u", c_masterNodeId, trans_ptr.p->trans_key);
+              ndbout_c("Adding primary node %u to transaction %u", c_primaryNodeId, trans_ptr.p->trans_key);
 #endif
             }
           }
@@ -21121,8 +21121,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
                    (!trans_ptr.p->ressurected_op))
           {
             /*
-              New master has already ended some operation,
-              create it again so we can tell slaves to end it.
+              New primary has already ended some operation,
+              create it again so we can tell replicas to end it.
               Note: we don't add node to transaction since the
               ressurected operation cannot be completed. Instead
               we need to release it explicitly when transaction is
@@ -21141,7 +21141,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
             {
               jam();
 #ifdef VM_TRACE
-              ndbout_c("Created ressurected operation %u, on new master", op_key);
+              ndbout_c("Created ressurected operation %u, on new primary", op_key);
 #endif
               trans_ptr.p->ressurected_op = true;
               missing_op_ptr.p->m_state = op_state;
@@ -21159,19 +21159,19 @@ void Dbdict::check_takeover_replies(Signal* signal)
           }
         }
         else if (nodePtr.p->takeOverConf.op_count <
-                 masterNodePtr.p->takeOverConf.op_count)
+                 primaryNodePtr.p->takeOverConf.op_count)
         {
           jam();
-          ndbassert(masterNodePtr.p->m_nodes.get(c_masterNodeId));
+          ndbassert(primaryNodePtr.p->m_nodes.get(c_primaryNodeId));
 
           /*
-              Operation is missing on slave
+              Operation is missing on replica
           */
           if (SchemaTrans::weight(trans_ptr.p->m_state) <
               SchemaTrans::weight(SchemaTrans::TS_PREPARING))
           {
             /*
-              Last parsed operation is missing on slave, skip it
+              Last parsed operation is missing on replica, skip it
               when aborting parse.
             */
             jam();
@@ -21185,7 +21185,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
           else
           {
             /*
-              Slave has already ended some operations
+              Replica has already ended some operations
             */
             jam();
 #ifdef VM_TRACE
@@ -21212,15 +21212,15 @@ void Dbdict::check_takeover_replies(Signal* signal)
 #ifdef VM_TRACE
         ndbout_c("Comparing node %u rollforward(%u(%u)<%u(%u))/rollback(%u(%u)<%u(%u))", i, nodePtr.p->takeOverConf.rollforward_op_state, nodePtr.p->takeOverConf.rollforward_op, trans_ptr.p->m_rollforward_op_state, trans_ptr.p->m_rollforward_op, nodePtr.p->takeOverConf.rollback_op_state, nodePtr.p->takeOverConf.rollback_op, trans_ptr.p->m_rollback_op_state, trans_ptr.p->m_rollback_op);
 #endif
-        if (trans_ptr.p->m_master_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
+        if (trans_ptr.p->m_primary_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
         {
           jam();
           if (trans_ptr.p->m_lowest_trans_state == SchemaTrans::TS_PREPARING &&
               nodePtr.p->takeOverConf.trans_state == SchemaTrans::TS_COMMITTING)
           {
             /*
-              Some slave have flushed the commit start, but not all.
-              Flushed slaves need to be partially rolled forward.
+              Some replica have flushed the commit start, but not all.
+              Flushed replicas need to be partially rolled forward.
              */
             jam();
             nodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLFORWARD;
@@ -21234,7 +21234,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
                    trans_ptr.p->m_rollforward_op)
           {
             /*
-              Slave has started committing, but other slaves have non-committed
+              Replica has started committing, but other replicas have non-committed
               operations. Node needs to be partially rollforward.
             */
             jam();
@@ -21244,12 +21244,12 @@ void Dbdict::check_takeover_replies(Signal* signal)
 #ifdef VM_TRACE
             ndbout_c("Node %u will be partially rolled forward to operation %u, state %u", nodePtr.i, nodePtr.p->start_op, nodePtr.p->start_op_state);
 #endif
-            if (i == c_masterNodeId)
+            if (i == c_primaryNodeId)
             {
               /*
-                New master is ahead of other slaves
+                New primary is ahead of other replicas
                 Change operation state back to rollforward
-                other slaves.
+                other replicas.
                */
               jam();
               SchemaOpPtr op_ptr;
@@ -21265,8 +21265,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
                    nodePtr.p->takeOverConf.trans_state >= SchemaTrans::TS_FLUSH_COMPLETE)
           {
             /*
-              Some slave have flushed the commit complete, but not all.
-              Flushed slaves need to be partially rolled forward.
+              Some replica have flushed the commit complete, but not all.
+              Flushed replicas need to be partially rolled forward.
             */
             jam();
             nodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLFORWARD;
@@ -21275,7 +21275,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
 #endif
           }
         }
-        else // if (trans_ptr.p->m_master_recovery_state == SchemaTrans::TRS_ROLLBACK)
+        else // if (trans_ptr.p->m_primary_recovery_state == SchemaTrans::TRS_ROLLBACK)
         {
           jam();
           if (SchemaOp::weight(nodePtr.p->takeOverConf.rollback_op_state) <
@@ -21284,7 +21284,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
               trans_ptr.p->m_rollback_op)
           {
             /*
-              Slave is behind. Other nodes have further
+              Replica is behind. Other nodes have further
               progress, or has already started aborting.
               Node needs to be partially rolled back.
             */
@@ -21295,14 +21295,14 @@ void Dbdict::check_takeover_replies(Signal* signal)
 #ifdef VM_TRACE
             ndbout_c("Node %u will be partially rolled back from operation %u, state %u", nodePtr.i, nodePtr.p->start_op, nodePtr.p->start_op_state);
 #endif
-            if (i == c_masterNodeId &&
+            if (i == c_primaryNodeId &&
                 (SchemaTrans::weight(trans_ptr.p->m_state) <=
                  SchemaTrans::weight(SchemaTrans::TS_PREPARING)))
             {
               /*
-                New master is behind of other slaves
+                New primary is behind of other replicas
                 Change operation state forward to rollback
-                other slaves.
+                other replicas.
                */
               jam();
               SchemaOpPtr op_ptr;
@@ -21318,10 +21318,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
       }
     }
     /*
-      Set current op to the lowest/highest reported by slaves
+      Set current op to the lowest/highest reported by replicas
       depending on if decision is to rollforward/rollback.
     */
-    if (trans_ptr.p->m_master_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
+    if (trans_ptr.p->m_primary_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
     {
       jam();
       SchemaOpPtr rollforward_op_ptr;
@@ -21331,13 +21331,13 @@ void Dbdict::check_takeover_replies(Signal* signal)
       ndbout_c("execDICT_TAKEOVER_CONF: Transaction %u rolled forward starting at %u(%u)", trans_ptr.p->trans_key,  trans_ptr.p->m_rollforward_op, trans_ptr.p->m_curr_op_ptr_i);
 #endif
     }
-    else // if (trans_ptr.p->master_recovery_state == SchemaTrans::TRS_ROLLBACK)
+    else // if (trans_ptr.p->primary_recovery_state == SchemaTrans::TRS_ROLLBACK)
     {
       jam();
       if (trans_ptr.p->m_state >= SchemaTrans::TS_PARSING)
       {
         /*
-          Some slave had at least started parsing operations
+          Some replica had at least started parsing operations
          */
         jam();
         SchemaOpPtr rollback_op_ptr;
@@ -21767,7 +21767,7 @@ Dbdict::createFile_release(SchemaOpPtr op_ptr)
 // CreateFile: PARSE
 
 void
-Dbdict::createFile_parse(Signal* signal, bool master,
+Dbdict::createFile_parse(Signal* signal, bool primary,
                           SchemaOpPtr op_ptr,
                           SectionHandle& handle, ErrorInfo& error)
 {
@@ -21909,7 +21909,7 @@ Dbdict::createFile_parse(Signal* signal, bool master,
     }
   }
 
-  if (master)
+  if (primary)
   {
     jam();
 
@@ -22489,7 +22489,7 @@ Dbdict::createFilegroup_release(SchemaOpPtr op_ptr)
 // CreateFilegroup: PARSE
 
 void
-Dbdict::createFilegroup_parse(Signal* signal, bool master,
+Dbdict::createFilegroup_parse(Signal* signal, bool primary,
                               SchemaOpPtr op_ptr,
                               SectionHandle& handle, ErrorInfo& error)
 {
@@ -22650,7 +22650,7 @@ Dbdict::createFilegroup_parse(Signal* signal, bool master,
     ndbrequire(false);
   }
 
-  if (master)
+  if (primary)
   {
     jam();
 
@@ -22684,7 +22684,7 @@ Dbdict::createFilegroup_parse(Signal* signal, bool master,
 
   ndbrequire(link_object(obj_ptr, fg_ptr));
 
-  if (master)
+  if (primary)
   {
     jam();
     releaseSections(handle);
@@ -23088,7 +23088,7 @@ Dbdict::dropFile_release(SchemaOpPtr op_ptr)
 // DropFile: PARSE
 
 void
-Dbdict::dropFile_parse(Signal* signal, bool master,
+Dbdict::dropFile_parse(Signal* signal, bool primary,
                        SchemaOpPtr op_ptr,
                        SectionHandle& handle, ErrorInfo& error)
 {
@@ -23445,7 +23445,7 @@ Dbdict::dropFilegroup_release(SchemaOpPtr op_ptr)
 // DropFilegroup: PARSE
 
 void
-Dbdict::dropFilegroup_parse(Signal* signal, bool master,
+Dbdict::dropFilegroup_parse(Signal* signal, bool primary,
                           SchemaOpPtr op_ptr,
                           SectionHandle& handle, ErrorInfo& error)
 {
@@ -23872,7 +23872,7 @@ Dbdict::createNodegroup_release(SchemaOpPtr op_ptr)
 // CreateNodegroup: PARSE
 
 void
-Dbdict::createNodegroup_parse(Signal* signal, bool master,
+Dbdict::createNodegroup_parse(Signal* signal, bool primary,
                               SchemaOpPtr op_ptr,
                               SectionHandle& handle, ErrorInfo& error)
 {
@@ -24317,7 +24317,7 @@ Dbdict::createNodegroup_fromWaitGCP(Signal* signal,
     jam();
   case WaitGCPRef::NF_CausedAbortOfProcedure:
     jam();
-  case WaitGCPRef::NF_MasterTakeOverInProgress:
+  case WaitGCPRef::NF_PrimaryTakeOverInProgress:
     jam();
   }
 
@@ -24461,7 +24461,7 @@ Dbdict::dropNodegroup_release(SchemaOpPtr op_ptr)
 // DropNodegroup: PARSE
 
 void
-Dbdict::dropNodegroup_parse(Signal* signal, bool master,
+Dbdict::dropNodegroup_parse(Signal* signal, bool primary,
                           SchemaOpPtr op_ptr,
                           SectionHandle& handle, ErrorInfo& error)
 {
@@ -24814,7 +24814,7 @@ Dbdict::dropNodegroup_fromWaitGCP(Signal* signal,
     jam();
   case WaitGCPRef::NF_CausedAbortOfProcedure:
     jam();
-  case WaitGCPRef::NF_MasterTakeOverInProgress:
+  case WaitGCPRef::NF_PrimaryTakeOverInProgress:
     jam();
   }
 
@@ -24943,7 +24943,7 @@ Dbdict::createFK_release(SchemaOpPtr op_ptr)
 // CreateFK: PARSE
 
 void
-Dbdict::createFK_parse(Signal* signal, bool master,
+Dbdict::createFK_parse(Signal* signal, bool primary,
                               SchemaOpPtr op_ptr,
                               SectionHandle& handle, ErrorInfo& error)
 {
@@ -25272,7 +25272,7 @@ Dbdict::createFK_parse(Signal* signal, bool master,
     }
   }
 
-  if (master)
+  if (primary)
   {
     jam();
 
@@ -25320,7 +25320,7 @@ Dbdict::createFK_parse(Signal* signal, bool master,
   obj_ptr.p->m_type = DictTabInfo::ForeignKey;
   obj_ptr.p->m_ref_count = 0;
 
-  if (master)
+  if (primary)
   {
     jam();
     releaseSections(handle);
@@ -26156,7 +26156,7 @@ Dbdict::buildFK_release(SchemaOpPtr op_ptr)
 // BuildFK: PARSE
 
 void
-Dbdict::buildFK_parse(Signal* signal, bool master,
+Dbdict::buildFK_parse(Signal* signal, bool primary,
                               SchemaOpPtr op_ptr,
                               SectionHandle& handle, ErrorInfo& error)
 {
@@ -26483,7 +26483,7 @@ Dbdict::dropFK_release(SchemaOpPtr op_ptr)
 // DropFK: PARSE
 
 void
-Dbdict::dropFK_parse(Signal* signal, bool master,
+Dbdict::dropFK_parse(Signal* signal, bool primary,
                      SchemaOpPtr op_ptr,
                      SectionHandle& handle, ErrorInfo& error)
 {
@@ -27686,19 +27686,19 @@ Dbdict::execSCHEMA_TRANS_BEGIN_REQ(Signal* signal)
   SchemaTransPtr trans_ptr;
   ErrorInfo error;
   do {
-    if (getOwnNodeId() != c_masterNodeId && !localTrans) {
+    if (getOwnNodeId() != c_primaryNodeId && !localTrans) {
       jam();
-      setError(error, SchemaTransBeginRef::NotMaster, __LINE__);
+      setError(error, SchemaTransBeginRef::NotPrimary, __LINE__);
       break;
     }
 
     if (!localTrans)
     {
-      ndbassert(getOwnNodeId() == c_masterNodeId);
-      NodeRecordPtr masterNodePtr;
-      c_nodes.getPtr(masterNodePtr, c_masterNodeId);
+      ndbassert(getOwnNodeId() == c_primaryNodeId);
+      NodeRecordPtr primaryNodePtr;
+      c_nodes.getPtr(primaryNodePtr, c_primaryNodeId);
 
-      if (masterNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+      if (primaryNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
       {
         jam();
         /**
@@ -27727,8 +27727,8 @@ Dbdict::execSCHEMA_TRANS_BEGIN_REQ(Signal* signal)
       break;
     }
 
-    trans_ptr.p->m_isMaster = true;
-    trans_ptr.p->m_masterRef = reference();
+    trans_ptr.p->m_isPrimary = true;
+    trans_ptr.p->m_primaryRef = reference();
     trans_ptr.p->m_clientRef = clientRef;
     trans_ptr.p->m_transId = transId;
     trans_ptr.p->m_requestInfo = requestInfo;
@@ -27793,11 +27793,11 @@ Dbdict::execSCHEMA_TRANS_BEGIN_REQ(Signal* signal)
       if (ERROR_INSERTED(6140))
       {
         /*
-          Simulate slave missing start
+          Simulate replica missing start
         */
         jam();
 	Uint32 nodeId = rand() % MAX_NDB_NODES;
-	while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+	while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
 	  nodeId = rand() % MAX_NDB_NODES;
 
 	infoEvent("Simulating node %u missing RT_START", nodeId);
@@ -27892,9 +27892,9 @@ Dbdict::execSCHEMA_TRANS_END_REQ(Signal* signal)
   ErrorInfo error;
   do {
     const bool localTrans = (requestInfo & DictSignal::RF_LOCAL_TRANS);
-    if (getOwnNodeId() != c_masterNodeId && !localTrans) {
+    if (getOwnNodeId() != c_primaryNodeId && !localTrans) {
       jam();
-      setError(error, SchemaTransEndRef::NotMaster, __LINE__);
+      setError(error, SchemaTransEndRef::NotPrimary, __LINE__);
       break;
     }
 
@@ -27923,11 +27923,11 @@ Dbdict::execSCHEMA_TRANS_END_REQ(Signal* signal)
 
     if (!localTrans)
     {
-      ndbassert(getOwnNodeId() == c_masterNodeId);
-      NodeRecordPtr masterNodePtr;
-      c_nodes.getPtr(masterNodePtr, c_masterNodeId);
+      ndbassert(getOwnNodeId() == c_primaryNodeId);
+      NodeRecordPtr primaryNodePtr;
+      c_nodes.getPtr(primaryNodePtr, c_primaryNodeId);
 
-      if (masterNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+      if (primaryNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
       {
         jam();
         /**
@@ -28013,7 +28013,7 @@ Dbdict::handleClientReq(Signal* signal, SchemaOpPtr op_ptr,
   }
 
   trans_ptr.p->m_curr_op_ptr_i = op_ptr.i;
-  op_ptr.p->m_state = SchemaOp::OS_PARSE_MASTER;
+  op_ptr.p->m_state = SchemaOp::OS_PARSE_PRIMARY;
 
   ErrorInfo error;
   const OpInfo& info = getOpInfo(op_ptr);
@@ -28072,11 +28072,11 @@ Dbdict::handleClientReq(Signal* signal, SchemaOpPtr op_ptr,
   if (ERROR_INSERTED(6141))
   {
     /*
-      Simulate slave missing parsing last (this) op
+      Simulate replica missing parsing last (this) op
      */
     jam();
     Uint32 nodeId = rand() % MAX_NDB_NODES;
-    while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+    while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
       nodeId = rand() % MAX_NDB_NODES;
 
     infoEvent("Simulating node %u missing RT_PARSE", nodeId);
@@ -28144,7 +28144,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_CONF(Signal* signal)
   if (c_takeOverInProgress)
   {
     /**
-     * The new master will rebuild the transaction state from the
+     * The new primary will rebuild the transaction state from the
      * DICT_TAKEOVER_CONF signals. Therefore we ignore this signal during 
      * takeover.
      */
@@ -28181,7 +28181,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REF(Signal* signal)
   if (c_takeOverInProgress)
   {
     /**
-     * The new master will rebuild the transaction state from the
+     * The new primary will rebuild the transaction state from the
      * DICT_TAKEOVER_CONF signals. Therefore we ignore this signal during 
      * takeover.
      */
@@ -28355,17 +28355,17 @@ Dbdict::handleTransReply(Signal* signal, SchemaTransPtr trans_ptr)
       /*
        * Create any sub-operations via client signals.  This is
        * a recursive process.  When done at current level, sends reply
-       * to client.  On inner levels the client is us (dict master).
+       * to client.  On inner levels the client is us (dict primary).
        */
       createSubOps(signal, op_ptr, true);
     }
     else if (tLoc.m_phase == TransPhase::Prepare) {
       jam();
-      runTransMaster(signal, trans_ptr);
+      runTransPrimary(signal, trans_ptr);
     }
     else if (tLoc.m_phase == TransPhase::Commit) {
       jam();
-      runTransMaster(signal, trans_ptr);
+      runTransPrimary(signal, trans_ptr);
     }
     else if (tLoc.m_phase == TransPhase::End)
     {
@@ -28382,22 +28382,22 @@ Dbdict::handleTransReply(Signal* signal, SchemaTransPtr trans_ptr)
       jam();
       /*
        * Rolling back current client op and its sub-ops.
-       * We do not follow the signal train of master REQs back.
+       * We do not follow the signal train of primary REQs back.
        * Instead we simply run backwards in abort mode until
        * (and including) first op of depth zero.  All ops involved
-       * are removed.  On master this is done here.
+       * are removed.  On primary this is done here.
        */
       ndbrequire(hasError(trans_ptr.p->m_error));
       ndbrequire(!op_ptr.isNull());
       if (tLoc.m_hold) {
         jam();
         // error seen first time, re-run current op
-        runTransMaster(signal, trans_ptr);
+        runTransPrimary(signal, trans_ptr);
       }
       else {
         if (op_ptr.p->m_opDepth != 0) {
           jam();
-          runTransMaster(signal, trans_ptr);
+          runTransPrimary(signal, trans_ptr);
         }
         else {
           jam();
@@ -28431,11 +28431,11 @@ Dbdict::handleTransReply(Signal* signal, SchemaTransPtr trans_ptr)
     }
     else if (tLoc.m_phase == TransPhase::Parse) {
       jam();
-      runTransMaster(signal, trans_ptr);
+      runTransPrimary(signal, trans_ptr);
     }
     else if (tLoc.m_phase == TransPhase::Prepare) {
       jam();
-      runTransMaster(signal, trans_ptr);
+      runTransPrimary(signal, trans_ptr);
     }
     else {
       ndbrequire(false);
@@ -28512,11 +28512,11 @@ Dbdict::trans_prepare_start(Signal* signal, SchemaTransPtr trans_ptr)
   if (ERROR_INSERTED(6142))
   {
     /*
-      Simulate slave missing flush prepare
+      Simulate replica missing flush prepare
      */
     jam();
     Uint32 nodeId = rand() % MAX_NDB_NODES;
-    while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+    while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
       nodeId = rand() % MAX_NDB_NODES;
 
     infoEvent("Simulating node %u missing RT_FLUSH_PREPARE", nodeId);
@@ -28596,11 +28596,11 @@ Dbdict::trans_prepare_next(Signal* signal,
     if (!list.hasNext(op_ptr))
     {
       /*
-        Simulate slave missing preparing last op
+        Simulate replica missing preparing last op
       */
       jam();
       Uint32 nodeId = rand() % MAX_NDB_NODES;
-      while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+      while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
         nodeId = rand() % MAX_NDB_NODES;
 
       infoEvent("Simulating node %u missing RT_PREPARE", nodeId);
@@ -28737,11 +28737,11 @@ Dbdict::check_partial_trans_abort_parse_next(SchemaTransPtr trans_ptr,
   jam();
   NodeRecordPtr ownNodePtr;
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
-  if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+  if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
   {
     /*
-      A new master is in the process of aborting a
-      transaction taken over from the failed master.
+      A new primary is in the process of aborting a
+      transaction taken over from the failed primary.
       Check if any nodes should be skipped because they
       have not parsed the operation to be aborted
     */
@@ -28801,11 +28801,11 @@ Dbdict::trans_abort_parse_next(Signal* signal,
     if (!list.hasNext(op_ptr))
     {
       /*
-        Simulate slave missing aborting parse for last op
+        Simulate replica missing aborting parse for last op
       */
       jam();
       Uint32 nodeId = rand() % MAX_NDB_NODES;
-      while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+      while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
         nodeId = rand() % MAX_NDB_NODES;
 
       infoEvent("Simulating node %u missing RT_ABORT_PARSE", nodeId);
@@ -28896,11 +28896,11 @@ Dbdict::check_partial_trans_abort_prepare_next(SchemaTransPtr trans_ptr,
   jam();
   NodeRecordPtr ownNodePtr;
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
-  if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+  if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
   {
     /*
-      A new master is in the process of aborting a
-      transaction taken over from the failed master.
+      A new primary is in the process of aborting a
+      transaction taken over from the failed primary.
       Check if any nodes should be skipped because they
       have already aborted the operation.
     */
@@ -28957,7 +28957,7 @@ Dbdict::trans_abort_prepare_next(Signal* signal,
     jam();
     break;
   case SchemaOp::OS_INITIAL:
-  case SchemaOp::OS_PARSE_MASTER:
+  case SchemaOp::OS_PARSE_PRIMARY:
   case SchemaOp::OS_PARSING:
   case SchemaOp::OS_ABORTING_PREPARE:
   case SchemaOp::OS_ABORTED_PREPARE:
@@ -28991,11 +28991,11 @@ Dbdict::trans_abort_prepare_next(Signal* signal,
     if (!list.hasPrev(op_ptr))
     {
       /*
-        Simulate slave missing aborting prepare of last op
+        Simulate replica missing aborting prepare of last op
       */
       jam();
       Uint32 nodeId = rand() % MAX_NDB_NODES;
-      while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+      while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
         nodeId = rand() % MAX_NDB_NODES;
 
       infoEvent("Simulating node %u missing RT_ABORT_PREPARE", nodeId);
@@ -29048,11 +29048,11 @@ Dbdict::trans_rollback_sp_start(Signal* signal, SchemaTransPtr trans_ptr)
 
   trans_ptr.p->m_state = SchemaTrans::TS_ROLLBACK_SP;
 
-  if (op_ptr.p->m_state == SchemaOp::OS_PARSE_MASTER)
+  if (op_ptr.p->m_state == SchemaOp::OS_PARSE_PRIMARY)
   {
     jam();
     /**
-     * This op is only parsed at master..
+     * This op is only parsed at primary..
      *
      */
     NdbNodeBitmask nodes;
@@ -29126,11 +29126,11 @@ Dbdict::trans_rollback_sp_next(Signal* signal,
     if (!list.hasPrev(op_ptr))
     {
       /*
-        Simulate slave missing aborting parsing of last op
+        Simulate replica missing aborting parsing of last op
       */
       jam();
       Uint32 nodeId = rand() % MAX_NDB_NODES;
-      while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+      while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
         nodeId = rand() % MAX_NDB_NODES;
 
       infoEvent("Simulating node %u missing RT_ABORT_PARSE", nodeId);
@@ -29179,12 +29179,12 @@ void Dbdict::check_partial_trans_commit_start(SchemaTransPtr trans_ptr,
   jam();
   NodeRecordPtr ownNodePtr;
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
-  if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+  if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
   {
     /*
-      A new master is in the process of commiting a
-      transaction taken over from the failed master.
-      Check if some slave have already flushed the commit.
+      A new primary is in the process of commiting a
+      transaction taken over from the failed primary.
+      Check if some replica have already flushed the commit.
      */
     jam();
     for (unsigned i = 1; i < MAX_NDB_NODES; i++) {
@@ -29216,7 +29216,7 @@ Dbdict::trans_commit_start(Signal* signal, SchemaTransPtr trans_ptr)
     jam();
     signal->theData[0] = 9999;
     NdbNodeBitmask mask = c_aliveNodes;
-    if (c_masterNodeId == getOwnNodeId())
+    if (c_primaryNodeId == getOwnNodeId())
     {
       jam();
       mask.clear(getOwnNodeId());
@@ -29247,11 +29247,11 @@ Dbdict::trans_commit_start(Signal* signal, SchemaTransPtr trans_ptr)
   {
     jam();
     /*
-      Simulate slave missing flushing commit
+      Simulate replica missing flushing commit
     */
     jam();
     Uint32 nodeId = rand() % MAX_NDB_NODES;
-    while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+    while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
       nodeId = rand() % MAX_NDB_NODES;
 
     infoEvent("Simulating node %u missing RT_FLUSH_COMMIT", nodeId);
@@ -29295,11 +29295,11 @@ Dbdict::trans_commit_first(Signal* signal, SchemaTransPtr trans_ptr)
 
   NodeRecordPtr ownNodePtr;
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
-  if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER &&
+  if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER &&
       ownNodePtr.p->takeOverConf.trans_state >= SchemaTrans::TS_COMMITTING)
   {
     /*
-      Master take-over, new master already has lock.
+      Primary take-over, new primary already has lock.
      */
     jam();
     trans_commit_mutex_locked(signal, trans_ptr.i, 0);
@@ -29433,12 +29433,12 @@ void Dbdict::check_partial_trans_commit_next(SchemaTransPtr trans_ptr,
   jam();
   NodeRecordPtr ownNodePtr;
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
-  if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER &&
+  if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER &&
       trans_ptr.p->check_partial_rollforward)
   {
     /*
-      A new master is in the process of committing a
-      transaction taken over from the failed master.
+      A new primary is in the process of committing a
+      transaction taken over from the failed primary.
       Check if any nodes should be skipped because they
       have already commited the operation
     */
@@ -29502,11 +29502,11 @@ Dbdict::trans_commit_next(Signal* signal,
     {
       jam();
       /*
-        Simulate slave missing committing last op
+        Simulate replica missing committing last op
       */
       jam();
       Uint32 nodeId = rand() % MAX_NDB_NODES;
-      while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+      while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
         nodeId = rand() % MAX_NDB_NODES;
 
       infoEvent("Simulating node %u missing RT_COMMIT", nodeId);
@@ -29529,10 +29529,10 @@ Dbdict::trans_commit_next(Signal* signal,
   if (rg.m_nodes.get(getOwnNodeId()))
   {
     /*
-      To ensure that slave participants register the commit
-      first we mask out the master node and send commit signal
-      to master last. This is necessary to handle master node
-      failure where one of the slaves take over and need to know
+      To ensure that replica participants register the commit
+      first we mask out the primary node and send commit signal
+      to primary last. This is necessary to handle primary node
+      failure where one of the replicas take over and need to know
       that transaction is to be committed.
     */
     jam();
@@ -29547,7 +29547,7 @@ Dbdict::trans_commit_next(Signal* signal,
   {
     jam();
     /*
-      New master had already committed operation
+      New primary had already committed operation
      */
     sendSignal(rg, GSN_SCHEMA_TRANS_IMPL_REQ, signal,
                SchemaTransImplReq::SignalLength, JBB);
@@ -29637,11 +29637,11 @@ Dbdict::check_partial_trans_complete_start(SchemaTransPtr trans_ptr,
   jam();
   NodeRecordPtr ownNodePtr;
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
-  if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+  if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
   {
     /*
-      A new master is in the process of committing a
-      transaction taken over from the failed master.
+      A new primary is in the process of committing a
+      transaction taken over from the failed primary.
       Check if any nodes should be skipped because they
       have already completed the operation
     */
@@ -29705,11 +29705,11 @@ Dbdict::trans_complete_start(Signal* signal, SchemaTransPtr trans_ptr)
   {
     jam();
     /*
-      Simulate slave missing flushing complete last op
+      Simulate replica missing flushing complete last op
     */
     jam();
     Uint32 nodeId = rand() % MAX_NDB_NODES;
-    while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+    while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
       nodeId = rand() % MAX_NDB_NODES;
 
     infoEvent("Simulating node %u missing RT_FLUSH_COMPLETE", nodeId);
@@ -29786,11 +29786,11 @@ Dbdict::trans_complete_next(Signal* signal,
   {
     jam();
     /*
-      Simulate slave missing completing last op
+      Simulate replica missing completing last op
     */
     jam();
     Uint32 nodeId = rand() % MAX_NDB_NODES;
-    while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+    while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
       nodeId = rand() % MAX_NDB_NODES;
 
     infoEvent("Simulating node %u missing RT_COMPLETE", nodeId);
@@ -29872,11 +29872,11 @@ Dbdict::trans_end_start(Signal* signal, SchemaTransPtr trans_ptr)
   {
     jam();
     /*
-      Simulate slave missing ending transaction
+      Simulate replica missing ending transaction
     */
     jam();
     Uint32 nodeId = rand() % MAX_NDB_NODES;
-    while(nodeId == c_masterNodeId || (!rg.m_nodes.get(nodeId)))
+    while(nodeId == c_primaryNodeId || (!rg.m_nodes.get(nodeId)))
       nodeId = rand() % MAX_NDB_NODES;
 
     infoEvent("Simulating node %u missing RT_END", nodeId);
@@ -29891,7 +29891,7 @@ Dbdict::trans_end_start(Signal* signal, SchemaTransPtr trans_ptr)
   if (ERROR_INSERTED(6050))
   {
     /**
-     * Simulate only next master getting the RT_END
+     * Simulate only next primary getting the RT_END
      */
     infoEvent("Simulating only node %u getting RT_END",
               ERROR_INSERT_EXTRA);
@@ -29978,7 +29978,7 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
   }
   case SchemaTrans::TS_PREPARING:
     jam();
-    if (trans_ptr.p->m_master_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
+    if (trans_ptr.p->m_primary_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
     {
       goto flush_commit;
     }
@@ -30002,7 +30002,7 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
   case SchemaTrans::TS_FLUSH_COMMIT:
     flush_commit:
     /*
-       Flush commit any unflushed slaves
+       Flush commit any unflushed replicas
     */
     jam();
     trans_commit_start(signal, trans_ptr);
@@ -30028,13 +30028,13 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
       We have started flushing commits
     */
     jam();
-    NodeRecordPtr masterNodePtr;
-    c_nodes.getPtr(masterNodePtr, c_masterNodeId);
-    if (masterNodePtr.p->recoveryState
+    NodeRecordPtr primaryNodePtr;
+    c_nodes.getPtr(primaryNodePtr, c_primaryNodeId);
+    if (primaryNodePtr.p->recoveryState
         == NodeRecord::RS_PARTIAL_ROLLFORWARD)
     {
       /*
-        New master has flushed commit and
+        New primary has flushed commit and
         thus have released commit mutex
       */
       jam();
@@ -30044,7 +30044,7 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
     else
     {
       /*
-        New master has not flushed commit and
+        New primary has not flushed commit and
         thus have to release commit mutex
       */
       jam();
@@ -30079,7 +30079,7 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
   }
   case SchemaTrans::TS_ENDING:
     /*
-      End any pending slaves
+      End any pending replicas
      */
     jam();
 #ifdef VM_TRACE
@@ -30117,7 +30117,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
       jam();
       reqCopy.start.objectId = getFreeObjId();
     }
-    slave_run_start(signal, req);
+    replica_run_start(signal, req);
     return;
   }
 
@@ -30178,7 +30178,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
   switch(rt){
   case SchemaTransImplReq::RT_PARSE:
     jam();
-    slave_run_parse(signal, trans_ptr, req);
+    replica_run_parse(signal, trans_ptr, req);
     return;
   case SchemaTransImplReq::RT_END:
   case SchemaTransImplReq::RT_FLUSH_PREPARE:
@@ -30186,7 +30186,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
   case SchemaTransImplReq::RT_FLUSH_COMPLETE:
     jam();
     jamLine(rt);
-    slave_run_flush(signal, trans_ptr, req);
+    replica_run_flush(signal, trans_ptr, req);
     return;
   default:
     break;
@@ -30220,7 +30220,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
       op_ptr.p->m_state = SchemaOp::OS_ABORTING_PARSE;
       (this->*(info.m_abortParse))(signal, op_ptr);
       trans_log_schema_op_abort(op_ptr);
-      if (!trans_ptr.p->m_isMaster)
+      if (!trans_ptr.p->m_isPrimary)
       {
         jam();
         trans_ptr.p->m_state = SchemaTrans::TS_ABORTING_PARSE;
@@ -30236,7 +30236,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
       jam();
       op_ptr.p->m_state = SchemaOp::OS_ABORTING_PREPARE;
       (this->*(info.m_abortPrepare))(signal, op_ptr);
-      if (!trans_ptr.p->m_isMaster)
+      if (!trans_ptr.p->m_isPrimary)
       {
         jam();
         trans_ptr.p->m_state = SchemaTrans::TS_ABORTING_PREPARE;
@@ -30262,7 +30262,7 @@ err:
 }
 
 void
-Dbdict::slave_run_start(Signal *signal, const SchemaTransImplReq* req)
+Dbdict::replica_run_start(Signal *signal, const SchemaTransImplReq* req)
 {
   ErrorInfo error;
   SchemaTransPtr trans_ptr;
@@ -30287,8 +30287,8 @@ Dbdict::slave_run_start(Signal *signal, const SchemaTransImplReq* req)
     }
     trans_ptr.p->m_clientRef = req->start.clientRef;
     trans_ptr.p->m_transId = req->transId;
-    trans_ptr.p->m_isMaster = false;
-    trans_ptr.p->m_masterRef = req->senderRef;
+    trans_ptr.p->m_isPrimary = false;
+    trans_ptr.p->m_primaryRef = req->senderRef;
     trans_ptr.p->m_requestInfo = req->requestInfo;
     trans_ptr.p->m_state = SchemaTrans::TS_STARTED;
 
@@ -30313,18 +30313,18 @@ err:
   trans_ptr.i = RNIL;
   trans_ptr.p = &tmp_trans;
   trans_ptr.p->trans_key = trans_key;
-  trans_ptr.p->m_masterRef = req->senderRef;
+  trans_ptr.p->m_primaryRef = req->senderRef;
   setError(trans_ptr.p->m_error, error);
   sendTransRef(signal, trans_ptr);
 }
 
 void
-Dbdict::slave_run_parse(Signal *signal,
+Dbdict::replica_run_parse(Signal *signal,
                         SchemaTransPtr trans_ptr,
                         const SchemaTransImplReq* req)
 {
   SchemaOpPtr op_ptr;
-  D("slave_run_parse");
+  D("replica_run_parse");
 
   const Uint32 op_key = req->opKey;
   const Uint32 gsn = req->parse.gsn;
@@ -30339,7 +30339,7 @@ Dbdict::slave_run_parse(Signal *signal,
 
   ndbrequire(op_key != RNIL);
   ErrorInfo error;
-  if (trans_ptr.p->m_isMaster)
+  if (trans_ptr.p->m_isPrimary)
   {
     jam();
     // this branch does nothing but is convenient for signal pong
@@ -30392,19 +30392,19 @@ Dbdict::slave_run_parse(Signal *signal,
 }
 
 void
-Dbdict::slave_run_flush(Signal *signal,
+Dbdict::replica_run_flush(Signal *signal,
                         SchemaTransPtr trans_ptr,
                         const SchemaTransImplReq* req)
 {
   bool do_flush = false;
   const Uint32 rt = DictSignal::getRequestType(req->requestInfo);
-  const bool master = trans_ptr.p->m_isMaster;
+  const bool primary = trans_ptr.p->m_isPrimary;
 
   jam();
   jamLine(trans_ptr.p->m_state);
   switch(rt){
   case SchemaTransImplReq::RT_FLUSH_PREPARE:
-    if (master)
+    if (primary)
     {
       jam();
       ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_FLUSH_PREPARE);
@@ -30419,7 +30419,7 @@ Dbdict::slave_run_flush(Signal *signal,
     do_flush = trans_ptr.p->m_flush_prepare;
     break;
   case SchemaTransImplReq::RT_FLUSH_COMMIT:
-    if (master)
+    if (primary)
     {
       jam();
       ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_FLUSH_COMMIT);
@@ -30433,7 +30433,7 @@ Dbdict::slave_run_flush(Signal *signal,
     do_flush = trans_ptr.p->m_flush_commit;
     break;
   case SchemaTransImplReq::RT_FLUSH_COMPLETE:
-    if (master)
+    if (primary)
     {
       jam();
       ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_FLUSH_COMPLETE);
@@ -30471,7 +30471,7 @@ Dbdict::slave_run_flush(Signal *signal,
      *   or will be found in state COMMIT
      */
     jam();
-    slave_writeSchema_conf(signal, trans_ptr.p->trans_key, 0);
+    replica_writeSchema_conf(signal, trans_ptr.p->trans_key, 0);
     return;
   }
 #endif
@@ -30486,7 +30486,7 @@ Dbdict::slave_run_flush(Signal *signal,
 
   c_writeSchemaRecord.m_callback.m_callbackData = trans_ptr.p->trans_key;
   c_writeSchemaRecord.m_callback.m_callbackFunction =
-    safe_cast(&Dbdict::slave_writeSchema_conf);
+    safe_cast(&Dbdict::replica_writeSchema_conf);
 
   for(Uint32 i = 0; i<xsf->noOfPages; i++)
     computeChecksum(xsf, i);
@@ -30495,7 +30495,7 @@ Dbdict::slave_run_flush(Signal *signal,
 }
 
 void
-Dbdict::slave_writeSchema_conf(Signal* signal,
+Dbdict::replica_writeSchema_conf(Signal* signal,
                                Uint32 trans_key,
                                Uint32 ret)
 {
@@ -30505,7 +30505,7 @@ Dbdict::slave_writeSchema_conf(Signal* signal,
   ndbrequire(findSchemaTrans(trans_ptr, trans_key));
 
   bool release = false;
-  if (!trans_ptr.p->m_isMaster)
+  if (!trans_ptr.p->m_isPrimary)
   {
     switch(trans_ptr.p->m_state){
     case SchemaTrans::TS_FLUSH_PREPARE:
@@ -30518,7 +30518,7 @@ Dbdict::slave_writeSchema_conf(Signal* signal,
       trans_ptr.p->m_state = SchemaTrans::TS_COMMITTING;
       // Take commit lock
       Mutex mutex(signal, c_mutexMgr, trans_ptr.p->m_commit_mutex);
-      Callback c = { safe_cast(&Dbdict::slave_commit_mutex_locked), trans_ptr.i };
+      Callback c = { safe_cast(&Dbdict::replica_commit_mutex_locked), trans_ptr.i };
       bool ok = mutex.lock(c);
       ndbrequire(ok);
       return;
@@ -30529,7 +30529,7 @@ Dbdict::slave_writeSchema_conf(Signal* signal,
       trans_ptr.p->m_state = SchemaTrans::TS_COMPLETING;
      // Release commit lock
       Mutex mutex(signal, c_mutexMgr, trans_ptr.p->m_commit_mutex);
-      Callback c = { safe_cast(&Dbdict::slave_commit_mutex_unlocked), trans_ptr.i };
+      Callback c = { safe_cast(&Dbdict::replica_commit_mutex_unlocked), trans_ptr.i };
       mutex.unlock(c);
       return;
     }
@@ -30547,13 +30547,13 @@ Dbdict::slave_writeSchema_conf(Signal* signal,
 }
 
 void
-Dbdict::slave_commit_mutex_locked(Signal* signal,
+Dbdict::replica_commit_mutex_locked(Signal* signal,
                                   Uint32 transPtrI,
                                   Uint32 ret)
 {
   jamEntry();
 #ifdef MARTIN
-  ndbout_c("slave_commit_mutex_locked");
+  ndbout_c("replica_commit_mutex_locked");
 #endif
   SchemaTransPtr trans_ptr;
   c_schemaTransPool.getPtr(trans_ptr, transPtrI);
@@ -30563,13 +30563,13 @@ Dbdict::slave_commit_mutex_locked(Signal* signal,
 }
 
 void
-Dbdict::slave_commit_mutex_unlocked(Signal* signal,
+Dbdict::replica_commit_mutex_unlocked(Signal* signal,
                                     Uint32 transPtrI,
                                     Uint32 ret)
 {
   jamEntry();
 #ifdef MARTIN
-  ndbout_c("slave_commit_mutex_unlocked");
+  ndbout_c("replica_commit_mutex_unlocked");
 #endif
   SchemaTransPtr trans_ptr;
   c_schemaTransPool.getPtr(trans_ptr, transPtrI);
@@ -30585,7 +30585,7 @@ void Dbdict::sendTransConfRelease(Signal*signal, SchemaTransPtr trans_ptr)
   jam();
   sendTransConf(signal, trans_ptr);
 
-  if ((!trans_ptr.p->m_isMaster) &&
+  if ((!trans_ptr.p->m_isPrimary) &&
       trans_ptr.p->m_state == SchemaTrans::TS_ENDING)
   {
     jam();
@@ -30597,7 +30597,7 @@ void
 Dbdict::update_op_state(SchemaOpPtr op_ptr)
 {
   switch(op_ptr.p->m_state){
-  case SchemaOp::OS_PARSE_MASTER:
+  case SchemaOp::OS_PARSE_PRIMARY:
     jam();
     break;
   case SchemaOp::OS_PARSING:
@@ -30657,7 +30657,7 @@ Dbdict::sendTransConf(Signal* signal, SchemaTransPtr trans_ptr)
   conf->senderRef = reference();
   conf->transKey = trans_ptr.p->trans_key;
 
-  const Uint32 masterRef = trans_ptr.p->m_masterRef;
+  const Uint32 primaryRef = trans_ptr.p->m_primaryRef;
 
   if (ERROR_INSERTED(6103)) {
     jam();
@@ -30668,13 +30668,13 @@ Dbdict::sendTransConf(Signal* signal, SchemaTransPtr trans_ptr)
     Uint32* data = &signal->theData[0];
     memmove(&data[2], &data[0], SchemaTransImplConf::SignalLength << 2);
     data[0] = 6103;
-    data[1] = masterRef;
+    data[1] = primaryRef;
     sendSignalWithDelay(reference(), GSN_CONTINUEB, signal,
                         5000, 2 + SchemaTransImplConf::SignalLength);
     return;
   }
 
-  sendSignal(masterRef, GSN_SCHEMA_TRANS_IMPL_CONF, signal,
+  sendSignal(primaryRef, GSN_SCHEMA_TRANS_IMPL_CONF, signal,
              SchemaTransImplConf::SignalLength, JBB);
 }
 
@@ -30708,8 +30708,8 @@ Dbdict::sendTransRef(Signal* signal, SchemaTransPtr trans_ptr)
   // erro has been reported, clear it
   resetError(trans_ptr.p->m_error);
 
-  const Uint32 masterRef = trans_ptr.p->m_masterRef;
-  sendSignal(masterRef, GSN_SCHEMA_TRANS_IMPL_REF, signal,
+  const Uint32 primaryRef = trans_ptr.p->m_primaryRef;
+  sendSignal(primaryRef, GSN_SCHEMA_TRANS_IMPL_REF, signal,
              SchemaTransImplRef::SignalLength, JBB);
 }
 
@@ -30943,16 +30943,16 @@ Dbdict::sendTransClientReply(Signal* signal, SchemaTransPtr trans_ptr)
       ref->senderRef = reference();
       ref->transId = transId;
       getError(trans_ptr.p->m_error, ref);
-      ref->masterNodeId = c_masterNodeId;
+      ref->primaryNodeId = c_primaryNodeId;
       sendSignal(receiverRef, GSN_SCHEMA_TRANS_END_REF, signal,
                  SchemaTransEndRef::SignalLength, JBB);
     }
     resetError(trans_ptr);
     trans_ptr.p->m_clientState = TransClient::EndReply;
-    if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+    if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
     {
       /*
-        New master was taking over transaction
+        New primary was taking over transaction
        */
       jam();
       goto send_node_fail_rep;
@@ -30960,10 +30960,10 @@ Dbdict::sendTransClientReply(Signal* signal, SchemaTransPtr trans_ptr)
     return;
   }
 
-  if (ownNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+  if (ownNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
   {
     /*
-      New master was taking over transaction
+      New primary was taking over transaction
       Report transaction outcome to client
      */
     jam();
@@ -30984,7 +30984,7 @@ Dbdict::sendTransClientReply(Signal* signal, SchemaTransPtr trans_ptr)
         rep->errorLine = 0;
         rep->errorNodeId = 0;
       }
-      rep->masterNodeId = c_masterNodeId;
+      rep->primaryNodeId = c_primaryNodeId;
 #ifdef VM_TRACE
       ndbout_c("Dbdict::sendTransClientReply: sending GSN_SCHEMA_TRANS_END_REP to 0x%8x", receiverRef);
 #endif
@@ -31209,7 +31209,7 @@ Dbdict::handleApiFail(Signal* signal,
       ndbrequire(!(trans_ptr.p->m_clientFlags & TransClient::ApiFail));
       trans_ptr.p->m_clientFlags |= TransClient::ApiFail;
 
-      if (trans_ptr.p->m_isMaster)
+      if (trans_ptr.p->m_isPrimary)
       {
         jam();
         if (trans_ptr.p->m_clientFlags & TransClient::TakeOver)
@@ -31549,7 +31549,7 @@ Dbdict::get_default_fragments(Signal* signal, Uint32 extranodegroups)
 }
 
 void
-Dbdict::createHashMap_parse(Signal* signal, bool master,
+Dbdict::createHashMap_parse(Signal* signal, bool primary,
                             SchemaOpPtr op_ptr,
                             SectionHandle& handle, ErrorInfo& error)
 {
@@ -31590,7 +31590,7 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
       return;
     }
   }
-  else if (!master)
+  else if (!primary)
   {
     jam();
     setError(error, CreateTableRef::InvalidFormat, __LINE__);
@@ -31599,7 +31599,7 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
   else
   {
     /**
-     * Convienienc branch...(only master)
+     * Convienienc branch...(only primary)
      * No info, create "default"
      */
     jam();
@@ -31745,7 +31745,7 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
   HashMapRecordPtr hm_ptr; hm_ptr.setNull();
   Ptr<Hash2FragmentMap> map_ptr; map_ptr.setNull();
 
-  if (master)
+  if (primary)
   {
     jam();
 
@@ -32211,7 +32211,7 @@ Dbdict::SchemaTrans::print(NdbOut& out) const
   out << " (SchemaTrans";
   out << dec << V(m_state);
   out << dec << V(trans_key);
-  out << dec << V(m_isMaster);
+  out << dec << V(m_isPrimary);
   out << hex << V(m_clientRef);
   out << hex << V(m_transId);
   out << dec << V(m_clientState);
@@ -32478,7 +32478,7 @@ Dbdict::send_event(Signal* signal,
                    Uint32 version,
                    Uint32 type)
 {
-  if (!trans_ptr.p->m_isMaster)
+  if (!trans_ptr.p->m_isPrimary)
   {
     return;
   }

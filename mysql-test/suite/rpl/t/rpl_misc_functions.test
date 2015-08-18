@@ -3,7 +3,7 @@
 #
 --source include/not_group_replication_plugin.inc
 source include/not_gtid_enabled.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 CALL mtr.add_suppression('Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT');
 
@@ -15,7 +15,7 @@ insert into t1 values(1, connection_id(), 0, 0, "");
 --disable_warnings
 insert into t1 values(2, 0, rand()*1000, rand()*1000, "");
 --enable_warnings
-# change the rand suite on the master (we do this because otherwise password()
+# change the rand suite on the primary (we do this because otherwise password()
 # benefits from the fact that the above rand() is well replicated : 
 # it picks the same sequence element, which hides a possible bug in password() replication.
 set sql_log_bin=0;
@@ -30,21 +30,21 @@ insert into t1 values(4, connection_id(), rand()*1000, rand()*1000, password('do
 --enable_warnings
 select * into outfile 'rpl_misc_functions.outfile' from t1;
 let $MYSQLD_DATADIR= `select @@datadir`;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 create temporary table t2 like t1; 
-# read the values from the master table
+# read the values from the primary table
 --replace_result $MYSQLD_DATADIR MYSQLD_DATADIR
 eval load data local infile '$MYSQLD_DATADIR/test/rpl_misc_functions.outfile' into table t2;
 # compare them with the replica; the SELECT below should return no row
 select * from t1, t2 where (t1.id=t2.id) and not(t1.i=t2.i and t1.r1=t2.r1 and t1.r2=t2.r2 and t1.p=t2.p);
 
-connection master;
+connection primary;
 drop table t1;
 
 # End of 4.1 tests
 
 #
-# BUG#25543 test calling rand() multiple times on the master in
+# BUG#25543 test calling rand() multiple times on the primary in
 # a stored procedure.
 #
 
@@ -80,7 +80,7 @@ END|
 DELIMITER ;|
 
 # Exercise the functions and procedures then compare the results on
-# the master to those on the slave.
+# the primary to those on the replica.
 --disable_warnings
 CALL test_replication_sp1();
 CALL test_replication_sp2();
@@ -89,41 +89,41 @@ INSERT INTO t1 (col_a) VALUES (test_replication_sf());
 INSERT INTO t1 (col_a) VALUES (test_replication_sf());
 --enable_warnings
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# Dump table on slave
-select * from t1 into outfile "../../tmp/t1_slave.txt";
+# Dump table on replica
+select * from t1 into outfile "../../tmp/t1_replica.txt";
 
-# Load data from slave into temp table on master
-connection master;
+# Load data from replica into temp table on primary
+connection primary;
 --disable_warnings
-create temporary table t1_slave select * from t1 where 1=0;
+create temporary table t1_replica select * from t1 where 1=0;
 --enable_warnings
-load data infile '../../tmp/t1_slave.txt' into table t1_slave;
---remove_file $MYSQLTEST_VARDIR/tmp/t1_slave.txt
+load data infile '../../tmp/t1_replica.txt' into table t1_replica;
+--remove_file $MYSQLTEST_VARDIR/tmp/t1_replica.txt
 
-# Compare master and slave temp table, use subtraction
+# Compare primary and replica temp table, use subtraction
 # for floating point comparison of "double"
-select count(*) into @aux from t1 join t1_slave using (id)
-where ABS(t1.col_a - t1_slave.col_a) < 0.0000001 ;
+select count(*) into @aux from t1 join t1_replica using (id)
+where ABS(t1.col_a - t1_replica.col_a) < 0.0000001 ;
 SELECT @aux;
 if (`SELECT @aux <> 12 OR @aux IS NULL`)
 {
    --echo # ERROR: We expected to get count(*) = 12.
    SELECT id, col_a FROM t1;
-   SELECT id, col_a FROM t1_slave;
+   SELECT id, col_a FROM t1_replica;
    --echo # abort
    exit;
 }
 
 # Cleanup
-connection master;
-DROP TABLE t1, t1_slave;
+connection primary;
+DROP TABLE t1, t1_replica;
 DROP PROCEDURE test_replication_sp1;
 DROP PROCEDURE test_replication_sp2;
 DROP FUNCTION test_replication_sf;
 --remove_file $MYSQLD_DATADIR/test/rpl_misc_functions.outfile
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 
 --source include/rpl_end.inc

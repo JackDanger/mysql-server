@@ -6,9 +6,9 @@ if (`SELECT @@have_dynamic_loading != 'YES'`) {
 }
 
 #
-# Check if the variable SEMISYNC_MASTER_PLUGIN is set
+# Check if the variable SEMISYNC_PRIMARY_PLUGIN is set
 #
-if (!$SEMISYNC_MASTER_PLUGIN)
+if (!$SEMISYNC_PRIMARY_PLUGIN)
 {
   skip Need semisync plugins;
 }

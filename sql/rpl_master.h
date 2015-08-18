@@ -1,4 +1,4 @@
-#ifndef RPL_MASTER_H_INCLUDED
+#ifndef RPL_PRIMARY_H_INCLUDED
 /* Copyright (c) 2010, 2015, Oracle and/or its affiliates. All rights reserved.
 
    This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
    51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
 
 
-#define RPL_MASTER_H_INCLUDED
+#define RPL_PRIMARY_H_INCLUDED
 
 #ifdef HAVE_REPLICATION
 
@@ -31,28 +31,28 @@ class THD;
 extern bool server_id_supplied;
 extern int max_binlog_dump_events;
 extern my_bool opt_sporadic_binlog_dump_fail;
-extern my_bool opt_show_slave_auth_info;
+extern my_bool opt_show_replica_auth_info;
 
-typedef struct st_slave_info
+typedef struct st_replica_info
 {
   uint32 server_id;
-  uint32 rpl_recovery_rank, master_id;
+  uint32 rpl_recovery_rank, primary_id;
   char host[HOSTNAME_LENGTH+1];
   char user[USERNAME_LENGTH+1];
   char password[MAX_PASSWORD_LENGTH+1];
   uint16 port;
   THD* thd;
-} SLAVE_INFO;
+} REPLICA_INFO;
 
-void init_slave_list();
-void end_slave_list();
-int register_slave(THD* thd, uchar* packet, size_t packet_length);
-void unregister_slave(THD* thd, bool only_mine, bool need_lock_slave_list);
-bool show_slave_hosts(THD* thd);
-String *get_slave_uuid(THD *thd, String *value);
-bool show_master_status(THD* thd);
+void init_replica_list();
+void end_replica_list();
+int register_replica(THD* thd, uchar* packet, size_t packet_length);
+void unregister_replica(THD* thd, bool only_mine, bool need_lock_replica_list);
+bool show_replica_hosts(THD* thd);
+String *get_replica_uuid(THD *thd, String *value);
+bool show_primary_status(THD* thd);
 bool show_binlogs(THD* thd);
-void kill_zombie_dump_threads(String *slave_uuid);
+void kill_zombie_dump_threads(String *replica_uuid);
 
 /**
   Process a COM_BINLOG_DUMP_GTID packet.
@@ -82,7 +82,7 @@ bool com_binlog_dump(THD *thd, char *packet, size_t packet_length);
 
 /**
   Low-level function where the dump thread iterates over the binary
-  log and sends events to the slave.  This function is common for both
+  log and sends events to the replica.  This function is common for both
   COM_BINLOG_DUMP and COM_BINLOG_DUMP_GTID.
 
   @param thd The dump thread.
@@ -95,7 +95,7 @@ bool com_binlog_dump(THD *thd, char *packet, size_t packet_length);
   COM_BINLOG_DUMP[_GTID] packet.  This must be at least 4 and at most
   the size of the binary log file.
 
-  @param gtid_set The gtid_set that the slave sent, or NULL if the
+  @param gtid_set The gtid_set that the replica sent, or NULL if the
   protocol is COM_BINLOG_DUMP.
 
   @note This function will start reading at the given (filename,
@@ -106,8 +106,8 @@ bool com_binlog_dump(THD *thd, char *packet, size_t packet_length);
 void mysql_binlog_send(THD* thd, char* log_ident, my_off_t pos,
                        Gtid_set* gtid_set, uint32 flags);
 
-bool reset_master(THD* thd);
+bool reset_primary(THD* thd);
 
 #endif /* HAVE_REPLICATION */
 
-#endif /* RPL_MASTER_H_INCLUDED */
+#endif /* RPL_PRIMARY_H_INCLUDED */

@@ -31,7 +31,7 @@ Execute_load_event(const uint32_t file_id_arg, const char* db_arg)
 }
 
 /**
-  The constructor is called by MySQL slave, while applying the events.
+  The constructor is called by MySQL replica, while applying the events.
 */
 Execute_load_query_event::
 Execute_load_query_event(uint32_t file_id_arg,
@@ -46,7 +46,7 @@ Execute_load_query_event(uint32_t file_id_arg,
 
 /**
   The constructor used inorder to decode EXECUTE_LOAD_QUERY_EVENT from a
-  packet. It is used on the MySQL server acting as a slave.
+  packet. It is used on the MySQL server acting as a replica.
 */
 Execute_load_query_event::
 Execute_load_query_event(const char* buf,
@@ -107,7 +107,7 @@ sql_ex_data_info::init(const char *buf,
     /*
       The code below assumes that buf will not disappear from
       under our feet during the lifetime of the event. This assumption
-      holds true in the slave thread if the log is in new format, but is not
+      holds true in the replica thread if the log is in new format, but is not
       the case when we have old format because we will be reusing net buffer
       to read the actual file before we write out the Create_file event.
     */
@@ -161,7 +161,7 @@ Load_event::Load_event(const char *buf, unsigned int event_len,
    table_name(0), db(0), fname(0), local_fname(false),
    /*
      Load_event which comes from the binary log does not contain
-     information about the type of insert which was used on the master.
+     information about the type of insert which was used on the primary.
      Assume that it was an ordinary, non-concurrent LOAD DATA.
    */
    is_concurrent(false)
@@ -211,9 +211,9 @@ int Load_event::copy_load_event(const char *buf, unsigned long event_len,
   /* this is the beginning of the post-header */
   const char* data_head = buf;
 
-  memcpy(&slave_proxy_id, data_head + L_THREAD_ID_OFFSET,
-         sizeof(slave_proxy_id));
-  slave_proxy_id= le32toh(slave_proxy_id);
+  memcpy(&replica_proxy_id, data_head + L_THREAD_ID_OFFSET,
+         sizeof(replica_proxy_id));
+  replica_proxy_id= le32toh(replica_proxy_id);
 
   memcpy(&load_exec_time, data_head + L_EXEC_TIME_OFFSET,
          sizeof(load_exec_time));
@@ -289,7 +289,7 @@ err:
 
 /**
   Create_file_log_event constructor
-  This event tells the slave to create a temporary file and fill it with
+  This event tells the replica to create a temporary file and fill it with
   a first data block. Later, zero or more APPEND_BLOCK_EVENT events append
   blocks to this temporary file.
 
@@ -320,9 +320,9 @@ Create_file_event::Create_file_event(const char* buf, unsigned int len,
   if (description_event->binlog_version != 1)
   {
     /**
-      file_id is the ID for the data file created on the slave.
+      file_id is the ID for the data file created on the replica.
       This is necessary in case several LOAD DATA INFILE statements occur in
-      parallel on the master. In that case, the binary log may contain inter-
+      parallel on the primary. In that case, the binary log may contain inter-
       mixed events for the statement. The ID resovles which file the blocks in
       each APPEND_BLOCK_EVENT must be appended, and the file must be loaded or
       deleted by EXEC_LOAD_EVENT or DELETE_FILE_EVENT.
@@ -335,8 +335,8 @@ Create_file_event::Create_file_event(const char* buf, unsigned int len,
       @note
       Note that it's ok to use get_data_size() below, because it is computed
       with values we have already read from this event (because we called
-      copy_log_event()); we are not using slave's format info to decode
-      master's format, we are really using master's format info.
+      copy_log_event()); we are not using replica's format info to decode
+      primary's format, we are really using primary's format info.
       Anyway, both formats should be identical (except the common_header_len)
       as these Load events are not changed between 4.0 and 5.0 (as logging of
       LOAD DATA INFILE does not use Load_log_event in 5.0).
@@ -403,7 +403,7 @@ Execute_load_event::Execute_load_event(const char* buf, unsigned int len,
 }
 
 /**
-  Constructor receives a packet from the MySQL master or the binary
+  Constructor receives a packet from the MySQL primary or the binary
   log, containing a block of data to be appended to the file being loaded via
   LOAD_DATA_INFILE query; and decodes it to create an Append_block_event.
 */

@@ -1,48 +1,48 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 include/rpl_reset.inc
-**** On Master ****
+**** On Primary ****
 CREATE TABLE t1 (a INT, b LONG) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1,1), (2,2);
-include/sync_slave_sql_with_master.inc
-**** On Master ****
+include/sync_replica_sql_with_primary.inc
+**** On Primary ****
 TRUNCATE TABLE t1;
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
 ==== Test using a table with delete triggers ====
-**** On Master ****
+**** On Primary ****
 SET @count := 1;
 CREATE TABLE t2 (a INT, b LONG) ENGINE=InnoDB;
 CREATE TRIGGER trg1 BEFORE DELETE ON t1 FOR EACH ROW SET @count := @count + 1;
-include/sync_slave_sql_with_master.inc
-**** On Master ****
+include/sync_replica_sql_with_primary.inc
+**** On Primary ****
 TRUNCATE TABLE t1;
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t2, slave:t2]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t2, replica:t2]
 DROP TABLE t1,t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_reset.inc
-**** On Master ****
+**** On Primary ****
 CREATE TABLE t1 (a INT, b LONG) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1,1), (2,2);
-include/sync_slave_sql_with_master.inc
-**** On Master ****
+include/sync_replica_sql_with_primary.inc
+**** On Primary ****
 DELETE FROM t1;
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
 ==== Test using a table with delete triggers ====
-**** On Master ****
+**** On Primary ****
 SET @count := 1;
 CREATE TABLE t2 (a INT, b LONG) ENGINE=InnoDB;
 CREATE TRIGGER trg1 BEFORE DELETE ON t1 FOR EACH ROW SET @count := @count + 1;
-include/sync_slave_sql_with_master.inc
-**** On Master ****
+include/sync_replica_sql_with_primary.inc
+**** On Primary ****
 DELETE FROM t1;
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t2, slave:t2]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t2, replica:t2]
 DROP TABLE t1,t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

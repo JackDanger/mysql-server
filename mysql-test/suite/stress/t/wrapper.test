@@ -21,7 +21,7 @@ EOF
 --remove_file $MYSQL_TMP_DIR/mtest.inc
 
 exec perl mysql-stress-test.pl --mysqltest=$MYSQLTEST_BIN
-         --server-port=$MASTER_MYPORT --server-socket=$MASTER_MYSOCK
+         --server-port=$PRIMARY_MYPORT --server-socket=$PRIMARY_MYSOCK
          --server-user=root --cleanup
          --server-logs-dir=$MYSQLTEST_VARDIR/log
          --stress-basedir=$MYSQLTEST_VARDIR

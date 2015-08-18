@@ -1,5 +1,5 @@
 set binlog_format=statement;
-RESET MASTER;
+RESET PRIMARY;
 drop database if exists my_replicated_db;
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 create database my_replicated_db;
@@ -25,15 +25,15 @@ use my_replicated_db;
 insert into my_tx_table(a)
 select thread_id from performance_schema.threads;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_non_tx_table(a)
 select thread_id from performance_schema.threads;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_bh_table(a)
 select thread_id from performance_schema.threads;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_tx_table(a)
 select id from information_schema.processlist;
 insert into my_non_tx_table(a)
@@ -43,63 +43,63 @@ select id from information_schema.processlist;
 insert into my_tx_table(a)
 select thread_id from mysql.general_log;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_non_tx_table(a)
 select thread_id from mysql.general_log;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_bh_table(a)
 select thread_id from mysql.general_log;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_tx_table(a)
 select thread_id from mysql.slow_log;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_non_tx_table(a)
 select thread_id from mysql.slow_log;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_bh_table(a)
 select thread_id from mysql.slow_log;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_tx_table(a)
-select Relay_log_pos from mysql.slave_relay_log_info;
+select Relay_log_pos from mysql.replica_relay_log_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_non_tx_table(a)
-select Relay_log_pos from mysql.slave_relay_log_info;
+select Relay_log_pos from mysql.replica_relay_log_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_bh_table(a)
-select Relay_log_pos from mysql.slave_relay_log_info;
+select Relay_log_pos from mysql.replica_relay_log_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_tx_table(a)
-select Master_log_pos from mysql.slave_master_info;
+select Primary_log_pos from mysql.replica_primary_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_non_tx_table(a)
-select Master_log_pos from mysql.slave_master_info;
+select Primary_log_pos from mysql.replica_primary_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_bh_table(a)
-select Master_log_pos from mysql.slave_master_info;
+select Primary_log_pos from mysql.replica_primary_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_tx_table(a)
-select Relay_log_pos from mysql.slave_worker_info;
+select Relay_log_pos from mysql.replica_worker_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_non_tx_table(a)
-select Relay_log_pos from mysql.slave_worker_info;
+select Relay_log_pos from mysql.replica_worker_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 insert into my_bh_table(a)
-select Relay_log_pos from mysql.slave_worker_info;
+select Relay_log_pos from mysql.replica_worker_info;
 Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on slaves.
+Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.
 use test;
 drop table if exists marker_multi_update;
 Warnings:
@@ -144,115 +144,115 @@ Note	1051	Unknown table 'test.marker_end'
 drop database my_replicated_db;
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	drop database if exists my_replicated_db
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `mtr`; INSERT INTO test_suppressions (pattern) VALUES ( NAME_CONST('pattern',_latin1'Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT' COLLATE 'latin1_swedish_ci'))
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	create database my_replicated_db
-master-bin.000001	#	Query	#	#	use `test`; create table my_replicated_db.my_tx_table(a bigint) engine = innodb
-master-bin.000001	#	Query	#	#	use `test`; create table my_replicated_db.my_non_tx_table(a bigint) engine = myisam
-master-bin.000001	#	Query	#	#	use `test`; create table my_replicated_db.my_bh_table(a bigint) engine = blackhole
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_start` /* generated by server */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+primary-bin.000001	#	Query	#	#	drop database if exists my_replicated_db
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `mtr`; INSERT INTO test_suppressions (pattern) VALUES ( NAME_CONST('pattern',_latin1'Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT' COLLATE 'latin1_swedish_ci'))
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	create database my_replicated_db
+primary-bin.000001	#	Query	#	#	use `test`; create table my_replicated_db.my_tx_table(a bigint) engine = innodb
+primary-bin.000001	#	Query	#	#	use `test`; create table my_replicated_db.my_non_tx_table(a bigint) engine = myisam
+primary-bin.000001	#	Query	#	#	use `test`; create table my_replicated_db.my_bh_table(a bigint) engine = blackhole
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_start` /* generated by server */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
 values (1000), (2000), (3000)
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
 values (1000), (2000), (3000)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
 values (1000), (2000), (3000)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_insert_select` /* generated by server */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_insert_select` /* generated by server */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
 select thread_id from performance_schema.threads
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
 select thread_id from performance_schema.threads
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
 select thread_id from performance_schema.threads
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
 select id from information_schema.processlist
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
 select id from information_schema.processlist
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
 select id from information_schema.processlist
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
 select thread_id from mysql.general_log
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
 select thread_id from mysql.general_log
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
 select thread_id from mysql.general_log
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
 select thread_id from mysql.slow_log
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
 select thread_id from mysql.slow_log
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
 select thread_id from mysql.slow_log
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
-select Relay_log_pos from mysql.slave_relay_log_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
-select Relay_log_pos from mysql.slave_relay_log_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
-select Relay_log_pos from mysql.slave_relay_log_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
-select Master_log_pos from mysql.slave_master_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
-select Master_log_pos from mysql.slave_master_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
-select Master_log_pos from mysql.slave_master_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
-select Relay_log_pos from mysql.slave_worker_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
-select Relay_log_pos from mysql.slave_worker_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
-select Relay_log_pos from mysql.slave_worker_info
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_multi_update` /* generated by server */
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_multi_delete` /* generated by server */
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_end` /* generated by server */
-master-bin.000001	#	Query	#	#	drop database my_replicated_db
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+select Relay_log_pos from mysql.replica_relay_log_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+select Relay_log_pos from mysql.replica_relay_log_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+select Relay_log_pos from mysql.replica_relay_log_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+select Primary_log_pos from mysql.replica_primary_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+select Primary_log_pos from mysql.replica_primary_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+select Primary_log_pos from mysql.replica_primary_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_tx_table(a)
+select Relay_log_pos from mysql.replica_worker_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_non_tx_table(a)
+select Relay_log_pos from mysql.replica_worker_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `my_replicated_db`; insert into my_bh_table(a)
+select Relay_log_pos from mysql.replica_worker_info
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_multi_update` /* generated by server */
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_multi_delete` /* generated by server */
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `marker_end` /* generated by server */
+primary-bin.000001	#	Query	#	#	drop database my_replicated_db
 truncate table performance_schema.setup_actors;
 insert into performance_schema.setup_actors values ('%', '%', '%', 'YES', 'YES');

@@ -184,14 +184,14 @@ void
 pre_init_event_thread(THD* thd)
 {
   DBUG_ENTER("pre_init_event_thread");
-  thd->security_context()->set_master_access(0);
+  thd->security_context()->set_primary_access(0);
   thd->security_context()->set_db_access(0);
   thd->security_context()->set_host_or_ip_ptr((char *) my_localhost,
                                               strlen(my_localhost));
   thd->get_protocol_classic()->init_net(NULL);
   thd->security_context()->set_user_ptr(C_STRING_WITH_LEN("event_scheduler"));
-  thd->get_protocol_classic()->get_net()->read_timeout= slave_net_timeout;
-  thd->slave_thread= 0;
+  thd->get_protocol_classic()->get_net()->read_timeout= replica_net_timeout;
+  thd->replica_thread= 0;
   thd->variables.option_bits|= OPTION_AUTO_IS_NULL;
   thd->get_protocol_classic()->set_client_capabilities(CLIENT_MULTI_RESULTS);
 
@@ -411,7 +411,7 @@ Event_scheduler::start(int *err_no)
   bool ret= false;
   my_thread_handle th;
   struct scheduler_param *scheduler_param_value;
-  ulong master_access;
+  ulong primary_access;
   DBUG_ENTER("Event_scheduler::start");
 
   LOCK_DATA();
@@ -442,8 +442,8 @@ Event_scheduler::start(int *err_no)
 
     Same goes for transaction access mode. Set it to read-write for this thd.
   */
-  master_access= new_thd->security_context()->master_access();
-  new_thd->security_context()->set_master_access(master_access | SUPER_ACL);
+  primary_access= new_thd->security_context()->primary_access();
+  new_thd->security_context()->set_primary_access(primary_access | SUPER_ACL);
   new_thd->variables.tx_read_only= false;
   new_thd->tx_read_only= false;
 

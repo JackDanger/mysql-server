@@ -10,7 +10,7 @@ mysqld=,,
 
 
 
-[cluster_config.slave]
+[cluster_config.replica]
 # NoOfReplicas refers to NDBD nodes/nodegroup
 NoOfReplicas=                  2
 ndbd=,
@@ -30,14 +30,14 @@ key_buffer_size=            1M
 sort_buffer=                256K
 max_heap_table_size=        1M
 loose-innodb_data_file_path=      ibdata1:10M:autoextend
-slave-net-timeout=120
+replica-net-timeout=120
 ndbcluster
 ndb-wait-setup=60
 
 
 [mysqld.1.1]
 server-id= 1
-log-bin= master-bin
+log-bin= primary-bin
 binlog_format=row
 
 
@@ -50,43 +50,43 @@ server-id= 2
 
 [mysqld.3.1]
 server-id= 3
-log-bin= master-bin
+log-bin= primary-bin
 binlog_format=row
 
 
 
-[mysqld.1.slave]
-# Note no binlog on this slave
+[mysqld.1.replica]
+# Note no binlog on this replica
 server-id= 4
-skip-slave-start
+skip-replica-start
 loose-skip-innodb
-slave-load-tmpdir= ../../../tmp
-ndb_connectstring= @mysql_cluster.slave.ndb_connectstring
+replica-load-tmpdir= ../../../tmp
+ndb_connectstring= @mysql_cluster.replica.ndb_connectstring
 
 
 
-[mysqld.2.slave]
-# Note binlog on this slave, but not logging slave updates
+[mysqld.2.replica]
+# Note binlog on this replica, but not logging replica updates
 server-id= 5
-skip-slave-start
+skip-replica-start
 loose-skip-innodb
-slave-load-tmpdir= ../../../tmp
-ndb_connectstring= @mysql_cluster.slave.ndb_connectstring
-log-bin= slave-master-bin
+replica-load-tmpdir= ../../../tmp
+ndb_connectstring= @mysql_cluster.replica.ndb_connectstring
+log-bin= replica-primary-bin
 binlog_format=row
 
 
 
-[mysqld.3.slave]
-# Note binlog on this slave, with slave updates logged
+[mysqld.3.replica]
+# Note binlog on this replica, with replica updates logged
 server-id= 6
-skip-slave-start
+skip-replica-start
 loose-skip-innodb
-slave-load-tmpdir= ../../../tmp
-ndb_connectstring= @mysql_cluster.slave.ndb_connectstring
-log-bin= slave-master-bin
+replica-load-tmpdir= ../../../tmp
+ndb_connectstring= @mysql_cluster.replica.ndb_connectstring
+log-bin= replica-primary-bin
 binlog_format=row
-log-slave-updates
+log-replica-updates
 
 
 
@@ -94,7 +94,7 @@ log-slave-updates
 SERVER_MYPORT_1= @mysqld.1.1.port
 SERVER_MYPORT_2= @mysqld.2.1.port
 SERVER_MYPORT_3= @mysqld.3.1.port
-SERVER_MYPORT_4= @mysqld.1.slave.port
-SERVER_MYPORT_5= @mysqld.2.slave.port
-SERVER_MYPORT_6= @mysqld.3.slave.port
+SERVER_MYPORT_4= @mysqld.1.replica.port
+SERVER_MYPORT_5= @mysqld.2.replica.port
+SERVER_MYPORT_6= @mysqld.3.replica.port
 

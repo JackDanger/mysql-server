@@ -14,7 +14,7 @@ CALL mtr.add_suppression("Unsafe statement written to the binary log using state
 --enable_query_log
 
 # Deletes all the binary logs
-reset master;
+reset primary;
 
 # we need this for getting fixed timestamps inside of this test
 set timestamp=1000000000;
@@ -41,7 +41,7 @@ load data infile '../../std_data/words.dat' into table t1;
 load data infile '../../std_data/words.dat' into table t1;
 load data infile '../../std_data/words.dat' into table t1;
 # simple query to show more in second binlog
---let $binlog_start_pos=query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_start_pos=query_get_value(SHOW PRIMARY STATUS, Position, 1)
 insert into t1 values ("Alas");
 flush logs;
 
@@ -55,22 +55,22 @@ select "--- Local --" as "";
 # be time dependend. Better than nothing.
 #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/primary-bin.000001
 --source include/mysqlbinlog.inc
 
 # this should not fail but shouldn't produce any working statements
 --echo --- Broken LOAD DATA --
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/master-bin.000002 2> /dev/null
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/primary-bin.000002 2> /dev/null
 --source include/mysqlbinlog.inc
 
 # this should show almost nothing
 --echo --- --database --
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --database=nottest $MYSQLD_DATADIR/master-bin.000001 2> /dev/null
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --database=nottest $MYSQLD_DATADIR/primary-bin.000001 2> /dev/null
 --source include/mysqlbinlog.inc
 
 # this test for start-position option
 --echo --- --start-position --
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --start-position=$binlog_start_pos $MYSQLD_DATADIR/master-bin.000002
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --start-position=$binlog_start_pos $MYSQLD_DATADIR/primary-bin.000002
 --source include/mysqlbinlog.inc
 
 # These are tests for remote binlog.
@@ -79,22 +79,22 @@ let $MYSQLD_DATADIR= `select @@datadir`;
 --echo --- Remote --
 
 # This is broken now
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT master-bin.000001
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT primary-bin.000001
 --source include/mysqlbinlog.inc
 
 # This is broken too
 --echo --- Broken LOAD DATA --
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT master-bin.000002 2> /dev/null
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT primary-bin.000002 2> /dev/null
 --source include/mysqlbinlog.inc
 
 # And this too ! (altough it is documented)
 --echo --- --database --
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT --database=nottest master-bin.000001 2> /dev/null
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT --database=nottest primary-bin.000001 2> /dev/null
 --source include/mysqlbinlog.inc
 
 # Strangely but this works
 --echo --- --start-position --
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --start-position=$binlog_start_pos --user=root --host=127.0.0.1 --port=$MASTER_MYPORT master-bin.000002
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ --read-from-remote-server --start-position=$binlog_start_pos --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT primary-bin.000002
 --source include/mysqlbinlog.inc
 
 # Bug#7853 mysqlbinlog does not accept input from stdin
@@ -133,8 +133,8 @@ flush logs;
 # format is not executed. This makes the assertion select * from t5 
 # /* must be (1),(1) */; to fail. To temporary fix the bug, we
 # removed the option --short-form.
-#--exec $MYSQL_BINLOG --short-form $MYSQLD_DATADIR/master-bin.000004 | $MYSQL
---exec $MYSQL_BINLOG $MYSQLD_DATADIR/master-bin.000004 | $MYSQL
+#--exec $MYSQL_BINLOG --short-form $MYSQLD_DATADIR/primary-bin.000004 | $MYSQL
+--exec $MYSQL_BINLOG $MYSQLD_DATADIR/primary-bin.000004 | $MYSQL
 select * from t5  /* must be (1),(1) */;
 drop table t5;
 
@@ -153,7 +153,7 @@ insert into t5 values (3, date_format('2001-01-01','%W'));
 select * from t5 order by c1;
 flush logs;
 drop table t5;
---exec $MYSQL_BINLOG --short-form $MYSQLD_DATADIR/master-bin.000006 | $MYSQL
+--exec $MYSQL_BINLOG --short-form $MYSQLD_DATADIR/primary-bin.000006 | $MYSQL
 select * from t5 order by c1;
 drop table t5;
 
@@ -176,9 +176,9 @@ call p1();
 drop procedure p1;
 --error ER_SP_DOES_NOT_EXIST
 call p1();
---let $mysqlbinlog_parameters= --short-form $MYSQLD_DATADIR/master-bin.000008
+--let $mysqlbinlog_parameters= --short-form $MYSQLD_DATADIR/primary-bin.000008
 --source include/mysqlbinlog.inc
---exec $MYSQL_BINLOG --short-form $MYSQLD_DATADIR/master-bin.000008 | $MYSQL
+--exec $MYSQL_BINLOG --short-form $MYSQLD_DATADIR/primary-bin.000008 | $MYSQL
 call p1();
 drop procedure p1;
 
@@ -212,7 +212,7 @@ select hex(a) from t1;
 drop table t1;
 flush logs;
 
---let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/master-bin.000010
+--let $mysqlbinlog_parameters= --short-form --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/primary-bin.000010
 --source include/mysqlbinlog.inc
 
 #
@@ -224,7 +224,7 @@ CREATE TABLE t1 (c1 CHAR(10));
 # we need this for getting fixed timestamps inside of this test
 FLUSH LOGS;
 INSERT INTO t1 VALUES ('0123456789');
-let $master_binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $primary_binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 FLUSH LOGS;
 DROP TABLE t1;
 
@@ -235,7 +235,7 @@ DROP TABLE t1;
 
 --disable_query_log
 CREATE TABLE patch (a BLOB);
---exec $MYSQL_BINLOG --hexdump --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/$master_binlog_file > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_tmp.dat
+--exec $MYSQL_BINLOG --hexdump --local-load=$MYSQLTEST_VARDIR/tmp/ $MYSQLD_DATADIR/$primary_binlog_file > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_tmp.dat
 eval LOAD DATA LOCAL INFILE '$MYSQLTEST_VARDIR/tmp/mysqlbinlog_tmp.dat'
      INTO TABLE patch FIELDS TERMINATED BY '' LINES STARTING BY '#';
 --remove_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog_tmp.dat
@@ -255,10 +255,10 @@ FLUSH LOGS;
 CREATE TABLE t1(a INT);
 INSERT INTO t1 VALUES(connection_id());
 let $a= `SELECT a FROM t1`;
-let $master_binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $primary_binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 FLUSH LOGS;
 let $outfile= $MYSQLTEST_VARDIR/tmp/bug29928.sql;
---exec $MYSQL_BINLOG $MYSQLD_DATADIR/$master_binlog_file > $outfile
+--exec $MYSQL_BINLOG $MYSQLD_DATADIR/$primary_binlog_file > $outfile
 DROP TABLE t1;
 connect (con1, localhost, root, , test);
 connection con1;
@@ -282,10 +282,10 @@ set timestamp= default;
 # Test --disable-force-if-open and --force-if-open
 #
 FLUSH LOGS;
-let $master_binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $primary_binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 --error 1
---exec $MYSQL_BINLOG $MYSQLD_DATADIR/$master_binlog_file >/dev/null 2>/dev/null
---exec $MYSQL_BINLOG --force-if-open $MYSQLD_DATADIR/$master_binlog_file >/dev/null 2>/dev/null
+--exec $MYSQL_BINLOG $MYSQLD_DATADIR/$primary_binlog_file >/dev/null 2>/dev/null
+--exec $MYSQL_BINLOG --force-if-open $MYSQLD_DATADIR/$primary_binlog_file >/dev/null 2>/dev/null
 
 --echo Bug#31611 Security risk with BINLOG statement
 
@@ -299,10 +299,10 @@ USE mysqltest1;
 CREATE TABLE t1 (a INT, b CHAR(64));
 flush logs;
 INSERT INTO t1 VALUES (1,USER());
-let $master_binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $primary_binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 flush logs;
-echo mysqlbinlog var/log/master_binlog_file > var/tmp/bug31611.sql;
-exec $MYSQL_BINLOG $MYSQLD_DATADIR/$master_binlog_file > $MYSQLTEST_VARDIR/tmp/bug31611.sql;
+echo mysqlbinlog var/log/primary_binlog_file > var/tmp/bug31611.sql;
+exec $MYSQL_BINLOG $MYSQLD_DATADIR/$primary_binlog_file > $MYSQLTEST_VARDIR/tmp/bug31611.sql;
 connect (unsecure,localhost,untrusted,,mysqltest1);
 echo mysql mysqltest1 -uuntrusted < var/tmp/bug31611.sql;
 error 1;
@@ -331,12 +331,12 @@ SET @an_int = 1000;
 SET @a_decimal = CAST(rand(19) * 999 AS DECIMAL(5,2));
 SET @a_string = 'Just a test';
 INSERT INTO t1 VALUES (@a_real, @an_int, @a_decimal, @a_string);
-let $master_binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $primary_binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 FLUSH LOGS;
 query_vertical SELECT * FROM t1;
 DROP TABLE t1;
-echo >> mysqlbinlog var/log/master_binlog_file > var/tmp/bug32580.sql;
-exec $MYSQL_BINLOG $MYSQLD_DATADIR/$master_binlog_file > $MYSQLTEST_VARDIR/tmp/bug32580.sql;
+echo >> mysqlbinlog var/log/primary_binlog_file > var/tmp/bug32580.sql;
+exec $MYSQL_BINLOG $MYSQLD_DATADIR/$primary_binlog_file > $MYSQLTEST_VARDIR/tmp/bug32580.sql;
 echo >> mysql test < var/tmp/bug32580.sql;
 exec $MYSQL test < $MYSQLTEST_VARDIR/tmp/bug32580.sql;
 remove_file $MYSQLTEST_VARDIR/tmp/bug32580.sql;
@@ -353,9 +353,9 @@ let $save_server_id= `SELECT @@global.server_id`;
 let $s_id_max= `SELECT (1 << 32) - 1`;
 eval SET @@global.server_id= $s_id_max;
 
-RESET MASTER;
+RESET PRIMARY;
 FLUSH LOGS;
---exec $MYSQL_BINLOG $MYSQLD_DATADIR/master-bin.000001 > $binlog_file
+--exec $MYSQL_BINLOG $MYSQLD_DATADIR/primary-bin.000001 > $binlog_file
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 eval SELECT
 (@a:=LOAD_FILE("$binlog_file"))
@@ -370,11 +370,11 @@ eval SET @@global.server_id= $save_server_id;
 # Bug #41943: mysqlbinlog.exe crashes if --hexdump option is used
 #
 
-RESET MASTER;
+RESET PRIMARY;
 FLUSH LOGS;
 
 # We do not need the results, just make sure that mysqlbinlog does not crash
---exec $MYSQL_BINLOG --hexdump --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT  master-bin.000001 >/dev/null
+--exec $MYSQL_BINLOG --hexdump --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT  primary-bin.000001 >/dev/null
 
 #
 # #46998
@@ -382,7 +382,7 @@ FLUSH LOGS;
 # in regardless of database filtering
 #
 
-RESET MASTER;
+RESET PRIMARY;
 FLUSH LOGS;
 
 # The following three test cases were wrtten into binlog_transaction.000001
@@ -458,7 +458,7 @@ FLUSH LOGS;
 # BUG#38468 Memory leak detected when using mysqlbinlog utility;
 #
 disable_query_log;
-RESET MASTER;
+RESET PRIMARY;
 CREATE TABLE t1 SELECT 1;
 FLUSH LOGS;
 DROP TABLE t1;
@@ -469,7 +469,7 @@ write_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn.empty;
 EOF
 
 # Before fix of BUG#38468, this would generate some warnings
---exec $MYSQL_BINLOG $MYSQLD_DATADIR/master-bin.000001 >/dev/null 2> $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
+--exec $MYSQL_BINLOG $MYSQLD_DATADIR/primary-bin.000001 >/dev/null 2> $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
 
 # Make sure the command above does not generate any error or warnings
 diff_files $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn.empty;
@@ -482,7 +482,7 @@ remove_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn;
 # WL#3126 TCP address binding for mysql client library;
 # - running mysqlbinlog --protocol=tcp --bind-address=127.0.0.1
 #
---exec $MYSQL_BINLOG --short-form --read-from-remote-server --protocol=tcp --bind-address=127.0.0.1 master-bin.000001 > /dev/null
+--exec $MYSQL_BINLOG --short-form --read-from-remote-server --protocol=tcp --bind-address=127.0.0.1 primary-bin.000001 > /dev/null
 
 #
 # WL#5625: Deprecate mysqlbinlog options --base64-output=always and --base64-output
@@ -490,12 +490,12 @@ remove_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn;
 
 --echo # Expect error for unknown argument.
 --error 1
---exec $MYSQL_BINLOG --base64-output=always std_data/master-bin.000001 > /dev/null 2> $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
+--exec $MYSQL_BINLOG --base64-output=always std_data/primary-bin.000001 > /dev/null 2> $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
 --cat_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
 
 --echo # Expect error for unknown argument again.
 --error 1
---exec $MYSQL_BINLOG --base64-output std_data/master-bin.000001 > /dev/null 2> $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
+--exec $MYSQL_BINLOG --base64-output std_data/primary-bin.000001 > /dev/null 2> $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
 --cat_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn
 
 # Clean up this part of the test.
@@ -507,7 +507,7 @@ remove_file $MYSQLTEST_VARDIR/tmp/mysqlbinlog.warn;
 # "No Database Selected" error when dropping and recreating
 # that database.
 #
-RESET MASTER;
+RESET PRIMARY;
 CREATE DATABASE test1;
 USE test1;
 CREATE TABLE t1(id int);
@@ -517,13 +517,13 @@ USE test1;
 CREATE TABLE t1(id int);
 DROP TABLE t1;
 DROP DATABASE test1;
-let $master_binlog= query_get_value(SHOW MASTER STATUS, File, 1);
+let $primary_binlog= query_get_value(SHOW PRIMARY STATUS, File, 1);
 FLUSH LOGS;
 
 let $MYSQLD_DATADIR= `SELECT @@datadir`;
-exec $MYSQL_BINLOG $MYSQLD_DATADIR/$master_binlog | $MYSQL test 2>&1;
+exec $MYSQL_BINLOG $MYSQLD_DATADIR/$primary_binlog | $MYSQL test 2>&1;
 
-let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 source include/show_binlog_events.inc;
 
 #
@@ -531,19 +531,19 @@ source include/show_binlog_events.inc;
 # This test checks that the format description log event is not
 # filtered out by the --server-id option.
 #
-RESET MASTER;
+RESET PRIMARY;
 USE test;
 CREATE TABLE t1 (a INT);
 --let $old_server_id= `SELECT @@GLOBAL.SERVER_ID`
 SET GLOBAL SERVER_ID = 2;
 DROP TABLE t1;
---let $master_binlog= query_get_value(SHOW MASTER STATUS, File, 1)
+--let $primary_binlog= query_get_value(SHOW PRIMARY STATUS, File, 1)
 FLUSH LOGS;
 # The following should only create t1, not drop it.
---exec $MYSQL_BINLOG --server-id=1 $MYSQLD_DATADIR/$master_binlog | $MYSQL
+--exec $MYSQL_BINLOG --server-id=1 $MYSQLD_DATADIR/$primary_binlog | $MYSQL
 SHOW TABLES IN test;
 # The following should only drop t1, not create it.
---exec $MYSQL_BINLOG --server-id=2 $MYSQLD_DATADIR/$master_binlog | $MYSQL
+--exec $MYSQL_BINLOG --server-id=2 $MYSQLD_DATADIR/$primary_binlog | $MYSQL
 SHOW TABLES IN test;
 eval SET GLOBAL SERVER_ID = $old_server_id;
 
@@ -551,7 +551,7 @@ eval SET GLOBAL SERVER_ID = $old_server_id;
 --echo # Bug#12688860 : SECURITY RECOMMENDATION: PASSWORDS ON CLI
 --echo #
 
---let $mysqlbinlog_parameters= -uroot --password="" std_data/master-bin.000001 2>&1
+--let $mysqlbinlog_parameters= -uroot --password="" std_data/primary-bin.000001 2>&1
 --source include/mysqlbinlog.inc
 
 --echo

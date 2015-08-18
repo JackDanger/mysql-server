@@ -1,57 +1,57 @@
 # Test need anonymous user when connection are made as "zedjzlcsjhd"
 source include/not_gtid_enabled.inc;
 source include/add_anonymous_users.inc;
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 -- source include/have_myisam.inc
 
-# Clean up old slave's binlogs.
-# The slave is started with --log-slave-updates
-# and this test does SHOW BINLOG EVENTS on the slave's
+# Clean up old replica's binlogs.
+# The replica is started with --log-replica-updates
+# and this test does SHOW BINLOG EVENTS on the replica's
 # binlog. But previous tests can influence the current test's
 # binlog (e.g. a temporary table in the previous test has not
-# been explicitly deleted, or it has but the slave hasn't had
-# enough time to catch it before STOP SLAVE, 
+# been explicitly deleted, or it has but the replica hasn't had
+# enough time to catch it before STOP REPLICA, 
 # and at the beginning of the current
-# test the slave immediately writes DROP TEMPORARY TABLE this_old_table).
-# We wait for the slave to have written all he wants to the binlog
-# (otherwise RESET MASTER may come too early).
-save_master_pos;
-connection slave;
+# test the replica immediately writes DROP TEMPORARY TABLE this_old_table).
+# We wait for the replica to have written all he wants to the binlog
+# (otherwise RESET PRIMARY may come too early).
+save_primary_pos;
+connection replica;
 
-# Add suppression for expected warning(s) in slaves error log
-call mtr.add_suppression("Slave: Can\'t find record in \'user\' Error_code: 1032");
+# Add suppression for expected warning(s) in replicas error log
+call mtr.add_suppression("Replica: Can\'t find record in \'user\' Error_code: 1032");
 
-sync_with_master;
-reset master;
+sync_with_primary;
+reset primary;
 
 # ##################################################################
-# BUG#41725: slave crashes when inserting into temporary table after
-#            stop/start slave
+# BUG#41725: replica crashes when inserting into temporary table after
+#            stop/start replica
 #
 #  This test checks that both reported issues (assertion failure and
 #  crash) go away. It is implemented as follows:
 #    
 #    case 1: assertion failure
-#      i) create and insert into temporary table on master
-#     ii) sync slave with master
-#    iii) stop and restart slave
-#     iv) insert into master another value
-#      v) sync slave with master
+#      i) create and insert into temporary table on primary
+#     ii) sync replica with primary
+#    iii) stop and restart replica
+#     iv) insert into primary another value
+#      v) sync replica with primary
 #
 #
 #    case 2: crash (SIGSEV)
-#      i) create and insert into temporary table on master (insert
+#      i) create and insert into temporary table on primary (insert
 #         produces warnings)
-#     ii) sync slave with master
-#    iii) stop and restart slave
-#     iv) insert into master more values
-#      v) sync slave with master
+#     ii) sync replica with primary
+#    iii) stop and restart replica
+#     iv) insert into primary more values
+#      v) sync replica with primary
 
 # case 1: Assertion in Field_string::store() failed because current 
-#         thread reference differed from table->in_use after slave 
+#         thread reference differed from table->in_use after replica 
 #         restart
 
-connection master;
+connection primary;
 
 --disable_query_log ONCE
 CALL mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
@@ -62,25 +62,25 @@ enable_warnings;
 
 CREATE TEMPORARY TABLE t1 (a char(1));
 INSERT INTO t1 VALUES ('a');
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# Temporary table t1 open when stop slave is done. So we will have a warning here.
+# Temporary table t1 open when stop replica is done. So we will have a warning here.
 # But this warning is NOT generated in RBR. So the results will be different in
 # SBR and RBR if we dont disable warnings here.
 --disable_warnings
-source include/stop_slave.inc;
+source include/stop_replica.inc;
 --enable_warnings
 
-source include/start_slave.inc;
+source include/start_replica.inc;
 
-connection master;
+connection primary;
 INSERT INTO t1 VALUES ('b');
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # case 2: crash on sp_rcontext::find_handler because it used 
-#         reference to invalid THD object after slave restart
+#         reference to invalid THD object after replica restart
 
-connection master;
+connection primary;
 
 disable_warnings ONCE;
 DROP TABLE IF EXISTS t1;
@@ -88,28 +88,28 @@ enable_warnings;
 CREATE TEMPORARY TABLE `t1`(`a` tinyint,`b` char(1))engine=myisam;
 INSERT IGNORE INTO `t1` set `a`=128,`b`='128';
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# Temporary table `t1` open when stop slave is done. So we will have a warning here.
+# Temporary table `t1` open when stop replica is done. So we will have a warning here.
 # But this warning is NOT generated in RBR. So the results will be different in
 # SBR and RBR if we dont disable warnings here.
 --disable_warnings
-source include/stop_slave.inc;
+source include/stop_replica.inc;
 --enable_warnings
 
-source include/start_slave.inc;
+source include/start_replica.inc;
 
-connection master;
+connection primary;
 INSERT IGNORE INTO `t1` set `a`=128,`b`='128';
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # cleanup
 
-connection master;
+connection primary;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 
 connect (con1,localhost,root,,);
 connect (con2,localhost,root,,);
@@ -234,39 +234,39 @@ drop table t1,t2;
 # don't get any memory leaks for this
 
 create temporary table t3 (f int);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # The server will now close done
 
 #
-# Bug#17284 erroneous temp table cleanup on slave
-# The test targets at verifying that reconnected slave
+# Bug#17284 erroneous temp table cleanup on replica
+# The test targets at verifying that reconnected replica
 # retained the former session's temporary tables
 #
-connection master;
+connection primary;
 create temporary table t4 (f int);
 create table t5 (f int);
---source include/sync_slave_sql_with_master.inc
-# connection slave
+--source include/sync_replica_sql_with_primary.inc
+# connection replica
 
-# Temporary table t3,t4 are open when stop slave is done. So we will have a warning here.
+# Temporary table t3,t4 are open when stop replica is done. So we will have a warning here.
 # But this warning is NOT generated in RBR. So the results will be different in
 # SBR and RBR if we dont disable warnings here.
 --disable_warnings
-stop slave;  # to prepare for reconnecting w/o waiting for timeout
+stop replica;  # to prepare for reconnecting w/o waiting for timeout
 --enable_warnings
 
-connection master;
+connection primary;
 --disable_warnings ONCE
 insert into t5 select * from t4;
-save_master_pos;
+save_primary_pos;
 
-connection slave;
-start slave;
-sync_with_master;
+connection replica;
+start replica;
+sync_with_primary;
 select * from t5 /* must be 1 after reconnection */;
 
-connection master;
+connection primary;
 drop temporary table t4;
 drop table t5;
 
@@ -291,16 +291,16 @@ create temporary table t302 (id int);
 create temporary table `#sql_not_user_table303` (id int);
 disconnect con1;
 
-#now do something to show that slave is ok after DROP temp tables
-connection master;
+#now do something to show that replica is ok after DROP temp tables
+connection primary;
 create table t1(f int);
 insert into t1 values (1);
 
---source include/sync_slave_sql_with_master.inc
-#connection slave;
+--source include/sync_replica_sql_with_primary.inc
+#connection replica;
 select * from t1 /* must be 1 */;
 
-connection master; 
+connection primary; 
 drop table t1;
 
 #
@@ -315,26 +315,26 @@ insert into t1 select * from `\E4\F6\FC\C4\D6\DC`
 EOF
 --exec $MYSQL --character-sets-dir=../sql/share/charsets/ --default-character-set=latin1 test < $MYSQLTEST_VARDIR/tmp/bug14157.sql
 
---source include/sync_slave_sql_with_master.inc
-#connection slave;
+--source include/sync_replica_sql_with_primary.inc
+#connection replica;
 select * from t1;
 
-connection master; 
+connection primary; 
 drop table t1;
 --remove_file $MYSQLTEST_VARDIR/tmp/bug14157.sql
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Delete the anonymous users.
 
-# Temporary table `\E4\F6\FC\C4\D6\DC` open when stop slave is done. So we will have a warning here.
+# Temporary table `\E4\F6\FC\C4\D6\DC` open when stop replica is done. So we will have a warning here.
 # But this warning is NOT generated in RBR. So the results will be different in
 # SBR and RBR if we dont disable warnings here.
 --disable_warnings
---source include/stop_slave.inc
+--source include/stop_replica.inc
 --enable_warnings
 
 source include/delete_anonymous_users.inc;
---connection master
+--connection primary
 source include/delete_anonymous_users.inc;
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
@@ -346,15 +346,15 @@ source include/delete_anonymous_users.inc;
 
 --echo -- Bug#43748
 
---echo -- make a user on the slave that can list but not kill system threads.
-connection slave;
+--echo -- make a user on the replica that can list but not kill system threads.
+connection replica;
 
 FLUSH PRIVILEGES;
 GRANT USAGE   ON *.* TO user43748@127.0.0.1 IDENTIFIED BY 'meow';
 GRANT PROCESS ON *.* TO user43748@127.0.0.1;
 
---echo -- try to KILL system-thread as that non-privileged user (on slave).
-connect (cont43748,127.0.0.1,user43748,meow,test,$SLAVE_MYPORT,);
+--echo -- try to KILL system-thread as that non-privileged user (on replica).
+connect (cont43748,127.0.0.1,user43748,meow,test,$REPLICA_MYPORT,);
 connection cont43748;
 
 SELECT id INTO @id FROM information_schema.processlist WHERE user='system user' LIMIT 1;
@@ -364,8 +364,8 @@ KILL @id;
 
 disconnect cont43748;
 
---echo -- throw out test-user on slave.
-connection slave;
+--echo -- throw out test-user on replica.
+connection replica;
 
 DROP USER user43748@127.0.0.1;
 

@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 #########################################################################
 #                            CONFIGURATION
 #########################################################################
@@ -23,11 +23,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE FUNCTION myfunc_int RETURNS INTEGER SONAME "LIB"
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE FUNCTION myfunc_int RETURNS INTEGER SONAME "LIB"
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -38,11 +38,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION myfunc_int
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION myfunc_int
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -55,10 +55,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -72,10 +72,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -88,11 +88,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ANALYZE TABLE nt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ANALYZE TABLE nt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -105,10 +105,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -121,11 +121,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; OPTIMIZE TABLE nt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; OPTIMIZE TABLE nt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -138,11 +138,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; REPAIR TABLE nt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; REPAIR TABLE nt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -153,10 +153,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -167,10 +167,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -181,11 +181,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' PASSWORD EXPIRE DEFAULT ACCOUNT UNLOCK
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -196,11 +196,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; GRANT ALL PRIVILEGES ON *.* TO 'user'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; GRANT ALL PRIVILEGES ON *.* TO 'user'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -211,11 +211,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*D8DECEC305209EEFEC43008E1D420E1AA06B19E0'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER USER 'user'@'localhost' IDENTIFIED WITH 'mysql_native_password' AS '*D8DECEC305209EEFEC43008E1D420E1AA06B19E0'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -226,11 +226,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'user'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'user'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -241,11 +241,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; RENAME USER 'user'@'localhost' TO 'user_new'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; RENAME USER 'user'@'localhost' TO 'user_new'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -256,11 +256,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP USER 'user_new'@'localhost'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP USER 'user_new'@'localhost'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -271,11 +271,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` EVENT evt ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR DO SELECT * FROM tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` EVENT evt ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR DO SELECT * FROM tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -286,11 +286,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER EVENT evt COMMENT 'evt'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER EVENT evt COMMENT 'evt'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -301,11 +301,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP EVENT evt
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP EVENT evt
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -316,11 +316,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` TRIGGER tr AFTER INSERT ON tt_1 FOR EACH ROW UPDATE tt_2 SET ddl_case = ddl_case WHERE ddl_case= NEW.ddl_case
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` TRIGGER tr AFTER INSERT ON tt_1 FOR EACH ROW UPDATE tt_2 SET ddl_case = ddl_case WHERE ddl_case= NEW.ddl_case
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -331,12 +331,12 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_2)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP TRIGGER tr
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_2)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP TRIGGER tr
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -347,11 +347,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` FUNCTION `fc`() RETURNS varchar(64) CHARSET latin1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` FUNCTION `fc`() RETURNS varchar(64) CHARSET latin1
 RETURN "fc"
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
@@ -363,11 +363,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER FUNCTION fc COMMENT 'fc'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER FUNCTION fc COMMENT 'fc'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -378,11 +378,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION fc
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP FUNCTION fc
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -393,11 +393,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` PROCEDURE `pc`()
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE DEFINER=`root`@`localhost` PROCEDURE `pc`()
 UPDATE tt_2 SET ddl_case = ddl_case WHERE ddl_case= NEW.ddl_case
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
@@ -409,11 +409,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER PROCEDURE pc COMMENT 'pc'
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER PROCEDURE pc COMMENT 'pc'
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -424,11 +424,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP PROCEDURE pc
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP PROCEDURE pc
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -439,11 +439,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -454,11 +454,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v` AS SELECT * FROM tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -469,11 +469,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP VIEW v
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP VIEW v
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -484,11 +484,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE INDEX ix ON tt_1(ddl_case)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE INDEX ix ON tt_1(ddl_case)
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -499,11 +499,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP INDEX ix ON tt_1
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP INDEX ix ON tt_1
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -514,10 +514,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -528,10 +528,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -542,10 +542,10 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -556,11 +556,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	DROP TEMPORARY TABLE IF EXISTS `test`.`new_tt_xx` /* generated by server */
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	DROP TEMPORARY TABLE IF EXISTS `test`.`new_tt_xx` /* generated by server */
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -571,11 +571,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE tt_xx (a int)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE tt_xx (a int)
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -586,11 +586,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx ADD COLUMN (b int)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; ALTER TABLE tt_xx ADD COLUMN (b int)
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -601,11 +601,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; RENAME TABLE tt_xx TO new_tt_xx
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; RENAME TABLE tt_xx TO new_tt_xx
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -616,11 +616,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; TRUNCATE TABLE new_tt_xx
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; TRUNCATE TABLE new_tt_xx
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -633,11 +633,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `tt_xx`,`new_tt_xx` /* generated by server */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; DROP TABLE IF EXISTS `tt_xx`,`new_tt_xx` /* generated by server */
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -648,11 +648,11 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	CREATE DATABASE db
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	CREATE DATABASE db
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
@@ -663,20 +663,20 @@ include/assert.inc [There should be a COMMIT event at the specified position (te
 -b-b-b-b-b-b-b-b-b-b-b- >> << -b-b-b-b-b-b-b-b-b-b-b-
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	DROP DATABASE IF EXISTS db
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.tt_1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	DROP DATABASE IF EXISTS db
 -e-e-e-e-e-e-e-e-e-e-e- >> << -e-e-e-e-e-e-e-e-e-e-e-
 
 ###################################################################################
 #                               CHECK CONSISTENCY
 ###################################################################################
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:tt_1,slave:tt_1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:tt_1,replica:tt_1]
 ###################################################################################
 #                                        CLEAN
 ###################################################################################
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

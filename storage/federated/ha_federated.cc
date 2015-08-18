@@ -283,7 +283,7 @@
     -------
 
     There is a test for MySQL Federated Storage Handler in ./mysql-test/t,
-    federatedd.test It starts both a slave and master database using
+    federatedd.test It starts both a replica and primary database using
     the same setup that the replication tests use, with the exception that
     it turns off replication, and sets replication to ignore the test tables.
     After ensuring that you actually do have support for the federated storage
@@ -307,29 +307,29 @@
     ls -l mysql-test/var/log/
     -rw-r--r--  1 patg  patg        17  4 Dec 12:27 current_test
     -rw-r--r--  1 patg  patg       692  4 Dec 12:52 manager.log
-    -rw-rw----  1 patg  patg     21246  4 Dec 12:51 master-bin.000001
-    -rw-rw----  1 patg  patg        68  4 Dec 12:28 master-bin.index
-    -rw-r--r--  1 patg  patg      1620  4 Dec 12:51 master.err
-    -rw-rw----  1 patg  patg     23179  4 Dec 12:51 master.log
-    -rw-rw----  1 patg  patg  16696550  4 Dec 12:51 master.trace
+    -rw-rw----  1 patg  patg     21246  4 Dec 12:51 primary-bin.000001
+    -rw-rw----  1 patg  patg        68  4 Dec 12:28 primary-bin.index
+    -rw-r--r--  1 patg  patg      1620  4 Dec 12:51 primary.err
+    -rw-rw----  1 patg  patg     23179  4 Dec 12:51 primary.log
+    -rw-rw----  1 patg  patg  16696550  4 Dec 12:51 primary.trace
     -rw-r--r--  1 patg  patg         0  4 Dec 12:28 mysqltest-time
     -rw-r--r--  1 patg  patg   2024051  4 Dec 12:51 mysqltest.trace
-    -rw-rw----  1 patg  patg     94992  4 Dec 12:51 slave-bin.000001
-    -rw-rw----  1 patg  patg        67  4 Dec 12:28 slave-bin.index
-    -rw-rw----  1 patg  patg       249  4 Dec 12:52 slave-relay-bin.000003
-    -rw-rw----  1 patg  patg        73  4 Dec 12:28 slave-relay-bin.index
-    -rw-r--r--  1 patg  patg      1349  4 Dec 12:51 slave.err
-    -rw-rw----  1 patg  patg     96206  4 Dec 12:52 slave.log
-    -rw-rw----  1 patg  patg  15706355  4 Dec 12:51 slave.trace
+    -rw-rw----  1 patg  patg     94992  4 Dec 12:51 replica-bin.000001
+    -rw-rw----  1 patg  patg        67  4 Dec 12:28 replica-bin.index
+    -rw-rw----  1 patg  patg       249  4 Dec 12:52 replica-relay-bin.000003
+    -rw-rw----  1 patg  patg        73  4 Dec 12:28 replica-relay-bin.index
+    -rw-r--r--  1 patg  patg      1349  4 Dec 12:51 replica.err
+    -rw-rw----  1 patg  patg     96206  4 Dec 12:52 replica.log
+    -rw-rw----  1 patg  patg  15706355  4 Dec 12:51 replica.trace
     -rw-r--r--  1 patg  patg         0  4 Dec 12:51 warnings
 
     Of course, again, you can tail the trace log:
 
-    tail -f mysql-test/var/log/master.trace |grep ha_fed
+    tail -f mysql-test/var/log/primary.trace |grep ha_fed
 
-    As well as the slave query log:
+    As well as the replica query log:
 
-    tail -f mysql-test/var/log/slave.log
+    tail -f mysql-test/var/log/replica.log
 
     Files that comprise the test suit
     ---------------------------------

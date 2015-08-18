@@ -206,7 +206,7 @@ log_buffer_flush_to_disk(
 /****************************************************************//**
 This functions writes the log buffer to the log file and if 'flush'
 is set it forces a flush of the log file as well. This is meant to be
-called from background master thread only as it does not wait for
+called from background primary thread only as it does not wait for
 the write (+ possible flush) to finish. */
 void
 log_buffer_sync_in_background(

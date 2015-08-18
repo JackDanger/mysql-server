@@ -32,11 +32,11 @@ connection con2;
 let $ID= `select connection_id()`;
 
 #
-# reset master does not reset binlogging on the embedded server.
+# reset primary does not reset binlogging on the embedded server.
 # the test is not run on the embedded for reason of using KILL query.
-# `reset master' problem is to be addressed by bug#15580 fixes.
+# `reset primary' problem is to be addressed by bug#15580 fixes.
 #
-reset master;
+reset primary;
 send insert into t2 values (null, null), (null, get_lock("a", 10));
 
 
@@ -61,7 +61,7 @@ let $MYSQLD_DATADIR= `select @@datadir`;
 --let $row_number=6
 --let $binlog_killed_pos=query_get_value(SHOW BINLOG EVENTS, Pos, $row_number)
 --let $binlog_killed_end_log_pos=query_get_value(SHOW BINLOG EVENTS, End_log_pos, $row_number)
---exec $MYSQL_BINLOG --force-if-open --start-position=$binlog_killed_pos --stop-position=$binlog_killed_end_log_pos $MYSQLD_DATADIR/master-bin.000001 > $MYSQLTEST_VARDIR/tmp/kill_query_calling_sp.binlog
+--exec $MYSQL_BINLOG --force-if-open --start-position=$binlog_killed_pos --stop-position=$binlog_killed_end_log_pos $MYSQLD_DATADIR/primary-bin.000001 > $MYSQLTEST_VARDIR/tmp/kill_query_calling_sp.binlog
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 --disable_result_log
 eval select
@@ -255,7 +255,7 @@ delimiter ;|
 
 delete from t4;
 insert into t4 values (1,1), (1,1);
-reset master;
+reset primary;
 connection con1;
 select get_lock("a", 20);
 
@@ -286,7 +286,7 @@ source include/show_binlog_events.inc;
 
 --echo *** a proof the query is binlogged with an error ***
 
---exec $MYSQL_BINLOG --force-if-open --start-position=$binlog_killed_pos --stop-position=$binlog_killed_end_log_pos $MYSQLD_DATADIR/master-bin.000001 > $MYSQLTEST_VARDIR/tmp/binlog_killed_bug27571.binlog
+--exec $MYSQL_BINLOG --force-if-open --start-position=$binlog_killed_pos --stop-position=$binlog_killed_end_log_pos $MYSQLD_DATADIR/primary-bin.000001 > $MYSQLTEST_VARDIR/tmp/binlog_killed_bug27571.binlog
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 eval select
 (@a:=load_file("$MYSQLTEST_VARDIR/tmp/binlog_killed_bug27571.binlog"))
@@ -305,7 +305,7 @@ select RELEASE_LOCK("a");
 
 delete from t4;
 insert into t4 values (1,1), (2,2);
-reset master;
+reset primary;
 connection con1;
 select get_lock("a", 20);
 
@@ -336,7 +336,7 @@ source include/show_binlog_events.inc;
 
 # a proof the query is binlogged with an error
 
---exec $MYSQL_BINLOG --force-if-open --start-position=$binlog_killed_pos --stop-position=$binlog_killed_end_log_pos $MYSQLD_DATADIR/master-bin.000001 > $MYSQLTEST_VARDIR/tmp/binlog_killed_bug27571.binlog
+--exec $MYSQL_BINLOG --force-if-open --start-position=$binlog_killed_pos --stop-position=$binlog_killed_end_log_pos $MYSQLD_DATADIR/primary-bin.000001 > $MYSQLTEST_VARDIR/tmp/binlog_killed_bug27571.binlog
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 eval select
 (@a:=load_file("$MYSQLTEST_VARDIR/tmp/binlog_killed_bug27571.binlog"))

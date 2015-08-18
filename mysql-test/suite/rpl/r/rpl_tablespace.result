@@ -12,12 +12,12 @@
 # FOR DML+TABLESPACE DDL
 #
 # #######################################################################
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[On MASTER]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[On PRIMARY]
 # TEST Bug#21082728: Execute CREATE TABLESPACE inside active transaction
 # with GTID_NEXT set. Check for proper error code and transaction state
 # by verifying table content after issuing a ROLLBACK.
@@ -50,6 +50,6 @@ a
 DROP TABLE t1;
 DROP TABLESPACE ts1;
 SET GTID_NEXT= @saved_gtid_next;
-# "STOP SLAVE" and verify that the SQL thread was properly stopped and
+# "STOP REPLICA" and verify that the SQL thread was properly stopped and
 # left no gaps.
 include/rpl_end.inc

@@ -269,15 +269,15 @@ void table_events_transactions_common::make_row(PFS_events_transactions *transac
      The SID is stored in transaction->m_sid and the GNO is stored in
      transaction->m_gtid_spec.gno.
 
-     On a master, the GTID is assigned when the transaction commit.
-     On a slave, the GTID is assigned before the transaction starts.
+     On a primary, the GTID is assigned when the transaction commit.
+     On a replica, the GTID is assigned before the transaction starts.
      If GTID_MODE = OFF, all transactions have the special GTID
      'ANONYMOUS'.
 
      Therefore, a transaction can be in three different states wrt GTIDs:
      - Before the GTID has been assigned, the state is 'AUTOMATIC'.
-       On a master, this is the state until the transaction commits.
-       On a slave, this state does not appear.
+       On a primary, this is the state until the transaction commits.
+       On a replica, this state does not appear.
      - If GTID_MODE = ON, and a GTID is assigned, the GTID is a string
        of the form 'UUID:NUMBER'.
      - If GTID_MODE = OFF, and a GTID is assigned, the GTID is a string

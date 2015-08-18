@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 use test;
 CREATE TABLE test.regular_tbl(id INT NOT NULL AUTO_INCREMENT,
 dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE
@@ -47,12 +47,12 @@ SET ins_count = ins_count - 1;
 END WHILE;
 END|
 CALL test.proc_norm();
-SELECT count(*) as "Master regular" FROM test.regular_tbl;
-Master regular
+SELECT count(*) as "Primary regular" FROM test.regular_tbl;
+Primary regular
 99
 CALL test.proc_byrange();
-SELECT count(*) as "Master byrange" FROM test.byrange_tbl;
-Master byrange
+SELECT count(*) as "Primary byrange" FROM test.byrange_tbl;
+Primary byrange
 200
 show create table test.byrange_tbl;
 Table	Create Table
@@ -96,7 +96,7 @@ SELECT * FROM test.regular_tbl ORDER BY fkid DESC LIMIT 2;
 id	dt	user	uuidf	fkid	filler
 1	date-time	USER	UUID	300	Partitioned table! Going to test replication for MySQL
 2	date-time	USER	UUID	299	Partitioned table! Going to test replication for MySQL
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 show create table test.byrange_tbl;
 Table	Create Table
 byrange_tbl	CREATE TABLE `byrange_tbl` (
@@ -122,11 +122,11 @@ regular_tbl	CREATE TABLE `regular_tbl` (
   `filler` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MEMORY AUTO_INCREMENT=100 DEFAULT CHARSET=latin1
-SELECT count(*) "Slave norm" FROM test.regular_tbl;
-Slave norm
+SELECT count(*) "Replica norm" FROM test.regular_tbl;
+Replica norm
 99
-SELECT count(*) "Slave byrange" FROM test.byrange_tbl;
-Slave byrange
+SELECT count(*) "Replica byrange" FROM test.byrange_tbl;
+Replica byrange
 200
 SELECT * FROM test.byrange_tbl ORDER BY fkid LIMIT 2;
 id	dt	user	uuidf	fkid	filler

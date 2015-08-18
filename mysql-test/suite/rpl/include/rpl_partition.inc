@@ -65,9 +65,9 @@ delimiter ;|
 ############ Test Section ###################
 
 CALL test.proc_norm();
-SELECT count(*) as "Master regular" FROM test.regular_tbl;
+SELECT count(*) as "Primary regular" FROM test.regular_tbl;
 CALL test.proc_byrange();
-SELECT count(*) as "Master byrange" FROM test.byrange_tbl;
+SELECT count(*) as "Primary byrange" FROM test.byrange_tbl;
 show create table test.byrange_tbl;
 show create table test.regular_tbl;
 ALTER TABLE test.byrange_tbl EXCHANGE PARTITION pa100 WITH TABLE test.regular_tbl;
@@ -80,12 +80,12 @@ SELECT * FROM test.regular_tbl ORDER BY fkid LIMIT 2;
 --replace_column 2 date-time 3 USER 4 UUID
 SELECT * FROM test.regular_tbl ORDER BY fkid DESC LIMIT 2;
 
---source include/sync_slave_sql_with_master.inc
-connection slave;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
 show create table test.byrange_tbl;
 show create table test.regular_tbl;
-SELECT count(*) "Slave norm" FROM test.regular_tbl;
-SELECT count(*) "Slave byrange" FROM test.byrange_tbl;
+SELECT count(*) "Replica norm" FROM test.regular_tbl;
+SELECT count(*) "Replica byrange" FROM test.byrange_tbl;
 --replace_column 2 date-time 3 USER 4 UUID
 SELECT * FROM test.byrange_tbl ORDER BY fkid LIMIT 2;
 --replace_column 2 date-time 3 USER 4 UUID
@@ -97,7 +97,7 @@ SELECT * FROM test.regular_tbl ORDER BY fkid DESC LIMIT 2;
 
 ###### CLEAN UP SECTION ##############
 
-connection master;
+connection primary;
 DROP PROCEDURE test.proc_norm;
 DROP PROCEDURE test.proc_byrange;
 DROP TABLE test.regular_tbl;

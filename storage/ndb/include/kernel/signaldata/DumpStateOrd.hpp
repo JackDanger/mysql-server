@@ -169,7 +169,7 @@ public:
     // 7011 DIH
     // 7012 DIH
     DihDumpLCPState= 7013,
-    DihDumpLCPMasterTakeOver = 7014,    
+    DihDumpLCPPrimaryTakeOver = 7014,    
     // 7015 DIH
     DihAllAllowNodeStart = 7016,
     DihMinTimeBetweenLCP = 7017,

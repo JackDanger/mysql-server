@@ -1,16 +1,16 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-# connection master
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+# connection primary
 USE test;
 DROP TABLE IF EXISTS t1;
 CREATE TABLESPACE s_1 ADD DATAFILE 's_1.ibd' ENGINE InnoDB;
 CREATE TABLESPACE s_2 ADD DATAFILE 's_2.ibd' ENGINE InnoDB;
 CREATE TABLE t1 (a int) ENGINE=innodb TABLESPACE=s_1;
 CREATE TABLE t2 (a int) ENGINE=innodb TABLESPACE=s_1;
-# Check tablespace on master
+# Check tablespace on primary
 === information_schema.innodb_sys_tables  and innodb_sys_tablespaces ===
 Table Name	Tablespace	Table Flags	Columns	Row Format	Zip Size	Space Type
 test/t1	s_1	129	4	Compact	0	General
@@ -23,9 +23,9 @@ a
 SELECT * FROM t2;
 a
 22
-include/sync_slave_sql_with_master.inc
-# connection slave
-# Check tablespace on slave
+include/sync_replica_sql_with_primary.inc
+# connection replica
+# Check tablespace on replica
 === information_schema.innodb_sys_tables  and innodb_sys_tablespaces ===
 Table Name	Tablespace	Table Flags	Columns	Row Format	Zip Size	Space Type
 test/t1	s_1	129	4	Compact	0	General
@@ -45,15 +45,15 @@ Table	Create Table
 t2	CREATE TABLE `t2` (
   `a` int(11) DEFAULT NULL
 ) /*!50100 TABLESPACE `s_1` */ ENGINE=InnoDB DEFAULT CHARSET=latin1
-# connection master
+# connection primary
 USE test;
 DROP TABLE t1,t2;
 DROP TABLESPACE s_1;
-include/sync_slave_sql_with_master.inc
-# connection slave
+include/sync_replica_sql_with_primary.inc
+# connection replica
 === information_schema.innodb_sys_tables  and innodb_sys_tablespaces ===
 Table Name	Tablespace	Table Flags	Columns	Row Format	Zip Size	Space Type
-# connection master
+# connection primary
 USE test;
 DROP TABLESPACE s_2;
 include/rpl_end.inc

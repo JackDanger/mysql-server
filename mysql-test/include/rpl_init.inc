@@ -8,7 +8,7 @@
 #    server_N_1. server_I and server_I_1 are connections to the same
 #    server.
 #  - Verifies that @@server_id of all servers are different.
-#  - Calls RESET MASTER, RESET SLAVE, USE test, CHANGE MASTER, START SLAVE.
+#  - Calls RESET PRIMARY, RESET REPLICA, USE test, CHANGE PRIMARY, START REPLICA.
 #  - Sets the connection to server_1 before exiting.
 #  - Sets the following mtr variables for convenience:
 #    $gtid_mode: the value of @@global.gtid_mode on server 1
@@ -23,12 +23,12 @@
 #
 #    !include ../my.cnf
 #    [mysqld.1]
-#    log-slave-updates
+#    log-replica-updates
 #    [mysqld.2]
-#    log-slave-updates
+#    log-replica-updates
 #    ...
 #    [mysqld.N]
-#    log-slave-updates
+#    log-replica-updates
 #
 #    [ENV]
 #    SERVER_MYPORT_3= @mysqld.3.port
@@ -39,10 +39,10 @@
 #
 #    (It is allowed, but not required, to configure SERVER_MYPORT_1
 #    and SERVER_MYPORT_2 too. If these variables are not set, the
-#    variables MASTER_MYPORT and SLAVE_MYPORT, configured in the
+#    variables PRIMARY_MYPORT and REPLICA_MYPORT, configured in the
 #    default my.cnf used by the rpl and rpl_ndb suites, are used
 #    instead.  In addition, in the rpl_ndb suite, SERVER_MYPORT_3 is
-#    not needed since MASTER_MYPORT1 can be used instead.)
+#    not needed since PRIMARY_MYPORT1 can be used instead.)
 #
 # 2. Execute the following near the top of the test:
 #
@@ -51,11 +51,11 @@
 #    [--let $rpl_multi_source= 1]
 #    [--let $rpl_extra_connections_per_server= 1]
 #    [--let $rpl_check_server_ids= 1]
-#    [--let $rpl_skip_change_master= 1]
-#    [--let $rpl_skip_start_slave= 1]
-#    [--let $rpl_skip_reset_master_and_slave= 1]
+#    [--let $rpl_skip_change_primary= 1]
+#    [--let $rpl_skip_start_replica= 1]
+#    [--let $rpl_skip_reset_primary_and_replica= 1]
 #    [--let $rpl_debug= 1]
-#    [--let $slave_timeout= NUMBER]
+#    [--let $replica_timeout= NUMBER]
 #    [--let $use_gtids= 1]
 #    [--let $rpl_group_replication= 1]
 #    [--let $rpl_gtid_utils= 1]
@@ -72,7 +72,7 @@
 #      A comma-separated list of replication chain
 #      specifications. Each replication chain specification has the
 #      form S1->S2->...->Sn, where 1 <= S1,...Sn <= $rpl_server_count.
-#      This file will configure S(i+1) to be a slave of S(i).  If you
+#      This file will configure S(i+1) to be a replica of S(i).  If you
 #      want to specify the empty topology (no server replicates at
 #      all), you have to set $rpl_topology=none.
 #
@@ -95,21 +95,21 @@
 #      @@server_id of all servers are different. This is normally
 #      guaranteed by mtr, so it is only useful for debugging.
 #
-#    $rpl_skip_reset_master_and_slave
-#      By default, this script issues RESET MASTER and RESET SLAVE
-#      before CHANGE MASTER and START SLAVE.  RESET MASTER and RESET
-#      SLAVE are suppressed if $rpl_skip_reset_master_and_slave is
+#    $rpl_skip_reset_primary_and_replica
+#      By default, this script issues RESET PRIMARY and RESET REPLICA
+#      before CHANGE PRIMARY and START REPLICA.  RESET PRIMARY and RESET
+#      REPLICA are suppressed if $rpl_skip_reset_primary_and_replica is
 #      set.
 #
-#    $rpl_skip_change_master
-#      By default, this script issues CHANGE MASTER so that all slaves
-#      are ready to run as specified by $rpl_topology. CHANGE MASTER
-#      is suppressed if $rpl_skip_change_master is set.
+#    $rpl_skip_change_primary
+#      By default, this script issues CHANGE PRIMARY so that all replicas
+#      are ready to run as specified by $rpl_topology. CHANGE PRIMARY
+#      is suppressed if $rpl_skip_change_primary is set.
 #
-#    $rpl_skip_start_slave
-#      By default, this script issues START SLAVE on all slaves
-#      specified by $rpl_topology. START SLAVE is suppressed if
-#      $rpl_skip_change_master is set.
+#    $rpl_skip_start_replica
+#      By default, this script issues START REPLICA on all replicas
+#      specified by $rpl_topology. START REPLICA is suppressed if
+#      $rpl_skip_change_primary is set.
 #
 #    $rpl_debug
 #      By default, this script only outputs a static text that says
@@ -117,18 +117,18 @@
 #      debug info is printed. The debug info may be nondeterministic,
 #      so no test case should be checked in with $rpl_debug set.
 #
-#    $slave_timeout
-#      Timeout used when waiting for the slave threads to start.
-#      See include/wait_for_slave_param.inc
+#    $replica_timeout
+#      Timeout used when waiting for the replica threads to start.
+#      See include/wait_for_replica_param.inc
 #
 #    $use_gtids
-#      Use option MASTER_AUTO_POSITION = 1 to CHANGE MASTER, and use
+#      Use option PRIMARY_AUTO_POSITION = 1 to CHANGE PRIMARY, and use
 #      GTIDs in sync_*.inc. If the variable is not set, then this
 #      script sets it to 1 if GTID_MODE = ON and 0 otherwise.
 #
 #    $rpl_group_replication
 #      This checks for whether we have Group Replication enabled or not. Based
-#      on the check this parameter we execute change master or not in this
+#      on the check this parameter we execute change primary or not in this
 #      inc file.
 #
 #    $rpl_gtid_utils
@@ -172,7 +172,7 @@
 #   rpl_generate_sync_chain.inc
 #
 # $rpl_connection_count
-#   The number of master-slave connections. For instance, if
+#   The number of primary-replica connections. For instance, if
 #   $rpl_topology is '1->3', this is equal to 1; if $rpl_topology is
 #   '1->2->3->1', this is 3.
 #
@@ -189,30 +189,30 @@
 if ($rpl_debug)
 {
   --echo ---- Check input ----
-  --echo MASTER_MYPORT='$MASTER_MYPORT' SLAVE_MYPORT='$SLAVE_MYPORT' MASTER_MYPORT1='$MASTER_MYPORT1' SLAVE_MYPORT1='$SLAVE_MYPORT1'
+  --echo PRIMARY_MYPORT='$PRIMARY_MYPORT' REPLICA_MYPORT='$REPLICA_MYPORT' PRIMARY_MYPORT1='$PRIMARY_MYPORT1' REPLICA_MYPORT1='$REPLICA_MYPORT1'
 }
 
-# Allow $MASTER_MYPORT as alias for $SERVER_MYPORT_1
+# Allow $PRIMARY_MYPORT as alias for $SERVER_MYPORT_1
 if (!$SERVER_MYPORT_1)
 {
-  --let SERVER_MYPORT_1= $MASTER_MYPORT
+  --let SERVER_MYPORT_1= $PRIMARY_MYPORT
 }
-# Allow $SLAVE_MYPORT as alias for $SERVER_MYPORT_2
+# Allow $REPLICA_MYPORT as alias for $SERVER_MYPORT_2
 if (!$SERVER_MYPORT_2)
 {
-  --let SERVER_MYPORT_2= $SLAVE_MYPORT
+  --let SERVER_MYPORT_2= $REPLICA_MYPORT
 }
-# Allow $MASTER_MYPORT1 as alias for $SERVER_MYPORT_3
+# Allow $PRIMARY_MYPORT1 as alias for $SERVER_MYPORT_3
 # (this alias is used by rpl_ndb tests)
 if (!$SERVER_MYPORT_3)
 {
-  --let SERVER_MYPORT_3= $MASTER_MYPORT1
+  --let SERVER_MYPORT_3= $PRIMARY_MYPORT1
 }
-# Allow $SLAVE_MYPORT1 as alias for $SERVER_MYPORT_4
+# Allow $REPLICA_MYPORT1 as alias for $SERVER_MYPORT_4
 # (this alias is used by rpl_ndb tests)
 if (!$SERVER_MYPORT_4)
 {
-  --let SERVER_MYPORT_4= $SLAVE_MYPORT1
+  --let SERVER_MYPORT_4= $REPLICA_MYPORT1
 }
 # Check that $rpl_server_count is set
 if (!$rpl_server_count)
@@ -265,7 +265,7 @@ if ($gtid_mode == 'ON')
 
 --let $binlog_format= `SELECT @@GLOBAL.BINLOG_FORMAT`
 
-# Create two connections to each server; reset master/slave, select
+# Create two connections to each server; reset primary/replica, select
 # database, set autoinc variables.
 --let $_rpl_server= $rpl_server_count
 --let $underscore= _
@@ -297,10 +297,10 @@ while ($_rpl_server)
   {
     --source include/gtid_utils.inc
   }
-  if (!$rpl_skip_reset_master_and_slave)
+  if (!$rpl_skip_reset_primary_and_replica)
   {
-    RESET MASTER;
-    RESET SLAVE;
+    RESET PRIMARY;
+    RESET REPLICA;
   }
   # Only way to do this in mtr :-(
   if ($_rpl_server == 1) {
@@ -365,10 +365,10 @@ while ($_rpl_server)
     #                     GR features.
     #  rpl:               tests that are written for asynchronous
     #                     replication, on which changes are written only on
-    #                     master and synced asynchronously later on slaves.
+    #                     primary and synced asynchronously later on replicas.
     #
     # Tests from rpl suite are run for regression testing. Since these
-    # assume that only master get changes, there is no need to use GR
+    # assume that only primary get changes, there is no need to use GR
     # auto_increment default value. Actually if we use it, that will make
     # the tests to fail with result content mismatch. Thence for rpl suite
     # we revert GR auto_increment default value.
@@ -454,11 +454,11 @@ if($rpl_group_replication)
   }
 }
 
-if (!$rpl_skip_start_slave)
+if (!$rpl_skip_start_replica)
 {
   if(!$rpl_group_replication)
   {
-    --source include/rpl_start_slaves.inc
+    --source include/rpl_start_replicas.inc
   }
 }
 

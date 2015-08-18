@@ -49,7 +49,7 @@
 --let $rpl_gtid_mode= ON_PERMISSIVE
 --source include/rpl_set_gtid_mode.inc
 
---connection master
+--connection primary
 
 CREATE TABLE t1 (a INT);
 

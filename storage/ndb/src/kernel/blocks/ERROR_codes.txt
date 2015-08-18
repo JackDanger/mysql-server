@@ -42,7 +42,7 @@ Crash president when he starts to run in ArbitState 1-9.
 
 934 : Crash president in ALLOC_NODE_ID_REQ
 
-935 : Crash master on node failure (delayed) 
+935 : Crash primary on node failure (delayed) 
       and skip sending GSN_COMMIT_FAILREQ to specified node
 
 938 : Resume communications (DUMP 9991) when > 25% nodes failed
@@ -51,38 +51,38 @@ ERROR CODES FOR TESTING NODE FAILURE, GLOBAL CHECKPOINT HANDLING:
 -----------------------------------------------------------------
 
 7000:
-Insert system error in master when global checkpoint is idle.
+Insert system error in primary when global checkpoint is idle.
 
 7001:
-Insert system error in master after receiving GCP_PREPARE from
+Insert system error in primary after receiving GCP_PREPARE from
 all nodes in the cluster.
 
 7002:
-Insert system error in master after receiving GCP_NODEFINISH from
+Insert system error in primary after receiving GCP_NODEFINISH from
 all nodes in the cluster.
 
 7003:
-Insert system error in master after receiving GCP_SAVECONF from
+Insert system error in primary after receiving GCP_SAVECONF from
 all nodes in the cluster.
 
 7004:
-Insert system error in master after completing global checkpoint with
+Insert system error in primary after completing global checkpoint with
 all nodes in the cluster.
 
 7186:
-Master: Dont send GCP_PREPARE to all node(s)...and die after 1s
+Primary: Dont send GCP_PREPARE to all node(s)...and die after 1s
 
 7187:
-Master: Dont send GCP_COMMIT to all node(s)...and die after 1s
+Primary: Dont send GCP_COMMIT to all node(s)...and die after 1s
 
 7188:
-Master: Dont send GCP_SAVE_REQ to all node(s)...and die after 1s
+Primary: Dont send GCP_SAVE_REQ to all node(s)...and die after 1s
 
 7189:
-Master: Dont send COPY_GCIREQ (GCP) to all node(s)...and die after 1s
+Primary: Dont send COPY_GCIREQ (GCP) to all node(s)...and die after 1s
 
 7190:
-Master Dont send SUB_GCP_COMPLETE_REP to all node(s) and dies after 1s
+Primary Dont send SUB_GCP_COMPLETE_REP to all node(s) and dies after 1s
 
 7005:
 Insert system error in GCP participant when receiving GCP_PREPARE.
@@ -109,7 +109,7 @@ Delay GCP_SAVEREQ by 10 secs
 
 7177: Delay copying of sysfileData in execCOPY_GCIREQ
 
-7180: Crash master during master-take-over in execMASTER_LCPCONF
+7180: Crash primary during primary-take-over in execPRIMARY_LCPCONF
 
 7183: Crash when receiving COPY_GCIREQ
 
@@ -120,15 +120,15 @@ Delay GCP_SAVEREQ by 10 secs
 7193: Dont send LCP_FRAG_ORD to self, and crash when sending first
       LCP_FRAG_ORD(last)
 
-7194: Force removeNodeFromStored to complete in the middle of MASTER_LCPCONF
+7194: Force removeNodeFromStored to complete in the middle of PRIMARY_LCPCONF
 
 Following are used to test GCP Monitor and take an extra argument
 which default to 0, but if 1 will disable 'normal' handling of
 GCP Stop so that isolation is required to remove a node.
 
 7241: Delay COPY_GCIREQ processing indefinitely
-7242: No initiation of GCP_COMMIT from Master
-7243: No initiation of GCP_SAVE_REQ from Master
+7242: No initiation of GCP_COMMIT from Primary
+7243: No initiation of GCP_SAVE_REQ from Primary
 7237: Delay GCP_SAVEREQ processing indefinitely
 7238: Delay GCP_PREPARE processing indefinitely
 7239: Delay GCP_COMMIT processing indefinitely
@@ -154,10 +154,10 @@ ERROR CODES FOR TESTING NODE FAILURE, LOCAL CHECKPOINT HANDLING:
 -----------------------------------------------------------------
 
 7009:
-Insert system error in master when local checkpoint is idle.
+Insert system error in primary when local checkpoint is idle.
 
 7010:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = CALCULATE_KEEP_GCI.
 
 7011:
@@ -167,43 +167,43 @@ Stop local checkpoint in the state CALCULATE_KEEP_GCI.
 Restart local checkpoint after stopping in CALCULATE_KEEP_GCI.
 
 Method:
-1) Error 7011 in master, wait until report of stopped.
+1) Error 7011 in primary, wait until report of stopped.
 2) Error xxxx in participant to crash it.
-3) Error 7012 in master to start again.
+3) Error 7012 in primary to start again.
 
 7013:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = COPY_GCI before sending COPY_GCIREQ.
 
 7014:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = TC_CLOPSIZE before sending TC_CLOPSIZEREQ.
 
 7015:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = START_LCP_ROUND before sending START_LCP_ROUND.
 
 7016:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = START_LCP_ROUND after receiving LCP_REPORT.
 
 7017:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = TAB_COMPLETED.
 
 7018:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = TAB_SAVED before sending DIH_LCPCOMPLETE.
 
 7019:
-Insert system error in master when local checkpoint is in the
+Insert system error in primary when local checkpoint is in the
 state clcpStatus = IDLE before sending CONTINUEB(ZCHECK_TC_COUNTER).
 
 7020:
 Insert system error in local checkpoint participant at reception of
 COPY_GCIREQ.
 
-7075: Master
+7075: Primary
 Don't send any LCP_FRAG_ORD(last=true)
 And crash when all have "not" been sent
 
@@ -211,20 +211,20 @@ And crash when all have "not" been sent
 8001: Crash particpant when receiving TC_CLOPSIZEREQ
 5010: Crash any when receiving LCP_FRAGORD
 
-7021: Crash in  master when receiving START_LCP_REQ
-7022: Crash in !master when receiving START_LCP_REQ
+7021: Crash in  primary when receiving START_LCP_REQ
+7022: Crash in !primary when receiving START_LCP_REQ
 
-7023: Crash in  master when sending START_LCP_CONF
-7024: Crash in !master when sending START_LCP_CONF
+7023: Crash in  primary when sending START_LCP_CONF
+7024: Crash in !primary when sending START_LCP_CONF
 
-7025: Crash in  master when receiving LCP_FRAG_REP
-7016: Crash in !master when receiving LCP_FRAG_REP
+7025: Crash in  primary when receiving LCP_FRAG_REP
+7016: Crash in !primary when receiving LCP_FRAG_REP
 
-7026: Crash in  master when changing state to LCP_TAB_COMPLETED 
-7017: Crash in !master when changing state to LCP_TAB_COMPLETED 
+7026: Crash in  primary when changing state to LCP_TAB_COMPLETED 
+7017: Crash in !primary when changing state to LCP_TAB_COMPLETED 
 
-7027: Crash in  master when changing state to LCP_TAB_SAVED
-7018: Crash in  master when changing state to LCP_TAB_SAVED
+7027: Crash in  primary when changing state to LCP_TAB_SAVED
+7018: Crash in  primary when changing state to LCP_TAB_SAVED
 
 7191: Crash when receiving LCP_COMPLETE_REP
 7192: Crash in setLcpActiveStatusStart - when dead node missed to LCP's
@@ -473,7 +473,7 @@ Test Crashes in handling node restarts
 
 7121: Crash after receiving permission to start (START_PERMCONF) in starting
       node.
-7122: Crash master when receiving request for permission to start (START_PERMREQ).
+7122: Crash primary when receiving request for permission to start (START_PERMREQ).
 7123: Crash any non-starting node when receiving information about a starting node
       (START_INFOREQ)
 7124: Respond negatively on an info request (START_INFOREQ)
@@ -481,11 +481,11 @@ Test Crashes in handling node restarts
       stopped by long-running processes are handled in a correct manner.
 7126: Allow node restarts for all nodes (used in conjunction with 7025)
 7127: Crash when receiving a INCL_NODEREQ message.
-7128: Crash master after receiving all INCL_NODECONF from all nodes
-7129: Crash master after receiving all INCL_NODECONF from all nodes and releasing
+7128: Crash primary after receiving all INCL_NODECONF from all nodes
+7129: Crash primary after receiving all INCL_NODECONF from all nodes and releasing
       the lock on the dictionary
 7130: Crash starting node after receiving START_MECONF
-7131: Crash when receiving START_COPYREQ in master node
+7131: Crash when receiving START_COPYREQ in primary node
 7132: Crash when receiving START_COPYCONF in starting node
 
 7170: Crash when receiving START_PERMREF (InitialStartRequired)
@@ -493,8 +493,8 @@ Test Crashes in handling node restarts
 8039: DBTC delay INCL_NODECONF and kill starting node
 
 7174: Crash starting node before sending DICT_LOCK_REQ
-7175: Master sends one fake START_PERMREF (ZNODE_ALREADY_STARTING_ERROR)
-7176: Slave NR pretends master does not support DICT lock (rolling upgrade)
+7175: Primary sends one fake START_PERMREF (ZNODE_ALREADY_STARTING_ERROR)
+7176: Replica NR pretends primary does not support DICT lock (rolling upgrade)
 
 DICT:
 6000  Crash during NR when receiving DICTSTARTREQ
@@ -511,26 +511,26 @@ Test Crashes in handling take over
 ----------------------------------
 
 7133: Crash when receiving START_TOREQ
-7134: Crash master after receiving all START_TOCONF
-7135: Crash master after copying table 0 to starting node
-7136: Crash master after completing copy of tables
-7137: Crash master after adding a fragment before copying it
+7134: Crash primary after receiving all START_TOCONF
+7135: Crash primary after copying table 0 to starting node
+7136: Crash primary after completing copy of tables
+7137: Crash primary after adding a fragment before copying it
 7138: Crash when receiving UPDATE_FRAG_STATEREQ in prepare phase
 7139: Crash when receiving UPDATE_FRAG_STATEREQ in commit phase
-7140: Crash master when receiving all UPDATE_FRAG_STATECONF in prepare phase
-7141: Crash master when receiving all UPDATE_FRAG_STATECONF in commit phase
-7142: Crash master when receiving COPY_FRAGCONF
-7143: Crash master when receiving COPY_ACTIVECONF
+7140: Crash primary when receiving all UPDATE_FRAG_STATECONF in prepare phase
+7141: Crash primary when receiving all UPDATE_FRAG_STATECONF in commit phase
+7142: Crash primary when receiving COPY_FRAGCONF
+7143: Crash primary when receiving COPY_ACTIVECONF
 7144: Crash when receiving END_TOREQ
-7145: Crash master after receiving first END_TOCONF
-7146: Crash master after receiving all END_TOCONF
-7147: Crash master after receiving first START_TOCONF
-7148: Crash master after receiving first UPDATE_FRAG_STATECONF
-7152: Crash master after receiving first UPDATE_TOCONF
-7153: Crash master after receiving all UPDATE_TOCONF
+7145: Crash primary after receiving first END_TOCONF
+7146: Crash primary after receiving all END_TOCONF
+7147: Crash primary after receiving first START_TOCONF
+7148: Crash primary after receiving first UPDATE_FRAG_STATECONF
+7152: Crash primary after receiving first UPDATE_TOCONF
+7153: Crash primary after receiving all UPDATE_TOCONF
 7154: Crash when receiving UPDATE_TOREQ
-7155: Crash master when completing writing start take over info
-7156: Crash master when completing writing end take over info
+7155: Crash primary when completing writing start take over info
+7156: Crash primary when completing writing end take over info
 
 Test failures in various states in take over functionality
 ----------------------------------------------------------
@@ -544,13 +544,13 @@ Test failures in various states in take over functionality
 7164: Block take over at sending of END_TOREQ
 7169: Block take over at sending of UPDATE_TOREQ at end of copy
 
-5008: Crash at reception of EMPTY_LCPREQ (at master take over after NF)
-5009: Crash at sending of EMPTY_LCPCONF (at master take over after NF)
+5008: Crash at reception of EMPTY_LCPREQ (at primary take over after NF)
+5009: Crash at sending of EMPTY_LCPCONF (at primary take over after NF)
 
 Test Crashes in Handling Graceful Shutdown
 ------------------------------------------
-7065: Crash when receiving STOP_PERMREQ in master
-7066: Crash when receiving STOP_PERMREQ in slave
+7065: Crash when receiving STOP_PERMREQ in primary
+7066: Crash when receiving STOP_PERMREQ in replica
 7067: Crash when receiving DIH_SWITCH_REPLICA_REQ
 7068: Crash when receiving DIH_SWITCH_REPLICA_CONF
 
@@ -584,9 +584,9 @@ Backup Stuff:
 10024: Abort backup by error at reception of DEFINE_BACKUP_CONF (code 301)
 10025: Abort backup by error at reception of CREATE_TRIG_CONF last (code 302)
 10026: Abort backup by error at reception of START_BACKUP_CONF (code 303)
-10027: Abort backup by error at reception of DEFINE_BACKUP_REQ at master (code 304)
-10028: Abort backup by error at reception of BACKUP_FRAGMENT_CONF at master (code 305)
-10029: Abort backup by error at reception of FSAPPENDCONF in slave (FileOrScanError = 5)
+10027: Abort backup by error at reception of DEFINE_BACKUP_REQ at primary (code 304)
+10028: Abort backup by error at reception of BACKUP_FRAGMENT_CONF at primary (code 305)
+10029: Abort backup by error at reception of FSAPPENDCONF in replica (FileOrScanError = 5)
 10030: Simulate buffer full from trigger execution => abort backup
 10031: Error 331 for dictCommitTableMutex_locked
 10032: backup checkscan
@@ -599,9 +599,9 @@ Backup Stuff:
 10038: Receive abort backup in the middle of locking tables.
 10041: delay backup after create trigger. for testing undo log file.
 
-11001: Send UTIL_SEQUENCE_REF (in master)
+11001: Send UTIL_SEQUENCE_REF (in primary)
 
-5028:  Crash when receiving LQHKEYREQ (in non-master)
+5028:  Crash when receiving LQHKEYREQ (in non-primary)
 
 Failed Create Table:
 --------------------
@@ -635,7 +635,7 @@ Drop Table/Index:
 Dict transactions
 -----------------
 
-These should be applied separately to master and slave.
+These should be applied separately to primary and replica.
 CTa = create table, ATr = alter trigger, and so on
 
 6101: Fail seize of schema trans (err=780)
@@ -666,18 +666,18 @@ CTa = create table, ATr = alter trigger, and so on
 #6135: Fail prepare (err=9135) in ATr
 #6136: Fail prepare (err=9136) in BIn
 
-# Master failure, partial progress 
-6140: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_START
-6141: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_PARSE
-6142: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_FLUSH_PREPARE
-6143: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_PREPARE
-6144: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_ABORT_PARSE
-6145: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_ABORT_PREPARE
-6146: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_FLUSH_COMMIT
-6147: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_COMMIT
-6148: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_FLUSH_COMPLETE
-6149: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_COMPLETE
-6150: Tell master to skip last SCHEMA_TRANS_IMPL_REQ at RT_END
+# Primary failure, partial progress 
+6140: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_START
+6141: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_PARSE
+6142: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_FLUSH_PREPARE
+6143: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_PREPARE
+6144: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_ABORT_PARSE
+6145: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_ABORT_PREPARE
+6146: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_FLUSH_COMMIT
+6147: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_COMMIT
+6148: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_FLUSH_COMPLETE
+6149: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_COMPLETE
+6150: Tell primary to skip last SCHEMA_TRANS_IMPL_REQ at RT_END
 
 System Restart:
 ---------------
@@ -720,9 +720,9 @@ Dbdict:
 6005 Crash in participant @ CreateTabReq::CreateDrop
 6007 Fail on readTableFile for READ_TAB_FILE1 (28770)
 6012 Bump up next table id to 4096
-6013 Master failure during prepare
-6014 Master failure during commit
-6015 Master failure after commit
+6013 Primary failure during prepare
+6014 Primary failure during commit
+6015 Primary failure after commit
 
 6022 Cluster failure before flush prepare
 6021 Cluster failure before prepare first
@@ -735,10 +735,10 @@ Dbdict:
 6030 Do not round DD sizes in DBDICT. Check in ndb*out.log
      that DBDICT and LGMAN/TSMAN round same way.
 
-6200 Set error code after handleTabInfoInit in master
-6201 Set error code after handleTabInfoInit in master (index)
-6202 Set error code before CREATE_FRAGMENTATION in master
-6203 Set error code before CREATE_FRAGMENTATION in master (index)
+6200 Set error code after handleTabInfoInit in primary
+6201 Set error code after handleTabInfoInit in primary (index)
+6202 Set error code before CREATE_FRAGMENTATION in primary
+6203 Set error code before CREATE_FRAGMENTATION in primary (index)
 
 6215 Randomly fail GET_TABINFOREQ with Busy (no CLEAR_ERROR_INSERT_VALUE)
 

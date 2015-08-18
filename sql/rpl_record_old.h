@@ -33,7 +33,7 @@ class Relay_log_info;
 int unpack_row_old(Relay_log_info *rli,
                    TABLE *table, uint const colcnt, uchar *record,
                    uchar const *row, MY_BITMAP const *cols,
-                   uchar const **row_end, ulong *master_reclength,
+                   uchar const **row_end, ulong *primary_reclength,
                    MY_BITMAP* const rw_set,
                    binary_log::Log_event_type const event_type);
 #endif

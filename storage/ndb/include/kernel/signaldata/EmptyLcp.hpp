@@ -22,8 +22,8 @@
 
 
 /**
- * This signals is sent by Dbdih-Master to Dblqh
- * as part of master take over after node crash
+ * This signals is sent by Dbdih-Primary to Dblqh
+ * as part of primary take over after node crash
  */
 struct EmptyLcpReq {
   /**
@@ -48,7 +48,7 @@ struct EmptyLcpReq {
 
 /**
  * This signals is sent by Dblqh to Dbdih
- * as part of master take over after node crash
+ * as part of primary take over after node crash
  */
 struct EmptyLcpConf {
   /**

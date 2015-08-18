@@ -1347,7 +1347,7 @@ log_buffer_flush_to_disk(
 /****************************************************************//**
 This functions writes the log buffer to the log file and if 'flush'
 is set it forces a flush of the log file as well. This is meant to be
-called from background master thread only as it does not wait for
+called from background primary thread only as it does not wait for
 the write (+ possible flush) to finish. */
 void
 log_buffer_sync_in_background(
@@ -2072,7 +2072,7 @@ logs_empty_and_mark_files_at_shutdown(void)
 		os_thread_sleep(100000);
 	}
 
-	/* Wait until the master thread and all other operations are idle: our
+	/* Wait until the primary thread and all other operations are idle: our
 	algorithm only works if the server is idle at shutdown */
 
 	srv_shutdown_state = SRV_SHUTDOWN_CLEANUP;
@@ -2088,7 +2088,7 @@ loop:
 
 	if (thread_name != NULL) {
 		/* Print a message every 60 seconds if we are waiting
-		for the monitor thread to exit. Master and worker
+		for the monitor thread to exit. Primary and worker
 		threads check will be done later. */
 
 		if (srv_print_verbose_log && count > 600) {
@@ -2131,7 +2131,7 @@ loop:
 
 		/* The srv_lock_timeout_thread, srv_error_monitor_thread
 		and srv_monitor_thread should already exit by now. The
-		only threads to be suspended are the master threads
+		only threads to be suspended are the primary threads
 		and worker threads (purge threads). Print the thread
 		type if any of such threads not in suspended mode */
 		if (srv_print_verbose_log && count > 600) {
@@ -2147,8 +2147,8 @@ loop:
 			case SRV_WORKER:
 				thread_type = "worker threads";
 				break;
-			case SRV_MASTER:
-				thread_type = "master thread";
+			case SRV_PRIMARY:
+				thread_type = "primary thread";
 				break;
 			case SRV_PURGE:
 				thread_type = "purge thread";

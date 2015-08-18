@@ -5,11 +5,11 @@
 # 2006-02-08 By JBM added order by for use w/ NDB engine
 ###########################################################
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
-#--source include/sync_slave_sql_with_master.inc
-#reset master;
-#connection master;
+#--source include/sync_replica_sql_with_primary.inc
+#reset primary;
+#connection primary;
 
 --disable_warnings
 drop table if exists t1;
@@ -18,27 +18,27 @@ drop table if exists t1;
 create table t1(n char(30));
 
 prepare stmt1 from 'insert into t1 values (?)';
-set @var1= "from-master-1";
+set @var1= "from-primary-1";
 execute stmt1 using @var1;
-set @var1= "from-master-2-'',";
+set @var1= "from-primary-2-'',";
 execute stmt1 using @var1;
 SELECT * FROM t1 ORDER BY n;
 
 set @var2= 'insert into t1 values (concat("from-var-", ?))';
 prepare stmt2 from @var2;
-set @var1='from-master-3';
+set @var1='from-primary-3';
 execute stmt2 using @var1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY n;
 
-connection master;
+connection primary;
 
 drop table t1;
 
---source include/sync_slave_sql_with_master.inc
-stop slave;
-source include/wait_for_slave_to_stop.inc;
+--source include/sync_replica_sql_with_primary.inc
+stop replica;
+source include/wait_for_replica_to_stop.inc;
 # End of 4.1 tests
 
 #
@@ -67,13 +67,13 @@ source include/wait_for_slave_to_stop.inc;
 
 ###############################################################################
 
---echo # Connection: slave
---connection slave
+--echo # Connection: replica
+--connection replica
 
-START SLAVE;
+START REPLICA;
 
---echo # Connection: master
---connection master
+--echo # Connection: primary
+--connection primary
 
 CREATE DATABASE mysqltest1;
 CREATE TABLE t1(db_name CHAR(32), db_col_name CHAR(32));
@@ -86,13 +86,13 @@ use mysqltest1;
 
 EXECUTE stmt_d_1;
 
---echo # Connection: slave
---source include/sync_slave_sql_with_master.inc
+--echo # Connection: replica
+--source include/sync_replica_sql_with_primary.inc
 
 SELECT * FROM t1;
 
---echo # Connection: master
---connection master
+--echo # Connection: primary
+--connection primary
 
 DROP DATABASE mysqltest1;
 

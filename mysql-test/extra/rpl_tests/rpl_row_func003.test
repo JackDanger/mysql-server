@@ -4,15 +4,15 @@
 # Update: 08/29/2005 Comment out sleep. Only needed for debugging           #
 #############################################################################
 # Note: Time changes and is not deteministic, so instead we dump both the   #
-#       master and slave and diff the dumps. If the dumps differ then the   #
+#       primary and replica and diff the dumps. If the dumps differ then the   #
 #       test case will fail. To run during diff failuers, comment out the   #
 #       diff.                                                               #
 # Test: Tests MySQL stored function using RAND() and a flow control. The    #
 #       test inserts  rows into a givin table with the function used in     #
 #       the insert statement. Depending on the  RAND() value returned       #
 #       inside the function one set of text is returned. In addition,       #
-#       it uses a transaction to see the effect a rollback has on master    #
-#       Vs slave.                                                           #
+#       it uses a transaction to see the effect a rollback has on primary    #
+#       Vs replica.                                                           #
 #############################################################################
 
 SET SESSION sql_log_bin= 0;
@@ -20,7 +20,7 @@ CALL mtr.add_suppression('Statement may not be safe to log in statement format.'
 SET SESSION sql_log_bin= 1;
 
 # Begin clean up test section
-connection master;
+connection primary;
 --disable_warnings
 DROP FUNCTION IF EXISTS test.f1;
 DROP TABLE IF EXISTS test.t1;
@@ -56,13 +56,13 @@ INSERT INTO test.t1 VALUES (null,test.f1());
 ROLLBACK;
 SET AUTOCOMMIT=1;
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 # Time to dump the databases and so we can see if they match
 
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/func003_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/func003_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/func003_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/func003_replica.sql
 
 # First lets cleanup
 DROP FUNCTION test.f1;
@@ -74,10 +74,10 @@ DROP TABLE test.t1;
 # the files yourself to see what is not matching :-) File are located
 # in $MYSQLTEST_VARDIR/tmp
 
-diff_files $MYSQLTEST_VARDIR/tmp/func003_master.sql $MYSQLTEST_VARDIR/tmp/func003_slave.sql;
+diff_files $MYSQLTEST_VARDIR/tmp/func003_primary.sql $MYSQLTEST_VARDIR/tmp/func003_replica.sql;
 
 # Clean up
-remove_file $MYSQLTEST_VARDIR/tmp/func003_master.sql;
-remove_file $MYSQLTEST_VARDIR/tmp/func003_slave.sql;
+remove_file $MYSQLTEST_VARDIR/tmp/func003_primary.sql;
+remove_file $MYSQLTEST_VARDIR/tmp/func003_replica.sql;
 
 # End of 5.0 test case

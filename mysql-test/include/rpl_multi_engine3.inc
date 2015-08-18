@@ -3,7 +3,7 @@
 # Date: 2006-02-23
 # Purpose: To reuse through out test and make maint easier
 #############################################################
-connection master;
+connection primary;
 --echo "--- Insert into t1 --" as "";
 
 --disable_query_log
@@ -24,38 +24,38 @@ INSERT INTO t1 VALUES(412,1,'Testing MySQL databases is a cool ',
                        654321.4321,15.21,0,1965,"2005-11-14");
 --enable_query_log
 
---echo --- Select from t1 on master --- 
+--echo --- Select from t1 on primary --- 
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 
-sync_slave_with_master;
---echo --- Select from t1 on slave ---
+sync_replica_with_primary;
+--echo --- Select from t1 on replica ---
 select id,hex(b1),vc,bc,d,f,total,y,t from t1 order by id;
 
-connection master;
+connection primary;
 
---echo --- Update t1 on master --
+--echo --- Update t1 on primary --
 UPDATE t1 SET b1 = 0, t="2006-02-22" WHERE id = 412;
 
---echo --- Check the update on master --- 
+--echo --- Check the update on primary --- 
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 
 # Must give injector thread a little time to get update
 # into the binlog other wise we will miss the update.
 
-sync_slave_with_master;
---echo --- Check Update on slave ---
+sync_replica_with_primary;
+--echo --- Check Update on replica ---
 SELECT id,hex(b1),vc,bc,d,f,total,y,t FROM t1 WHERE id = 412;
 
-connection master;
---echo --- Remove a record from t1 on master ---
+connection primary;
+--echo --- Remove a record from t1 on primary ---
 DELETE FROM t1 WHERE id = 42;
 
---echo --- Show current count on master for t1 ---
+--echo --- Show current count on primary for t1 ---
 SELECT COUNT(*) FROM t1;
 
-sync_slave_with_master;
---echo --- Show current count on slave for t1 --- 
+sync_replica_with_primary;
+--echo --- Show current count on replica for t1 --- 
 SELECT COUNT(*) FROM t1;
 
-connection master;
+connection primary;
 DELETE FROM t1;

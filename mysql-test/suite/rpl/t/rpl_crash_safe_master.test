@@ -2,26 +2,26 @@
 # WL#5493 & WL#5440
 # Test case1 verifies if the transaction statements will not be
 # binlogged and replication will work fine, but the data will
-# be rolled back on master after the master restarts when setting
-# DEBUG POINT before binlog to make the master crash.
+# be rolled back on primary after the primary restarts when setting
+# DEBUG POINT before binlog to make the primary crash.
 # 
 # Test case2 verifies if the transaction statements will be
 # binlogged and replication will work fine, and the data will
-# be recovered after the master restarts when setting DEBUG
+# be recovered after the primary restarts when setting DEBUG
 # POINT after binlog, and before the date is committed to make
-# the master crash.
+# the primary crash.
 #
 # Test case3 verifies if the halfly binlogged transaction 
 # statements will be trimmed from the crashed binlog file
 # and the data will not be recovered successfully after
-# the master restarts when setting DEBUG POINT in the
-# middle of binlog to make the master crash
+# the primary restarts when setting DEBUG POINT in the
+# middle of binlog to make the primary crash
 #
 # Test case4 verifies if the halfly binlogged non-transaction
 # statement will be trimmed from the crashed binlog file
 # and the data will not be recovered successfully after
-# the master restarts when setting DEBUG POINT in the
-# middle of binlog to make the master crash.
+# the primary restarts when setting DEBUG POINT in the
+# middle of binlog to make the primary crash.
 #
 
 -- source include/not_group_replication_plugin.inc
@@ -33,38 +33,38 @@
 -- source include/have_myisam.inc
 -- source include/have_binlog_format_row.inc
 -- source include/not_crashrep.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
-# Reset master
-connection slave;
---source include/stop_slave.inc 
+# Reset primary
+connection replica;
+--source include/stop_replica.inc 
 
-connection master;
-RESET MASTER;
+connection primary;
+RESET PRIMARY;
 
-connection slave;
---source include/start_slave.inc
+connection replica;
+--source include/start_replica.inc
 
-connection master;
+connection primary;
 call mtr.add_suppression("Attempting backtrace");
 call mtr.add_suppression("allocated tablespace *., old maximum was 0");
 call mtr.add_suppression("Error in Log_event::read_log_event()");
 call mtr.add_suppression("Buffered warning: Performance schema disabled");
 
 -- let $old_debug = `select @@global.debug`
--- let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
--- let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+-- let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
+-- let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
 CREATE TABLE t1(a LONGBLOB) ENGINE=INNODB;
 
 -- echo # Test case1: Set DEBUG POINT before binlog to make
--- echo #             the master crash for transaction
+-- echo #             the primary crash for transaction
 
--- echo # Lets stop the slave IO thread first, so that it does not timeout on
--- echo # reconnection while the master is down (it happened before on some
+-- echo # Lets stop the replica IO thread first, so that it does not timeout on
+-- echo # reconnection while the primary is down (it happened before on some
 -- echo # slow hosts).
---source include/sync_slave_sql_with_master.inc
---source include/stop_slave_io.inc
---connection master
+--source include/sync_replica_sql_with_primary.inc
+--source include/stop_replica_io.inc
+--connection primary
 
 BEGIN;
 let $rows= 3;
@@ -84,7 +84,7 @@ COMMIT;
 
 -- source include/wait_until_disconnected.inc
 -- enable_reconnect
--- echo # Restart the master server
+-- echo # Restart the primary server
 -- exec echo "restart" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
 -- source include/wait_until_connected_again.inc 
 -- disable_reconnect
@@ -93,33 +93,33 @@ COMMIT;
 -- source include/show_binlog_events.inc
 
 --let $assert_cond= `SELECT COUNT(*) = 0 FROM t1`
---let $assert_text= On master, test the data will be rolled back after restart.
+--let $assert_text= On primary, test the data will be rolled back after restart.
 --source include/assert.inc
 
---connection slave
---echo # lets restart the slave io thread and check that
---echo # the slave gets synchronized again
---source include/start_slave_io.inc
---connection master
+--connection replica
+--echo # lets restart the replica io thread and check that
+--echo # the replica gets synchronized again
+--source include/start_replica_io.inc
+--connection primary
 
---source include/sync_slave_sql_with_master.inc
--- echo # On slave, test replication will work fine, and the data 
+--source include/sync_replica_sql_with_primary.inc
+-- echo # On replica, test replication will work fine, and the data 
 -- echo #           is not replicated
---let $diff_tables= master:test.t1, slave:test.t1
+--let $diff_tables= primary:test.t1, replica:test.t1
 --source include/diff_tables.inc
 
-connection master;
--- let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
--- let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+connection primary;
+-- let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
+-- let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
 -- echo # Test case2: Set DEBUG POINT after binlog, and before the date
 -- echo #             is committed to make crash for transaction
 
--- echo # Lets stop the slave IO thread first, so that it does not timeout on
--- echo # reconnection while the master is down (it happened before on some
+-- echo # Lets stop the replica IO thread first, so that it does not timeout on
+-- echo # reconnection while the primary is down (it happened before on some
 -- echo # slow hosts).
---source include/sync_slave_sql_with_master.inc
---source include/stop_slave_io.inc
---connection master
+--source include/sync_replica_sql_with_primary.inc
+--source include/stop_replica_io.inc
+--connection primary
 
 BEGIN;
 let $rows= 3;
@@ -139,7 +139,7 @@ COMMIT;
 
 -- source include/wait_until_disconnected.inc
 -- enable_reconnect
--- echo # Restart the master server
+-- echo # Restart the primary server
 -- exec echo "restart" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
 -- source include/wait_until_connected_again.inc
 -- disable_reconnect
@@ -148,33 +148,33 @@ COMMIT;
 -- source include/show_binlog_events.inc
 
 --let $assert_cond= `SELECT COUNT(*) = 3 FROM t1`
---let $assert_text= On master, test the data will be recovered after the master restart.
+--let $assert_text= On primary, test the data will be recovered after the primary restart.
 --source include/assert.inc
 
---connection slave
---echo # lets restart the slave io thread and check that
---echo # the slave gets synchronized again
---source include/start_slave_io.inc
---connection master
+--connection replica
+--echo # lets restart the replica io thread and check that
+--echo # the replica gets synchronized again
+--source include/start_replica_io.inc
+--connection primary
 
---source include/sync_slave_sql_with_master.inc
--- echo # On slave, test replication will work fine, and the data is replicated
---let $diff_tables= master:test.t1, slave:test.t1
+--source include/sync_replica_sql_with_primary.inc
+-- echo # On replica, test replication will work fine, and the data is replicated
+--let $diff_tables= primary:test.t1, replica:test.t1
 --source include/diff_tables.inc
 
-connection master;
+connection primary;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
--- source include/stop_slave.inc
+--source include/sync_replica_sql_with_primary.inc
+-- source include/stop_replica.inc
 
-connection master;
--- let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
--- let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+connection primary;
+-- let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
+-- let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
 # Test transaction with large data inserted
 CREATE TABLE t1(a LONGBLOB) ENGINE=INNODB;
 
 -- echo # Test case3: Set DEBUG POINT in the middle of binlog to
--- echo #             make the master crash for transaction.
+-- echo #             make the primary crash for transaction.
 BEGIN;
 let $rows= 24;
 WHILE($rows)
@@ -193,7 +193,7 @@ COMMIT;
 
 -- source include/wait_until_disconnected.inc
 -- enable_reconnect
--- echo # Restart the master server
+-- echo # Restart the primary server
 -- exec echo "restart" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
 -- source include/wait_until_connected_again.inc
 -- disable_reconnect
@@ -203,13 +203,13 @@ COMMIT;
 -- source include/show_binlog_events.inc
 
 -- echo # Test the data will not be recovered successfully
--- echo # after the master restart.
+-- echo # after the primary restart.
 SELECT COUNT(*) FROM t1;
 
 -- echo # Test case4: Set DEBUG POINT in the middle of binlog to
--- echo #             make the master crash for non-transaction.
--- let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
--- let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+-- echo #             make the primary crash for non-transaction.
+-- let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
+-- let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
 CREATE TABLE t2(a LONGBLOB) ENGINE=MYISAM;
 # Write file to make mysql-test-run.pl expect crash and restart
 -- exec echo "wait" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
@@ -221,7 +221,7 @@ INSERT INTO t2 (a) VALUES (REPEAT('a',16384));
 
 -- source include/wait_until_disconnected.inc
 -- enable_reconnect
--- echo # Restart the master server
+-- echo # Restart the primary server
 -- exec echo "restart" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
 -- source include/wait_until_connected_again.inc
 -- disable_reconnect
@@ -231,9 +231,9 @@ INSERT INTO t2 (a) VALUES (REPEAT('a',16384));
 -- source include/show_binlog_events.inc
 
 -- echo # Test the data will not be recovered successfully
--- echo # after the master restart.
+-- echo # after the primary restart.
 SELECT COUNT(*) FROM t2;
 
 DROP TABLE t1, t2;
-connection slave;
-CHANGE MASTER TO MASTER_AUTO_POSITION= 0;
+connection replica;
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 0;

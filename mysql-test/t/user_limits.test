@@ -80,7 +80,7 @@ select * from t1;
 connect (mcph2, localhost, mysqltest_1,,);
 connection mcph2;
 select * from t1;
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_USER_LIMIT_REACHED
 connect (mcph3, localhost, mysqltest_1,,);
 # Old connection is still ok
@@ -89,7 +89,7 @@ select * from t1;
 # counters are not thrown away if there are no connections for this user.
 disconnect mcph1;
 disconnect mcph2;
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_USER_LIMIT_REACHED
 connect (mcph3, localhost, mysqltest_1,,);
 # Cleanup
@@ -107,7 +107,7 @@ select * from t1;
 connect (muc2, localhost, mysqltest_1,,);
 connection muc2;
 select * from t1;
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_USER_LIMIT_REACHED
 connect (muc3, localhost, mysqltest_1,,);
 # Closing of one of connections should help
@@ -121,7 +121,7 @@ flush user_resources;
 connect (muc4, localhost, mysqltest_1,,);
 connection muc4;
 select * from t1;
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_USER_LIMIT_REACHED
 connect (muc5, localhost, mysqltest_1,,);
 # Clean up
@@ -150,7 +150,7 @@ select @@session.max_user_connections, @@global.max_user_connections;
 connect (muca2, localhost, mysqltest_1,,);
 connection muca2;
 select * from t1;
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_TOO_MANY_USER_CONNECTIONS
 connect (muca3, localhost, mysqltest_1,,);
 # Now we are testing that per-account limit prevails over gloabl limit
@@ -160,7 +160,7 @@ flush user_resources;
 connect (muca3, localhost, mysqltest_1,,);
 connection muca3;
 select @@session.max_user_connections, @@global.max_user_connections;
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 --error ER_USER_LIMIT_REACHED
 connect (muca4, localhost, mysqltest_1,,);
 # Cleanup

@@ -17,9 +17,9 @@ DROP TABLE dummy;
 
 # reset for test
 -- connection server1
-reset master;
+reset primary;
 -- connection server2
-reset master;
+reset primary;
 
 #
 # Bug #17250994	BAD BINLOG GENERATION AFTER MISMATCH TABLE DISCOVER

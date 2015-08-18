@@ -15,7 +15,7 @@
 # SHOW ERRORS will print in the
 # test .result file the exact outcome.
 
-RESET MASTER;
+RESET PRIMARY;
 
 --disable_warnings
 drop database if exists my_replicated_db;
@@ -96,31 +96,31 @@ insert into my_bh_table(a)
   select thread_id from mysql.slow_log;
 
 insert into my_tx_table(a)
-  select Relay_log_pos from mysql.slave_relay_log_info;
+  select Relay_log_pos from mysql.replica_relay_log_info;
 
 insert into my_non_tx_table(a)
-  select Relay_log_pos from mysql.slave_relay_log_info;
+  select Relay_log_pos from mysql.replica_relay_log_info;
 
 insert into my_bh_table(a)
-  select Relay_log_pos from mysql.slave_relay_log_info;
+  select Relay_log_pos from mysql.replica_relay_log_info;
 
 insert into my_tx_table(a)
-  select Master_log_pos from mysql.slave_master_info;
+  select Primary_log_pos from mysql.replica_primary_info;
 
 insert into my_non_tx_table(a)
-  select Master_log_pos from mysql.slave_master_info;
+  select Primary_log_pos from mysql.replica_primary_info;
 
 insert into my_bh_table(a)
-  select Master_log_pos from mysql.slave_master_info;
+  select Primary_log_pos from mysql.replica_primary_info;
 
 insert into my_tx_table(a)
-  select Relay_log_pos from mysql.slave_worker_info;
+  select Relay_log_pos from mysql.replica_worker_info;
 
 insert into my_non_tx_table(a)
-  select Relay_log_pos from mysql.slave_worker_info;
+  select Relay_log_pos from mysql.replica_worker_info;
 
 insert into my_bh_table(a)
-  select Relay_log_pos from mysql.slave_worker_info;
+  select Relay_log_pos from mysql.replica_worker_info;
 
 use test;
 drop table if exists marker_multi_update;

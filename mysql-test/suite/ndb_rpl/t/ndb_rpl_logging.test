@@ -8,11 +8,11 @@
 #
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --disable_warnings
 --disable_query_log
---connection master
+--connection primary
 # default settings for the mysqld
 set global ndb_log_update_as_write=1;
 set global ndb_log_updated_only=1;
@@ -33,21 +33,21 @@ CREATE TABLE mysql.ndb_replication
 # no logging option = 1
 #
 --echo **** Test 1 ****
---connection master
+--connection primary
 delete from mysql.ndb_replication;
 insert into mysql.ndb_replication values ("test", "t1", 0, 1, NULL);
 create table t1 (a int key, b varchar(32), c varchar(32)) engine ndb;
 create table t2 (a int key, b varchar(32), c varchar(32)) engine ndb;
-insert into t1 values (1,"t1.b from master", "t1.c from master");
-insert into t2 values (1,"t2.b from master", "t2.c from master");
+insert into t1 values (1,"t1.b from primary", "t1.c from primary");
+insert into t2 values (1,"t2.b from primary", "t2.c from primary");
 #
-# connect to slave and ensure data it there from t2 but not from t1
+# connect to replica and ensure data it there from t2 but not from t1
 #
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select * from t1;
 select * from t2;
---connection master
+--connection primary
 drop table t1;
 drop table t2;
 
@@ -55,7 +55,7 @@ drop table t2;
 # updated logging option = 2
 #
 --echo **** Test 2 ****
---connection master
+--connection primary
 delete from mysql.ndb_replication;
 insert into mysql.ndb_replication values ("test", "t1", 0, 2, NULL);
 #
@@ -65,35 +65,35 @@ insert into mysql.ndb_replication values ("test", "t1", 0, 2, NULL);
 set global ndb_log_updated_only=0;
 create table t1 (a int key, b varchar(32), c varchar(32)) engine ndb;
 create table t2 (a int key, b varchar(32), c varchar(32)) engine ndb;
-insert into t1 values (1,"t1.b from master", "t1.c from master");
-insert into t2 values (1,"t2.b from master", "t2.c from master");
+insert into t1 values (1,"t1.b from primary", "t1.c from primary");
+insert into t2 values (1,"t2.b from primary", "t2.c from primary");
 #
-# connect to slave and ensure data it there
+# connect to replica and ensure data it there
 #
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select * from t1;
 select * from t2;
 #
-# now make an update on the slave
+# now make an update on the replica
 #
-update t1 set c="t1.c from slave";
-update t2 set c="t2.c from slave";
+update t1 set c="t1.c from replica";
+update t2 set c="t2.c from replica";
 #
-# and back to the master to update difffrent columns there
+# and back to the primary to update difffrent columns there
 #
---connection master
-update t1 set b="updated t1.b from master";
-update t2 set b="updated t2.b from master";
+--connection primary
+update t1 set b="updated t1.b from primary";
+update t2 set b="updated t2.b from primary";
 #
-# connect to slave and ensure data it there, but a mix of slave/master
+# connect to replica and ensure data it there, but a mix of replica/primary
 # updates
 #
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select * from t1;
 select * from t2;
---connection master
+--connection primary
 drop table t1;
 drop table t2;
 
@@ -101,42 +101,42 @@ drop table t2;
 # full logging option = 3
 #
 --echo **** Test 3 ****
---connection master
+--connection primary
 delete from mysql.ndb_replication;
 insert into mysql.ndb_replication values ("test", "t1", 0, 3, NULL);
 # back to default
 set global ndb_log_updated_only=1;
 create table t1 (a int key, b varchar(32), c varchar(32)) engine ndb;
 create table t2 (a int key, b varchar(32), c varchar(32)) engine ndb;
-insert into t1 values (1,"t1.b from master", "t1.c from master");
-insert into t2 values (1,"t2.b from master", "t2.c from master");
+insert into t1 values (1,"t1.b from primary", "t1.c from primary");
+insert into t2 values (1,"t2.b from primary", "t2.c from primary");
 #
-# connect to slave and ensure data it there
+# connect to replica and ensure data it there
 #
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select * from t1;
 select * from t2;
 #
-# now make an update on the slave
+# now make an update on the replica
 #
-update t1 set c="t1.c from slave";
-update t2 set c="t2.c from slave";
+update t1 set c="t1.c from replica";
+update t2 set c="t2.c from replica";
 #
-# and back to the master to update difffrent columns there
+# and back to the primary to update difffrent columns there
 #
---connection master
-update t1 set b="updated t1.b from master";
-update t2 set b="updated t2.b from master";
+--connection primary
+update t1 set b="updated t1.b from primary";
+update t2 set b="updated t2.b from primary";
 #
-# connect to slave and ensure data it there, but a mix of slave/master
+# connect to replica and ensure data it there, but a mix of replica/primary
 # updates for t2 but not for t1
 #
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 select * from t1;
 select * from t2;
---connection master
+--connection primary
 drop table t1;
 drop table t2;
 drop table mysql.ndb_replication;

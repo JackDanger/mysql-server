@@ -81,7 +81,7 @@ enum enum_server_command
   COM_CREATE_DB, COM_DROP_DB, COM_REFRESH, COM_SHUTDOWN, COM_STATISTICS,
   COM_PROCESS_INFO, COM_CONNECT, COM_PROCESS_KILL, COM_DEBUG, COM_PING,
   COM_TIME, COM_DELAYED_INSERT, COM_CHANGE_USER, COM_BINLOG_DUMP,
-  COM_TABLE_DUMP, COM_CONNECT_OUT, COM_REGISTER_SLAVE,
+  COM_TABLE_DUMP, COM_CONNECT_OUT, COM_REGISTER_REPLICA,
   COM_STMT_PREPARE, COM_STMT_EXECUTE, COM_STMT_SEND_LONG_DATA, COM_STMT_CLOSE,
   COM_STMT_RESET, COM_SET_OPTION, COM_STMT_FETCH, COM_DAEMON,
   COM_BINLOG_DUMP_GTID, COM_RESET_CONNECTION,
@@ -150,9 +150,9 @@ enum enum_server_command
 #define REFRESH_HOSTS		8	/* Flush host cache */
 #define REFRESH_STATUS		16	/* Flush status variables */
 #define REFRESH_THREADS		32	/* Flush thread cache */
-#define REFRESH_SLAVE           64      /* Reset master info and restart slave
+#define REFRESH_REPLICA           64      /* Reset primary info and restart replica
 					   thread */
-#define REFRESH_MASTER          128     /* Remove all bin logs in the index
+#define REFRESH_PRIMARY          128     /* Remove all bin logs in the index
 					   and truncate the index */
 #define REFRESH_ERROR_LOG       256 /* Rotate only the erorr log */
 #define REFRESH_ENGINE_LOG      512 /* Flush all storage engine logs */
@@ -354,7 +354,7 @@ typedef struct st_net {
   my_socket fd;					/* For Perl DBI/dbd */
   /*
     The following variable is set if we are doing several queries in one
-    command ( as in LOAD TABLE ... FROM MASTER ),
+    command ( as in LOAD TABLE ... FROM PRIMARY ),
     and do not want to confuse the client with OK at the wrong time
   */
   unsigned long remain_in_buf,length, buf_length, where_b;

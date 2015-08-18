@@ -4,7 +4,7 @@
 #
 # In this test we check the following three database level
 # statements, which should be replicated with the given
-# set of filtering rules at the slave:
+# set of filtering rules at the replica:
 #   --replicate-do-db=dbx --replicate-wild-do-table=db%.t1
 #
 # Before this bug was fixed, replicate-wild-do-table would
@@ -12,21 +12,21 @@
 # 
 # The following assertions work like this:
 # 1. CREATE DATABASE
-#    - Issue create database on master
-#    - check if the database is listed on slave's I_S.schemata
+#    - Issue create database on primary
+#    - check if the database is listed on replica's I_S.schemata
 # 2. ALTER DATABASE
 #    - Issue alter database (changing default charset) on 
-#      master
+#      primary
 #    - check (using I_S.schemata) that default charset is
-#      changed as well for the slave's database
+#      changed as well for the replica's database
 # 3. DROP DATABASE
-#    - Issue drop database on master.
-#    - check that the slave will also drop its own database.
+#    - Issue drop database on primary.
+#    - check that the replica will also drop its own database.
 #
 # If any of the assertions doesn't hold we abort the test and 
 # dump debug information.
 
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 ## Checking CREATE DATABASE
 
@@ -41,7 +41,7 @@ if (!`SELECT count(*) = 1 FROM information_schema.SCHEMATA WHERE schema_name = '
   -- die
 }
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 if (!`SELECT count(*) = 1 FROM information_schema.SCHEMATA WHERE schema_name = 'dbx'`)
 {
@@ -52,7 +52,7 @@ if (!`SELECT count(*) = 1 FROM information_schema.SCHEMATA WHERE schema_name = '
 
 ## Checking ALTER DATABASE
 
--- connection master
+-- connection primary
 
 -- disable_query_log
 ALTER DATABASE dbx DEFAULT CHARACTER SET=latin5;
@@ -65,7 +65,7 @@ if (!`SELECT DEFAULT_CHARACTER_SET_NAME='latin5' FROM information_schema.SCHEMAT
   -- die
 }
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 if (!`SELECT DEFAULT_CHARACTER_SET_NAME='latin5' FROM information_schema.SCHEMATA WHERE schema_name = 'dbx'`)
 {
@@ -76,7 +76,7 @@ if (!`SELECT DEFAULT_CHARACTER_SET_NAME='latin5' FROM information_schema.SCHEMAT
 
 ## Checking DROP DATABASE
 
--- connection master
+-- connection primary
 -- disable_query_log
 DROP DATABASE dbx;
 -- enable_query_log
@@ -88,7 +88,7 @@ if (!`SELECT count(*) = 0 FROM information_schema.SCHEMATA WHERE schema_name = '
   -- die
 }
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 if (!`SELECT count(*) = 0 FROM information_schema.SCHEMATA WHERE schema_name = 'dbx'`)
 {

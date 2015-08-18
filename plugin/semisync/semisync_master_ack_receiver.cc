@@ -13,14 +13,14 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-#include "semisync_master.h"
-#include "semisync_master_ack_receiver.h"
+#include "semisync_primary.h"
+#include "semisync_primary_ack_receiver.h"
 
-extern ReplSemiSyncMaster repl_semisync;
+extern ReplSemiSyncPrimary repl_semisync;
 
 #ifdef HAVE_PSI_INTERFACE
-extern PSI_stage_info stage_waiting_for_semi_sync_ack_from_slave;
-extern PSI_stage_info stage_waiting_for_semi_sync_slave;
+extern PSI_stage_info stage_waiting_for_semi_sync_ack_from_replica;
+extern PSI_stage_info stage_waiting_for_semi_sync_replica;
 extern PSI_stage_info stage_reading_semi_sync_ack;
 extern PSI_mutex_key key_ss_mutex_Ack_receiver_mutex;
 extern PSI_cond_key key_ss_cond_Ack_receiver_cond;
@@ -121,26 +121,26 @@ void Ack_receiver::stop()
   function_exit(kWho);
 }
 
-bool Ack_receiver::add_slave(THD *thd)
+bool Ack_receiver::add_replica(THD *thd)
 {
-  Slave slave;
-  const char *kWho = "Ack_receiver::add_slave";
+  Replica replica;
+  const char *kWho = "Ack_receiver::add_replica";
   function_enter(kWho);
 
-  slave.thd= thd;
-  slave.vio= *thd->get_protocol_classic()->get_vio();
-  slave.vio.mysql_socket.m_psi= NULL;
-  slave.vio.read_timeout= 1;
+  replica.thd= thd;
+  replica.vio= *thd->get_protocol_classic()->get_vio();
+  replica.vio.mysql_socket.m_psi= NULL;
+  replica.vio.read_timeout= 1;
 
   /* push_back() may throw an exception */
   try
   {
     mysql_mutex_lock(&m_mutex);
 
-    DBUG_EXECUTE_IF("rpl_semisync_simulate_add_slave_failure", throw 1;);
+    DBUG_EXECUTE_IF("rpl_semisync_simulate_add_replica_failure", throw 1;);
 
-    m_slaves.push_back(slave);
-    m_slaves_changed= true;
+    m_replicas.push_back(replica);
+    m_replicas_changed= true;
     mysql_cond_broadcast(&m_cond);
     mysql_mutex_unlock(&m_mutex);
   }
@@ -152,20 +152,20 @@ bool Ack_receiver::add_slave(THD *thd)
   return function_exit(kWho, false);
 }
 
-void Ack_receiver::remove_slave(THD *thd)
+void Ack_receiver::remove_replica(THD *thd)
 {
-  const char *kWho = "Ack_receiver::remove_slave";
+  const char *kWho = "Ack_receiver::remove_replica";
   function_enter(kWho);
 
   mysql_mutex_lock(&m_mutex);
-  Slave_vector_it it;
+  Replica_vector_it it;
 
-  for (it= m_slaves.begin(); it != m_slaves.end(); it++)
+  for (it= m_replicas.begin(); it != m_replicas.end(); it++)
   {
     if (it->thd == thd)
     {
-      m_slaves.erase(it);
-      m_slaves_changed= true;
+      m_replicas.erase(it);
+      m_replicas_changed= true;
       break;
     }
   }
@@ -180,21 +180,21 @@ inline void Ack_receiver::set_stage_info(const PSI_stage_info &stage)
 #endif /* HAVE_PSI_STAGE_INTERFACE */
 }
 
-inline void Ack_receiver::wait_for_slave_connection()
+inline void Ack_receiver::wait_for_replica_connection()
 {
-  set_stage_info(stage_waiting_for_semi_sync_slave);
+  set_stage_info(stage_waiting_for_semi_sync_replica);
   mysql_cond_wait(&m_cond, &m_mutex);
 }
 
-my_socket Ack_receiver::get_slave_sockets(fd_set *fds)
+my_socket Ack_receiver::get_replica_sockets(fd_set *fds)
 {
   my_socket max_fd= INVALID_SOCKET;
   unsigned int i;
 
   FD_ZERO(fds);
-  for (i= 0; i < m_slaves.size(); i++)
+  for (i= 0; i < m_replicas.size(); i++)
   {
-    my_socket fd= m_slaves[i].sock_fd();
+    my_socket fd= m_replicas[i].sock_fd();
     max_fd= (fd > max_fd ? fd : max_fd);
     FD_SET(fd, fds);
   }
@@ -226,32 +226,32 @@ void Ack_receiver::run()
   init_net(&net, net_buff, REPLY_MESSAGE_MAX_LENGTH);
 
   mysql_mutex_lock(&m_mutex);
-  m_slaves_changed= true;
+  m_replicas_changed= true;
   mysql_mutex_unlock(&m_mutex);
 
   while (1)
   {
     fd_set fds;
-    Slave_vector_it it;
+    Replica_vector_it it;
     int ret;
 
     mysql_mutex_lock(&m_mutex);
     if (unlikely(m_status == ST_STOPPING))
       goto end;
 
-    set_stage_info(stage_waiting_for_semi_sync_ack_from_slave);
-    if (unlikely(m_slaves_changed))
+    set_stage_info(stage_waiting_for_semi_sync_ack_from_replica);
+    if (unlikely(m_replicas_changed))
     {
-      if (unlikely(m_slaves.empty()))
+      if (unlikely(m_replicas.empty()))
       {
-        wait_for_slave_connection();
+        wait_for_replica_connection();
         mysql_mutex_unlock(&m_mutex);
         continue;
       }
 
-      max_fd= get_slave_sockets(&read_fds);
-      m_slaves_changed= false;
-      DBUG_PRINT("info", ("fd count %lu, max_fd %d", (ulong)m_slaves.size(),
+      max_fd= get_replica_sockets(&read_fds);
+      m_replicas_changed= false;
+      DBUG_PRINT("info", ("fd count %lu, max_fd %d", (ulong)m_replicas.size(),
                           max_fd));
     }
 
@@ -275,21 +275,21 @@ void Ack_receiver::run()
 
     set_stage_info(stage_reading_semi_sync_ack);
     i= 0;
-    while (i < m_slaves.size())
+    while (i < m_replicas.size())
     {
-      if (FD_ISSET(m_slaves[i].sock_fd(), &fds))
+      if (FD_ISSET(m_replicas[i].sock_fd(), &fds))
       {
         ulong len;
 
         net_clear(&net, 0);
-        net.vio= &m_slaves[i].vio;
+        net.vio= &m_replicas[i].vio;
 
         len= my_net_read(&net);
         if (likely(len != packet_error))
-          repl_semisync.reportReplyPacket(m_slaves[i].server_id(),
+          repl_semisync.reportReplyPacket(m_replicas[i].server_id(),
                                           net.read_pos, len);
         else if (net.last_errno == ER_NET_READ_ERROR)
-          FD_CLR(m_slaves[i].sock_fd(), &read_fds);
+          FD_CLR(m_replicas[i].sock_fd(), &read_fds);
       }
       i++;
     }

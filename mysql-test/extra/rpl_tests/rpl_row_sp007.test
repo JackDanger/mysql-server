@@ -5,7 +5,7 @@
 # Includes
 -- source include/not_group_replication_plugin.inc
 -- source include/have_binlog_format_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 # Begin test section 1
 delimiter |;
@@ -23,29 +23,29 @@ BEGIN
 END|
 delimiter ;|
 
-let $message=< ---- Master selects-- >;
+let $message=< ---- Primary selects-- >;
 --source include/show_msg.inc
 CALL test.p1(12);
 SELECT * FROM test.t1;
 
 
-let $message=< ---- Slave selects-- >;
+let $message=< ---- Replica selects-- >;
 --source include/show_msg.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 
-let $message=< ---- Master selects-- >;
+let $message=< ---- Primary selects-- >;
 --source include/show_msg.inc
-connection master;
+connection primary;
 CALL test.p1(13);
 SELECT * FROM test.t1;
 
-let $message=< ---- Slave selects-- >;
+let $message=< ---- Replica selects-- >;
 --source include/show_msg.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 
-connection master;
+connection primary;
 #show binlog events;
 
 

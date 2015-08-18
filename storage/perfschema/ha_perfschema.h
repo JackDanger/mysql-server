@@ -211,14 +211,14 @@ private:
      (non GA) DML on performance schema tables could end up written in the binlog,
      both in STATEMENT and ROW format.
      While these records are not supposed to be there, they are found when:
-     - performing replication from a 5.5 master to a 5.6 slave during
+     - performing replication from a 5.5 primary to a 5.6 replica during
        upgrades
      - performing replication from 5.5 (performance_schema enabled)
-       to a 5.6 slave
+       to a 5.6 replica
      - performing point in time recovery in 5.6 with old archived logs.
 
      This API detects when the code calling the performance schema storage
-     engine is a slave thread or whether the code calling isthe client thread
+     engine is a replica thread or whether the code calling isthe client thread
      executing a BINLOG'.. statement.
 
      This API acts as a late filter for the above mentioned cases.
@@ -226,11 +226,11 @@ private:
      For ROW format, @see Rows_log_event::do_apply_event()
 
   */
-  bool is_executed_by_slave() const
+  bool is_executed_by_replica() const
   {
     DBUG_ASSERT(table != NULL);
     DBUG_ASSERT(table->in_use != NULL);
-    return table->in_use->slave_thread;
+    return table->in_use->replica_thread;
 
   }
 

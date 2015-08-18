@@ -30,7 +30,7 @@
 void Ndbcntr::initData() 
 {
   c_start.reset();
-  cmasterNodeId = 0;
+  cprimaryNodeId = 0;
   cnoStartNodes = 0;
   cnoWaitrep = 0;
   // Records with constant sizes

@@ -2617,7 +2617,7 @@ static void ship_tap_log(conn *c) {
         if (disconnect) {
             conn_set_state(c, conn_closing);
         } else {
-            /* No more items to ship to the slave at this time.. suspend.. */
+            /* No more items to ship to the replica at this time.. suspend.. */
             if (settings.verbose > 1) {
                 settings.extensions.logger->log(EXTENSION_LOG_DEBUG, c,
                                                 "%d: No more items in tap log.. waiting\n",

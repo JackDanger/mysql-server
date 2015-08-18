@@ -273,7 +273,7 @@ bool Group_check::check_expression(THD *thd, Item *expr,
    We build sets, named En, by induction.
    A "column" is defined as base table / view / derived table's column.
 
-   E1 = {source columns} (=group columns, if this is a master Group_check;
+   E1 = {source columns} (=group columns, if this is a primary Group_check;
    empty set otherwise).
 
    En is a set of columns of the result of the WHERE clause of 'select' which
@@ -311,9 +311,9 @@ bool Group_check::is_fd_on_source(Item *item)
   {
     /*
       If it were a child Group_check, its list of source columns
-      would start empty, it would gradually be filled by the master
+      would start empty, it would gradually be filled by the primary
       Group_check when it fills its own list.
-      Here it is the master Group_check, so GROUP expressions are considered
+      Here it is the primary Group_check, so GROUP expressions are considered
       to be known, from which we build E1.
     */
     if (fd.empty())

@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP DATABASE IF EXISTS mysqltest;
 CREATE DATABASE IF NOT EXISTS mysqltest;
 USE mysqltest;
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS t2 SELECT * FROM t;
 CREATE EVENT IF NOT EXISTS e 
 ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR 
 DO SELECT now();
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP DATABASE mysqltest;
 CREATE DATABASE IF NOT EXISTS mysqltest;
 USE mysqltest;
@@ -22,14 +22,14 @@ CREATE TABLE IF NOT EXISTS t2 SELECT * FROM t;
 CREATE EVENT IF NOT EXISTS e 
 ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR 
 DO SELECT now();
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SHOW TABLES in mysqltest;
 Tables_in_mysqltest
 t
 t1
 SHOW EVENTS in mysqltest;
 Db	Name	Definer	Time zone	Type	Execute at	Interval value	Interval field	Starts	Ends	Status	Originator	character_set_client	collation_connection	Database Collation
-mysqltest	e	root@localhost	SYSTEM	ONE TIME	#	NULL	NULL	NULL	NULL	SLAVESIDE_DISABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
+mysqltest	e	root@localhost	SYSTEM	ONE TIME	#	NULL	NULL	NULL	NULL	REPLICASIDE_DISABLED	1	latin1	latin1_swedish_ci	latin1_swedish_ci
 DROP DATABASE IF EXISTS mysqltest;
 -------------BUG#47418-------------
 USE test;
@@ -48,7 +48,7 @@ c1
 SELECT * FROM t2;
 c1
 1
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1;
 c1
 33
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS v1 SELECT 2 as a;
 Warnings:
 Note	1050	Table 'v1' already exists
 include/show_binlog_events.inc
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP VIEW v1;
 DROP TABLE t1, t2;
 #
@@ -135,5 +135,5 @@ Warnings:
 Note	1050	Table 't2' already exists
 # Clean-up.
 DROP TABLE t1, t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

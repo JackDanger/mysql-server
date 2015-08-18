@@ -6,7 +6,7 @@
 #############################################################################
 
 # Begin clean up test section
-connection master;
+connection primary;
 
 --disable_warnings
 DROP PROCEDURE IF EXISTS test.p1;
@@ -44,18 +44,18 @@ select fn1(0);
 eval create table t2 (a int) engine=$engine_type;
 insert into t2 values(fn1(2));
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SHOW CREATE TABLE test.t1;
 
 # Dump the databases and so we can see if they match
-# Another method would be to use SELECT INTO OUTFILE on master,
-# then LOAD DATA INFILE in slave, and use a query to compare.
+# Another method would be to use SELECT INTO OUTFILE on primary,
+# then LOAD DATA INFILE in replica, and use a query to compare.
 # This would have the advantage that it would not assume
 # the system has a 'diff'
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_replica.sql
 
-connection master;
+connection primary;
 # Let's cleanup
 
 DROP PROCEDURE test.p1;
@@ -68,7 +68,7 @@ DROP TABLE test.t2;
 # will be created. You will need to go to the mysql-test dir and diff
 # the files your self to see what is not matching :-)
 
-diff_files $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_master.sql $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_slave.sql;
+diff_files $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_primary.sql $MYSQLTEST_VARDIR/tmp/rpl_row_UUID_replica.sql;
 
 # Cleanup dump files.
 # Long-term "system rm" is not portable; we could live without

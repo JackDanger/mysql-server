@@ -253,7 +253,7 @@ public:
       Unlike other time-related functions, SYSDATE() is
       replication-unsafe because it is not affected by the
       TIMESTAMP variable.  It is unsafe even if
-      sysdate_is_now=1, because the slave may have
+      sysdate_is_now=1, because the replica may have
       sysdate_is_now=0.
     */
     THD *thd= pc->thd;

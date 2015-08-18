@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#ifndef MASTER_LCP_HPP
-#define MASTER_LCP_HPP
+#ifndef PRIMARY_LCP_HPP
+#define PRIMARY_LCP_HPP
 
 #include <NdbOut.hpp>
 #include "SignalData.hpp"
@@ -27,13 +27,13 @@
 /**
  * 
  */
-class MasterLCPConf {
+class PrimaryLCPConf {
   /**
    * Sender(s) / Reciver(s)
    */
   friend class Dbdih;
     
-  friend bool printMASTER_LCP_CONF(FILE *, const Uint32 *, Uint32, Uint16);  
+  friend bool printPRIMARY_LCP_CONF(FILE *, const Uint32 *, Uint32, Uint16);  
 public:
   STATIC_CONST( SignalLength = 3 );
 
@@ -57,27 +57,27 @@ private:
 /**
  * 
  */
-class MasterLCPReq {
+class PrimaryLCPReq {
   /**
    * Sender(s) / Reciver(s)
    */
   friend class Dbdih;
 
-  friend bool printMASTER_LCP_REQ(FILE *, const Uint32 *, Uint32, Uint16);   
+  friend bool printPRIMARY_LCP_REQ(FILE *, const Uint32 *, Uint32, Uint16);   
 public:
   STATIC_CONST( SignalLength = 2 );
 private:
-  Uint32 masterRef;
+  Uint32 primaryRef;
   Uint32 failedNodeId;
 };
 
-class MasterLCPRef {
+class PrimaryLCPRef {
   /**
    * Sender(s) / Reciver(s)
    */
   friend class Dbdih;
 
-  friend bool printMASTER_LCP_REF(FILE *, const Uint32 *, Uint32, Uint16);   
+  friend bool printPRIMARY_LCP_REF(FILE *, const Uint32 *, Uint32, Uint16);   
 public:
   STATIC_CONST( SignalLength = 2 );
 private:  

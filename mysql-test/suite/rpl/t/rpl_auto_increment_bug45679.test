@@ -5,14 +5,14 @@
 # is replication unsafe.
 #
 
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/have_binlog_format_mixed.inc;
 source include/have_innodb.inc;
 source include/have_myisam.inc;
 
 call mtr.add_suppression('Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.');
 
---connection master
+--connection primary
 create table tm (b int auto_increment, a int, primary key (a,b)) engine= myisam;
 --error ER_WRONG_AUTO_KEY
 create table ti (b int auto_increment, a int, primary key (a,b)) engine= innodb;
@@ -42,22 +42,22 @@ show warnings;
 set @@binlog_format=mixed;
 insert into tm set b=null, a=2;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 if (`select count(*) <> 3 from tm`)
 {
-  --echo Wrong result from SELECT on the slave side.
+  --echo Wrong result from SELECT on the replica side.
   select * from tm;
   --die
 }
 
 # cleanup
 
---connection master
+--connection primary
 
 drop table tm, ti;
 drop function multi_part_pk_with_autoinc;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

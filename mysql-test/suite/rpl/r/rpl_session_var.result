@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 drop table if exists t1;
 Warnings:
 Note	1051	Unknown table 'test.t1'
@@ -17,7 +17,7 @@ select * from t1 where b<3 order by a;
 a	b
 1	2
 MySQL	1
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1 where b<3 order by a;
 a	b
 1	2
@@ -41,19 +41,19 @@ insert into t2 select 2,a from t1 where a is null;
 select * from t2 order by b;
 b	a
 1	1
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t2 order by b;
 b	a
 1	1
 drop table t1,t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CREATE TABLE t1 (
 `id` int(11) NOT NULL auto_increment,
 `data` varchar(100),
 PRIMARY KEY  (`id`)
 ) ENGINE=MyISAM;
 INSERT INTO t1(data) VALUES(SESSION_USER());
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT length(data) < 100 FROM t1;
 length(data) < 100
 1

@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#ifndef CNTR_MASTERCONF_HPP
-#define CNTR_MASTERCONF_HPP
+#ifndef CNTR_PRIMARYCONF_HPP
+#define CNTR_PRIMARYCONF_HPP
 
 #include <NodeBitmask.hpp>
 
@@ -24,9 +24,9 @@
 
 
 /**
- * This signals is sent by NdbCntr-Master to NdbCntr
+ * This signals is sent by NdbCntr-Primary to NdbCntr
  */
-class CntrMasterConf {
+class CntrPrimaryConf {
   /**
    * Sender(s)
    */

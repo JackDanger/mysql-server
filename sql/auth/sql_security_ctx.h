@@ -297,18 +297,18 @@ public:
 
 
   /**
-    Getter method for member m_master_access.
+    Getter method for member m_primary_access.
   */
 
-  ulong master_access() const
+  ulong primary_access() const
   {
-    return m_master_access;
+    return m_primary_access;
   }
 
 
-  void set_master_access(ulong master_access)
+  void set_primary_access(ulong primary_access)
   {
-    m_master_access= master_access;
+    m_primary_access= primary_access;
   }
 
   /**
@@ -333,13 +333,13 @@ public:
   }
 
   /**
-    Check permission against m_master_access
+    Check permission against m_primary_access
   */
 
   bool check_access(ulong want_access, bool match_any= false)
   {
-    return (match_any ? (m_master_access & want_access) :
-                        ((m_master_access & want_access) == want_access));
+    return (match_any ? (m_primary_access & want_access) :
+                        ((m_primary_access & want_access) == want_access));
   }
 
 
@@ -426,7 +426,7 @@ private:
   /**
     Global privileges from mysql.user.
   */
-  ulong m_master_access;
+  ulong m_primary_access;
 
   /**
     Privileges for current db

@@ -10,11 +10,11 @@ report-user=
 
 [mysqld.3]
 server_id=3
-report-host=slave2
-slave-net-timeout=5
+report-host=replica2
+replica-net-timeout=5
 
 [ENV]
-SLAVE_MYPORT2=		@mysqld.3.port
-SLAVE_MYSOCK2=		@mysqld.3.socket
+REPLICA_MYPORT2=		@mysqld.3.port
+REPLICA_MYSOCK2=		@mysqld.3.socket
 
 

@@ -22,7 +22,7 @@ loose-innodb_log_buffer_size=     1M
 loose-innodb_log_file_size=       5M
 loose-innodb_log_files_in_group=  2
 
-slave-net-timeout=120
+replica-net-timeout=120
 
 log-bin=mysqld-bin
 

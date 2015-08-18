@@ -17,7 +17,7 @@
 --source include/have_myisam.inc
 --source include/not_gtid_enabled.inc
 
-# Use wait_for_slave_to_(start|stop) for current connections
+# Use wait_for_replica_to_(start|stop) for current connections
 let $keep_connection= 1;
 
 # Set up circular ring and new names for servers
@@ -45,12 +45,12 @@ CREATE TABLE t1 (a INT NOT NULL AUTO_INCREMENT, b VARCHAR(100), c INT NOT NULL, 
 CREATE TABLE t2 (a INT NOT NULL AUTO_INCREMENT, b VARCHAR(100), c INT NOT NULL, PRIMARY KEY(a)) ENGINE=InnoDB;
 --source include/rpl_sync.inc
 --connection server_4
-call mtr.add_suppression("Slave SQL.*Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
-call mtr.add_suppression("Slave SQL: Coordinator thread of multi-threaded slave is exiting seeing a failed Worker to apply an event");
-call mtr.add_suppression("Slave worker thread has failed to apply an event");
+call mtr.add_suppression("Replica SQL.*Request to stop replica SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+call mtr.add_suppression("Replica SQL: Coordinator thread of multi-threaded replica is exiting seeing a failed Worker to apply an event");
+call mtr.add_suppression("Replica worker thread has failed to apply an event");
 --connection server_3
-call mtr.add_suppression("Slave SQL.*Duplicate entry .6. for key .PRIMARY.* Error_code: 1062");
+call mtr.add_suppression("Replica SQL.*Duplicate entry .6. for key .PRIMARY.* Error_code: 1062");
 --echo
 
 #
@@ -62,23 +62,23 @@ call mtr.add_suppression("Slave SQL.*Duplicate entry .6. for key .PRIMARY.* Erro
 # insert data via all hosts
 --connection server_1
 INSERT INTO t1(b,c) VALUES('A',1);
---sync_slave_with_master server_2
+--sync_replica_with_primary server_2
 INSERT INTO t1(b,c) VALUES('B',1);
---sync_slave_with_master server_3
+--sync_replica_with_primary server_3
 INSERT INTO t1(b,c) VALUES('C',1);
---sync_slave_with_master server_4
+--sync_replica_with_primary server_4
 INSERT INTO t1(b,c) VALUES('D',1);
 
 --source include/rpl_sync.inc
 
 --connection server_1
-SELECT 'Master A',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
+SELECT 'Primary A',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
 --connection server_2
-SELECT 'Master B',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
+SELECT 'Primary B',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
 --connection server_3
-SELECT 'Master C',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
+SELECT 'Primary C',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
 --connection server_4
-SELECT 'Master D',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
+SELECT 'Primary D',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
 --echo
 
 --echo *** Testing schema A->B->D->A if C has failure ***
@@ -87,19 +87,19 @@ SELECT 'Master D',a,b FROM t1 WHERE c = 1 ORDER BY a,b;
 
 # Note: server_N has auto_increment_offset=N. Below, we insert value 6
 # in the autoinc column on server_3 (and prevent it from replicating
-# further using SQL_SLAVE_SKIP_COUNTER on server_4). Due to the
+# further using SQL_REPLICA_SKIP_COUNTER on server_4). Due to the
 # auto_increment_offset setting, the autoinc value 6 is normally
 # generated on server_2. When we later insert a row on server_2, we
 # thus cause a duplicate key error on server_3.
 
 # Do not replicate next event from C
 --connection server_4
-STOP SLAVE;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER = 1;
-source include/start_slave.inc;
+STOP REPLICA;
+SET GLOBAL SQL_REPLICA_SKIP_COUNTER = 1;
+source include/start_replica.inc;
 --connection server_3
 INSERT INTO t1 VALUES(6,'C',2);
---sync_slave_with_master server_4
+--sync_replica_with_primary server_4
 
 --connection server_3
 
@@ -115,8 +115,8 @@ INSERT INTO t1(b,c) VALUES('B',2);
 # Wait while C will stop.
 --connection server_3
 # 1062 = ER_DUP_ENTRY
---let $slave_sql_errno= 1062
---source include/wait_for_slave_sql_error.inc
+--let $replica_sql_errno= 1062
+--source include/wait_for_replica_sql_error.inc
 --connection server_1
 INSERT INTO t1(b,c) VALUES('A',2);
 --connection server_4
@@ -132,49 +132,49 @@ let $wait_condition= SELECT COUNT(*)=3 FROM t1 WHERE a > 4;
 
 --echo
 --echo * Data on servers (C failed) *
-# Masters C,D shouldn't have correct data
+# Primarys C,D shouldn't have correct data
 --connection server_1
-SELECT 'Master A',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary A',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --connection server_2
-SELECT 'Master B',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary B',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --connection server_3
-SELECT 'Master C',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary C',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --connection server_4
-SELECT 'Master D',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary D',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --echo
 
 --echo * Reconfigure replication to schema A->B->D->A *
-# Exclude Master C 
+# Exclude Primary C 
 --connection server_3
---source include/stop_slave_io.inc
---let $pos_c= query_get_value(SHOW SLAVE STATUS, Exec_Master_Log_Pos, 1)
---let $file_c= query_get_value(SHOW SLAVE STATUS, Master_Log_File, 1)
+--source include/stop_replica_io.inc
+--let $pos_c= query_get_value(SHOW REPLICA STATUS, Exec_Primary_Log_Pos, 1)
+--let $file_c= query_get_value(SHOW REPLICA STATUS, Primary_Log_File, 1)
 
 --connection server_4
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
 --let $rpl_topology= 1->2->4->1,2->3
---let $rpl_master_log_file= 4:$file_c
---let $rpl_master_log_pos= 4:$pos_c
+--let $rpl_primary_log_file= 4:$file_c
+--let $rpl_primary_log_pos= 4:$pos_c
 --source include/rpl_change_topology.inc
 
 #--replace_result $SERVER_MYPORT_2 SERVER_MYPORT_2 $file_c LOG_FILE $pos_c LOG_POS 
-#--eval CHANGE MASTER TO master_host='127.0.0.1',master_port=$SERVER_MYPORT_2,master_user='root',master_log_file='$file_c',master_log_pos=$pos_c
-source include/start_slave.inc;
+#--eval CHANGE PRIMARY TO primary_host='127.0.0.1',primary_port=$SERVER_MYPORT_2,primary_user='root',primary_log_file='$file_c',primary_log_pos=$pos_c
+source include/start_replica.inc;
 --connection server_2
---sync_slave_with_master server_4
---sync_slave_with_master server_1
+--sync_replica_with_primary server_4
+--sync_replica_with_primary server_1
 --echo
 
 --echo * Check data inserted before failure *
 --connection server_1
-SELECT 'Master A',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary A',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --connection server_2
-SELECT 'Master B',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary B',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --connection server_3
-SELECT 'Master C',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary C',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --connection server_4
-SELECT 'Master D',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
+SELECT 'Primary D',a,b FROM t1 WHERE c = 2 ORDER BY a,b;
 --echo
 
 --echo * Check data inserted after failure *
@@ -190,55 +190,55 @@ connection server_1;
 --source include/rpl_sync.inc
 
 --connection server_1
-SELECT 'Master A',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
+SELECT 'Primary A',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
 --connection server_2
-SELECT 'Master B',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
+SELECT 'Primary B',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
 --connection server_3
-SELECT 'Master C',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
+SELECT 'Primary C',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
 --connection server_4
-SELECT 'Master D',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
+SELECT 'Primary D',a,b FROM t1 WHERE c = 3 ORDER BY a,b;
 --connection server_1
 --echo
 
 --echo *** Testing restoring scheme A->B->C->D->A after failure ***
 --echo
-# Master D will ignore a next event from C so that event will not be 
+# Primary D will ignore a next event from C so that event will not be 
 # distributed to other servers
 --echo * Remove wrong event from C and restore B->C->D *
 --connection server_4
-source include/stop_slave.inc;
+source include/stop_replica.inc;
 --connection server_3
 DELETE FROM t1 WHERE a = 6;
---source include/start_slave.inc
+--source include/start_replica.inc
 --connection server_2
---sync_slave_with_master server_3
-RESET MASTER;
---let $file_d= query_get_value(SHOW MASTER STATUS, File, 1)
---let $pos_d= query_get_value(SHOW MASTER STATUS, Position, 1)
+--sync_replica_with_primary server_3
+RESET PRIMARY;
+--let $file_d= query_get_value(SHOW PRIMARY STATUS, File, 1)
+--let $pos_d= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 --connection server_4
-RESET SLAVE;
+RESET REPLICA;
 --let $rpl_topology= 1->2->3->4->1
---let $rpl_master_log_file= 4:$file_d
---let $rpl_master_log_pos= 4:$pos_d
+--let $rpl_primary_log_file= 4:$file_d
+--let $rpl_primary_log_pos= 4:$pos_d
 --source include/rpl_change_topology.inc
 #--replace_result $SERVER_MYPORT_3 SERVER_MYPORT_3 $file_d LOG_FILE $pos_d LOG_POS 
-#--eval CHANGE MASTER TO master_host='127.0.0.1',master_port=$SERVER_MYPORT_3,master_user='root',master_log_file='$file_d',master_log_pos=$pos_d
---source include/start_slave.inc
+#--eval CHANGE PRIMARY TO primary_host='127.0.0.1',primary_port=$SERVER_MYPORT_3,primary_user='root',primary_log_file='$file_d',primary_log_pos=$pos_d
+--source include/start_replica.inc
 --connection server_3
---sync_slave_with_master server_4
+--sync_replica_with_primary server_4
 --source include/rpl_sync.inc
 
 --echo
 --echo * Check data inserted before restoring schema A->B->C->D->A *
 --connection server_1
-SELECT 'Master A',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
---sync_slave_with_master server_2
-SELECT 'Master B',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
---sync_slave_with_master server_3
-SELECT 'Master C',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
---sync_slave_with_master server_4
-SELECT 'Master D',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
---sync_slave_with_master server_1
+SELECT 'Primary A',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
+--sync_replica_with_primary server_2
+SELECT 'Primary B',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
+--sync_replica_with_primary server_3
+SELECT 'Primary C',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
+--sync_replica_with_primary server_4
+SELECT 'Primary D',a,b FROM t1 WHERE c IN (2,3) ORDER BY a,b;
+--sync_replica_with_primary server_1
 --echo
 
 --echo * Check data inserted after restoring schema A->B->C->D->A *
@@ -255,13 +255,13 @@ INSERT INTO t1(b,c) VALUES('D',4);
 --source include/rpl_sync.inc
 
 --connection server_1
-SELECT 'Master A',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
+SELECT 'Primary A',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
 --connection server_2
-SELECT 'Master B',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
+SELECT 'Primary B',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
 --connection server_3
-SELECT 'Master C',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
+SELECT 'Primary C',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
 --connection server_4
-SELECT 'Master D',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
+SELECT 'Primary D',a,b FROM t1 WHERE c = 4 ORDER BY a,b;
 --connection server_1
 --echo
 
@@ -295,13 +295,13 @@ COMMIT;
 --source include/rpl_sync.inc
 
 --connection server_1
-SELECT 'Master A',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
+SELECT 'Primary A',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
 --connection server_2
-SELECT 'Master B',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
+SELECT 'Primary B',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
 --connection server_3
-SELECT 'Master C',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
+SELECT 'Primary C',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
 --connection server_4
-SELECT 'Master D',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
+SELECT 'Primary D',b,COUNT(*) FROM t2 WHERE c = 1 GROUP BY b ORDER BY b;
 --connection server_1
 --echo
 
@@ -335,13 +335,13 @@ ROLLBACK;
 --source include/rpl_sync.inc
 
 --connection server_1
-SELECT 'Master A',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
+SELECT 'Primary A',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
 --connection server_2
-SELECT 'Master B',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
+SELECT 'Primary B',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
 --connection server_3
-SELECT 'Master C',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
+SELECT 'Primary C',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
 --connection server_4
-SELECT 'Master D',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
+SELECT 'Primary D',b,COUNT(*) FROM t2 WHERE c = 2 GROUP BY b ORDER BY b;
 --connection server_1
 
 --echo

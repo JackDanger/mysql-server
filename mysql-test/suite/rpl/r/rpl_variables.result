@@ -1,30 +1,30 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 ==== Initialization ====
-[on master]
+[on primary]
 SET @m_default_week_format=  @@global.default_week_format;
-SET @m_init_slave=           @@global.init_slave;
+SET @m_init_replica=           @@global.init_replica;
 SET @m_lc_time_names=        @@global.lc_time_names;
 SET @m_low_priority_updates= @@global.low_priority_updates;
 SET @m_relay_log_purge=      @@global.relay_log_purge;
-SET @m_slave_exec_mode=      @@global.slave_exec_mode;
+SET @m_replica_exec_mode=      @@global.replica_exec_mode;
 SET @m_sql_mode=             @@global.sql_mode;
 SET @m_sync_binlog=          @@global.sync_binlog;
-[on slave]
+[on replica]
 SET @s_default_week_format=  @@global.default_week_format;
-SET @s_init_slave=           @@global.init_slave;
+SET @s_init_replica=           @@global.init_replica;
 SET @s_lc_time_names=        @@global.lc_time_names;
 SET @s_low_priority_updates= @@global.low_priority_updates;
 SET @s_relay_log_purge=      @@global.relay_log_purge;
-SET @s_slave_exec_mode=      @@global.slave_exec_mode;
+SET @s_replica_exec_mode=      @@global.replica_exec_mode;
 SET @s_sql_mode=             @@global.sql_mode;
 SET @s_sync_binlog=          @@global.sync_binlog;
 SET @@global.relay_log_purge = OFF;
 SET @@global.sync_binlog = 1000000;
-SET @@global.slave_exec_mode = 'STRICT';
+SET @@global.replica_exec_mode = 'STRICT';
 SET @@sql_big_selects = OFF;
 SET @@last_insert_id = 10;
 SET @@global.low_priority_updates = OFF;
@@ -41,10 +41,10 @@ Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SET @user_num = 10;
 SET @user_text = 'Alunda';
-include/stop_slave.inc
-include/start_slave.inc
-SET @@global.init_slave = 'SELECT 1';
-[on master]
+include/stop_replica.inc
+include/start_replica.inc
+SET @@global.init_replica = 'SELECT 1';
+[on primary]
 SELECT @@pid_file, @@datadir;
 @@pid_file	MYSQLTEST_VARDIR/run/mysqld.1.pid
 @@datadir	MYSQLTEST_VARDIR/mysqld.1/data/
@@ -56,23 +56,23 @@ SELECT @@relay_log, @@relay_log_index, @@relay_log_basename;
 **** Binary log variables
 SELECT @@log_bin, @@log_bin_index, @@log_bin_basename;
 @@log_bin	1
-@@log_bin_index	MYSQLTEST_VARDIR/mysqld.1/data/master-bin.index
-@@log_bin_basename	MYSQLTEST_VARDIR/mysqld.1/data/master-bin
-[on slave]
+@@log_bin_index	MYSQLTEST_VARDIR/mysqld.1/data/primary-bin.index
+@@log_bin_basename	MYSQLTEST_VARDIR/mysqld.1/data/primary-bin
+[on replica]
 SELECT @@pid_file, @@datadir;
 @@pid_file	MYSQLTEST_VARDIR/run/mysqld.2.pid
 @@datadir	MYSQLTEST_VARDIR/mysqld.2/data/
 **** Relay log variables
 SELECT @@relay_log, @@relay_log_index, @@relay_log_basename;
-@@relay_log	slave-relay-bin
-@@relay_log_index	MYSQLTEST_VARDIR/mysqld.2/data/slave-relay-bin.index
-@@relay_log_basename	MYSQLTEST_VARDIR/mysqld.2/data/slave-relay-bin
+@@relay_log	replica-relay-bin
+@@relay_log_index	MYSQLTEST_VARDIR/mysqld.2/data/replica-relay-bin.index
+@@relay_log_basename	MYSQLTEST_VARDIR/mysqld.2/data/replica-relay-bin
 **** Binary log variables
 SELECT @@log_bin, @@log_bin_index, @@log_bin_basename;
 @@log_bin	1
-@@log_bin_index	MYSQLTEST_VARDIR/mysqld.2/data/slave-bin.index
-@@log_bin_basename	MYSQLTEST_VARDIR/mysqld.2/data/slave-bin
-[on master]
+@@log_bin_index	MYSQLTEST_VARDIR/mysqld.2/data/replica-bin.index
+@@log_bin_basename	MYSQLTEST_VARDIR/mysqld.2/data/replica-bin
+[on primary]
 CREATE TABLE tstmt (id INT AUTO_INCREMENT PRIMARY KEY,
 truth BOOLEAN,
 num INT,
@@ -92,14 +92,14 @@ SET @@global.sync_binlog = 2000000;
 INSERT INTO tstmt(num) VALUES (@@global.sync_binlog);
 SET @@global.sync_binlog = 3000000;
 INSERT INTO tstmt(num) VALUES (@@global.sync_binlog);
-SET @@global.init_slave = 'SELECT 2';
-INSERT INTO tstmt(text) VALUES (@@global.init_slave);
-SET @@global.init_slave = 'SELECT 3';
-INSERT INTO tstmt(text) VALUES (@@global.init_slave);
-SET @@global.slave_exec_mode = 'IDEMPOTENT';
-INSERT INTO tstmt(text) VALUES (@@global.slave_exec_mode);
-SET @@global.slave_exec_mode = 'STRICT';
-INSERT INTO tstmt(text) VALUES (@@global.slave_exec_mode);
+SET @@global.init_replica = 'SELECT 2';
+INSERT INTO tstmt(text) VALUES (@@global.init_replica);
+SET @@global.init_replica = 'SELECT 3';
+INSERT INTO tstmt(text) VALUES (@@global.init_replica);
+SET @@global.replica_exec_mode = 'IDEMPOTENT';
+INSERT INTO tstmt(text) VALUES (@@global.replica_exec_mode);
+SET @@global.replica_exec_mode = 'STRICT';
+INSERT INTO tstmt(text) VALUES (@@global.replica_exec_mode);
 ---- session variables ----
 SET @@sql_big_selects = ON;
 INSERT INTO tstmt(truth) VALUES (@@sql_big_selects);
@@ -172,15 +172,15 @@ INSERT INTO tproc(num) VALUES (@@global.sync_binlog);
 SET @@global.sync_binlog = 3000000;
 INSERT INTO tproc(num) VALUES (@@global.sync_binlog);
 # string
-SET @@global.init_slave = 'SELECT 2';
-INSERT INTO tproc(text) VALUES (@@global.init_slave);
-SET @@global.init_slave = 'SELECT 3';
-INSERT INTO tproc(text) VALUES (@@global.init_slave);
+SET @@global.init_replica = 'SELECT 2';
+INSERT INTO tproc(text) VALUES (@@global.init_replica);
+SET @@global.init_replica = 'SELECT 3';
+INSERT INTO tproc(text) VALUES (@@global.init_replica);
 # enumeration
-SET @@global.slave_exec_mode = 'IDEMPOTENT';
-INSERT INTO tproc(text) VALUES (@@global.slave_exec_mode);
-SET @@global.slave_exec_mode = 'STRICT';
-INSERT INTO tproc(text) VALUES (@@global.slave_exec_mode);
+SET @@global.replica_exec_mode = 'IDEMPOTENT';
+INSERT INTO tproc(text) VALUES (@@global.replica_exec_mode);
+SET @@global.replica_exec_mode = 'STRICT';
+INSERT INTO tproc(text) VALUES (@@global.replica_exec_mode);
 # SESSION
 # boolean
 SET @@sql_big_selects = ON;
@@ -258,15 +258,15 @@ INSERT INTO tfunc(num) VALUES (@@global.sync_binlog);
 SET @@global.sync_binlog = 3000000;
 INSERT INTO tfunc(num) VALUES (@@global.sync_binlog);
 # string
-SET @@global.init_slave = 'SELECT 2';
-INSERT INTO tfunc(text) VALUES (@@global.init_slave);
-SET @@global.init_slave = 'SELECT 3';
-INSERT INTO tfunc(text) VALUES (@@global.init_slave);
+SET @@global.init_replica = 'SELECT 2';
+INSERT INTO tfunc(text) VALUES (@@global.init_replica);
+SET @@global.init_replica = 'SELECT 3';
+INSERT INTO tfunc(text) VALUES (@@global.init_replica);
 # enumeration
-SET @@global.slave_exec_mode = 'IDEMPOTENT';
-INSERT INTO tfunc(text) VALUES (@@global.slave_exec_mode);
-SET @@global.slave_exec_mode = 'STRICT';
-INSERT INTO tfunc(text) VALUES (@@global.slave_exec_mode);
+SET @@global.replica_exec_mode = 'IDEMPOTENT';
+INSERT INTO tfunc(text) VALUES (@@global.replica_exec_mode);
+SET @@global.replica_exec_mode = 'STRICT';
+INSERT INTO tfunc(text) VALUES (@@global.replica_exec_mode);
 # SESSION
 # boolean
 SET @@sql_big_selects = ON;
@@ -348,15 +348,15 @@ INSERT INTO ttrig(num) VALUES (@@global.sync_binlog);
 SET @@global.sync_binlog = 3000000;
 INSERT INTO ttrig(num) VALUES (@@global.sync_binlog);
 # string
-SET @@global.init_slave = 'SELECT 2';
-INSERT INTO ttrig(text) VALUES (@@global.init_slave);
-SET @@global.init_slave = 'SELECT 3';
-INSERT INTO ttrig(text) VALUES (@@global.init_slave);
+SET @@global.init_replica = 'SELECT 2';
+INSERT INTO ttrig(text) VALUES (@@global.init_replica);
+SET @@global.init_replica = 'SELECT 3';
+INSERT INTO ttrig(text) VALUES (@@global.init_replica);
 # enumeration
-SET @@global.slave_exec_mode = 'IDEMPOTENT';
-INSERT INTO ttrig(text) VALUES (@@global.slave_exec_mode);
-SET @@global.slave_exec_mode = 'STRICT';
-INSERT INTO ttrig(text) VALUES (@@global.slave_exec_mode);
+SET @@global.replica_exec_mode = 'IDEMPOTENT';
+INSERT INTO ttrig(text) VALUES (@@global.replica_exec_mode);
+SET @@global.replica_exec_mode = 'STRICT';
+INSERT INTO ttrig(text) VALUES (@@global.replica_exec_mode);
 # SESSION
 # boolean
 SET @@sql_big_selects = ON;
@@ -427,14 +427,14 @@ PREPARE p5 FROM 'SET @@global.sync_binlog = 2000000';
 PREPARE p6 FROM 'INSERT INTO tprep(num) VALUES (@@global.sync_binlog)';
 PREPARE p7 FROM 'SET @@global.sync_binlog = 3000000';
 PREPARE p8 FROM 'INSERT INTO tprep(num) VALUES (@@global.sync_binlog)';
-PREPARE p9 FROM 'SET @@global.init_slave = \'SELECT 2\'';
-PREPARE p10 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_slave)';
-PREPARE p11 FROM 'SET @@global.init_slave = \'SELECT 3\'';
-PREPARE p12 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_slave)';
-PREPARE p13 FROM 'SET @@global.slave_exec_mode = \'IDEMPOTENT\'';
-PREPARE p14 FROM 'INSERT INTO tprep(text) VALUES (@@global.slave_exec_mode)';
-PREPARE p15 FROM 'SET @@global.slave_exec_mode = \'STRICT\'';
-PREPARE p16 FROM 'INSERT INTO tprep(text) VALUES (@@global.slave_exec_mode)';
+PREPARE p9 FROM 'SET @@global.init_replica = \'SELECT 2\'';
+PREPARE p10 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_replica)';
+PREPARE p11 FROM 'SET @@global.init_replica = \'SELECT 3\'';
+PREPARE p12 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_replica)';
+PREPARE p13 FROM 'SET @@global.replica_exec_mode = \'IDEMPOTENT\'';
+PREPARE p14 FROM 'INSERT INTO tprep(text) VALUES (@@global.replica_exec_mode)';
+PREPARE p15 FROM 'SET @@global.replica_exec_mode = \'STRICT\'';
+PREPARE p16 FROM 'INSERT INTO tprep(text) VALUES (@@global.replica_exec_mode)';
 PREPARE p17 FROM 'SET @@sql_big_selects = ON';
 PREPARE p18 FROM 'INSERT INTO tprep(truth) VALUES (@@sql_big_selects)';
 PREPARE p19 FROM 'SET @@sql_big_selects = OFF';
@@ -553,7 +553,7 @@ EXECUTE p61;
 EXECUTE p62;
 EXECUTE p63;
 EXECUTE p64;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 ==== Results ====
 SELECT * FROM tstmt ORDER BY id;
 id	truth	num	text
@@ -589,34 +589,34 @@ id	truth	num	text
 30	NULL	30	NULL
 31	NULL	NULL	Bergsbrunna
 32	NULL	NULL	Centrum
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:tstmt, master:tproc, master:tfunc, master:ttrig, master:tprep,  slave:tstmt, slave:tproc, slave:tfunc, slave:ttrig, slave:tprep]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:tstmt, primary:tproc, primary:tfunc, primary:ttrig, primary:tprep,  replica:tstmt, replica:tproc, replica:tfunc, replica:ttrig, replica:tprep]
 ==== Clean up ====
-[on master]
+[on primary]
 DROP PROCEDURE proc;
 DROP FUNCTION func;
 DROP TRIGGER trig;
 DROP TABLE tstmt, tproc, tfunc, ttrig, tprep, trigger_table;
 SET @@global.default_week_format=  @m_default_week_format;
-SET @@global.init_slave=           @m_init_slave;
+SET @@global.init_replica=           @m_init_replica;
 SET @@global.lc_time_names=        @m_lc_time_names;
 SET @@global.low_priority_updates= @m_low_priority_updates;
 SET @@global.relay_log_purge=      @m_relay_log_purge;
-SET @@global.slave_exec_mode=      @m_slave_exec_mode;
+SET @@global.replica_exec_mode=      @m_replica_exec_mode;
 SET @@global.sql_mode=             @m_sql_mode;
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SET @@global.sync_binlog=          @m_sync_binlog;
-[on slave]
+[on replica]
 SET @@global.default_week_format=  @s_default_week_format;
-SET @@global.init_slave=           @s_init_slave;
+SET @@global.init_replica=           @s_init_replica;
 SET @@global.lc_time_names=        @s_lc_time_names;
 SET @@global.low_priority_updates= @s_low_priority_updates;
 SET @@global.relay_log_purge=      @s_relay_log_purge;
-SET @@global.slave_exec_mode=      @s_slave_exec_mode;
+SET @@global.replica_exec_mode=      @s_replica_exec_mode;
 SET @@global.sql_mode=             @s_sql_mode;
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SET @@global.sync_binlog=          @s_sync_binlog;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

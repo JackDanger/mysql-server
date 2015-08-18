@@ -65,13 +65,13 @@ LEX_STRING GENERAL_LOG_NAME= {C_STRING_WITH_LEN("general_log")};
 LEX_STRING SLOW_LOG_NAME= {C_STRING_WITH_LEN("slow_log")};
 
 /* RLI_INFO name */
-LEX_STRING RLI_INFO_NAME= {C_STRING_WITH_LEN("slave_relay_log_info")};
+LEX_STRING RLI_INFO_NAME= {C_STRING_WITH_LEN("replica_relay_log_info")};
 
 /* MI_INFO name */
-LEX_STRING MI_INFO_NAME= {C_STRING_WITH_LEN("slave_master_info")};
+LEX_STRING MI_INFO_NAME= {C_STRING_WITH_LEN("replica_primary_info")};
 
 /* WORKER_INFO name */
-LEX_STRING WORKER_INFO_NAME= {C_STRING_WITH_LEN("slave_worker_info")};
+LEX_STRING WORKER_INFO_NAME= {C_STRING_WITH_LEN("replica_worker_info")};
 
 /* GTID_EXECUTED name */
 LEX_STRING GTID_EXECUTED_NAME= {C_STRING_WITH_LEN("gtid_executed")};

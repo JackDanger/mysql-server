@@ -196,7 +196,7 @@ struct ib_tuple_t {
 
 /** The following counter is used to convey information to InnoDB
 about server activity: in case of normal DML ops it is not
-sensible to call srv_active_wake_master_thread after each
+sensible to call srv_active_wake_primary_thread after each
 operation, we only do it every INNOBASE_WAKE_INTERVAL'th step. */
 
 #define INNOBASE_WAKE_INTERVAL	32
@@ -291,12 +291,12 @@ ib_lookup_table_by_name(
 
 /********************************************************************//**
 Increments innobase_active_counter and every INNOBASE_WAKE_INTERVALth
-time calls srv_active_wake_master_thread. This function should be used
+time calls srv_active_wake_primary_thread. This function should be used
 when a single database operation may introduce a small need for
 server utility activity, like checkpointing. */
 UNIV_INLINE
 void
-ib_wake_master_thread(void)
+ib_wake_primary_thread(void)
 /*=======================*/
 {
         static ulint    ib_signal_counter = 0;
@@ -304,7 +304,7 @@ ib_wake_master_thread(void)
         ++ib_signal_counter;
 
         if ((ib_signal_counter % INNOBASE_WAKE_INTERVAL) == 0) {
-                srv_active_wake_master_thread();
+                srv_active_wake_primary_thread();
         }
 }
 
@@ -1344,7 +1344,7 @@ ib_cursor_insert_row(
 			src_tuple->index->table, q_proc->grph.ins, node->ins);
 	}
 
-	ib_wake_master_thread();
+	ib_wake_primary_thread();
 
 	return(err);
 }
@@ -1629,7 +1629,7 @@ ib_cursor_update_row(
 		err = ib_execute_update_query_graph(cursor, pcur);
 	}
 
-	ib_wake_master_thread();
+	ib_wake_primary_thread();
 
 	return(err);
 }
@@ -1770,7 +1770,7 @@ ib_cursor_delete_row(
 		err = DB_RECORD_NOT_FOUND;
 	}
 
-	ib_wake_master_thread();
+	ib_wake_primary_thread();
 
 	return(err);
 }

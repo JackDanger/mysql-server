@@ -51,7 +51,7 @@ class Lgman;
 #ifdef DBLQH_C
 // Constants
 /* ------------------------------------------------------------------------- */
-/*       CONSTANTS USED WHEN MASTER REQUESTS STATE OF COPY FRAGMENTS.        */
+/*       CONSTANTS USED WHEN PRIMARY REQUESTS STATE OF COPY FRAGMENTS.        */
 /* ------------------------------------------------------------------------- */
 #define ZCOPY_CLOSING 0
 #define ZCOPY_ONGOING 1
@@ -758,7 +758,7 @@ public:
      *       Some fragments have it permanently shut off. 
      */
     LogFlag logFlag;
-    UintR masterPtr;
+    UintR primaryPtr;
     /**
      *       This variable contains the maximum global checkpoint identifier 
      *       which was completed when the local checkpoint was started.
@@ -800,9 +800,9 @@ public:
      */
     BlockReference tuxBlockref;
     /**
-     *       The master block reference as sent in COPY_ACTIVEREQ.
+     *       The primary block reference as sent in COPY_ACTIVEREQ.
      */
-    BlockReference masterBlockref;
+    BlockReference primaryBlockref;
     /**
      *       These variables are used during system restart to recall
      *       from which node to execute the fragment log and which GCI's
@@ -1024,12 +1024,12 @@ public:
      */
     Uint8 gcpSyncReady[NDB_MAX_LOG_PARTS];
     /**
-     *       User pointer of the sender of gcp_savereq (= master DIH).
+     *       User pointer of the sender of gcp_savereq (= primary DIH).
      */
     UintR gcpUserptr;
     /**
      *       Block reference of the sender of gcp_savereq 
-     *       (= master DIH).
+     *       (= primary DIH).
      */
     BlockReference gcpBlockref;
   }; // Size 44 bytes
@@ -3202,9 +3202,9 @@ private:
 /* ------------------------------------------------------------------------- */
   Uint8 csrPhasesCompleted;
 /* ------------------------------------------------------------------------- */
-/*THE BLOCK REFERENCE OF THE MASTER DIH DURING SYSTEM RESTART.               */
+/*THE BLOCK REFERENCE OF THE PRIMARY DIH DURING SYSTEM RESTART.               */
 /* ------------------------------------------------------------------------- */
-  BlockReference cmasterDihBlockref;
+  BlockReference cprimaryDihBlockref;
 /* ------------------------------------------------------------------------- */
 /*THIS VARIABLE IS THE HEAD OF A LINKED LIST OF FRAGMENTS WAITING TO BE      */
 /*RESTORED FROM DISK.                                                        */
@@ -3566,7 +3566,7 @@ public:
 #endif
 
 #ifdef ERROR_INSERT
-  Uint32 c_master_node_id;
+  Uint32 c_primary_node_id;
 #endif
 
   Uint32 get_node_status(Uint32 nodeId) const;

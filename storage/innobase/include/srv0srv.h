@@ -456,7 +456,7 @@ extern mysql_pfs_key_t	page_cleaner_thread_key;
 extern mysql_pfs_key_t	recv_writer_thread_key;
 extern mysql_pfs_key_t	srv_error_monitor_thread_key;
 extern mysql_pfs_key_t	srv_lock_timeout_thread_key;
-extern mysql_pfs_key_t	srv_master_thread_key;
+extern mysql_pfs_key_t	srv_primary_thread_key;
 extern mysql_pfs_key_t	srv_monitor_thread_key;
 extern mysql_pfs_key_t	srv_purge_thread_key;
 extern mysql_pfs_key_t	trx_rollback_clean_thread_key;
@@ -595,7 +595,7 @@ enum srv_thread_type {
 					queries and queries released from
 					lock wait */
 	SRV_PURGE,			/*!< Purge coordinator thread */
-	SRV_MASTER			/*!< the master thread, (whose type
+	SRV_PRIMARY			/*!< the primary thread, (whose type
 					number must be biggest) */
 };
 
@@ -644,23 +644,23 @@ srv_wake_purge_thread_if_not_active(void);
 /*=====================================*/
 /*******************************************************************//**
 Tells the Innobase server that there has been activity in the database
-and wakes up the master thread if it is suspended (not sleeping). Used
-in the MySQL interface. Note that there is a small chance that the master
+and wakes up the primary thread if it is suspended (not sleeping). Used
+in the MySQL interface. Note that there is a small chance that the primary
 thread stays suspended (we do not protect our operation with the kernel
 mutex, for performace reasons). */
 void
-srv_active_wake_master_thread_low(void);
+srv_active_wake_primary_thread_low(void);
 /*===================================*/
-#define srv_active_wake_master_thread()					\
+#define srv_active_wake_primary_thread()					\
 	do {								\
 		if (!srv_read_only_mode) {				\
-			srv_active_wake_master_thread_low();		\
+			srv_active_wake_primary_thread_low();		\
 		}							\
 	} while (0)
 /*******************************************************************//**
-Wakes up the master thread if it is suspended or being suspended. */
+Wakes up the primary thread if it is suspended or being suspended. */
 void
-srv_wake_master_thread(void);
+srv_wake_primary_thread(void);
 /*========================*/
 /******************************************************************//**
 Outputs to a file the output of the InnoDB Monitor.
@@ -731,10 +731,10 @@ DECLARE_THREAD(srv_monitor_thread)(
 			os_thread_create */
 
 /*********************************************************************//**
-The master thread controlling the server.
+The primary thread controlling the server.
 @return a dummy parameter */
 os_thread_ret_t
-DECLARE_THREAD(srv_master_thread)(
+DECLARE_THREAD(srv_primary_thread)(
 /*==============================*/
 	void*	arg);	/*!< in: a dummy parameter required by
 			os_thread_create */

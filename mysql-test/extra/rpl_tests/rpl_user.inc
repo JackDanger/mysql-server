@@ -1,15 +1,15 @@
 # BUG#33862 completely failed DROP USER statement gets replicated
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 #
 # remove all users will be used in the test
 #
-connection master;
+connection primary;
 set session sql_log_bin=0;
 delete from mysql.user where Host='fakehost';
 set session sql_log_bin=1;
 
-connection slave;
+connection replica;
 set session sql_log_bin=0;
 delete from mysql.user where Host='fakehost';
 set session sql_log_bin=1;
@@ -17,7 +17,7 @@ set session sql_log_bin=1;
 #
 # Test create user
 #
-connection master;
+connection primary;
 create user 'foo'@'fakehost';
 --error ER_CANNOT_USER
 create user 'foo'@'fakehost', 'bar'@'fakehost';
@@ -28,28 +28,28 @@ create user 'foo'@'fakehost', 'bar'@'fakehost';
 create user 'foo1'@'fakehost' IDENTIFIED BY 'foo1', 'foo2'@'fakehost'
   IDENTIFIED BY PASSWORD'*1111111111111111111111111111111111111111',
   'foo3'@'fakehost';
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select Host,User from mysql.user where Host='fakehost';
---let $diff_tables= master:mysql.user, slave:mysql.user
+--let $diff_tables= primary:mysql.user, replica:mysql.user
 source include/diff_tables.inc;
 
 #
 # Test rename user
 #
-connection master;
+connection primary;
 rename user 'foo'@'fakehost' to 'foofoo'@'fakehost';
 --error ER_CANNOT_USER
 rename user 'not_exist_user1'@'fakehost' to 'foobar'@'fakehost', 'bar'@'fakehost' to 'barbar'@'fakehost';
 --error ER_CANNOT_USER
 rename user 'not_exist_user1'@'fakehost' to 'foobar'@'fakehost', 'not_exist_user2'@'fakehost' to 'barfoo'@'fakehost';
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select Host,User from mysql.user where Host='fakehost';
 
 #
 # Test drop user
 #
-connection master;
+connection primary;
 drop user 'foofoo'@'fakehost';
 drop user 'foo1'@'fakehost', 'foo2'@'fakehost', 'foo3'@'fakehost';
 --error ER_CANNOT_USER
@@ -57,7 +57,7 @@ drop user 'not_exist_user1'@'fakehost', 'barbar'@'fakehost';
 --error ER_CANNOT_USER
 drop user 'not_exist_user1'@'fakehost', 'not_exist_user2'@'fakehost';
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select Host,User from mysql.user where Host='fakehost';
 
 
@@ -65,45 +65,45 @@ select Host,User from mysql.user where Host='fakehost';
 --echo # WL2392: "Change Password at next login" (initial default for root)
 --echo #
 
-connection master;
+connection primary;
 CREATE USER must_change2@localhost IDENTIFIED BY 'aha';
 ALTER USER must_change2@localhost PASSWORD EXPIRE;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select Host,User,password_expired from mysql.user where user='must_change2';
 
-connect(must_change_con_slave,localhost,must_change2,aha,test,$SLAVE_MYPORT,);
-connection must_change_con_slave;
+connect(must_change_con_replica,localhost,must_change2,aha,test,$REPLICA_MYPORT,);
+connection must_change_con_replica;
 --echo # must throw an error
 --error ER_MUST_CHANGE_PASSWORD
 SELECT USER();
-connection master;
-disconnect must_change_con_slave;
+connection primary;
+disconnect must_change_con_replica;
 
-connect(must_change_con_master,localhost,must_change2,aha);
-connection must_change_con_master;
+connect(must_change_con_primary,localhost,must_change2,aha);
+connection must_change_con_primary;
 --echo # setting a password unlocks it
 SET PASSWORD = 'aha2';
-connection master;
-disconnect must_change_con_master;
+connection primary;
+disconnect must_change_con_primary;
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
-connect(must_change_con_slave,localhost,must_change2,aha2,test,$SLAVE_MYPORT,);
-connection must_change_con_slave;
+connect(must_change_con_replica,localhost,must_change2,aha2,test,$REPLICA_MYPORT,);
+connection must_change_con_replica;
 --echo # must not throw an error
 SELECT USER();
-connection master;
-disconnect must_change_con_slave;
+connection primary;
+disconnect must_change_con_replica;
 
 DROP USER must_change2@localhost;
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 #
-# show the binlog events on the master
+# show the binlog events on the primary
 #
-connection master;
+connection primary;
 source include/show_binlog_events.inc;
 --source include/rpl_end.inc

@@ -50,7 +50,7 @@ show binlog events; # wait for binlog-sync and therefore epoch end
 flush logs;
 --source suite/ndb_binlog/t/ndb_binlog_check_binlog_index.inc
 
-reset master;
+reset primary;
 
 --echo Test interleaved epochs and DDL
 --echo ------------------------------
@@ -82,15 +82,15 @@ flush logs;
 --echo 'cover' the Binlog (DDL here is 'fabricated' by Binlog injector thread
 --echo
 
---connect (server1con1, 127.0.0.1,root,,test,$MASTER_MYPORT,)
---connect (server1con2, 127.0.0.1,root,,test,$MASTER_MYPORT,)
---connect (server2con1, 127.0.0.1,root,,test,$MASTER_MYPORT1,)
+--connect (server1con1, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
+--connect (server1con2, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
+--connect (server2con1, 127.0.0.1,root,,test,$PRIMARY_MYPORT1,)
 
 --connection server1con1
-reset master;
+reset primary;
 
 --connection server2con1
-reset master;
+reset primary;
 
 --connection server1con1
 

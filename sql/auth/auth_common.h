@@ -211,7 +211,7 @@ enum mysql_user_table_field
   MYSQL_USER_FIELD_CREATE_TMP_TABLE_PRIV,
   MYSQL_USER_FIELD_LOCK_TABLES_PRIV,
   MYSQL_USER_FIELD_EXECUTE_PRIV,
-  MYSQL_USER_FIELD_REPL_SLAVE_PRIV,
+  MYSQL_USER_FIELD_REPL_REPLICA_PRIV,
   MYSQL_USER_FIELD_REPL_CLIENT_PRIV,
   MYSQL_USER_FIELD_CREATE_VIEW_PRIV,
   MYSQL_USER_FIELD_SHOW_VIEW_PRIV,
@@ -269,7 +269,7 @@ public:
   virtual uint create_tmp_table_priv_idx()= 0;
   virtual uint lock_tables_priv_idx()= 0;
   virtual uint execute_priv_idx()= 0;
-  virtual uint repl_slave_priv_idx()= 0;
+  virtual uint repl_replica_priv_idx()= 0;
   virtual uint repl_client_priv_idx()= 0;
   virtual uint create_view_priv_idx()= 0;
   virtual uint show_view_priv_idx()= 0;
@@ -329,7 +329,7 @@ public:
   }
   uint lock_tables_priv_idx() { return MYSQL_USER_FIELD_LOCK_TABLES_PRIV; }
   uint execute_priv_idx() { return MYSQL_USER_FIELD_EXECUTE_PRIV; }
-  uint repl_slave_priv_idx() { return MYSQL_USER_FIELD_REPL_SLAVE_PRIV; }
+  uint repl_replica_priv_idx() { return MYSQL_USER_FIELD_REPL_REPLICA_PRIV; }
   uint repl_client_priv_idx() { return MYSQL_USER_FIELD_REPL_CLIENT_PRIV; }
   uint create_view_priv_idx() { return MYSQL_USER_FIELD_CREATE_VIEW_PRIV; }
   uint show_view_priv_idx() { return MYSQL_USER_FIELD_SHOW_VIEW_PRIV; }
@@ -400,7 +400,7 @@ public:
     MYSQL_USER_FIELD_CREATE_TMP_TABLE_PRIV_56,
     MYSQL_USER_FIELD_LOCK_TABLES_PRIV_56,
     MYSQL_USER_FIELD_EXECUTE_PRIV_56,
-    MYSQL_USER_FIELD_REPL_SLAVE_PRIV_56,
+    MYSQL_USER_FIELD_REPL_REPLICA_PRIV_56,
     MYSQL_USER_FIELD_REPL_CLIENT_PRIV_56,
     MYSQL_USER_FIELD_CREATE_VIEW_PRIV_56,
     MYSQL_USER_FIELD_SHOW_VIEW_PRIV_56,
@@ -449,7 +449,7 @@ public:
   }
   uint lock_tables_priv_idx() { return MYSQL_USER_FIELD_LOCK_TABLES_PRIV_56; }
   uint execute_priv_idx() { return MYSQL_USER_FIELD_EXECUTE_PRIV_56; }
-  uint repl_slave_priv_idx() { return MYSQL_USER_FIELD_REPL_SLAVE_PRIV_56; }
+  uint repl_replica_priv_idx() { return MYSQL_USER_FIELD_REPL_REPLICA_PRIV_56; }
   uint repl_client_priv_idx() { return MYSQL_USER_FIELD_REPL_CLIENT_PRIV_56; }
   uint create_view_priv_idx() { return MYSQL_USER_FIELD_CREATE_VIEW_PRIV_56; }
   uint show_view_priv_idx() { return MYSQL_USER_FIELD_SHOW_VIEW_PRIV_56; }

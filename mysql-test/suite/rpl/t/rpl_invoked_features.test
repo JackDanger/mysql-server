@@ -5,7 +5,7 @@
 #          Features for Replication.
 #########################################
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_innodb.inc
 --source include/have_myisam.inc
 # Needed since test uses CREATE TABLE ... SELECT
@@ -230,8 +230,8 @@ SELECT COUNT(*) FROM t13;
 SELECT a,b FROM t13 ORDER BY a;
 SELECT a,b FROM v11 ORDER BY a;
 
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
 # Check replicated objects
 --echo
@@ -265,7 +265,7 @@ SELECT a,b FROM v11 ORDER BY a;
 
 # Remove UUID() before comparing and sort tables
 
---connection master
+--connection primary
 --echo
 UPDATE t1 SET c='';
 UPDATE t2 SET c='';
@@ -279,14 +279,14 @@ UPDATE t13 SET c='';
 ALTER TABLE t3 ORDER BY a;
 ALTER TABLE t13 ORDER BY a;
 
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
-# Compare a data from master and slave
+# Compare a data from primary and replica
 --echo
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_slave.sql
---diff_files $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_master.sql $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_replica.sql
+--diff_files $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_primary.sql $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_replica.sql
 
 
 #
@@ -295,11 +295,11 @@ ALTER TABLE t13 ORDER BY a;
 
 # Remove dumps
 --echo
---remove_file $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_master.sql
---remove_file $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_slave.sql
+--remove_file $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_primary.sql
+--remove_file $MYSQLTEST_VARDIR/tmp/rpl_invoked_features_replica.sql
 
 # Remove tables,views,procedures,functions
---connection master
+--connection primary
 --echo
 DROP VIEW IF EXISTS v1,v11;
 DROP TABLE IF EXISTS t1,t2,t3,t11,t12,t13;
@@ -310,8 +310,8 @@ DROP FUNCTION IF EXISTS f2;
 DROP EVENT IF EXISTS e1;
 DROP EVENT IF EXISTS e11;
 
---let $sync_slave_connection= slave
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= replica
+--source include/sync_replica_sql_with_primary.inc
 
 # End 5.1 test case
 --source include/rpl_end.inc

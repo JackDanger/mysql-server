@@ -1,1 +1,1 @@
---source include/master-slave.inc
+--source include/primary-replica.inc

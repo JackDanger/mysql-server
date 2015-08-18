@@ -6,11 +6,11 @@
 # statement, all statements after it would be considered generated
 # AUTO_INCREMENT value by the top statement, and a erroneous INSERT_ID
 # value might be associated with these statement, which could cause
-# duplicate entry error and stop the slave.
+# duplicate entry error and stop the replica.
 
 --source include/not_group_replication_plugin.inc
 source include/have_binlog_format_statement.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.");
 
@@ -22,8 +22,8 @@ DROP TRIGGER IF EXISTS tr1;
 DROP FUNCTION IF EXISTS f1;
 --enable_warnings
 
---source include/sync_slave_sql_with_master.inc
---connection master
+--source include/sync_replica_sql_with_primary.inc
+--connection primary
 
 
 CREATE TABLE t1 (id INT AUTO_INCREMENT PRIMARY KEY);
@@ -72,45 +72,45 @@ delimiter ;//
 # the $binlog_start will be used by the show_binlog_events.inc, so
 # that we can skip binlog events we don't care
 --let $mask_binlog_commit_events= 1
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 CALL p1();
 source include/show_binlog_events.inc;
 --let $mask_binlog_commit_events= 0
 
-echo # Result on master;
+echo # Result on primary;
 SELECT * FROM t1;
 SELECT * FROM t2;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-echo # Result on slave;
+echo # Result on replica;
 SELECT * FROM t1;
 SELECT * FROM t2;
 
-connection master;
+connection primary;
 
 DROP TRIGGER tr1;
 
 # the $binlog_start will be used by the show_binlog_events.inc, so
 # that we can skip binlog events we don't care
 --let $mask_binlog_commit_events= 1
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 CALL p2();
 source include/show_binlog_events.inc;
 --let $mask_binlog_commit_events= 0
 
-echo # Result on master;
+echo # Result on primary;
 SELECT * FROM t1;
 SELECT * FROM t2;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-echo # Result on slave;
+echo # Result on replica;
 SELECT * FROM t1;
 SELECT * FROM t2;
 
 # clean up
-connection master;
+connection primary;
 disable_warnings;
 DROP TABLE IF EXISTS t1, t2;
 DROP PROCEDURE IF EXISTS p1;
@@ -118,5 +118,5 @@ DROP PROCEDURE IF EXISTS p2;
 DROP FUNCTION IF EXISTS f1;
 DROP TRIGGER IF EXISTS tr1;
 enable_warnings;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --source include/rpl_end.inc

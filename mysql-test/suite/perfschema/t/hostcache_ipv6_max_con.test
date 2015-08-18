@@ -24,7 +24,7 @@ grant select on test.* to 'quota'@'santa.claus.ipv6.example.com';
 grant usage on *.* to 'quota'@'santa.claus.ipv6.example.com'
   with max_connections_per_hour 3;
 
-connect (con1,"::1",root,,test,$MASTER_MYPORT,);
+connect (con1,"::1",root,,test,$PRIMARY_MYPORT,);
 select "Con1 is alive";
 select current_user();
 disconnect con1;
@@ -32,7 +32,7 @@ disconnect con1;
 --connection default
 set global debug= "+d,vio_peer_addr_fake_ipv6,getnameinfo_fake_ipv6,getaddrinfo_fake_good_ipv6";
 
-connect (con2a,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2a,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con2a is alive";
 select current_user();
 disconnect con2a;
@@ -40,7 +40,7 @@ disconnect con2a;
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con2b,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2b,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con2b is alive";
 select current_user();
 disconnect con2b;
@@ -48,7 +48,7 @@ disconnect con2b;
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con2c,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2c,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con2c is alive";
 select current_user();
 disconnect con2c;
@@ -58,7 +58,7 @@ disconnect con2c;
 
 --disable_query_log
 --error ER_USER_LIMIT_REACHED
-connect (con2d,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2d,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -66,7 +66,7 @@ connect (con2d,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_USER_LIMIT_REACHED
-connect (con2e,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2e,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -81,21 +81,21 @@ grant usage on *.* to 'quota'@'santa.claus.ipv6.example.com'
   with max_user_connections 3;
 flush user_resources;
 
-connect (con3a,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con3a,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con7 is alive";
 select current_user();
 
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con3b,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con3b,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con3b is alive";
 select current_user();
 
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con3c,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con3c,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con3c is alive";
 select current_user();
 
@@ -104,7 +104,7 @@ select current_user();
 
 --disable_query_log
 --error ER_USER_LIMIT_REACHED
-connect (con3d,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con3d,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -112,7 +112,7 @@ connect (con3d,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_USER_LIMIT_REACHED
-connect (con3e,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con3e,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -131,21 +131,21 @@ flush user_resources;
 
 set global max_user_connections = 3;
 
-connect (con4a,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con4a,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con4a is alive";
 select current_user();
 
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con4b,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con4b,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con4b is alive";
 select current_user();
 
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con4c,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con4c,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con4c is alive";
 select current_user();
 
@@ -154,7 +154,7 @@ select current_user();
 
 --disable_query_log
 --error ER_TOO_MANY_USER_CONNECTIONS
-connect (con4d,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con4d,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -162,7 +162,7 @@ connect (con4d,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_TOO_MANY_USER_CONNECTIONS
-connect (con4e,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con4e,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -179,14 +179,14 @@ set global max_user_connections = 0;
 set global max_connections = 3;
 flush user_resources;
 
-connect (con5a,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5a,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con4a is alive";
 select current_user();
 
 --connection default
 --source ../include/hostcache_dump.inc
 
-connect (con5b,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5b,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Con5b is alive";
 select current_user();
 
@@ -198,7 +198,7 @@ select current_user();
 
 --disable_query_log
 --error ER_CON_COUNT_ERROR, 9999
-connect (con5c,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5c,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -206,7 +206,7 @@ connect (con5c,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_CON_COUNT_ERROR, 9999
-connect (con5d,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5d,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default

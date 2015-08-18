@@ -20,10 +20,10 @@
 #include "sql_class.h"         // THD
 #include "sql_error.h"         // Diagnostics_area
 
-Slave_reporting_capability::Slave_reporting_capability(char const *thread_name)
+Replica_reporting_capability::Replica_reporting_capability(char const *thread_name)
   : m_thread_name(thread_name)
 {
-  mysql_mutex_init(key_mutex_slave_reporting_capability_err_lock,
+  mysql_mutex_init(key_mutex_replica_reporting_capability_err_lock,
                    &err_lock, MY_MUTEX_INIT_FAST);
 }
 
@@ -35,7 +35,7 @@ Slave_reporting_capability::Slave_reporting_capability(char const *thread_name)
   that the error is temporary by pushing a warning with the error code
   ER_GET_TEMPORARY_ERRMSG, if the originating error is temporary.
 
-  @param      thd  a THD instance, typically of the slave SQL thread's.
+  @param      thd  a THD instance, typically of the replica SQL thread's.
   @error_arg  the error code for assessment. 
               defaults to zero which makes the function check the top
               of the reported errors stack.
@@ -43,7 +43,7 @@ Slave_reporting_capability::Slave_reporting_capability(char const *thread_name)
 
   @return 1 as the positive and 0 as the negative verdict
 */
-int Slave_reporting_capability::has_temporary_error(THD *thd, 
+int Replica_reporting_capability::has_temporary_error(THD *thd, 
                                                     uint error_arg, bool* silent) const
 {
   uint error;
@@ -57,7 +57,7 @@ int Slave_reporting_capability::has_temporary_error(THD *thd,
                   });
 
   /*
-    The slave can't be regarded as experiencing a temporary failure in cases of
+    The replica can't be regarded as experiencing a temporary failure in cases of
     is_fatal_error is TRUE, or if no error is in THD and error_arg is not set.
   */
   if (thd->is_fatal_error || (!thd->is_error() && error_arg == 0))
@@ -69,9 +69,9 @@ int Slave_reporting_capability::has_temporary_error(THD *thd,
     Temporary error codes:
     currently, InnoDB deadlock detected by InnoDB or lock
     wait timeout (innodb_lock_wait_timeout exceeded).
-    Notice, the temporary error requires slave_trans_retries != 0)
+    Notice, the temporary error requires replica_trans_retries != 0)
   */
-  if (slave_trans_retries &&
+  if (replica_trans_retries &&
       (error == ER_LOCK_DEADLOCK || error == ER_LOCK_WAIT_TIMEOUT))
     DBUG_RETURN(1);
 
@@ -89,7 +89,7 @@ int Slave_reporting_capability::has_temporary_error(THD *thd,
     {
     case ER_GET_TEMPORARY_ERRMSG:
       DBUG_RETURN(1);
-    case ER_SLAVE_SILENT_RETRY_TRANSACTION:
+    case ER_REPLICA_SILENT_RETRY_TRANSACTION:
     {
       if (silent != NULL)
         *silent= true;
@@ -105,7 +105,7 @@ int Slave_reporting_capability::has_temporary_error(THD *thd,
 
 
 void
-Slave_reporting_capability::report(loglevel level, int err_code,
+Replica_reporting_capability::report(loglevel level, int err_code,
                                    const char *msg, ...) const
 {
   va_list args;
@@ -115,14 +115,14 @@ Slave_reporting_capability::report(loglevel level, int err_code,
 }
 
 void
-Slave_reporting_capability::va_report(loglevel level, int err_code,
+Replica_reporting_capability::va_report(loglevel level, int err_code,
                                       const char *prefix_msg,
                                       const char *msg, va_list args) const
 {
 #if !defined(EMBEDDED_LIBRARY)
   THD *thd= current_thd;
   void (*report_function)(const char *, ...);
-  char buff[MAX_SLAVE_ERRMSG];
+  char buff[MAX_REPLICA_ERRMSG];
   char *pbuff= buff;
   char *curr_buff;
   uint pbuffsize= sizeof(buff);
@@ -138,7 +138,7 @@ Slave_reporting_capability::va_report(loglevel level, int err_code,
   case ERROR_LEVEL:
     /*
       It's an error, it must be reported in Last_error and Last_errno in SHOW
-      SLAVE STATUS.
+      REPLICA STATUS.
     */
     pbuff= m_last_error.message;
     pbuffsize= sizeof(m_last_error.message);
@@ -164,14 +164,14 @@ Slave_reporting_capability::va_report(loglevel level, int err_code,
   mysql_mutex_unlock(&err_lock);
 
   /* If the msg string ends with '.', do not add a ',' it would be ugly */
-  report_function("Slave %s%s: %s%s Error_code: %d",
+  report_function("Replica %s%s: %s%s Error_code: %d",
                   m_thread_name, get_for_channel_str(false), pbuff,
                   (curr_buff[0] && *(strend(curr_buff)-1) == '.') ? "" : ",",
                   err_code);
 #endif
 }
 
-Slave_reporting_capability::~Slave_reporting_capability()
+Replica_reporting_capability::~Replica_reporting_capability()
 {
   mysql_mutex_destroy(&err_lock);
 }

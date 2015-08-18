@@ -168,7 +168,7 @@
 --let $type=unprepared
 --let $prev_count=`SELECT count(*) from t`
 
---connect(conn1$type, 127.0.0.1,root,,test,$MASTER_MYPORT,)
+--connect(conn1$type, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
 --eval XA START   'trx1$type'
 INSERT INTO t set a=0;
 --eval XA END     'trx1$type'
@@ -201,7 +201,7 @@ if (`SELECT count(*) > $prev_count from t`)
 --let $i=0
 while ($i < $conn_number)
 {
-    --connect (conn$i, 127.0.0.1,root,,test,$MASTER_MYPORT,)
+    --connect (conn$i, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
     --let $conn_id=`SELECT connection_id()`
       --disable_reconnect
       SET @@binlog_format = STATEMENT;
@@ -272,7 +272,7 @@ while ($i < $term_number)
 --let $k = 0
 while ($k < $post_restart_conn_number)
 {
-    --connect (conn_restart_$k, 127.0.0.1,root,,test,$MASTER_MYPORT,)
+    --connect (conn_restart_$k, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
     --let  $conn_id=`SELECT connection_id()`
     --eval XA START   'new_trx_$k'
     --eval INSERT INTO t SET a=$k

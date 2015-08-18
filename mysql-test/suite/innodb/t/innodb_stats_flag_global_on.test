@@ -1,6 +1,6 @@
 #
 # Test the persistent stats table flag when innodb_stats_persistent=ON
-# --innodb-stats-persistent=1 is specified in -master.opt
+# --innodb-stats-persistent=1 is specified in -primary.opt
 #
 
 -- source include/have_innodb.inc

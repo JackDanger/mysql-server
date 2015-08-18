@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP TABLE IF EXISTS t1;
 DROP TABLE IF EXISTS t2;
 DROP TABLE IF EXISTS t3;
@@ -44,9 +44,9 @@ a	name	old_a	old_b	truncate(rand_value,4)
 105	t2	4	0	0.6635
 106	t2	6	0	0.6699
 107	t2	500	0	0.3593
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
---- On slave --
+--- On replica --
 select a,b, truncate(rand_value,4) from t1;
 a	b	truncate(rand_value,4)
 1	1	0.4320
@@ -100,9 +100,9 @@ FROM information_schema.triggers
 WHERE trigger_name = 't1_first';
 trigger_name	definer
 t1_first	root@localhost
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
---- On slave --
+--- On replica --
 SELECT routine_name, definer
 FROM information_schema.routines
 WHERE routine_name = 'bug12480';
@@ -137,7 +137,7 @@ end|
 create database other;
 use other;
 insert into test.t1 values (1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 use test;
 drop table t1,t2;
 drop database other;
@@ -153,7 +153,7 @@ insert into t110 values (-4);
 insert into t110 values (-3);
 insert into t110 values (-2);
 insert into t110 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t110;
 f1
 -5
@@ -161,15 +161,15 @@ f1
 -3
 -2
 -1
-create trigger trg110 before update on t110 /* slave local */
+create trigger trg110 before update on t110 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t210 where f1=NEW.f1;
 INSERT INTO t310 values (r);
 end|
-create table t210 (f1 int, f2 int) /* slave local */;
-create table t310 (f3 int) /* slave local */;
+create table t210 (f1 int, f2 int) /* replica local */;
+create table t310 (f3 int) /* replica local */;
 insert into t210 values (5, 5*100);
 insert into t210 values (4, 4*100);
 insert into t210 values (3, 3*100);
@@ -198,7 +198,7 @@ UPDATE t110 SET f1=4 where f1=-4;
 UPDATE t110 SET f1=3 where f1=-3;
 UPDATE t110 SET f1=2 where f1=-2;
 UPDATE t110 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t110 /* must be f1 5 ... 1 */;
 f1
 5
@@ -216,7 +216,7 @@ f3
 drop trigger trg110;
 drop table t210,t310;
 drop table t110;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 9
 -------------------
@@ -228,7 +228,7 @@ insert into t19 values (-4);
 insert into t19 values (-3);
 insert into t19 values (-2);
 insert into t19 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t19;
 f1
 -5
@@ -236,15 +236,15 @@ f1
 -3
 -2
 -1
-create trigger trg19 before update on t19 /* slave local */
+create trigger trg19 before update on t19 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t29 where f1=NEW.f1;
 INSERT INTO t39 values (r);
 end|
-create table t29 (f1 int, f2 int) /* slave local */;
-create table t39 (f3 int) /* slave local */;
+create table t29 (f1 int, f2 int) /* replica local */;
+create table t39 (f3 int) /* replica local */;
 insert into t29 values (5, 5*100);
 insert into t29 values (4, 4*100);
 insert into t29 values (3, 3*100);
@@ -273,7 +273,7 @@ UPDATE t19 SET f1=4 where f1=-4;
 UPDATE t19 SET f1=3 where f1=-3;
 UPDATE t19 SET f1=2 where f1=-2;
 UPDATE t19 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t19 /* must be f1 5 ... 1 */;
 f1
 5
@@ -291,7 +291,7 @@ f3
 drop trigger trg19;
 drop table t29,t39;
 drop table t19;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 8
 -------------------
@@ -303,7 +303,7 @@ insert into t18 values (-4);
 insert into t18 values (-3);
 insert into t18 values (-2);
 insert into t18 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t18;
 f1
 -5
@@ -311,15 +311,15 @@ f1
 -3
 -2
 -1
-create trigger trg18 before update on t18 /* slave local */
+create trigger trg18 before update on t18 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t28 where f1=NEW.f1;
 INSERT INTO t38 values (r);
 end|
-create table t28 (f1 int, f2 int) /* slave local */;
-create table t38 (f3 int) /* slave local */;
+create table t28 (f1 int, f2 int) /* replica local */;
+create table t38 (f3 int) /* replica local */;
 insert into t28 values (5, 5*100);
 insert into t28 values (4, 4*100);
 insert into t28 values (3, 3*100);
@@ -348,7 +348,7 @@ UPDATE t18 SET f1=4 where f1=-4;
 UPDATE t18 SET f1=3 where f1=-3;
 UPDATE t18 SET f1=2 where f1=-2;
 UPDATE t18 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t18 /* must be f1 5 ... 1 */;
 f1
 5
@@ -366,7 +366,7 @@ f3
 drop trigger trg18;
 drop table t28,t38;
 drop table t18;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 7
 -------------------
@@ -378,7 +378,7 @@ insert into t17 values (-4);
 insert into t17 values (-3);
 insert into t17 values (-2);
 insert into t17 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t17;
 f1
 -5
@@ -386,15 +386,15 @@ f1
 -3
 -2
 -1
-create trigger trg17 before update on t17 /* slave local */
+create trigger trg17 before update on t17 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t27 where f1=NEW.f1;
 INSERT INTO t37 values (r);
 end|
-create table t27 (f1 int, f2 int) /* slave local */;
-create table t37 (f3 int) /* slave local */;
+create table t27 (f1 int, f2 int) /* replica local */;
+create table t37 (f3 int) /* replica local */;
 insert into t27 values (5, 5*100);
 insert into t27 values (4, 4*100);
 insert into t27 values (3, 3*100);
@@ -423,7 +423,7 @@ UPDATE t17 SET f1=4 where f1=-4;
 UPDATE t17 SET f1=3 where f1=-3;
 UPDATE t17 SET f1=2 where f1=-2;
 UPDATE t17 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t17 /* must be f1 5 ... 1 */;
 f1
 5
@@ -441,7 +441,7 @@ f3
 drop trigger trg17;
 drop table t27,t37;
 drop table t17;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 6
 -------------------
@@ -453,7 +453,7 @@ insert into t16 values (-4);
 insert into t16 values (-3);
 insert into t16 values (-2);
 insert into t16 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t16;
 f1
 -5
@@ -461,15 +461,15 @@ f1
 -3
 -2
 -1
-create trigger trg16 before update on t16 /* slave local */
+create trigger trg16 before update on t16 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t26 where f1=NEW.f1;
 INSERT INTO t36 values (r);
 end|
-create table t26 (f1 int, f2 int) /* slave local */;
-create table t36 (f3 int) /* slave local */;
+create table t26 (f1 int, f2 int) /* replica local */;
+create table t36 (f3 int) /* replica local */;
 insert into t26 values (5, 5*100);
 insert into t26 values (4, 4*100);
 insert into t26 values (3, 3*100);
@@ -498,7 +498,7 @@ UPDATE t16 SET f1=4 where f1=-4;
 UPDATE t16 SET f1=3 where f1=-3;
 UPDATE t16 SET f1=2 where f1=-2;
 UPDATE t16 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t16 /* must be f1 5 ... 1 */;
 f1
 5
@@ -516,7 +516,7 @@ f3
 drop trigger trg16;
 drop table t26,t36;
 drop table t16;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 5
 -------------------
@@ -528,7 +528,7 @@ insert into t15 values (-4);
 insert into t15 values (-3);
 insert into t15 values (-2);
 insert into t15 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t15;
 f1
 -5
@@ -536,15 +536,15 @@ f1
 -3
 -2
 -1
-create trigger trg15 before update on t15 /* slave local */
+create trigger trg15 before update on t15 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t25 where f1=NEW.f1;
 INSERT INTO t35 values (r);
 end|
-create table t25 (f1 int, f2 int) /* slave local */;
-create table t35 (f3 int) /* slave local */;
+create table t25 (f1 int, f2 int) /* replica local */;
+create table t35 (f3 int) /* replica local */;
 insert into t25 values (5, 5*100);
 insert into t25 values (4, 4*100);
 insert into t25 values (3, 3*100);
@@ -573,7 +573,7 @@ UPDATE t15 SET f1=4 where f1=-4;
 UPDATE t15 SET f1=3 where f1=-3;
 UPDATE t15 SET f1=2 where f1=-2;
 UPDATE t15 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t15 /* must be f1 5 ... 1 */;
 f1
 5
@@ -591,7 +591,7 @@ f3
 drop trigger trg15;
 drop table t25,t35;
 drop table t15;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 4
 -------------------
@@ -603,7 +603,7 @@ insert into t14 values (-4);
 insert into t14 values (-3);
 insert into t14 values (-2);
 insert into t14 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t14;
 f1
 -5
@@ -611,15 +611,15 @@ f1
 -3
 -2
 -1
-create trigger trg14 before update on t14 /* slave local */
+create trigger trg14 before update on t14 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t24 where f1=NEW.f1;
 INSERT INTO t34 values (r);
 end|
-create table t24 (f1 int, f2 int) /* slave local */;
-create table t34 (f3 int) /* slave local */;
+create table t24 (f1 int, f2 int) /* replica local */;
+create table t34 (f3 int) /* replica local */;
 insert into t24 values (5, 5*100);
 insert into t24 values (4, 4*100);
 insert into t24 values (3, 3*100);
@@ -648,7 +648,7 @@ UPDATE t14 SET f1=4 where f1=-4;
 UPDATE t14 SET f1=3 where f1=-3;
 UPDATE t14 SET f1=2 where f1=-2;
 UPDATE t14 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t14 /* must be f1 5 ... 1 */;
 f1
 5
@@ -666,7 +666,7 @@ f3
 drop trigger trg14;
 drop table t24,t34;
 drop table t14;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 3
 -------------------
@@ -678,7 +678,7 @@ insert into t13 values (-4);
 insert into t13 values (-3);
 insert into t13 values (-2);
 insert into t13 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t13;
 f1
 -5
@@ -686,15 +686,15 @@ f1
 -3
 -2
 -1
-create trigger trg13 before update on t13 /* slave local */
+create trigger trg13 before update on t13 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t23 where f1=NEW.f1;
 INSERT INTO t33 values (r);
 end|
-create table t23 (f1 int, f2 int) /* slave local */;
-create table t33 (f3 int) /* slave local */;
+create table t23 (f1 int, f2 int) /* replica local */;
+create table t33 (f3 int) /* replica local */;
 insert into t23 values (5, 5*100);
 insert into t23 values (4, 4*100);
 insert into t23 values (3, 3*100);
@@ -723,7 +723,7 @@ UPDATE t13 SET f1=4 where f1=-4;
 UPDATE t13 SET f1=3 where f1=-3;
 UPDATE t13 SET f1=2 where f1=-2;
 UPDATE t13 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t13 /* must be f1 5 ... 1 */;
 f1
 5
@@ -741,7 +741,7 @@ f3
 drop trigger trg13;
 drop table t23,t33;
 drop table t13;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 2
 -------------------
@@ -753,7 +753,7 @@ insert into t12 values (-4);
 insert into t12 values (-3);
 insert into t12 values (-2);
 insert into t12 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t12;
 f1
 -5
@@ -761,15 +761,15 @@ f1
 -3
 -2
 -1
-create trigger trg12 before update on t12 /* slave local */
+create trigger trg12 before update on t12 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t22 where f1=NEW.f1;
 INSERT INTO t32 values (r);
 end|
-create table t22 (f1 int, f2 int) /* slave local */;
-create table t32 (f3 int) /* slave local */;
+create table t22 (f1 int, f2 int) /* replica local */;
+create table t32 (f3 int) /* replica local */;
 insert into t22 values (5, 5*100);
 insert into t22 values (4, 4*100);
 insert into t22 values (3, 3*100);
@@ -798,7 +798,7 @@ UPDATE t12 SET f1=4 where f1=-4;
 UPDATE t12 SET f1=3 where f1=-3;
 UPDATE t12 SET f1=2 where f1=-2;
 UPDATE t12 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t12 /* must be f1 5 ... 1 */;
 f1
 5
@@ -816,7 +816,7 @@ f3
 drop trigger trg12;
 drop table t22,t32;
 drop table t12;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 -------------------
 1
 -------------------
@@ -828,7 +828,7 @@ insert into t11 values (-4);
 insert into t11 values (-3);
 insert into t11 values (-2);
 insert into t11 values (-1);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t11;
 f1
 -5
@@ -836,15 +836,15 @@ f1
 -3
 -2
 -1
-create trigger trg11 before update on t11 /* slave local */
+create trigger trg11 before update on t11 /* replica local */
 for each row
 begin
 DECLARE r integer;
 SELECT f2 INTO r FROM t21 where f1=NEW.f1;
 INSERT INTO t31 values (r);
 end|
-create table t21 (f1 int, f2 int) /* slave local */;
-create table t31 (f3 int) /* slave local */;
+create table t21 (f1 int, f2 int) /* replica local */;
+create table t31 (f3 int) /* replica local */;
 insert into t21 values (5, 5*100);
 insert into t21 values (4, 4*100);
 insert into t21 values (3, 3*100);
@@ -873,7 +873,7 @@ UPDATE t11 SET f1=4 where f1=-4;
 UPDATE t11 SET f1=3 where f1=-3;
 UPDATE t11 SET f1=2 where f1=-2;
 UPDATE t11 SET f1=1 where f1=-1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * from t11 /* must be f1 5 ... 1 */;
 f1
 5
@@ -891,16 +891,16 @@ f3
 drop trigger trg11;
 drop table t21,t31;
 drop table t11;
-include/sync_slave_sql_with_master.inc
-STOP SLAVE;
+include/sync_replica_sql_with_primary.inc
+STOP REPLICA;
 FLUSH LOGS;
 include/rpl_stop_server.inc [server_number=1]
 include/rpl_start_server.inc [server_number=1]
---> Master binlog: Server ver: 5.0.16-debug-log, Binlog ver: 4
-RESET SLAVE;
-START SLAVE;
-SELECT MASTER_POS_WAIT('master-bin.000001', 513) >= 0;
-MASTER_POS_WAIT('master-bin.000001', 513) >= 0
+--> Primary binlog: Server ver: 5.0.16-debug-log, Binlog ver: 4
+RESET REPLICA;
+START REPLICA;
+SELECT PRIMARY_POS_WAIT('primary-bin.000001', 513) >= 0;
+PRIMARY_POS_WAIT('primary-bin.000001', 513) >= 0
 1
 SHOW TABLES LIKE 't_';
 Tables_in_test (t_)
@@ -927,27 +927,27 @@ root@localhost
 DROP TRIGGER trg1;
 DROP TABLE t1;
 DROP TABLE t2;
-STOP SLAVE;
-RESET SLAVE;
+STOP REPLICA;
+RESET REPLICA;
 SHOW TABLES LIKE 't_';
 Tables_in_test (t_)
 SHOW TRIGGERS;
 Trigger	Event	Table	Statement	Timing	Created	sql_mode	Definer	character_set_client	collation_connection	Database Collation
-RESET MASTER;
-START SLAVE;
+RESET PRIMARY;
+START REPLICA;
 include/rpl_reset.inc
 
 ---> Test for BUG#20438
 
 ---> Preparing environment...
----> connection: master
+---> connection: primary
 DROP TABLE IF EXISTS t1;
 DROP TABLE IF EXISTS t2;
 
----> Synchronizing slave with master...
-include/sync_slave_sql_with_master.inc
+---> Synchronizing replica with primary...
+include/sync_replica_sql_with_primary.inc
 
----> connection: master
+---> connection: primary
 
 ---> Creating objects...
 CREATE TABLE t1(c INT);
@@ -959,7 +959,7 @@ INSERT INTO t2 VALUES(NEW.c * 10) */;
 ---> Inserting value...
 INSERT INTO t1 VALUES(1);
 
----> Checking on master...
+---> Checking on primary...
 SELECT * FROM t1;
 c
 1
@@ -967,11 +967,11 @@ SELECT * FROM t2;
 c
 10
 
----> Synchronizing slave with master...
-include/sync_slave_sql_with_master.inc
----> connection: master
+---> Synchronizing replica with primary...
+include/sync_replica_sql_with_primary.inc
+---> connection: primary
 
----> Checking on slave...
+---> Checking on replica...
 SELECT * FROM t1;
 c
 1
@@ -979,12 +979,12 @@ SELECT * FROM t2;
 c
 10
 
----> connection: master
+---> connection: primary
 
 ---> Cleaning up...
 DROP TABLE t1;
 DROP TABLE t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 drop table if exists t1;
 create table t1(a int, b varchar(50));
 drop trigger not_a_trigger;
@@ -1006,14 +1006,14 @@ a	b
 1	In trigger t1_bi
 2	b
 3	c
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select * from t1;
 a	b
 1	In trigger t1_bi
 2	b
 3	c
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_reset.inc
 create table t1 ( f int ) engine = innodb;
 create table log ( r int ) engine = myisam;
@@ -1025,11 +1025,11 @@ insert into t1 values ( 1 );
 rollback;
 Warnings:
 Warning	1196	Some non-transactional changed tables couldn't be rolled back
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
-include/diff_tables.inc [master:log, slave:log]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
+include/diff_tables.inc [primary:log, replica:log]
 drop table t1, log;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 #
 # WL#3253: Multiple triggers with the same value TIME/ACTION per table 
 #
@@ -1043,8 +1043,8 @@ CREATE TRIGGER tr1_1_bi BEFORE INSERT ON t1 FOR EACH ROW FOLLOWS tr1_bi SET @a:=
 CREATE TRIGGER tr1_bu BEFORE UPDATE ON t1 FOR EACH ROW SET @b:=1;
 CREATE TRIGGER tr2_bu BEFORE UPDATE ON t1 FOR EACH ROW SET @b:=2;
 
----> Synchronizing slave with master...
----> connection: slave
+---> Synchronizing replica with primary...
+---> connection: replica
 SHOW TRIGGERS;
 Trigger	Event	Table	Statement	Timing	Created	sql_mode	Definer	character_set_client	collation_connection	Database Collation
 tr0_bi	INSERT	t1	SET @a:=0	BEFORE	2013-01-31 09:00:00.00	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION	root@localhost	latin1	latin1_swedish_ci	latin1_swedish_ci

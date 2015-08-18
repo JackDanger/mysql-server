@@ -457,8 +457,8 @@ track_operation(const NdbDictionary::Table* table,
          How can we have two updates to the same row with the
          same transaction id?  Only if the transaction id
          is invalid (e.g. not set)
-         In normal cases with only one upstream master, each
-         distinct master user transaction will have a unique
+         In normal cases with only one upstream primary, each
+         distinct primary user transaction will have a unique
          id, and all operations on a row in that transaction
          will be merged in TUP prior to emitting a SUMA
          event.

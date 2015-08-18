@@ -3184,7 +3184,7 @@ runLeakApiConnectObjects(NDBT_Context* ctx, NDBT_Step* step)
   Ndb* const ndb = GETNDB(step);
   Uint32 maxTrans = 0;
   NdbConfig conf;
-  require(conf.getProperty(conf.getMasterNodeId(),
+  require(conf.getProperty(conf.getPrimaryNodeId(),
                                  NODE_TYPE_DB,
                                  CFG_DB_NO_TRANSACTIONS,
                                  &maxTrans));

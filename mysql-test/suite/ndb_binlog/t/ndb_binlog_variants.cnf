@@ -37,10 +37,10 @@ ndb-log-updated-only=0
 
 [ENV]
 NDB_CONNECTSTRING=             @mysql_cluster.1.ndb_connectstring
-MASTER_MYPORT=                 @mysqld.1.1.port
-MASTER_MYPORT1=                @mysqld.2.1.port
-MASTER_MYPORT2=                @mysqld.3.1.port
-MASTER_MYPORT3=                @mysqld.4.1.port
+PRIMARY_MYPORT=                 @mysqld.1.1.port
+PRIMARY_MYPORT1=                @mysqld.2.1.port
+PRIMARY_MYPORT2=                @mysqld.3.1.port
+PRIMARY_MYPORT3=                @mysqld.4.1.port
 
 NDB_BACKUP_DIR=                @cluster_config.ndbd.1.1.BackupDataDir
 

@@ -45,7 +45,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -125,7 +125,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -177,7 +177,7 @@ Super_priv	N
 Create_tmp_table_priv	N
 Lock_tables_priv	N
 Execute_priv	N
-Repl_slave_priv	N
+Repl_replica_priv	N
 Repl_client_priv	N
 Create_view_priv	N
 Show_view_priv	N
@@ -658,13 +658,13 @@ Process	Server Admin	To view the plain text of currently executing queries
 Proxy	Server Admin	To make proxy user possible
 References	Databases,Tables	To have references on tables
 Reload	Server Admin	To reload or refresh tables, logs and privileges
-Replication client	Server Admin	To ask where the slave or master servers are
-Replication slave	Server Admin	To read binary log events from the master
+Replication client	Server Admin	To ask where the replica or primary servers are
+Replication replica	Server Admin	To read binary log events from the primary
 Select	Tables	To retrieve rows from table
 Show databases	Server Admin	To see all databases with SHOW DATABASES
 Show view	Tables	To see views with SHOW CREATE VIEW
 Shutdown	Server Admin	To shut down the server
-Super	Server Admin	To use KILL thread, SET GLOBAL, CHANGE MASTER, etc.
+Super	Server Admin	To use KILL thread, SET GLOBAL, CHANGE PRIMARY, etc.
 Trigger	Tables	To use triggers
 Create tablespace	Server Admin	To create/alter/drop tablespaces
 Update	Tables	To update existing rows
@@ -1067,7 +1067,7 @@ GRANTEE	TABLE_CATALOG	PRIVILEGE_TYPE	IS_GRANTABLE
 'mysqltest_8'@'host8'	def	USAGE	NO
 'mysqltest_8'@'%'	def	USAGE	NO
 drop user mysqltest_8;
-connect(localhost,mysqltest_8,,test,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,mysqltest_8,,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'mysqltest_8'@'localhost' (using password: NO)
 show grants for mysqltest_8;
 ERROR 42000: There is no such grant defined for user 'mysqltest_8' on host '%'
@@ -1995,14 +1995,14 @@ GRANT CREATE USER             ON *.* TO mysqltest_u1@localhost;
 GRANT PROCESS                 ON *.* TO mysqltest_u1@localhost;
 GRANT RELOAD                  ON *.* TO mysqltest_u1@localhost;
 GRANT REPLICATION CLIENT      ON *.* TO mysqltest_u1@localhost;
-GRANT REPLICATION SLAVE       ON *.* TO mysqltest_u1@localhost;
+GRANT REPLICATION REPLICA       ON *.* TO mysqltest_u1@localhost;
 GRANT SHOW DATABASES          ON *.* TO mysqltest_u1@localhost;
 GRANT SHUTDOWN                ON *.* TO mysqltest_u1@localhost;
 GRANT USAGE                   ON *.* TO mysqltest_u1@localhost;
 
 SHOW GRANTS FOR mysqltest_u1@localhost;
 Grants for mysqltest_u1@localhost
-GRANT RELOAD, SHUTDOWN, PROCESS, FILE, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT, CREATE USER ON *.* TO 'mysqltest_u1'@'localhost'
+GRANT RELOAD, SHUTDOWN, PROCESS, FILE, SHOW DATABASES, REPLICATION REPLICA, REPLICATION CLIENT, CREATE USER ON *.* TO 'mysqltest_u1'@'localhost'
 GRANT CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE ROUTINE, ALTER ROUTINE, EVENT ON `mysqltest_db1`.* TO 'mysqltest_u1'@'localhost'
 
 # connection: con1 (mysqltest_u1@mysqltest_db1)

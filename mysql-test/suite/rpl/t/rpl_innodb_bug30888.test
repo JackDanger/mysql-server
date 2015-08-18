@@ -1,8 +1,8 @@
 --source include/have_innodb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-# Set the default connection to 'master'
+# Set the default connection to 'primary'
 
 --vertical_results
 
@@ -54,11 +54,11 @@ delimiter ;|
 
 CALL test.proc_norm();
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 ###### CLEAN UP SECTION ##############
 
-connection master;
+connection primary;
 DROP PROCEDURE test.proc_norm;
 DROP TABLE test.regular_tbl;
 

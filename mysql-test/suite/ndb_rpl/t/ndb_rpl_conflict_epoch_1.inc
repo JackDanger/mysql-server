@@ -5,26 +5,26 @@
 
 if ($extended_exceptions_table)
 {
-call mtr.add_suppression("NDB Slave: exceptions table .* has suspicious definition .*");
+call mtr.add_suppression("NDB Replica: exceptions table .* has suspicious definition .*");
 }
 
 if (!$extended_exceptions_table)
 {
 create table `test`.`t1$EX`
   (server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
    d int,
-   primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+   primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 }
 if ($extended_exceptions_table)
 {
 create table `test`.`t1$EX`
   (ndb$server_id int unsigned,
-   ndb$master_server_id int unsigned,
-   ndb$master_epoch bigint unsigned,
+   ndb$primary_server_id int unsigned,
+   ndb$primary_epoch bigint unsigned,
    ndb$count int unsigned,
    a int not null,
    b$old varchar(255),
@@ -33,7 +33,7 @@ create table `test`.`t1$EX`
    ndb$op_type           enum('write_row','update_row', 'delete_row') not null,
    ndb$cft_cause         enum('row_does_not_exist','row_already_exists','data_in_conflict','trans_in_conflict') not null,
    ndb$orig_transid      bigint unsigned not null,
-   primary key(ndb$server_id, ndb$master_server_id, ndb$master_epoch, ndb$count)) engine ndb;
+   primary key(ndb$server_id, ndb$primary_server_id, ndb$primary_epoch, ndb$count)) engine ndb;
 }
 
 --echo Create table
@@ -72,7 +72,7 @@ FLUSH LOGS;
 --disable_result_log
 SELECT @MaxRepGCIHI:=Variable_Value >> 32
 FROM Information_schema.Global_Status
-WHERE Variable_Name like 'Ndb_slave_max_replicated_epoch';
+WHERE Variable_Name like 'Ndb_replica_max_replicated_epoch';
 
 SELECT @MaxRepGCIHI = 0;
 
@@ -91,7 +91,7 @@ while (!$different)
 
   SELECT @MaxRepGCIHI:=Variable_Value >> 32
   FROM Information_schema.Global_Status
-  WHERE Variable_Name like 'Ndb_slave_max_replicated_epoch';
+  WHERE Variable_Name like 'Ndb_replica_max_replicated_epoch';
 
   --let $current_gcihi = `SELECT @MaxRepGCIHI`
   --let $different = `SELECT $current_gcihi - $first_gcihi`
@@ -105,7 +105,7 @@ while (!$different)
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo -- Now update data on slave
+--echo -- Now update data on replica
 update test.t1 set b="Favorit" where a=1;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
@@ -132,7 +132,7 @@ select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
 --echo --------------------------------------------
---echo Test 2 : Normal Insert from Secondary Master
+--echo Test 2 : Normal Insert from Secondary Primary
 --echo --------------------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -171,36 +171,36 @@ select * from test.t1 order by a;
 --echo -------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo -- Insert a row on the Primary Master
+--echo -- Insert a row on the Primary Primary
 insert into test.t1 values (2, "Loopy Lornas");
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Insert a row on the secondary Master
+--echo -- Insert a row on the secondary Primary
 insert into test.t1 values (2, "Cloisters");
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Examine data on Primary Master (should be unaffected)
+--echo -- Examine data on Primary Primary (should be unaffected)
 select * from test.t1 order by a;
 
---echo -- Examine conflict indicators on Primary Master
+--echo -- Examine conflict indicators on Primary Primary
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
---echo -- Examine data on isolated secondary Master (should be as-set)
+--echo -- Examine data on isolated secondary Primary (should be as-set)
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 select * from test.t1 order by a;
 
---echo -- Restart secondary Masters slave
-start slave;
+--echo -- Restart secondary Primarys replica
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo -- Reexamine secondary Master's data (should be same as Primary Masters)
+--echo -- Reexamine secondary Primary's data (should be same as Primary Primarys)
 select * from test.t1 order by a;
 
 --echo -------------------------------
@@ -208,28 +208,28 @@ select * from test.t1 order by a;
 --echo -------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Stop replication to secondary master
-stop slave;
+--echo -- Stop replication to secondary primary
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Update row on Primary Master
+--echo -- Update row on Primary Primary
 
 update test.t1 set b="Peters Yard" where a=2;
 
---echo -- Show data on Primary Master
+--echo -- Show data on Primary Primary
 
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo -- Update row on Secondary Master
+--echo -- Update row on Secondary Primary
 update test.t1 set b="Toast" where a=2;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo -- Examine data on Primary Master - should be unaffected
+--echo -- Examine data on Primary Primary - should be unaffected
 
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
@@ -239,8 +239,8 @@ select * from test.t1 order by a;
 
 select * from test.t1 order by a;
 
---echo -- Now restart slave, will re-align row
-start slave;
+--echo -- Now restart replica, will re-align row
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -256,40 +256,40 @@ select * from test.t1 order by a;
 --echo -------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Stop Secondary slave
-stop slave;
+--echo -- Stop Secondary replica
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Update on Primary Master
+--echo -- Update on Primary Primary
 
 update test.t1 set b="Pear tree" where a = 2;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Delete on Secondary Master
+--echo -- Delete on Secondary Primary
 
 delete from test.t1 where a = 2;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo -- Examine data on Primary Master, should be unaffected
+--echo -- Examine data on Primary Primary, should be unaffected
 
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
---echo -- Examine data on Secondary Master before slave restart, still missing
+--echo -- Examine data on Secondary Primary before replica restart, still missing
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
 select * from test.t1 order by a;
 
---echo -- Restart Secondary Master slave
-start slave;
+--echo -- Restart Secondary Primary replica
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo -- Examine data on Secondary Master after slave restart, aligned with Master
+--echo -- Examine data on Secondary Primary after replica restart, aligned with Primary
 select * from test.t1 order by a;
 
 --echo -------------------------------
@@ -297,39 +297,39 @@ select * from test.t1 order by a;
 --echo -------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Stop Secondary slave
-stop slave;
+--echo -- Stop Secondary replica
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Delete on Primary Master
+--echo -- Delete on Primary Primary
 
 delete from test.t1 where a=2;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Update on Secondary Master
+--echo -- Update on Secondary Primary
 
 update test.t1 set b="Black pig" where a=2;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo -- Examine data on Primary Master, should be unaffected (no row)
+--echo -- Examine data on Primary Primary, should be unaffected (no row)
 
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
---echo -- Examine data on Secondary Master before slave restart, should be as inserted
+--echo -- Examine data on Secondary Primary before replica restart, should be as inserted
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 select * from test.t1 order by a;
 
---echo -- Restart Secondary Master slave
-start slave;
+--echo -- Restart Secondary Primary replica
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo -- Examine data on Secondary Master after slave restart, aligned with Master (deleted)
+--echo -- Examine data on Secondary Primary after replica restart, aligned with Primary (deleted)
 select * from test.t1 order by a;
 
 --echo -------------------------------
@@ -337,39 +337,39 @@ select * from test.t1 order by a;
 --echo -------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Stop Secondary slave
-stop slave;
+--echo -- Stop Secondary replica
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Delete on Primary Master
+--echo -- Delete on Primary Primary
 
 delete from test.t1 where a=1;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Delete on Secondary Master
+--echo -- Delete on Secondary Primary
 
 delete from test.t1 where a=1;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo -- Examine data on Primary Master, no row
+--echo -- Examine data on Primary Primary, no row
 
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
---echo -- Examine data on Secondary Master before slave restart, no row
+--echo -- Examine data on Secondary Primary before replica restart, no row
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 select * from test.t1 order by a;
 
---echo -- Restart Secondary Master slave
-start slave;
+--echo -- Restart Secondary Primary replica
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo -- Examine data on Secondary Master after slave restart, no row
+--echo -- Examine data on Secondary Primary after replica restart, no row
 select * from test.t1 order by a;
 
 
@@ -378,32 +378,32 @@ select * from test.t1 order by a;
 --echo ------------------------------------------------
 # NDB$EPOCH
 #   Data will diverge :
-#   This occurs as the Primary Master's Delete is still
-#   in-flight when the Secondary Master's Insert arrives,
+#   This occurs as the Primary Primary's Delete is still
+#   in-flight when the Secondary Primary's Insert arrives,
 #   but as there is no knowledge of this at the Primary
-#   Master, it accepts the Insert.
+#   Primary, it accepts the Insert.
 #
 # NDB$EPOCH2
 #   Data will not diverge :
-#   As above, except the Secondary Master's Insert will be
+#   As above, except the Secondary Primary's Insert will be
 #   reflected back to it, and applied.
 #   So the (eventual) result will be equal data.
 #
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Insert a row on Secondary Master
+--echo -- Insert a row on Secondary Primary
 insert into test.t1 values (3, "Espy");
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo -- Check it's present on Primary Master
+--echo -- Check it's present on Primary Primary
 select * from test.t1 order by a;
 
 --echo -- Stop replication in both directions
-stop slave;
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-stop slave;
+stop replica;
 
 --echo -- Delete row from both clusters
 delete from test.t1 where a=3;
@@ -411,16 +411,16 @@ delete from test.t1 where a=3;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 delete from test.t1 where a=3;
 
---echo -- Follow up with Insert from Secondary master
+--echo -- Follow up with Insert from Secondary primary
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
 insert into test.t1 values (3, "Dalriada");
 
 --echo -- Restart replication in both directions
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-start slave;
+start replica;
 
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
@@ -435,9 +435,9 @@ start slave;
 --echo -- Check data on both sites
 --echo --   diverged with NDB\$EPOCH
 --echo --   consistent with NDB\$EPOCH2 
---echo -- Secondary master :
+--echo -- Secondary primary :
 select * from test.t1 order by a;
---echo -- Primary master :
+--echo -- Primary primary :
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 select * from test.t1 order by a;
 
@@ -455,85 +455,85 @@ delete from test.t1 where a=3;
 --echo ------------------------------------------------
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Stop replication on Secondary Master
-stop slave;
+--echo -- Stop replication on Secondary Primary
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Insert row on Primary Master
+--echo -- Insert row on Primary Primary
 insert into test.t1 values (4, "Haymarket");
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Insert row on Secondary Master
+--echo -- Insert row on Secondary Primary
 insert into test.t1 values (4, "Outhouse");
---echo -- Update row on Secondary Master
+--echo -- Update row on Secondary Primary
 update test.t1 set b="Mathers" where a = 4;
---echo -- Delete row on Secondary Master
+--echo -- Delete row on Secondary Primary
 delete from test.t1 where a=4;
 
---echo -- Examine data (none) on Secondary Master
+--echo -- Examine data (none) on Secondary Primary
 select * from test.t1 order by a;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Examine data on Primary Master, should be unaffected
+--echo -- Examine data on Primary Primary, should be unaffected
 
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Examine data on Secondary Master (none)
+--echo -- Examine data on Secondary Primary (none)
 select * from test.t1 order by a;
 
---echo -- Restart Secondary Master's slave
-start slave;
+--echo -- Restart Secondary Primary's replica
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Check data on Secondary Master, should be same as Primary Master
+--echo -- Check data on Secondary Primary, should be same as Primary Primary
 select * from test.t1;
 
 --echo ------------------------------------------------
 --echo Test 10 : Update, Delete-Insert-Update conflict
 --echo ------------------------------------------------
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Stop replication on Secondary Master
-stop slave;
+--echo -- Stop replication on Secondary Primary
+stop replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo -- Update row on Primary Master
+--echo -- Update row on Primary Primary
 update test.t1 set b="Blind poet" where a=4;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Delete row on Secondary Master
+--echo -- Delete row on Secondary Primary
 delete from test.t1 where a=4;
 
---echo -- Insert row on Secondary Master
+--echo -- Insert row on Secondary Primary
 insert into test.t1 values (4, "Drouthy Neebors");
 
---echo -- Update row on Secondary Master
+--echo -- Update row on Secondary Primary
 update test.t1 set b="The Tankard" where a=4;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo -- Check data on Primary Master, should be unaffected
+--echo -- Check data on Primary Primary, should be unaffected
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo -- Check data on Secondary Master, as set
+--echo -- Check data on Secondary Primary, as set
 
 select * from test.t1 order by a;
 
---echo -- Restart Secondary Master slave
-start slave;
+--echo -- Restart Secondary Primary replica
+start replica;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 
---echo -- Check data on Secondary Master - should be as Primary
+--echo -- Check data on Secondary Primary - should be as Primary
 select * from test.t1 order by a;
 
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
@@ -557,7 +557,7 @@ delete from test.t1 where a=5;
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
-# Test runs with --log-slave-updates=1
+# Test runs with --log-replica-updates=1
 # This means that the Secondary logs reflected ops if they
 # take some effect in its binlog
 # (e.g. they go S->P --reflect--> S --logged--> P)
@@ -565,9 +565,9 @@ select * from test.t1 order by a;
 # id, so won't be applied.
 # BUT the table_map events are logged with the logging server
 # id (e.g. S in this case), and will be processed by the
-# slave SQL thread.
+# replica SQL thread.
 # If e.g. the table has been dropped on the PRIMARY then 
-# this can cause a slave failure...
+# this can cause a replica failure...
 # In real life I guess that table drop is rare.
 # For this testcase, we'll do some more serialisation between
 # the last writes to a table, and the drop of the table

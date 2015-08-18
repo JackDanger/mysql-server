@@ -225,7 +225,7 @@ Suma::execREAD_CONFIG_REQ(Signal* signal)
   }
 
   // Suma
-  c_masterNodeId = getOwnNodeId();
+  c_primaryNodeId = getOwnNodeId();
 
   c_nodeGroup = c_noNodesInGroup = 0;
   for (int i = 0; i < MAX_REPLICAS; i++) {
@@ -333,7 +333,7 @@ Suma::execSTTOR(Signal* signal) {
       m_gcp_complete_rep_count = 0; // I contribute 1 gcp complete rep
     
     if (m_typeOfStart == NodeState::ST_INITIAL_START &&
-        c_masterNodeId == getOwnNodeId())
+        c_primaryNodeId == getOwnNodeId())
     {
       jam();
       createSequence(signal);
@@ -394,13 +394,13 @@ void
 Suma::send_dict_lock_req(Signal* signal, Uint32 state)
 {
   if (state == DictLockReq::SumaStartMe &&
-      !ndbd_suma_dictlock_startme(getNodeInfo(c_masterNodeId).m_version))
+      !ndbd_suma_dictlock_startme(getNodeInfo(c_primaryNodeId).m_version))
   {
     jam();
     goto notsupported;
   }
   else if (state == DictLockReq::SumaHandOver &&
-           !ndbd_suma_dictlock_handover(getNodeInfo(c_masterNodeId).m_version))
+           !ndbd_suma_dictlock_handover(getNodeInfo(c_primaryNodeId).m_version))
   {
     jam();
     goto notsupported;
@@ -412,7 +412,7 @@ Suma::send_dict_lock_req(Signal* signal, Uint32 state)
     req->lockType = state;
     req->userPtr = state;
     req->userRef = reference();
-    sendSignal(calcDictBlockRef(c_masterNodeId),
+    sendSignal(calcDictBlockRef(c_primaryNodeId),
                GSN_DICT_LOCK_REQ, signal, DictLockReq::SignalLength, JBB);
   }
   return;
@@ -467,13 +467,13 @@ void
 Suma::send_dict_unlock_ord(Signal* signal, Uint32 state)
 {
   if (state == DictLockReq::SumaStartMe &&
-      !ndbd_suma_dictlock_startme(getNodeInfo(c_masterNodeId).m_version))
+      !ndbd_suma_dictlock_startme(getNodeInfo(c_primaryNodeId).m_version))
   {
     jam();
     return;
   }
   else if (state == DictLockReq::SumaHandOver &&
-           !ndbd_suma_dictlock_handover(getNodeInfo(c_masterNodeId).m_version))
+           !ndbd_suma_dictlock_handover(getNodeInfo(c_primaryNodeId).m_version))
   {
     jam();
     return;
@@ -485,7 +485,7 @@ Suma::send_dict_unlock_ord(Signal* signal, Uint32 state)
   ord->lockType = state;
   ord->senderData = state;
   ord->senderRef = reference();
-  sendSignal(calcDictBlockRef(c_masterNodeId),
+  sendSignal(calcDictBlockRef(c_primaryNodeId),
              GSN_DICT_UNLOCK_ORD, signal, DictUnlockOrd::SignalLength, JBB);
 }
 
@@ -622,7 +622,7 @@ Suma::execREAD_NODESCONF(Signal* signal){
     }
   }
   
-  c_masterNodeId = conf->masterNodeId;
+  c_primaryNodeId = conf->primaryNodeId;
   
   getNodeGroupMembers(signal);
 }
@@ -5836,8 +5836,8 @@ Suma::SyncRecord::release(){
 
 /**************************************************************
  *
- * Restarting remote node functions, master functionality
- * (slave does nothing special)
+ * Restarting remote node functions, primary functionality
+ * (replica does nothing special)
  * - triggered on INCL_NODEREQ calling startNode
  * - included node will issue START_ME when it's ready to start
  * the subscribers

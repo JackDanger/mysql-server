@@ -289,7 +289,7 @@ struct AlterTableRef {
     DropInProgress      = 283,
     Busy = 701,
     BusyWithNR = 711,
-    NotMaster = 702,
+    NotPrimary = 702,
     InvalidFormat = 703,
     AttributeNameTooLong = 704,
     TableNameTooLong = 705,
@@ -319,7 +319,7 @@ struct AlterTableRef {
   Uint32 errorCode;
   Uint32 errorLine; 
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorStatus;
   Uint32 errorKey;
 };

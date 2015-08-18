@@ -15388,22 +15388,22 @@ static void test_bug17667()
 
   struct buffer_and_length *statement_cursor;
   FILE *log_file;
-  char *master_log_filename;
+  char *primary_log_filename;
 
   myheader("test_bug17667");
 
-  master_log_filename = (char *) malloc(strlen(opt_vardir) + strlen("/log/master.log") + 1);
-  strxmov(master_log_filename, opt_vardir, "/log/master.log", NullS);
+  primary_log_filename = (char *) malloc(strlen(opt_vardir) + strlen("/log/primary.log") + 1);
+  strxmov(primary_log_filename, opt_vardir, "/log/primary.log", NullS);
   if (!opt_silent)
-    printf("Opening '%s'\n", master_log_filename);
-  log_file= my_fopen(master_log_filename, (int) (O_RDONLY | O_BINARY), MYF(0));
-  free(master_log_filename);
+    printf("Opening '%s'\n", primary_log_filename);
+  log_file= my_fopen(primary_log_filename, (int) (O_RDONLY | O_BINARY), MYF(0));
+  free(primary_log_filename);
 
   if (log_file == NULL)
   {
     if (!opt_silent)
     {
-      printf("Could not find the log file, VARDIR/log/master.log, so "
+      printf("Could not find the log file, VARDIR/log/primary.log, so "
              "test_bug17667 is not run.\n"
              "Run test from the mysql-test/mysql-test-run* program to set up "
              "correct environment for this test.\n\n");
@@ -20243,28 +20243,28 @@ static void test_bug20444737()
 {
   char query[MAX_TEST_QUERY_LENGTH];
   FILE       *test_file;
-  char       *master_test_filename;
+  char       *primary_test_filename;
   ulong length;
   int rc;
   const char *test_dir= getenv("MYSQL_TEST_DIR");
   const char db_query[]="USE client_test_db";
 
   myheader("Test_bug20444737");
-  master_test_filename = (char *) malloc(strlen(test_dir) +
+  primary_test_filename = (char *) malloc(strlen(test_dir) +
                          strlen("/std_data/bug20444737.sql") + 1);
-  strxmov(master_test_filename, test_dir, "/std_data/bug20444737.sql", NullS);
+  strxmov(primary_test_filename, test_dir, "/std_data/bug20444737.sql", NullS);
   if (!opt_silent)
-    fprintf(stdout, "Opening '%s'\n", master_test_filename);
-  test_file= my_fopen(master_test_filename, (int)(O_RDONLY | O_BINARY), MYF(0));
+    fprintf(stdout, "Opening '%s'\n", primary_test_filename);
+  test_file= my_fopen(primary_test_filename, (int)(O_RDONLY | O_BINARY), MYF(0));
   if (test_file == NULL)
   {
     fprintf(stderr, "Error in opening file");
-    free(master_test_filename);
+    free(primary_test_filename);
     DIE("File open error");
   }
   else if(fgets(query, MAX_TEST_QUERY_LENGTH, test_file) == NULL)
   {
-    free(master_test_filename);
+    free(primary_test_filename);
     /* If fgets returned NULL, it indicates either error or EOF */
     if (feof(test_file))
       DIE("Found EOF before all statements were found");
@@ -20281,7 +20281,7 @@ static void test_bug20444737()
   rc= mysql_real_query(mysql, query, length);
   myquery(rc);
 
-  free(master_test_filename);
+  free(primary_test_filename);
   my_fclose(test_file, MYF(0));
 }
 

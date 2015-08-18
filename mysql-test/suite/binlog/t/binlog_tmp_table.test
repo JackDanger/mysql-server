@@ -29,52 +29,52 @@
 source include/have_log_bin.inc;
 source include/have_binlog_format_mixed_or_statement.inc;
 
-RESET MASTER;
+RESET PRIMARY;
 
 --disable_query_log
 CALL mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 --enable_query_log
 
-connect (master,127.0.0.1,root,,test,$MASTER_MYPORT,);
-connect (master1,127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (primary,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+connect (primary1,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 
 create table foo (a int);
 
 flush logs;
 
-connection master;
+connection primary;
 create temporary table tmp1_foo like foo;
-connection master1;
+connection primary1;
 create temporary table tmp2_foo (a int);
 
-connection master;
+connection primary;
 insert into tmp1_foo values (1), (2), (3), (4);
-connection master1;
+connection primary1;
 replace into tmp2_foo values (1), (2), (3), (4);
 
-connection master;
+connection primary;
 update tmp1_foo set a=2*a-1;
-connection master1;
+connection primary1;
 update tmp2_foo set a=2*a;
 
-connection master;
+connection primary;
 delete from tmp1_foo where a < 5;
-connection master1;
+connection primary1;
 delete from tmp2_foo where a < 5;
 
 --disable_warnings
-connection master;
+connection primary;
 insert into foo select * from tmp1_foo;
-connection master1;
+connection primary1;
 insert into foo select * from tmp2_foo;
 --enable_warnings
 
-connection master;
+connection primary;
 truncate table tmp1_foo;
-connection master1;
+connection primary1;
 truncate table tmp2_foo;
 
-let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 
 flush logs;
 
@@ -87,10 +87,10 @@ create table foo (a int);
 
 # replay from binary log
 let $MYSQLD_DATADIR= `select @@datadir`;
-copy_file $MYSQLD_DATADIR/$binlog_file $MYSQLD_DATADIR/master-bin.saved35583;
+copy_file $MYSQLD_DATADIR/$binlog_file $MYSQLD_DATADIR/primary-bin.saved35583;
 # Reset GTIDs
-RESET MASTER;
-exec $MYSQL_BINLOG $MYSQLD_DATADIR/master-bin.saved35583 | $MYSQL;
+RESET PRIMARY;
+exec $MYSQL_BINLOG $MYSQLD_DATADIR/primary-bin.saved35583 | $MYSQL;
 select * from foo;
 
 # clean up
@@ -100,12 +100,12 @@ drop table foo;
 # BUG#51226
 #################################################################
 
-RESET MASTER;
+RESET PRIMARY;
 
 -- let $dbname=b51226
 
-connect (con1,localhost,root,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
-connect (con2,localhost,root,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+connect (con1,localhost,root,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
+connect (con2,localhost,root,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 
 #
 # action: on con1 create the database and the tmp table
@@ -157,9 +157,9 @@ insert into t1 values(1);
 -- eval DROP DATABASE $dbname
 FLUSH LOGS;
 -- let $MYSQLD_DATADIR= `select @@datadir`
-copy_file $MYSQLD_DATADIR/master-bin.000001 $MYSQLD_DATADIR/master-bin.saved51226;
+copy_file $MYSQLD_DATADIR/primary-bin.000001 $MYSQLD_DATADIR/primary-bin.saved51226;
 # Reset GTIDs
-RESET MASTER;
+RESET PRIMARY;
 # assertion: assert that when replaying the binary log will succeed,
 #            instead of failing with "Table 'XXX.YYY' doesn't exist"
--- exec $MYSQL_BINLOG $MYSQLD_DATADIR/master-bin.saved51226 | $MYSQL
+-- exec $MYSQL_BINLOG $MYSQLD_DATADIR/primary-bin.saved51226 | $MYSQL

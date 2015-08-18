@@ -1305,9 +1305,9 @@ runBug24447(NDBT_Context* ctx, NDBT_Step* step){
   {
     g_info << i++ << ": ";
 
-    int nodeId = restarter.getRandomNotMasterNodeId(rand());
+    int nodeId = restarter.getRandomNotPrimaryNodeId(rand());
     if (nodeId == -1)
-      nodeId = restarter.getMasterNodeId();
+      nodeId = restarter.getPrimaryNodeId();
     if (restarter.insertErrorInNode(nodeId, 8038) != 0)
     {
       ndbout << "Could not insert error in node="<<nodeId<<endl;
@@ -2215,7 +2215,7 @@ runExtraNextResult(NDBT_Context* ctx, NDBT_Step* step)
   // Read MaxNoOfConcurrentTransactions configuration value.
   Uint32 maxTrans = 0;
   NdbConfig conf;
-  require(conf.getProperty(conf.getMasterNodeId(),
+  require(conf.getProperty(conf.getPrimaryNodeId(),
                            NODE_TYPE_DB,
                            CFG_DB_NO_TRANSACTIONS,
                            &maxTrans));

@@ -27,7 +27,7 @@
 			var newHash = urlParts[1];
 			if(newHash != xipCurrentHash){
 				try{
-					callMaster(xipStateId, newHash);
+					callPrimary(xipStateId, newHash);
 				}catch(e){
 					//Make sure to not keep processing the error hash value.
 					xipCurrentHash = newHash;
@@ -63,29 +63,29 @@
 	var config = unpackMessage(fragId).config;
 
 	xipStateId = config.id;
-	xipMasterFrame = parent.parent;
+	xipPrimaryFrame = parent.parent;
 
 	//Set up an HTML5 messaging publisher if postMessage exists.
 	//As of this writing, this is only useful to get Opera 9.25+ to work.
 	if(typeof document.postMessage != "undefined"){
-		callMaster = function(stateId, message){
-			xipMasterFrame.document.postMessage(stateId + "#" + message);
+		callPrimary = function(stateId, message){
+			xipPrimaryFrame.document.postMessage(stateId + "#" + message);
 		}
 	}else{
 		var parts = config.callback.split(".");
-		xipCallbackObject = xipMasterFrame;
+		xipCallbackObject = xipPrimaryFrame;
 		for(var i = 0; i < parts.length - 1; i++){
 			xipCallbackObject = xipCallbackObject[parts[i]];
 		}
 		xipCallback = parts[parts.length - 1];
 
-		callMaster = function(stateId, message){
+		callPrimary = function(stateId, message){
 			xipCallbackObject[xipCallback](stateId + "#" + message);
 		}
 	}
 
-	//Call the master frame to let it know it is OK to start sending.
-	callMaster(xipStateId, "0:loaded");
+	//Call the primary frame to let it know it is OK to start sending.
+	callPrimary(xipStateId, "0:loaded");
 	
 	//Start counter to inspect hash value.
 	setInterval(pollHash, 10);

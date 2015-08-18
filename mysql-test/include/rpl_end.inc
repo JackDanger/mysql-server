@@ -2,11 +2,11 @@
 #
 # Shut down replication initialized by include/rpl_init.inc.
 #
-# This syncs all servers, executes STOP SLAVE on all servers, executes
-# CHANGE MASTER on all servers, and disconnects all connections
+# This syncs all servers, executes STOP REPLICA on all servers, executes
+# CHANGE PRIMARY on all servers, and disconnects all connections
 # configured by rpl_init.inc.
 #
-# It does not execute RESET MASTER or RESET SLAVE, because that would
+# It does not execute RESET PRIMARY or RESET REPLICA, because that would
 # remove binlogs which are possibly useful debug information in case
 # the test case later fails with a result mismatch.  If you need that,
 # source include/rpl_reset.inc before you source this file.
@@ -22,13 +22,13 @@
 #
 # Parameters:
 #   $rpl_skip_sync
-#     By default, all slaves are synced using rpl_sync.inc. Set this
+#     By default, all replicas are synced using rpl_sync.inc. Set this
 #     option to 1 to disable this behavior (note that you must
 #     manually sync all servers in this case). Normally you want to
 #     sync, but you need to disable sync if you use multi-source.
 #
 #  $rpl_skip_delete_channels
-#     In multi-source repliation, to restore the SHOW SLAVE STATUS state,
+#     In multi-source repliation, to restore the SHOW REPLICA STATUS state,
 #     it is necessary to delete the channels that are created. By default,
 #     channels are deleted in multi-source. set it to 1, if channel deletion
 #     is not required.
@@ -36,14 +36,14 @@
 #   $rpl_only_running_threads
 #     If one or both of the IO and SQL threads is stopped, sync and
 #     stop only the threads that are running.  See
-#     include/rpl_sync.inc and include/stop_slave.inc for details.
+#     include/rpl_sync.inc and include/stop_replica.inc for details.
 #
 #   $rpl_debug
 #     See include/rpl_init.inc
 #
 #   $rpl_group_replication
 #     This checks for whether we have Group Replication enabled or not. Based
-#     on the check this parameter we execute change master or not in this
+#     on the check this parameter we execute change primary or not in this
 #     inc file.
 #
 #   $rpl_gtid_utils
@@ -54,9 +54,9 @@
 #   nonempty.  If you expect an error in the SQL thread, you should
 #   normally call this script as follows:
 #
-#     --source include/wait_for_slave_sql_error.inc
-#     --source include/stop_slave_io.inc
-#     RESET SLAVE;
+#     --source include/wait_for_replica_sql_error.inc
+#     --source include/stop_replica_io.inc
+#     RESET REPLICA;
 #     --let $rpl_only_running_threads= 1
 #     --source include/rpl_end.inc
 #
@@ -83,7 +83,7 @@ if ($rpl_skip_delete_channels == '')
 
 if ($rpl_debug)
 {
-  --echo ---- Check that no slave thread has an error ----
+  --echo ---- Check that no replica thread has an error ----
 }
 
 --let $_rpl_server= $rpl_server_count
@@ -92,12 +92,12 @@ while ($_rpl_server)
   --let $rpl_connection_name= server_$_rpl_server
   --source include/rpl_connection.inc
 
-  # Only check slave threads for error on hosts that were at some
-  # point configured as slave.
-  --let $_tmp= query_get_value(SHOW SLAVE STATUS, Master_Host, 1)
+  # Only check replica threads for error on hosts that were at some
+  # point configured as replica.
+  --let $_tmp= query_get_value(SHOW REPLICA STATUS, Primary_Host, 1)
   if ($_tmp != 'No such row')
   {
-    --source include/check_slave_no_error.inc
+    --source include/check_replica_no_error.inc
   }
 
   --dec $_rpl_server
@@ -127,7 +127,7 @@ if ($rpl_group_replication)
 
 if (!$rpl_group_replication)
 {
-  --source include/rpl_stop_slaves.inc
+  --source include/rpl_stop_replicas.inc
 }
 
 # Restore the server state by deleting all channels
@@ -135,17 +135,17 @@ if ($rpl_multi_source)
 {
   if (!$rpl_skip_delete_channels)
   {
-    --let $rpl_reset_slave_all= 1
-    --let $rpl_source_file= include/rpl_reset_slave_helper.inc
+    --let $rpl_reset_replica_all= 1
+    --let $rpl_source_file= include/rpl_reset_replica_helper.inc
     --source include/rpl_for_each_connection.inc
-    --let $rpl_reset_slave_all= 0
+    --let $rpl_reset_replica_all= 0
   }
 }
 
-# mtr configures server 2 to be a slave before it runs the test. We
+# mtr configures server 2 to be a replica before it runs the test. We
 # have to restore that state now, so we change topology to 1->2.
 
-# rpl_change_topology executes CHANGE MASTER for each connection.
+# rpl_change_topology executes CHANGE PRIMARY for each connection.
 # we restore the gtid state by sourcing rpl_change_topology below
 --let $use_gtids= 0
 --let $rpl_group_replication= 0

@@ -36,7 +36,7 @@ const char *command_array[]=
   "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "RELOAD",
   "SHUTDOWN", "PROCESS","FILE", "GRANT", "REFERENCES", "INDEX",
   "ALTER", "SHOW DATABASES", "SUPER", "CREATE TEMPORARY TABLES",
-  "LOCK TABLES", "EXECUTE", "REPLICATION SLAVE", "REPLICATION CLIENT",
+  "LOCK TABLES", "EXECUTE", "REPLICATION REPLICA", "REPLICATION CLIENT",
   "CREATE VIEW", "SHOW VIEW", "CREATE ROUTINE", "ALTER ROUTINE",
   "CREATE USER", "EVENT", "TRIGGER", "CREATE TABLESPACE"
 };
@@ -512,8 +512,8 @@ bool check_readonly(THD *thd, bool err_if_readonly)
   if (!opt_readonly)
     DBUG_RETURN(FALSE);
 
-  /* thread is replication slave, do not prohibit operation: */
-  if (thd->slave_thread)
+  /* thread is replication replica, do not prohibit operation: */
+  if (thd->replica_thread)
     DBUG_RETURN(FALSE);
 
   bool is_super = thd->security_context()->check_access(SUPER_ACL);
@@ -810,8 +810,8 @@ check_access(THD *thd, ulong want_access, const char *db, ulong *save_priv,
   bool  db_is_pattern= ((want_access & GRANT_ACL) && dont_check_global_grants);
   ulong dummy;
   DBUG_ENTER("check_access");
-  DBUG_PRINT("enter",("db: %s  want_access: %lu  master_access: %lu",
-                      db ? db : "", want_access, sctx->master_access()));
+  DBUG_PRINT("enter",("db: %s  want_access: %lu  primary_access: %lu",
+                      db ? db : "", want_access, sctx->primary_access()));
 
   if (save_priv)
     *save_priv=0;
@@ -887,13 +887,13 @@ check_access(THD *thd, ulong want_access, const char *db, ulong *save_priv,
         and the intersection of db- and host-privileges,
         plus the internal privileges.
       */
-      *save_priv|= sctx->master_access() | db_access;
+      *save_priv|= sctx->primary_access() | db_access;
     }
     else
-      *save_priv|= sctx->master_access();
+      *save_priv|= sctx->primary_access();
     DBUG_RETURN(FALSE);
   }
-  if (((want_access & ~sctx->master_access()) & ~DB_ACLS) ||
+  if (((want_access & ~sctx->primary_access()) & ~DB_ACLS) ||
       (! db && dont_check_global_grants))
   {						// We can never grant this
     DBUG_PRINT("error",("No possible access"));
@@ -935,7 +935,7 @@ check_access(THD *thd, ulong want_access, const char *db, ulong *save_priv,
     Save the union of User-table and the intersection between Db-table and
     Host-table privileges, with the already saved internal privileges.
   */
-  db_access= (db_access | sctx->master_access());
+  db_access= (db_access | sctx->primary_access());
   *save_priv|= db_access;
 
   /*
@@ -1258,10 +1258,10 @@ int mysql_table_grant(THD *thd, TABLE_LIST *table_list,
 
 #ifdef HAVE_REPLICATION
   /*
-    GRANT and REVOKE are applied the slave in/exclusion rules as they are
+    GRANT and REVOKE are applied the replica in/exclusion rules as they are
     some kind of updates to the mysql.% tables.
   */
-  if (thd->slave_thread && rpl_filter->is_on())
+  if (thd->replica_thread && rpl_filter->is_on())
   {
     /*
       The tables must be marked "updating" so that tables_ok() takes them into
@@ -1457,11 +1457,11 @@ int mysql_table_grant(THD *thd, TABLE_LIST *table_list,
   /*
     We only log "complete" successful commands, because partially
     failed REVOKE/GRANTS that fail because of insufficient privileges
-    on the master, will succeed on the slave due to SQL thread SUPER
+    on the primary, will succeed on the replica due to SQL thread SUPER
     privilege. Even though replication will stop (the error code from
-    the master will mismatch the error code on the slave), the
+    the primary will mismatch the error code on the replica), the
     operation will already be executed (thence revoking or granting
-    additional privileges on the slave).
+    additional privileges on the replica).
     Before ACLs are changed to execute fully or none at all, when
     some error happens, write an incident if one or more users are
     granted/revoked successfully (it has a partial execution), a
@@ -1594,10 +1594,10 @@ bool mysql_routine_grant(THD *thd, TABLE_LIST *table_list, bool is_proc,
 
 #ifdef HAVE_REPLICATION
   /*
-    GRANT and REVOKE are applied the slave in/exclusion rules as they are
+    GRANT and REVOKE are applied the replica in/exclusion rules as they are
     some kind of updates to the mysql.% tables.
   */
-  if (thd->slave_thread && rpl_filter->is_on())
+  if (thd->replica_thread && rpl_filter->is_on())
   {
     /*
       The tables must be marked "updating" so that tables_ok() takes them into
@@ -1854,10 +1854,10 @@ bool mysql_grant(THD *thd, const char *db, List <LEX_USER> &list,
 
 #ifdef HAVE_REPLICATION
   /*
-    GRANT and REVOKE are applied the slave in/exclusion rules as they are
+    GRANT and REVOKE are applied the replica in/exclusion rules as they are
     some kind of updates to the mysql.% tables.
   */
-  if (thd->slave_thread && rpl_filter->is_on())
+  if (thd->replica_thread && rpl_filter->is_on())
   {
     /*
       The tables must be marked "updating" so that tables_ok() takes them into
@@ -2145,7 +2145,7 @@ bool check_grant(THD *thd, ulong want_access, TABLE_LIST *tables,
     }
 
     want_access= orig_want_access;
-    want_access&= ~sctx->master_access();
+    want_access&= ~sctx->primary_access();
     if (!want_access)
       continue;                                 // ok
 
@@ -2595,7 +2595,7 @@ bool check_grant_routine(THD *thd, ulong want_access,
   char *host= (char *) sctx->priv_host().str;
   DBUG_ENTER("check_grant_routine");
 
-  want_access&= ~sctx->master_access();
+  want_access&= ~sctx->primary_access();
   if (!want_access)
     DBUG_RETURN(0);                             // ok
 
@@ -3792,7 +3792,7 @@ void fill_effective_table_privileges(THD *thd, GRANT_INFO *grant,
   }
 
   /* global privileges */
-  grant->privilege= sctx->master_access();
+  grant->privilege= sctx->primary_access();
 
   /* db privileges */
   grant->privilege|= acl_get(sctx->host().str, sctx->ip().str,
@@ -3831,10 +3831,10 @@ acl_check_proxy_grant_access(THD *thd, const char *host, const char *user,
     DBUG_RETURN(1);
   }
 
-  /* replication slave thread can do anything */
-  if (thd->slave_thread)
+  /* replication replica thread can do anything */
+  if (thd->replica_thread)
   {
-    DBUG_PRINT("info", ("replication slave"));
+    DBUG_PRINT("info", ("replication replica"));
     DBUG_RETURN(FALSE);
   }
 
@@ -4215,7 +4215,7 @@ bool
 is_privileged_user_for_credential_change(THD *thd)
 {
 #ifdef HAVE_REPLICATION
-  if (thd->slave_thread)
+  if (thd->replica_thread)
     return true;
 #endif /* HAVE_REPLICATION */
   return (!check_access(thd, UPDATE_ACL, "mysql", NULL, NULL, 1, 1) ||

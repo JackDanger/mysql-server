@@ -1,12 +1,12 @@
 ###############################################################################
-# Bug#17986385:LOG-WARNINGS=2 UNUSABLE ON SLAVE WITH FILTERS
+# Bug#17986385:LOG-WARNINGS=2 UNUSABLE ON REPLICA WITH FILTERS
 #
 # Problem:
 # ========
-# If a slave is configured with replication filters and log-warnings=2, every
+# If a replica is configured with replication filters and log-warnings=2, every
 # statement which is filtered writes an entry to the error log:
 #
-# [Warning] Slave SQL: Could not execute Query event. Detailed error: Slave
+# [Warning] Replica SQL: Could not execute Query event. Detailed error: Replica
 # SQL thread ignored the query because of replicate-*-table rules
 # For busy servers which generate a lot of statements that get filtered, the
 # result is an error log which can quickly grow into the GB range.
@@ -26,30 +26,30 @@
 # Inorder to grep a specific error pattern in error log a fresh error log
 # needs to be generated.
 --source include/force_restart.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_debug.inc
 
 CREATE TABLE t2 (c1 INT) ENGINE=InnoDB;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 INSERT INTO test.t2 VALUES (100);
 INSERT INTO test.t2 VALUES (200);
 INSERT INTO test.t2 VALUES (300);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $debug_saved= `SELECT @@GLOBAL.DEBUG`
 SET @@GLOBAL.DEBUG= '+d,simulate_error_throttle_expiry';
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 DROP TABLE t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 SET @@GLOBAL.DEBUG= '$debug_saved';
 
 --replace_regex /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9][0-9][0-9][0-9][-+Z][0-9:]* *[0-9]* *\[/DATE_TIME [/ s/Worker .* end_log_pos [0-9]*; //
---let $grep_file=$MYSQLTEST_VARDIR/tmp/slave.err
---let $grep_pattern=Slave SQL thread ignored the query because of replicate
+--let $grep_file=$MYSQLTEST_VARDIR/tmp/replica.err
+--let $grep_pattern=Replica SQL thread ignored the query because of replicate
 --source include/grep_pattern.inc
 
 --source include/rpl_end.inc

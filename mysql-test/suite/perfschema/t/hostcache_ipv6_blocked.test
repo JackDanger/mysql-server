@@ -29,7 +29,7 @@ set sql_mode= @orig_sql_mode;
 create user 'quota'@'santa.claus.ipv6.example.com';
 grant select on test.* to 'quota'@'santa.claus.ipv6.example.com';
 
-connect (con1,"::1",root,,test,$MASTER_MYPORT,);
+connect (con1,"::1",root,,test,$PRIMARY_MYPORT,);
 select "Con1 is alive";
 select current_user();
 disconnect con1;
@@ -39,7 +39,7 @@ set global debug= "+d,vio_peer_addr_fake_ipv6,getnameinfo_fake_ipv6,getaddrinfo_
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con2a,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2a,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -47,7 +47,7 @@ connect (con2a,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con2b,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2b,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -55,7 +55,7 @@ connect (con2b,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con2c,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2c,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -63,7 +63,7 @@ connect (con2c,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HOST_IS_BLOCKED
-connect (con2d,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2d,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -71,7 +71,7 @@ connect (con2d,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HOST_IS_BLOCKED
-connect (con2e,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con2e,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -82,7 +82,7 @@ flush hosts;
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con3a,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con3a,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -90,7 +90,7 @@ connect (con3a,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con3b,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con3b,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -100,7 +100,7 @@ connect (con3b,"::1",quota,,test,$MASTER_MYPORT,);
 set global debug= "-d,native_password_bad_reply";
 
 --disable_query_log
-connect (con4,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con4,"::1",quota,,test,$PRIMARY_MYPORT,);
 select "Valid connection should reset SUM_CONNECT_ERROR counter" as message;
 --disconnect con4
 --enable_query_log
@@ -113,7 +113,7 @@ set global debug= "+d,native_password_bad_reply";
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con5a,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5a,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -121,7 +121,7 @@ connect (con5a,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con5b,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5b,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -129,7 +129,7 @@ connect (con5b,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HANDSHAKE_ERROR
-connect (con5c,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5c,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -137,7 +137,7 @@ connect (con5c,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HOST_IS_BLOCKED
-connect (con5d,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5d,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default
@@ -145,7 +145,7 @@ connect (con5d,"::1",quota,,test,$MASTER_MYPORT,);
 
 --disable_query_log
 --error ER_HOST_IS_BLOCKED
-connect (con5e,"::1",quota,,test,$MASTER_MYPORT,);
+connect (con5e,"::1",quota,,test,$PRIMARY_MYPORT,);
 --enable_query_log
 
 --connection default

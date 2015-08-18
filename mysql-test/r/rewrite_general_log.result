@@ -31,7 +31,7 @@ DROP PROCEDURE proc_rewrite_1;
 DROP FUNCTION  func_rewrite_1;
 DROP TABLE     t1;
 CREATE USER test_user2 IDENTIFIED BY 'azundris2';
-CHANGE MASTER TO MASTER_PASSWORD='azundris3';
+CHANGE PRIMARY TO PRIMARY_PASSWORD='azundris3';
 CREATE USER 'test_user4'@'localhost';
 ALTER USER 'test_user4'@'localhost' IDENTIFIED BY 'azundris4';
 SET GLOBAL general_log=       'OFF';

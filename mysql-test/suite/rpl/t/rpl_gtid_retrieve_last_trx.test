@@ -5,11 +5,11 @@
 # retrieved again by the IO thread.
 #
 # The test first creates a transactional table and add some data on it. Then,
-# it issues a "RESET MASTER" on the slave to make the slave to clean its
+# it issues a "RESET PRIMARY" on the replica to make the replica to clean its
 # GTID_EXECUTED, but the Retrieved_Gtid_Set is kept untouched.
 # A restart in the IO thread with this situation should not make the IO thread
 # to retrieve the last received transaction again. The test case test this by
-# verifying the table consistency after syncing the slave SQL thread.
+# verifying the table consistency after syncing the replica SQL thread.
 #
 # The second part of the test repeats the above procedure making the last
 # transaction to be retrieved by IO thread to be a DDL (without XID or
@@ -20,48 +20,48 @@
 #
 # ==== Related Bugs and Worklogs ====
 #
-# BUG#17943188: SHOW SLAVE STATUS/RETRIEVED_GTID_SET MAY HAVE PARTIAL TRX OR
+# BUG#17943188: SHOW REPLICA STATUS/RETRIEVED_GTID_SET MAY HAVE PARTIAL TRX OR
 #               MISS COMPLETE TRX
-# BUG#18629623: INCONSISTENT DATA IN GTID (RESET MASTER, STOP SLAVE, START
-#               SLAVE)
+# BUG#18629623: INCONSISTENT DATA IN GTID (RESET PRIMARY, STOP REPLICA, START
+#               REPLICA)
 #
 --source include/not_group_replication_plugin.inc
 --source include/have_gtid.inc
 --source include/have_innodb.inc
 --source include/have_myisam.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-# Get the master UUID to filter displayed data
---let $master_uuid= `SELECT @@GLOBAL.SERVER_UUID`
+# Get the primary UUID to filter displayed data
+--let $primary_uuid= `SELECT @@GLOBAL.SERVER_UUID`
 
 #
 # First part
 #
 
-# Put some data into master, finishing with a DML
+# Put some data into primary, finishing with a DML
 CREATE TABLE t1 (c1 INT) ENGINE=InnoDB;
 INSERT INTO t1 VALUES (1);
 
-# Sync slave with master
---source include/sync_slave_sql_with_master.inc
+# Sync replica with primary
+--source include/sync_replica_sql_with_primary.inc
 
-# Clean GTIDs on slave, so if a already retrieved transaction be asked
-# again to the master, the transaction will be applied again, generating
+# Clean GTIDs on replica, so if a already retrieved transaction be asked
+# again to the primary, the transaction will be applied again, generating
 # data inconsistency.
-RESET MASTER;
+RESET PRIMARY;
 
-# Restart the slave threads
---source include/stop_slave.inc
---source include/start_slave.inc
+# Restart the replica threads
+--source include/stop_replica.inc
+--source include/start_replica.inc
 
 # Make sure the SQL thread is synced before checking consistency
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --let $ignore_gtids_on_sync= 1
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Check t1 consistency
---source include/rpl_connection_master.inc
---let $diff_tables= master:t1, slave:t1
+--source include/rpl_connection_primary.inc
+--let $diff_tables= primary:t1, replica:t1
 --source include/diff_tables.inc
 
 #
@@ -71,61 +71,61 @@ RESET MASTER;
 # Now finishing with a DDL (no XID or QUERY(COMMIT) at the end of trx)
 CREATE TABLE t2 (c1 INT) ENGINE=MyISAM;
 
-# Sync slave with master
---source include/sync_slave_sql_with_master.inc
+# Sync replica with primary
+--source include/sync_replica_sql_with_primary.inc
 
-# Clean GTIDs on slave, so if a already retrieved transaction be asked
-# again to the master, the transaction will be applied again, generating
+# Clean GTIDs on replica, so if a already retrieved transaction be asked
+# again to the primary, the transaction will be applied again, generating
 # data inconsistency.
-RESET MASTER;
+RESET PRIMARY;
 
-# Restart the slave threads
---source include/stop_slave.inc
---source include/start_slave.inc
+# Restart the replica threads
+--source include/stop_replica.inc
+--source include/start_replica.inc
 
 # Make sure the SQL thread is synced without errors
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --let $ignore_gtids_on_sync= 1
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# Put some data into master into a non-trx table, finishing with a DML
---source include/rpl_connection_master.inc
+# Put some data into primary into a non-trx table, finishing with a DML
+--source include/rpl_connection_primary.inc
 INSERT INTO t2 VALUES (1);
 
-# Sync slave with master
+# Sync replica with primary
 --let $ignore_gtids_on_sync= 1
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# Clean GTIDs on slave, so if a already retrieved transaction be asked
-# again to the master, the transaction will be applied again, generating
+# Clean GTIDs on replica, so if a already retrieved transaction be asked
+# again to the primary, the transaction will be applied again, generating
 # data inconsistency.
-RESET MASTER;
+RESET PRIMARY;
 
-# Restart the slave threads
---source include/stop_slave.inc
---source include/start_slave.inc
+# Restart the replica threads
+--source include/stop_replica.inc
+--source include/start_replica.inc
 
 # Make sure the SQL thread is synced before checking consistency
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --let $ignore_gtids_on_sync= 1
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Check t1 consistency
---source include/rpl_connection_master.inc
---let $diff_tables= master:t2, slave:t2
+--source include/rpl_connection_primary.inc
+--let $diff_tables= primary:t2, replica:t2
 --source include/diff_tables.inc
 
 #
 # Cleanup
 #
 
-# Save slave Retrieved_Gtid_Set to add it as slave's GTID_PURGED
---source include/rpl_connection_slave.inc
---let $slave_gtid_purged= query_get_value(SHOW SLAVE STATUS, Retrieved_Gtid_Set, 1)
-RESET MASTER;
---replace_result $master_uuid MASTER_UUID
---eval SET @@GLOBAL.GTID_PURGED='$slave_gtid_purged'
+# Save replica Retrieved_Gtid_Set to add it as replica's GTID_PURGED
+--source include/rpl_connection_replica.inc
+--let $replica_gtid_purged= query_get_value(SHOW REPLICA STATUS, Retrieved_Gtid_Set, 1)
+RESET PRIMARY;
+--replace_result $primary_uuid PRIMARY_UUID
+--eval SET @@GLOBAL.GTID_PURGED='$replica_gtid_purged'
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 DROP TABLE t1, t2;
 --source include/rpl_end.inc

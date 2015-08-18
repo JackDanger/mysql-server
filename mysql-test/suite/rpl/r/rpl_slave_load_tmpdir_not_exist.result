@@ -1,11 +1,11 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-START SLAVE;
-call mtr.add_suppression("Slave SQL.*Unable to use slave.s temporary directory.* Error_code: 12");
-include/wait_for_slave_sql_error.inc [errno=12]
-include/stop_slave_io.inc
-RESET SLAVE;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+START REPLICA;
+call mtr.add_suppression("Replica SQL.*Unable to use replica.s temporary directory.* Error_code: 12");
+include/wait_for_replica_sql_error.inc [errno=12]
+include/stop_replica_io.inc
+RESET REPLICA;
 include/rpl_end.inc

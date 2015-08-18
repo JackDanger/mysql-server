@@ -834,7 +834,7 @@ eval CREATE USER mysqltest_db1@localhost identified by 'PWD';
 eval GRANT ALL ON mysqltest_db1.* TO mysqltest_db1@localhost WITH GRANT OPTION;
 
 # The session with the non root user is needed.
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (session1,localhost,mysqltest_db1,PWD,test);
 
 CREATE SCHEMA mysqltest_db1 ;

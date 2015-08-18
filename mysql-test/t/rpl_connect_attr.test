@@ -1,6 +1,6 @@
 # ==== Purpose ====
 #
-# Verify that replication clients (mysqld replication slave or
+# Verify that replication clients (mysqld replication replica or
 # mysqlbinlog --stop-never) set the required client attributes.
 #
 # ====  Implementation ====
@@ -14,9 +14,9 @@
 # Uses /dev/null
 --source include/not_windows.inc
  
---source include/master-slave.inc
+--source include/primary-replica.inc
  
---echo ==== Case 1: slave connection ====
+--echo ==== Case 1: replica connection ====
  
 # Get thread id of dump thread.
 --let $thread_id= `SELECT PROCESSLIST_ID FROM performance_schema.threads WHERE PROCESSLIST_COMMAND = 'Binlog Dump'`
@@ -29,24 +29,24 @@ eval SELECT ATTR_NAME, ATTR_VALUE FROM performance_schema.session_connect_attrs
  
 --echo ==== Case 2: mysqlbinlog connection ====
  
-# Stop slave so as not to mix client attrs from slave with client
+# Stop replica so as not to mix client attrs from replica with client
 # attrs from mysqlbinlog.
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
---source include/rpl_connection_master.inc
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
+--source include/rpl_connection_primary.inc
 --source include/stop_dump_threads.inc
  
 --echo # Start mysqlbinlog
---let BINLOG_FILE= query_get_value(SHOW MASTER STATUS, File, 1)
+--let BINLOG_FILE= query_get_value(SHOW PRIMARY STATUS, File, 1)
 perl;
   my $mysqlbinlog= $ENV{'MYSQL_BINLOG'};
-  my $port= $ENV{'MASTER_MYPORT'};
+  my $port= $ENV{'PRIMARY_MYPORT'};
   my $binlog_file= $ENV{'BINLOG_FILE'};
   system("$mysqlbinlog --stop-never --read-from-remote-server --user=root --host=127.0.0.1 --port=$port $binlog_file > /dev/null &");
 EOF
  
-# Wait for master threads to start
---let $wait_condition= SELECT COUNT(*) > 0 FROM performance_schema.threads WHERE PROCESSLIST_COMMAND LIKE 'Binlog Dump' AND PROCESSLIST_STATE LIKE '%Master has sent%';
+# Wait for primary threads to start
+--let $wait_condition= SELECT COUNT(*) > 0 FROM performance_schema.threads WHERE PROCESSLIST_COMMAND LIKE 'Binlog Dump' AND PROCESSLIST_STATE LIKE '%Primary has sent%';
 --source include/wait_condition.inc
  
 # Get thread id of dump thread.

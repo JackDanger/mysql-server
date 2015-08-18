@@ -1,50 +1,50 @@
 # NYI - row-based cannot use CREATE ... SELECT
 
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 --disable_warnings
 drop table if exists t1,v1;
 drop view if exists t1,v1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --enable_warnings
 
 #
 # Check that creation drop of view is replicated, also check replication of
 # updating of view
 #
-connection master;
+connection primary;
 create table t1 (a int);
 insert into t1 values (1);
 create view v1 as select a from t1;
 insert into v1 values (2);
 select * from v1 order by a;
---source include/sync_slave_sql_with_master.inc
-# view already have to be on slave
+--source include/sync_replica_sql_with_primary.inc
+# view already have to be on replica
 select * from v1 order by a;
-connection master;
+connection primary;
 update v1 set a=3 where a=1;
 select * from v1 order by a;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from v1 order by a;
-connection master;
+connection primary;
 delete from v1 where a=2;
 select * from v1 order by a;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from v1 order by a;
-connection master;
+connection primary;
 # 'alter view' internally maped to creation, but still check that it works
 alter view v1 as select a as b from t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from v1 order by 1;
-connection master;
+connection primary;
 drop view v1;
---source include/sync_slave_sql_with_master.inc
-#error, because view have to be removed from slave
+--source include/sync_replica_sql_with_primary.inc
+#error, because view have to be removed from replica
 -- error 1146
 select * from v1 order by a;
-connection master;
+connection primary;
 drop table t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 # Change Author: JBM
 # Change Date: 2005-12-22
 # Change: Commented out binlog events to work with SBR and RBR 
@@ -63,8 +63,8 @@ drop table t1;
 
 --echo
 --echo ---> Preparing environment...
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 --disable_warnings
 DROP TABLE IF EXISTS t1;
@@ -72,13 +72,13 @@ DROP VIEW IF EXISTS v1;
 --enable_warnings
 
 --echo
---echo ---> Synchronizing slave with master...
+--echo ---> Synchronizing replica with primary...
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 # Test.
 
@@ -95,27 +95,27 @@ CREATE TABLE t1(c INT);
 INSERT INTO t1 VALUES(1);
 
 --echo
---echo ---> Checking on master...
+--echo ---> Checking on primary...
 
 SELECT * FROM t1;
 
 --echo
---echo ---> Synchronizing slave with master...
+--echo ---> Synchronizing replica with primary...
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---echo ---> connection: master
+--echo ---> connection: primary
 
 --echo
---echo ---> Checking on slave...
+--echo ---> Checking on replica...
 
 SELECT * FROM t1;
 
 # Cleanup.
 
 --echo
---echo ---> connection: master
---connection master
+--echo ---> connection: primary
+--connection primary
 
 --echo
 --echo ---> Cleaning up...
@@ -123,45 +123,45 @@ SELECT * FROM t1;
 DROP VIEW v1;
 DROP TABLE t1;
 
---source include/sync_slave_sql_with_master.inc
---connection master
+--source include/sync_replica_sql_with_primary.inc
+--connection primary
 
 #
 # BUG#19419: "VIEW: View that the column name is different
-#             by master and slave is made".
+#             by primary and replica is made".
 #
-connection master;
+connection primary;
 create table t1(a int, b int);
 insert into t1 values (1, 1), (1, 2), (1, 3);
 create view  v1(a, b) as select a, sum(b) from t1 group by a;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 explain v1;
 show create table v1;
 select * from v1;
 
-connection master;
+connection primary;
 drop table t1;
 drop view v1;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # BUG#28244 CREATE VIEW breaks replication when view exists
 #
-connection master;
+connection primary;
 CREATE TABLE t1(a INT);
 CREATE VIEW v1 AS SELECT * FROM t1;
 --error ER_TABLE_EXISTS_ERROR
 CREATE VIEW v1 AS SELECT * FROM t1;
 DROP VIEW v1;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
-# Bug#32575 Parse error of stmt with extended comments on slave side
+# Bug#32575 Parse error of stmt with extended comments on replica side
 # Verify that 'CREATE VIEW' with comments is properly logged to binlog
-connection master;
+connection primary;
 CREATE TABLE t1 (a INT);
 --echo # create view as output from mysqldump 10.11 (5.0.62)
 /*!50001 CREATE ALGORITHM=UNDEFINED */
@@ -169,12 +169,12 @@ CREATE TABLE t1 (a INT);
 /*!50001 VIEW `v1` AS select `t1`.`a` AS `a` from `t1` where (`t1`.`a` < 3) */
 /*!50002 WITH CASCADED CHECK OPTION */;
 SHOW CREATE VIEW v1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SHOW CREATE VIEW v1;
-connection master;
+connection primary;
 DROP VIEW v1;
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo End of 5.0 tests
 --source include/rpl_end.inc

@@ -20,37 +20,37 @@
 
 #include "my_global.h"
 #include "rpl_channel_service_interface.h" // enum_channel_type
-#include "rpl_mi.h"                        // Master_info
+#include "rpl_mi.h"                        // Primary_info
 
 #include <map>
 #include <string>
 
 
 /**
-   Maps a channel name to it's Master_info.
+   Maps a channel name to it's Primary_info.
 */
 
-//Maps a master info object to a channel name
-typedef std::map<std::string, Master_info*> mi_map;
+//Maps a primary info object to a channel name
+typedef std::map<std::string, Primary_info*> mi_map;
 //Maps a channel type to a map of channels of that type.
 typedef std::map<int, mi_map> replication_channel_map;
 
 /**
-  Class to store all the Master_info objects of a slave
+  Class to store all the Primary_info objects of a replica
   to access them in the replication code base or performance
   schema replication tables.
 
-  In a Multisourced replication setup, a slave connects
-  to several masters (also called as sources). This class
-  stores the Master_infos where each Master_info belongs
-  to a slave.
+  In a Multisourced replication setup, a replica connects
+  to several primarys (also called as sources). This class
+  stores the Primary_infos where each Primary_info belongs
+  to a replica.
 
-  The important objects for a slave are the following:
-  i) Master_info and Relay_log_info (slave_parallel_workers == 0)
-  ii) Master_info, Relay_log_info and Slave_worker(slave_parallel_workers >0 )
+  The important objects for a replica are the following:
+  i) Primary_info and Relay_log_info (replica_parallel_workers == 0)
+  ii) Primary_info, Relay_log_info and Replica_worker(replica_parallel_workers >0 )
 
-  Master_info is always assosiated with a Relay_log_info per channel.
-  So, it is enough to store Master_infos and call the corresponding
+  Primary_info is always assosiated with a Relay_log_info per channel.
+  So, it is enough to store Primary_infos and call the corresponding
   Relay_log_info by mi->rli;
 
   This class is not yet thread safe. Any part of replication code that
@@ -59,15 +59,15 @@ typedef std::map<int, mi_map> replication_channel_map;
   Only a single global object for a server instance should be created.
 
   The two important data structures in this class are
-  i) C++ std map to store the Master_info pointers with channel name as a key.
+  i) C++ std map to store the Primary_info pointers with channel name as a key.
     These are the base channel maps.
     @TODO: convert to boost after it's introduction.
   ii) C++ std map to store the channel maps with a channel type as its key.
-      This map stores slave channel maps, group replication channels or others
-  iii) An array of Master_info pointers to access from performance schema
+      This map stores replica channel maps, group replication channels or others
+  iii) An array of Primary_info pointers to access from performance schema
      tables. This array is specifically implemented in a way to make
       a) pfs indices simple i.e a simple integer counter
-      b) To avoid recalibration of data structure if master info is deleted.
+      b) To avoid recalibration of data structure if primary info is deleted.
          * Consider the following high level implementation of a pfs table
             to make a row.
           <pseudo_code>
@@ -85,8 +85,8 @@ typedef std::map<int, mi_map> replication_channel_map;
          Either missing a row or duplicating a row.
 
          We solve this problem, by using an array exclusively to use in
-         replciation pfs tables, by marking a master_info defeated as 0
-         (i.e NULL). A new master info is added to this array at the
+         replciation pfs tables, by marking a primary_info defeated as 0
+         (i.e NULL). A new primary info is added to this array at the
          first NULL always.
 
   @todo: Make this class a singleton, so that only one object exists for an
@@ -94,19 +94,19 @@ typedef std::map<int, mi_map> replication_channel_map;
 
   @optional_todo: since every select * in replication pfs table depends on
          LOCK_msr_map, think of either splitting the lock into rw lock
-         OR making a copy of all slave_info_objects for info display.
+         OR making a copy of all replica_info_objects for info display.
 */
 class Multisource_info
 {
 
 private:
- /* Maximum number of channels per slave */
+ /* Maximum number of channels per replica */
   static const unsigned int MAX_CHANNELS= 256;
 
-  /* A Map that maps, a channel name to a Master_info grouped by channel type */
+  /* A Map that maps, a channel name to a Primary_info grouped by channel type */
   replication_channel_map rep_channel_map;
 
-  /* Number of master_infos at the moment*/
+  /* Number of primary_infos at the moment*/
   uint current_mi_count;
 
   /**
@@ -119,7 +119,7 @@ private:
 #ifdef WITH_PERFSCHEMA_STORAGE_ENGINE
 
   /* Array for  replication performance schema related tables */
-  Master_info *rpl_pfs_mi[MAX_CHANNELS];
+  Primary_info *rpl_pfs_mi[MAX_CHANNELS];
 
 #endif  /* WITH_PERFSCHEMA_STORAGE_ENGINE */
 
@@ -143,44 +143,44 @@ public:
   }
 
   /**
-    Adds the Master_info object to both replication_channel_map and rpl_pfs_mi
+    Adds the Primary_info object to both replication_channel_map and rpl_pfs_mi
 
     @param[in]  channel_name      channel name
-    @param[in]  mi                pointer to master info corresponding
+    @param[in]  mi                pointer to primary info corresponding
                                   to this channel
-    @param[in]  channel_type      The channel type. Default is a slave channel
+    @param[in]  channel_type      The channel type. Default is a replica channel
 
     @return
       @retval      false       succesfully added
       @retval      true        couldn't add channel
   */
-  bool add_mi(const char* channel_name, Master_info* mi,
-              enum_channel_type channel_type= SLAVE_REPLICATION_CHANNEL);
+  bool add_mi(const char* channel_name, Primary_info* mi,
+              enum_channel_type channel_type= REPLICA_REPLICATION_CHANNEL);
 
   /**
-    Find the master_info object corresponding to a channel explicitly
+    Find the primary_info object corresponding to a channel explicitly
     from replication_channel_map;
     Return if it exists, otherwise return 0
 
-    @param[in]  channel       channel name for the master info object.
+    @param[in]  channel       channel name for the primary info object.
 
-    @retval                   pointer to the master info object if exists
+    @retval                   pointer to the primary info object if exists
                               in the map. Otherwise, NULL;
   */
-  Master_info* get_mi(const char* channel_name);
+  Primary_info* get_mi(const char* channel_name);
 
   /**
     Remove the entry corresponding to the channel, from the
     replication_channel_map and sets index in the  multisource_mi to 0;
     And also delete the {mi, rli} pair corresponding to this channel
 
-    @param[in]    channel_name     Name of the channel for a Master_info
+    @param[in]    channel_name     Name of the channel for a Primary_info
                                    object which must exist.
   */
   void delete_mi(const char* channel_name);
 
   /**
-    Get the default channel for this multisourced_slave;
+    Get the default channel for this multisourced_replica;
   */
   inline const char* get_default_channel()
   {
@@ -188,10 +188,10 @@ public:
   }
 
   /**
-    Get the number of instances of Master_info in the map.
+    Get the number of instances of Primary_info in the map.
 
     @param all  If it should count all channels.
-                If false, only slave channels are counted.
+                If false, only replica channels are counted.
 
     @return The number of channels or 0 if empty.
   */
@@ -212,9 +212,9 @@ public:
       }
       DBUG_RETURN(count);
     }
-    else //Return only the slave channels
+    else //Return only the replica channels
     {
-      map_it= rep_channel_map.find(SLAVE_REPLICATION_CHANNEL);
+      map_it= rep_channel_map.find(REPLICA_REPLICATION_CHANNEL);
 
       if (map_it == rep_channel_map.end())
         DBUG_RETURN(0);
@@ -232,7 +232,7 @@ public:
   }
 
   /**
-    Returns true if the current number of channels in this slave
+    Returns true if the current number of channels in this replica
     is less than the MAX_CHANNLES
   */
   inline bool is_valid_channel_count()
@@ -259,11 +259,11 @@ public:
      Forward iterators to initiate traversing of a map.
 
      @todo: Not to expose iterators. But instead to return
-            only Master_infos or create generators when
+            only Primary_infos or create generators when
             c++11 is introduced.
   */
   mi_map::iterator begin(enum_channel_type channel_type=
-                             SLAVE_REPLICATION_CHANNEL)
+                             REPLICA_REPLICATION_CHANNEL)
   {
     replication_channel_map::iterator map_it;
     map_it= rep_channel_map.find(channel_type);
@@ -277,7 +277,7 @@ public:
   }
 
   mi_map::iterator end(enum_channel_type channel_type=
-                           SLAVE_REPLICATION_CHANNEL)
+                           REPLICA_REPLICATION_CHANNEL)
   {
     replication_channel_map::iterator map_it;
     map_it= rep_channel_map.find(channel_type);
@@ -302,17 +302,17 @@ private:
   }
 
   /**
-     Add a master info pointer to the rpl_pfs_mi array at the first
+     Add a primary info pointer to the rpl_pfs_mi array at the first
      NULL;
 
-     @param[in]        mi        master info object to be added.
+     @param[in]        mi        primary info object to be added.
 
      @return                     false if success.Else true.
   */
-  bool add_mi_to_rpl_pfs_mi(Master_info *mi);
+  bool add_mi_to_rpl_pfs_mi(Primary_info *mi);
 
   /**
-     Get the index of the master info correposponding to channel name
+     Get the index of the primary info correposponding to channel name
      from the rpl_pfs_mi array.
      @param[in]       channe_name     Channel name to get the index from
 
@@ -323,19 +323,19 @@ private:
 public:
 
   /**
-    Used only by replication performance schema indices to get the master_info
+    Used only by replication performance schema indices to get the primary_info
     at the position 'pos' from the rpl_pfs_mi array.
 
     @param[in]   pos   the index in the rpl_pfs_mi array
 
-    @retval            pointer to the master info object at pos 'pos';
+    @retval            pointer to the primary info object at pos 'pos';
   */
-  Master_info* get_mi_at_pos(uint pos);
+  Primary_info* get_mi_at_pos(uint pos);
 #endif /*WITH_PERFSCHEMA_STORAGE_ENGINE */
 
 };
 
-/* Global object for multisourced slave. */
+/* Global object for multisourced replica. */
 extern Multisource_info  msr_map;
 
 #endif   /* HAVE_REPLICATION */

@@ -14,8 +14,8 @@ CREATE USER test_2@localhost;
 --send
 ALTER TABLE tp EXCHANGE PARTITION p0 WITH TABLE t_10;
 
---echo connect (test_2,localhost,test_2,,test,MASTER_MYPORT,MASTER_MYSOCK);
-connect (test_2,localhost,test_2,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+--echo connect (test_2,localhost,test_2,,test,PRIMARY_MYPORT,PRIMARY_MYSOCK);
+connect (test_2,localhost,test_2,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 # Wait until exchange has been done.
 let $wait_condition= SELECT count(a)>0 FROM tp WHERE a=1;
 --source include/wait_condition.inc

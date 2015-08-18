@@ -1,19 +1,19 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-call mtr.add_suppression(".* since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it uses a system function that may return a different value on the slave. Statement: insert into t2 set data=repeat.*'a', @act_size.*");
-call mtr.add_suppression(".* since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it uses a system function that may return a different value on the slave. Statement: insert into t1 values.* NAME_CONST.*'n',.*, @data .*");
-call mtr.add_suppression("Slave SQL.*Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+call mtr.add_suppression(".* since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it uses a system function that may return a different value on the replica. Statement: insert into t2 set data=repeat.*'a', @act_size.*");
+call mtr.add_suppression(".* since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it uses a system function that may return a different value on the replica. Statement: insert into t1 values.* NAME_CONST.*'n',.*, @data .*");
+call mtr.add_suppression("Replica SQL.*Request to stop replica SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
 set @save_binlog_cache_size = @@global.binlog_cache_size;
 set @save_binlog_checksum = @@global.binlog_checksum;
-set @save_master_verify_checksum = @@global.master_verify_checksum;
+set @save_primary_verify_checksum = @@global.primary_verify_checksum;
 set @@global.binlog_cache_size = 4096;
 set @@global.binlog_checksum = CRC32;
-set @@global.master_verify_checksum = 1;
-include/stop_slave.inc
-include/start_slave.inc
+set @@global.primary_verify_checksum = 1;
+include/stop_replica.inc
+include/start_replica.inc
 flush status;
 show status like "binlog_cache_use";
 Variable_name	Value
@@ -41,12 +41,12 @@ Binlog_cache_use	1
 show status like "binlog_cache_disk_use";
 Variable_name	Value
 Binlog_cache_disk_use	1
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
 begin;
 delete from t1;
 commit;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 flush status;
 create table t2(a int auto_increment primary key, data VARCHAR(12288)) ENGINE=Innodb;
 show status like "binlog_cache_use";
@@ -56,12 +56,12 @@ Binlog_cache_use	1
 show status like "binlog_cache_disk_use";
 Variable_name	Value
 Binlog_cache_disk_use	1
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t2, slave:t2]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t2, replica:t2]
 begin;
 delete from t2;
 commit;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 flush status;
 create table t3(a int auto_increment primary key, data VARCHAR(8192)) engine=innodb;
 show status like "binlog_cache_use";
@@ -71,12 +71,12 @@ Binlog_cache_use	1
 show status like "binlog_cache_disk_use";
 Variable_name	Value
 Binlog_cache_disk_use	1
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t3, slave:t3]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t3, replica:t3]
 begin;
 delete from t3;
 commit;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 flush status;
 create procedure test.p1 (n int) 
 begin
@@ -111,10 +111,10 @@ Binlog_cache_use	1
 show status like "binlog_cache_disk_use";
 Variable_name	Value
 Binlog_cache_disk_use	1
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:t1, slave:t1]
-include/diff_tables.inc [master:t2, slave:t2]
-include/diff_tables.inc [master:t3, slave:t3]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:t1, replica:t1]
+include/diff_tables.inc [primary:t2, replica:t2]
+include/diff_tables.inc [primary:t3, replica:t3]
 begin;
 delete from t1;
 delete from t2;
@@ -123,7 +123,7 @@ commit;
 drop table t1, t2, t3;
 set @@global.binlog_cache_size = @save_binlog_cache_size;
 set @@global.binlog_checksum = @save_binlog_checksum;
-set @@global.master_verify_checksum = @save_master_verify_checksum;
+set @@global.primary_verify_checksum = @save_primary_verify_checksum;
 drop procedure test.p_init;
 drop procedure test.p1;
 include/rpl_end.inc

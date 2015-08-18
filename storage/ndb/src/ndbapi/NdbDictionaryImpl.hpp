@@ -645,7 +645,7 @@ public:
   NdbDictInterface(Tx& tx, NdbError& err, int& warn) :
     m_tx(tx), m_error(err), m_warn(warn) {
     m_reference = 0;
-    m_masterNodeId = 0;
+    m_primaryNodeId = 0;
     m_impl = 0;
   }
   ~NdbDictInterface();
@@ -655,7 +655,7 @@ public:
   
   // To abstract the stuff thats made in all create/drop/lists below
   int dictSignal(NdbApiSignal* signal, LinearSectionPtr ptr[3], int secs,
-		 int nodeId, // -1 any, 0 = master, >1 = specified
+		 int nodeId, // -1 any, 0 = primary, >1 = specified
 		 Uint32 waitsignaltype,
 		 int timeout, Uint32 RETRIES,
 		 const int *errcodes = 0, int temporaryMask = 0);
@@ -765,7 +765,7 @@ public:
   int & m_warn;
 private:
   Uint32 m_reference;
-  Uint32 m_masterNodeId;
+  Uint32 m_primaryNodeId;
 
   class NdbImpl * m_impl;
   

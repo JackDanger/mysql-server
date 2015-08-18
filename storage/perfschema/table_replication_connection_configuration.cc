@@ -25,7 +25,7 @@
 #include "table_replication_connection_configuration.h"
 #include "pfs_instr_class.h"
 #include "pfs_instr.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_info.h"
 #include "rpl_rli.h"
 #include "rpl_mi.h"
@@ -183,7 +183,7 @@ ha_rows table_replication_connection_configuration::get_row_count()
 
 int table_replication_connection_configuration::rnd_next(void)
 {
-  Master_info *mi;
+  Primary_info *mi;
 
   mysql_mutex_lock(&LOCK_msr_map);
 
@@ -209,7 +209,7 @@ int table_replication_connection_configuration::rnd_next(void)
 
 int table_replication_connection_configuration::rnd_pos(const void *pos)
 {
-  Master_info *mi;
+  Primary_info *mi;
 
   mysql_mutex_lock(&LOCK_msr_map);
 
@@ -227,7 +227,7 @@ int table_replication_connection_configuration::rnd_pos(const void *pos)
   return HA_ERR_RECORD_DELETED;
 }
 
-void table_replication_connection_configuration::make_row(Master_info *mi)
+void table_replication_connection_configuration::make_row(Primary_info *mi)
 {
   char * temp_store;
 

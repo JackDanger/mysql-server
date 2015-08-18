@@ -148,7 +148,7 @@ static bool reconstruct_definer_clause(MEM_ROOT *mem_root,
     - on the other hand, the binlog contains statements in the user order (as
       the user executes them). Thus, it is important to preserve
       FOLLOWS/PRECEDES clause if the user has specified it so that the trigger
-      execution order on master and slave will be the same.
+      execution order on primary and replica will be the same.
 
   Both forms of CREATE TRIGGER must have the DEFINER clause if the user
   specified it (it is a SUID trigger). The DEFINER clause can not be reused
@@ -634,7 +634,7 @@ bool Trigger::parse(THD *thd)
   /*
     Set some SP attributes.
 
-    NOTE: sp_head::set_info() is required on slave.
+    NOTE: sp_head::set_info() is required on replica.
   */
 
   m_sp->set_info(0, // CREATED timestamp (not used for triggers)

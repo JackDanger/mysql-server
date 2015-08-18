@@ -675,10 +675,10 @@ void transaction_cache_free();
 
 
 /**
-  This is a specific to "slave" applier collection of standard cleanup
+  This is a specific to "replica" applier collection of standard cleanup
   actions to reset XA transaction state at the end of XA prepare rather than
   to do it at the transaction commit, see @c ha_commit_one_phase.
-  THD of the slave applier is dissociated from a transaction object in engine
+  THD of the replica applier is dissociated from a transaction object in engine
   that continues to exist there.
 
   @param  THD current thread

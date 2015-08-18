@@ -22,7 +22,7 @@
 
 
 /**
- * This signal is sent from the non-master DIH to master DIHs
+ * This signal is sent from the non-primary DIH to primary DIHs
  *
  */
 class InvalidateNodeLCPConf {

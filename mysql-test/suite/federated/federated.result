@@ -1,8 +1,8 @@
 CREATE DATABASE federated;
 CREATE DATABASE federated;
-SET @OLD_MASTER_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
+SET @OLD_PRIMARY_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
 SET @@GLOBAL.CONCURRENT_INSERT= 0;
-SET @OLD_SLAVE_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
+SET @OLD_REPLICA_CONCURRENT_INSERT= @@GLOBAL.CONCURRENT_INSERT;
 SET @@GLOBAL.CONCURRENT_INSERT= 0;
 DROP TABLE IF EXISTS federated.t1;
 Warnings:
@@ -46,7 +46,7 @@ CREATE TABLE federated.t1 (
 `name` varchar(32) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t3';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t3';
 SELECT * FROM federated.t1;
 ERROR HY000: The foreign data source you are trying to reference does not exist. Data source error:  error: 1146  'Table 'federated.t3' doesn't exist'
 DROP TABLE federated.t1;
@@ -58,7 +58,7 @@ CREATE TABLE federated.t1 (
 `name` varchar(32) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://user:pass@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://user:pass@127.0.0.1:REPLICA_PORT/federated/t1';
 SELECT * FROM federated.t1;
 ERROR HY000: Unable to connect to foreign data source: Access denied for user 'user'@'localhost' (using password: YES)
 DROP TABLE federated.t1;
@@ -70,7 +70,7 @@ CREATE TABLE federated.t1 (
 `name` varchar(32) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (id, name) VALUES (1, 'foo');
 INSERT INTO federated.t1 (id, name) VALUES (2, 'fee');
 INSERT INTO federated.t1 (id, `group`) VALUES (3, 42);
@@ -93,13 +93,13 @@ CREATE TABLE federated.t2 (
 `name` varchar(32) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 SHOW CREATE TABLE federated.t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
   `id` int(20) NOT NULL,
   `name` varchar(32) NOT NULL DEFAULT ''
-) ENGINE=FEDERATED DEFAULT CHARSET=latin1 CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1'
+) ENGINE=FEDERATED DEFAULT CHARSET=latin1 CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1'
 INSERT INTO federated.t2 (id, name) VALUES (1, 'foo');
 INSERT INTO federated.t2 (id, name) VALUES (2, 'fee');
 SELECT * FROM federated.t2 ORDER BY id, name;
@@ -124,7 +124,7 @@ CREATE TABLE federated.t1 (
 `name` varchar(32) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1%';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1%';
 INSERT INTO federated.t1 (id, name) VALUES (1, 'foo');
 INSERT INTO federated.t1 (id, name) VALUES (2, 'fee');
 SELECT * FROM federated.t1 ORDER BY id,name;
@@ -138,7 +138,7 @@ CREATE TABLE federated.`t1%` (
 `name` varchar(32) NOT NULL default ''
     )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1%';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1%';
 INSERT INTO federated.`t1%` (id, name) VALUES (1, 'foo');
 INSERT INTO federated.`t1%` (id, name) VALUES (2, 'fee');
 SELECT * FROM federated.`t1%` ORDER BY id, name;
@@ -165,7 +165,7 @@ CREATE TABLE federated.t1 (
 `created` datetime default '2004-04-04 04:04:04',
 PRIMARY KEY  (`id`))
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (name, other) VALUES ('First Name', 11111);
 INSERT INTO federated.t1 (name, other) VALUES ('Second Name', 22222);
 INSERT INTO federated.t1 (name, other) VALUES ('Third Name', 33333);
@@ -305,7 +305,7 @@ key name(`name`),
 key other(`other`),
 key created(`created`))
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (name, other, created)
 VALUES ('First Name', 11111, '2004-01-01 01:01:01');
 INSERT INTO federated.t1 (name, other, created)
@@ -445,7 +445,7 @@ CREATE TABLE federated.t1 (
 PRIMARY KEY  (`id`) )
 ENGINE="FEDERATED"
   DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (name, other) VALUES ('First Name', 11111);
 INSERT INTO federated.t1 (name, other) VALUES ('Second Name', NULL);
 INSERT INTO federated.t1 (name, other) VALUES ('Third Name', 33333);
@@ -510,7 +510,7 @@ PRIMARY KEY  (`id`),
 KEY nameoth (name, other))
 ENGINE="FEDERATED" DEFAULT
 CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (name, other) VALUES ('First Name', '1111');
 INSERT INTO federated.t1 (name, other) VALUES ('Second Name', '2222');
 INSERT INTO federated.t1 (name, other) VALUES ('Third Name', '3333');
@@ -550,7 +550,7 @@ KEY bincol(bincol),
 KEY floatval(floatval))
 ENGINE="FEDERATED"
   DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (name, bincol, floatval, other) 
 VALUES ('first', 0x65, 11.11, 1111);
 INSERT INTO federated.t1 (name, bincol, floatval, other)
@@ -615,7 +615,7 @@ key col2(col2),
 key col3(col3),
 key col4(col4))
 ENGINE="FEDERATED"
-  CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+  CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (col1, col2, col3, col4) 
 VALUES (1, 'one One', 11, 1111);
 INSERT INTO federated.t1 (col1, col2, col3, col4) 
@@ -824,7 +824,7 @@ key 3key(`col2`,`col3`,`col4`),
 key 2key (`col3`,`col4`),
 key col4(col4))
 ENGINE="FEDERATED"
-  CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+  CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (col1, col2, col3, col4) 
 VALUES ('aaaa', 'aaaaaaaaaaaaaaaaaaa', 'ababababab', 'acacacacacacacac');
 INSERT INTO federated.t1 (col1, col2, col3, col4) 
@@ -924,7 +924,7 @@ CREATE TABLE federated.t1 (
 primary key (`col1`, `col2`, `col3`))
 ENGINE="FEDERATED"
   DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 VALUES ('a00', '110', 'cc0');
 INSERT INTO federated.t1 VALUES ('aaa', '111', 'ccc');
 INSERT INTO federated.t1 VALUES ('bbb', '222', 'yyy');
@@ -959,7 +959,7 @@ CREATE TABLE federated.t1 (
 `other` int)
 ENGINE="FEDERATED"
 DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 values (NULL, NULL, NULL, NULL);
 INSERT INTO federated.t1 values ();
 INSERT INTO federated.t1 (id) VALUES (1);
@@ -1003,7 +1003,7 @@ CREATE TABLE federated.t1 (
 PRIMARY KEY (blurb_id))
 ENGINE="FEDERATED"
   DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 Warnings:
 Warning	1101	BLOB/TEXT column 'blurb' can't have a default value
 SET sql_mode = default;
@@ -1032,7 +1032,7 @@ PRIMARY KEY (a),
 KEY (b))
 ENGINE="FEDERATED"
   DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 VALUES (3,3,3),(1,1,1),(2,2,2),(4,4,4);
 DROP TABLE IF EXISTS federated.t1;
 CREATE TABLE federated.t1 (i1 int, i2 int, i3 int, i4 int, i5 int, i6 int, i7 int, i8
@@ -1291,7 +1291,7 @@ int, i999 int, i1000 int, b varchar(256))
 row_format=dynamic
 ENGINE="FEDERATED"
 DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1
 values (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1361,7 +1361,7 @@ PRIMARY KEY(id),
 index(code),
 index(fileguts(10)))
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (code, fileguts, creation_date) VALUES ('ASDFWERQWETWETAWETA', '*()w*09*$()*#)(*09*^90*d)(*s()d8g)(s*ned)(*)(s*d)(*hn(d*)(*sbn)D((#$*(#*%%&#&^$#&#&#&#&^&#*&*#$*&^*(&#(&Q*&&(*!&!(*&*(#&*(%&#<S-F8>*<S-F8><S-F8><S-F8>#<S-F8>#<S-F8>#<S-F8>[[', '2003-03-03 03:03:03');
 INSERT INTO federated.t1 (code, fileguts, creation_date) VALUES ('DEUEUEUEUEUEUEUEUEU', '*()w*09*$()*#)(*09*^90*d)(*s()d8g)(s*ned)(*)(s*d)(*hn(d*)(*sbn)D((#$*(#*%%&#&^$#&#&#&#&^&#*&*#$*&^*(&#(&Q*&&(*!&!(*&*(#&*(%&#<S-F8>*<S-F8><S-F8><S-F8>#<S-F8>#<S-F8>#<S-F8>[[', '2004-04-04 04:04:04');
 INSERT INTO federated.t1 (code, fileguts, creation_date) VALUES ('DEUEUEUEUEUEUEUEUEU', 'jimbob', '2004-04-04 04:04:04');
@@ -1379,7 +1379,7 @@ DROP TABLE IF EXISTS federated.t1;
 CREATE TABLE federated.t1 (
 `a` BLOB)
 ENGINE="FEDERATED"
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 VALUES (0x00);
 INSERT INTO federated.t1 VALUES (0x0001);
 INSERT INTO federated.t1 VALUES (0x0100);
@@ -1417,7 +1417,7 @@ CREATE TABLE federated.t1 (
 PRIMARY KEY  (`id`),
 KEY (country_id) )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 (name, country_id, other) VALUES ('Kumar', 1, 11111);
 INSERT INTO federated.t1 (name, country_id, other) VALUES ('Lenz', 2, 22222);
 INSERT INTO federated.t1 (name, country_id, other) VALUES ('Marizio', 3, 33333);
@@ -1507,7 +1507,7 @@ CREATE TABLE federated.alter_me (
 `name` varchar(10) default NULL,
 PRIMARY KEY (`id`)
 ) ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/normal_table';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/normal_table';
 INSERT INTO federated.alter_me (id, name) VALUES (1, 'Monty');
 INSERT INTO federated.alter_me (id, name) VALUES (2, 'David');
 SELECT * FROM federated.alter_me;
@@ -1530,7 +1530,7 @@ DROP TABLE IF EXISTS federated.t1;
 CREATE TABLE federated.t1 (
 `bitty` bit(3)
 ) ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 VALUES (b'001');
 INSERT INTO federated.t1 VALUES (b'010');
 INSERT INTO federated.t1 VALUES (b'011');
@@ -1563,7 +1563,7 @@ CREATE TABLE federated.t1 (
 PRIMARY KEY  (`id`)
 )
 ENGINE="FEDERATED" DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 INSERT INTO federated.t1 VALUES ();
 SELECT LAST_INSERT_ID();
 LAST_INSERT_ID()
@@ -1618,7 +1618,7 @@ KEY `fld_parentid` (`fld_parentid`),
 KEY `fld_delt` (`fld_delt`),
 KEY `fld_cid` (`fld_cid`)
 ) ENGINE=FEDERATED
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/bug_17377_table';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/bug_17377_table';
 select * from federated.t1 where fld_parentid=0 and fld_delt=0
 order by fld_name;
 fld_cid	fld_name	fld_parentid	fld_delt
@@ -1659,7 +1659,7 @@ CREATE TABLE federated.test_remote (
 `val2` varchar(255) NOT NULL,
 PRIMARY KEY  (`id`)
 ) ENGINE=FEDERATED DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/test';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/test';
 insert into federated.test_remote select * from federated.test_local;
 select * from federated.test_remote;
 id	val1	val2
@@ -1678,7 +1678,7 @@ drop table if exists federated.t1;
 create table federated.t1 (a int, b int, c int);
 drop table if exists federated.t1;
 drop table if exists federated.t2;
-create table federated.t1 (a int,  b int, c int) engine=federated connection='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+create table federated.t1 (a int,  b int, c int) engine=federated connection='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 create trigger federated.t1_bi before insert on federated.t1 for each row set new.c= new.a * new.b;
 create table federated.t2 (a int, b int);
 insert into federated.t2 values (13, 17), (19, 23);
@@ -1704,8 +1704,8 @@ drop tables federated.t1, federated.t2;
 drop table federated.t1;
 create table federated.t1 (i1 int, i2 int, i3 int);
 create table federated.t2 (id int, c1 varchar(20), c2 varchar(20));
-create table federated.t1 (i1 int, i2 int, i3 int) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
-create table federated.t2 (id int, c1 varchar(20), c2 varchar(20)) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t2';
+create table federated.t1 (i1 int, i2 int, i3 int) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
+create table federated.t2 (id int, c1 varchar(20), c2 varchar(20)) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t2';
 insert into federated.t1 values (1,5,10),(3,7,12),(4,5,2),(9,10,15),(2,2,2);
 insert into federated.t2 values (9,"abc","def"),(5,"opq","lmn"),(2,"test t","t test");
 select * from federated.t1 order by i1;
@@ -1747,8 +1747,8 @@ drop table federated.t1, federated.t2;
 drop table federated.t1, federated.t2;
 create table federated.t1 (i1 int, i2 int, i3 int, primary key (i1));
 create table federated.t2 (id int, c1 varchar(20), c2 varchar(20), primary key (id));
-create table federated.t1 (i1 int auto_increment not null, i2 int, i3 int, primary key (i1)) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
-create table federated.t2 (id int auto_increment not null, c1 varchar(20), c2 varchar(20), primary key(id)) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t2';
+create table federated.t1 (i1 int auto_increment not null, i2 int, i3 int, primary key (i1)) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
+create table federated.t2 (id int auto_increment not null, c1 varchar(20), c2 varchar(20), primary key(id)) ENGINE=FEDERATED CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t2';
 insert into federated.t1 values (1,5,10),(3,7,12),(4,5,2),(9,10,15),(2,2,2);
 insert into federated.t2 values (9,"abc","def"),(5,"opq","lmn"),(2,"test t","t test");
 select * from federated.t1 order by i1;
@@ -1791,7 +1791,7 @@ drop table federated.t1, federated.t2;
 create table t1 (id int not null auto_increment primary key, val int);
 create table t1
 (id int not null auto_increment primary key, val int) engine=federated
-connection='mysql://root@127.0.0.1:SLAVE_PORT/test/t1';
+connection='mysql://root@127.0.0.1:REPLICA_PORT/test/t1';
 insert into t1 values (1,0),(2,0);
 update t1 set val = NULL where id = 1;
 select * from t1;
@@ -1807,7 +1807,7 @@ drop table t1;
 create table t1 (a longblob not null);
 create table t1
 (a longblob not null) engine=federated
-connection='mysql://root@127.0.0.1:SLAVE_PORT/test/t1';
+connection='mysql://root@127.0.0.1:REPLICA_PORT/test/t1';
 insert into t1 values (repeat('a',5000));
 select length(a) from t1;
 length(a)
@@ -1834,14 +1834,14 @@ c varchar(30),
 primary key (i,j),
 unique key (i, c))
 engine = federated
-connection='mysql://root@127.0.0.1:SLAVE_PORT/federated/test';
+connection='mysql://root@127.0.0.1:REPLICA_PORT/federated/test';
 create table federated.test2 (
 i int default null,
 j int not null,
 c varchar(30),
 key (i))
 engine = federated
-connection='mysql://root@127.0.0.1:SLAVE_PORT/federated/test';
+connection='mysql://root@127.0.0.1:REPLICA_PORT/federated/test';
 drop table federated.test1, federated.test2;
 drop table federated.test;
 set names utf8;
@@ -1852,7 +1852,7 @@ hex(a)
 6DC3A56E6164
 create table federated.t1 (a varchar(64))
 ENGINE=FEDERATED 
-connection='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1'
+connection='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1'
 DEFAULT CHARSET=utf8;
 set names utf8;
 select hex(a) from federated.t1;
@@ -1888,7 +1888,7 @@ PRIMARY KEY (categoryId),
 UNIQUE KEY idx_unique_category_categoryName (domainId, categoryName),
 KEY idx_category_domainId (domainId)
 ) ENGINE=FEDERATED DEFAULT CHARSET=latin1
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 insert into federated.t1 (domainId, categoryName) values ( '1231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231231  300', '1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345  250');
 insert into federated.t1 (domainId, categoryName) values ( '12312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312312  301', '12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456  250');
 insert into federated.t1 (domainId, categoryName) values ('a', 'b');
@@ -1913,7 +1913,7 @@ create table federated.t1 (a int primary key, b varchar(64))
 DEFAULT CHARSET=utf8;
 create table federated.t1 (a int primary key, b varchar(64))
 ENGINE=FEDERATED
-connection='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1'
+connection='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1'
   DEFAULT CHARSET=utf8;
 insert ignore into federated.t1 values (1,"Larry"), (2,"Curly"), (1,"Moe");
 select * from federated.t1;
@@ -1937,7 +1937,7 @@ create table federated.t1 (a int primary key, b varchar(64))
 DEFAULT CHARSET=utf8;
 create table federated.t1 (a int primary key, b varchar(64))
 ENGINE=FEDERATED
-connection='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1'
+connection='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1'
   DEFAULT CHARSET=utf8;
 insert into federated.t1 values (1,"Larry"), (2,"Curly"), (1,"Moe")
 on duplicate key update a=a+100;
@@ -1956,7 +1956,7 @@ Test that self-references work
 create table federated.t1 (a int primary key);
 create table federated.t2 (a int primary key)
 ENGINE=FEDERATED
-connection='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+connection='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 insert into federated.t1 (a) values (1);
 select * from federated.t2;
 a
@@ -1965,7 +1965,7 @@ drop table federated.t1, federated.t2;
 CREATE TABLE federated.t1 (a INT PRIMARY KEY) DEFAULT CHARSET=utf8;
 CREATE TABLE federated.t1 (a INT PRIMARY KEY)
 ENGINE=FEDERATED
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1'
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1'
   DEFAULT CHARSET=utf8;
 SELECT transactions FROM information_schema.engines WHERE engine="FEDERATED";
 transactions
@@ -1988,7 +1988,7 @@ drop view if exists v1;
 create view v1 as select a from t1;
 create table t1
 (a varchar(256)) engine=federated
-connection='mysql://root@127.0.0.1:SLAVE_PORT/test/v1';
+connection='mysql://root@127.0.0.1:REPLICA_PORT/test/v1';
 select 1 from t1 order by a;
 1
 1
@@ -2097,7 +2097,7 @@ drop view v1;
 CREATE TABLE t1 (a INT, b INT, KEY(a,b));
 INSERT INTO t1 VALUES(NULL,1),(1,NULL),(NULL,NULL),(1,1),(2,2);
 CREATE TABLE t1 (a INT, b INT, KEY(a,b)) ENGINE=federated
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/test/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/test/t1';
 SELECT * FROM t1 WHERE a IS NULL;
 a	b
 NULL	NULL
@@ -2124,7 +2124,7 @@ CREATE TABLE t1 (a LONGBLOB, b LONGBLOB);
 INSERT INTO t1 VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaa', NULL);
 CREATE TABLE t1
 (a LONGBLOB, b LONGBLOB) ENGINE=FEDERATED
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/test/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/test/t1';
 CHECKSUM TABLE t1;
 Table	Checksum
 test.t1	2465757603
@@ -2134,7 +2134,7 @@ CREATE TABLE t1 (a TEXT, b TEXT, KEY(b(1)));
 INSERT INTO t1 VALUES (NULL, NULL), (NULL, NULL), (NULL, NULL), (NULL, NULL);
 CREATE TABLE t1
 (a TEXT, b TEXT, KEY(b(1))) ENGINE=FEDERATED
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/test/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/test/t1';
 SELECT t1.a FROM t1, t1 as t2 WHERE t2.b NOT LIKE t1.b;
 a
 DROP TABLE t1;
@@ -2142,22 +2142,22 @@ DROP TABLE t1;
 #
 # BUG#21360 - mysqldump error on federated tables
 #
-#Switch to Connection Slave
+#Switch to Connection Replica
 CREATE TABLE t1(id VARCHAR(20) NOT NULL, PRIMARY KEY(id));
 INSERT INTO  t1 VALUES ('text1'),('text2'),('text3'),('text4');
-#Switch to Connection Master
+#Switch to Connection Primary
 CREATE TABLE t1(id VARCHAR(20) NOT NULL, PRIMARY KEY(id)) ENGINE=FEDERATED 
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/test/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/test/t1';
 # Dump table t1 using mysqldump tool
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `t1` (
   `id` varchar(20) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=FEDERATED DEFAULT CHARSET=latin1 CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/test/t1';
+) ENGINE=FEDERATED DEFAULT CHARSET=latin1 CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/test/t1';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE t1;
-#Switch to Connection Slave
+#Switch to Connection Replica
 DROP TABLE t1;
 End of 5.0 tests
 create server 's1' foreign data wrapper 'mysql' options (port 3306);
@@ -2168,7 +2168,7 @@ drop server 's1';
 CREATE TABLE federated.t1(a TEXT);
 INSERT INTO federated.t1 VALUES('abc'), ('gh'), ('f'), ('ijk'), ('de');
 CREATE TABLE federated.t1(a TEXT) ENGINE=FEDERATED
-CONNECTION='mysql://root@127.0.0.1:SLAVE_PORT/federated/t1';
+CONNECTION='mysql://root@127.0.0.1:REPLICA_PORT/federated/t1';
 SELECT * FROM federated.t1 ORDER BY A;
 a
 abc
@@ -2190,19 +2190,19 @@ End of 5.1 tests
 # BUG#11751864 - FEDERATED DOESN'T DISTINGUISH BETWEEN DELETE FROM
 #                 T1 AND TRUNCATE T1 NOT NULL NOT SPECIFIED
 # BUG#17564775 - FEDERATED DOES NOT SUPPORT DELETE IGNORE
-connection master;
+connection primary;
 CREATE TABLE federated.t1 (a INT PRIMARY KEY, b varchar(64)) ENGINE=InnoDB;
-connection slave;
+connection replica;
 CREATE TABLE federated.t2 (a INT PRIMARY KEY, b varchar(64))
 ENGINE=FEDERATED
-connection='mysql://root@127.0.0.1:MASTER_PORT/federated/t1'
+connection='mysql://root@127.0.0.1:PRIMARY_PORT/federated/t1'
   DEFAULT CHARSET=utf8;
-connection master;
+connection primary;
 INSERT INTO federated.t1 VALUES (1,"Larry"), (2,"Curly"), (3,"Moe");
 CREATE TABLE federated.t1_child(a int);
 ALTER TABLE federated.t1_child ADD CONSTRAINT dc FOREIGN KEY (a) REFERENCES federated.t1(a);
 INSERT INTO federated.t1_child VALUES (1), (3);
-connection slave;
+connection replica;
 SELECT * FROM federated.t2;
 a	b
 1	Larry
@@ -2242,11 +2242,11 @@ a	b
 3	Moe
 6	James
 DROP TABLE federated.t2;
-connection master;
+connection primary;
 DROP TABLE federated.t1_child;
 DROP TABLE federated.t1;
-SET @@GLOBAL.CONCURRENT_INSERT= @OLD_MASTER_CONCURRENT_INSERT;
-SET @@GLOBAL.CONCURRENT_INSERT= @OLD_SLAVE_CONCURRENT_INSERT;
+SET @@GLOBAL.CONCURRENT_INSERT= @OLD_PRIMARY_CONCURRENT_INSERT;
+SET @@GLOBAL.CONCURRENT_INSERT= @OLD_REPLICA_CONCURRENT_INSERT;
 DROP TABLE IF EXISTS federated.t1;
 DROP DATABASE federated;
 DROP TABLE IF EXISTS federated.t1;

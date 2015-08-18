@@ -46,7 +46,7 @@ connection default;
 --echo # existing connection
 --echo #
 
-# Master connection: Update the value of the row_evaluate_cost
+# Primary connection: Update the value of the row_evaluate_cost
 UPDATE mysql.server_cost
 SET cost_value=0.4
 WHERE cost_name="row_evaluate_cost";
@@ -74,7 +74,7 @@ SET cost_value=DEFAULT;
 --echo # Test effect of changing the row_evalute_cost
 --echo #
 
-# Master connection: Update the value of the row_evaluate_cost
+# Primary connection: Update the value of the row_evaluate_cost
 UPDATE mysql.server_cost
 SET cost_value=0.4
 WHERE cost_name="row_evaluate_cost";
@@ -107,7 +107,7 @@ SET cost_value=DEFAULT;
 let query= SELECT DISTINCT(i1) FROM t1;
 eval EXPLAIN FORMAT=JSON $query;
 
-# Master connection: Update the value of the key_compare_cost
+# Primary connection: Update the value of the key_compare_cost
 UPDATE mysql.server_cost
 SET cost_value=0.2
 WHERE cost_name="key_compare_cost";
@@ -141,7 +141,7 @@ SELECT * FROM t1
 WHERE i1 IN (SELECT i1 FROM t1);
 eval EXPLAIN FORMAT=JSON $query;
 
-# Master connection:
+# Primary connection:
 # Update the value of the memory_temptable_create_cost from default (2.0)
 # to 10.0 (up by 8.0)
 UPDATE mysql.server_cost
@@ -177,7 +177,7 @@ SELECT * FROM t1
 WHERE i1 IN (SELECT i1 FROM t1);
 eval EXPLAIN FORMAT=JSON $query;
 
-# Master connection:
+# Primary connection:
 # Update the value of the memory_temptable_row_cost from default (0.2)
 # to 0.4
 UPDATE mysql.server_cost
@@ -221,7 +221,7 @@ SELECT * FROM t1
 WHERE c1 IN (SELECT c1 FROM t1);
 eval EXPLAIN FORMAT=JSON $query;
 
-# Master connection:
+# Primary connection:
 # Update the value of the disk_temptable_create_cost from default (40.0)
 # to 80.0
 UPDATE mysql.server_cost
@@ -259,7 +259,7 @@ SELECT * FROM t1
 WHERE c1 IN (SELECT c1 FROM t1);
 eval EXPLAIN FORMAT=JSON $query;
 
-# Master connection:
+# Primary connection:
 # Update the value of the disk_temptable_row_cost from default (1.0)
 # to 2.0
 UPDATE mysql.server_cost
@@ -299,7 +299,7 @@ set max_heap_table_size= @max_heap_table_size_save;
 let query= SELECT * FROM t1;
 eval EXPLAIN FORMAT=JSON $query;
 
-# Master connection: Update the value of the memory_block_read_cost
+# Primary connection: Update the value of the memory_block_read_cost
 UPDATE mysql.engine_cost
 SET cost_value=2.0
 WHERE cost_name="memory_block_read_cost";

@@ -1,15 +1,15 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET GLOBAL DEBUG ='+d,set_commit_parent_100';
 CREATE TABLE t1 (a int primary key) engine=innodb;
 CREATE TABLE t2 (a int primary key) engine=innodb;
 CREATE TABLE t3 (a int primary key) engine=innodb;
 CREATE TABLE t4 (a int primary key) engine=innodb;
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
 SET GLOBAL DEBUG ='+d,crash_in_a_worker';
 SET GLOBAL DEBUG ='-d,set_commit_parent_100';
 SET GLOBAL DEBUG ='+d,set_commit_parent_150';
@@ -20,13 +20,13 @@ UPDATE t2 SET a= a+1 WHERE a=3;
 COMMIT;
 INSERT INTO t3 values (1),(2),(3);
 INSERT INTO t4 values (1),(2),(3);
-START SLAVE;
+START REPLICA;
 include/rpl_start_server.inc [server_number=2]
-# Reconnecting to the slave server
-START SLAVE UNTIL SQL_AFTER_MTS_GAPS;
+# Reconnecting to the replica server
+START REPLICA UNTIL SQL_AFTER_MTS_GAPS;
 CREATE TABLE t5 (a int);
-include/wait_for_slave_sql_to_stop.inc
-include/start_slave.inc
+include/wait_for_replica_sql_to_stop.inc
+include/start_replica.inc
 DROP TABLES t1, t2, t3, t4, t5;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

@@ -749,5 +749,5 @@ SELECT inet6_ntoa(@nip6);
 inet6_ntoa(@nip6)
 NULL
 =============Test of '::1' ========================
-connect (con1, ::1, root, , test, MASTER_MYPORT,);
+connect (con1, ::1, root, , test, PRIMARY_MYPORT,);
 Got one of the listed errors

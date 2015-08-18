@@ -1,7 +1,7 @@
 source include/have_memcached_plugin.inc;
 source include/not_valgrind.inc;
 
-# Test of master with memcached access and a slave without memcached, 
+# Test of primary with memcached access and a replica without memcached, 
 # both with binlog-format=mixed.
 #
 source include/not_windows.inc;
@@ -32,7 +32,7 @@ INSERT INTO containers VALUES ("desc_t1", "test", "t1",
 			       "c1", "c2,c21", "c3", "c4", "c5", "PRIMARY");
 
 --disable_warnings
-source include/master-slave.inc;
+source include/primary-replica.inc;
 --enable_warnings
 
 USE test;
@@ -81,15 +81,15 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 SHOW CREATE TABLE t1;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -106,14 +106,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -130,14 +130,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -154,14 +154,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -178,14 +178,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -206,14 +206,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -234,16 +234,16 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 DROP TABLE t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 source include/rpl_end.inc;
 
 connection default; 

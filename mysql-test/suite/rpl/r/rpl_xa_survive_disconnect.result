@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 call mtr.add_suppression("Found 2 prepared XA transactions");
 CREATE VIEW v_processlist  as SELECT * FROM performance_schema.threads where type = 'FOREGROUND';
 CREATE DATABASE d1;
@@ -28,32 +28,32 @@ XA COMMIT '1-row';
 XA COMMIT '1-stmt';
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `mtr`; INSERT INTO test_suppressions (pattern) VALUES ( NAME_CONST('pattern',_latin1'Found 2 prepared XA transactions' COLLATE 'latin1_swedish_ci'))
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_processlist` AS SELECT * FROM performance_schema.threads where type = 'FOREGROUND'
-master-bin.000001	#	Query	#	#	CREATE DATABASE d1
-master-bin.000001	#	Query	#	#	CREATE DATABASE d2
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE d1.t (a INT) ENGINE=innodb
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE d2.t (a INT) ENGINE=innodb
-master-bin.000001	#	Query	#	#	XA START X'312d73746d74',X'',1
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO d1.t VALUES (1)
-master-bin.000001	#	Query	#	#	XA END X'312d73746d74',X'',1
-master-bin.000001	#	XA_prepare	#	#	XA PREPARE X'312d73746d74',X'',1
-master-bin.000001	#	Query	#	#	XA START X'312d726f77',X'',1
-master-bin.000001	#	Table_map	#	#	table_id: # (d2.t)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	XA END X'312d726f77',X'',1
-master-bin.000001	#	XA_prepare	#	#	XA PREPARE X'312d726f77',X'',1
-master-bin.000001	#	Query	#	#	XA START X'32',X'',1
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO d1.t VALUES (2)
-master-bin.000001	#	Query	#	#	XA END X'32',X'',1
-master-bin.000001	#	XA_prepare	#	#	XA PREPARE X'32',X'',1
-master-bin.000001	#	Query	#	#	XA COMMIT X'32',X'',1
-master-bin.000001	#	Query	#	#	XA COMMIT X'312d726f77',X'',1
-master-bin.000001	#	Query	#	#	XA COMMIT X'312d73746d74',X'',1
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `mtr`; INSERT INTO test_suppressions (pattern) VALUES ( NAME_CONST('pattern',_latin1'Found 2 prepared XA transactions' COLLATE 'latin1_swedish_ci'))
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_processlist` AS SELECT * FROM performance_schema.threads where type = 'FOREGROUND'
+primary-bin.000001	#	Query	#	#	CREATE DATABASE d1
+primary-bin.000001	#	Query	#	#	CREATE DATABASE d2
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE d1.t (a INT) ENGINE=innodb
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE d2.t (a INT) ENGINE=innodb
+primary-bin.000001	#	Query	#	#	XA START X'312d73746d74',X'',1
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO d1.t VALUES (1)
+primary-bin.000001	#	Query	#	#	XA END X'312d73746d74',X'',1
+primary-bin.000001	#	XA_prepare	#	#	XA PREPARE X'312d73746d74',X'',1
+primary-bin.000001	#	Query	#	#	XA START X'312d726f77',X'',1
+primary-bin.000001	#	Table_map	#	#	table_id: # (d2.t)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	XA END X'312d726f77',X'',1
+primary-bin.000001	#	XA_prepare	#	#	XA PREPARE X'312d726f77',X'',1
+primary-bin.000001	#	Query	#	#	XA START X'32',X'',1
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO d1.t VALUES (2)
+primary-bin.000001	#	Query	#	#	XA END X'32',X'',1
+primary-bin.000001	#	XA_prepare	#	#	XA PREPARE X'32',X'',1
+primary-bin.000001	#	Query	#	#	XA COMMIT X'32',X'',1
+primary-bin.000001	#	Query	#	#	XA COMMIT X'312d726f77',X'',1
+primary-bin.000001	#	Query	#	#	XA COMMIT X'312d73746d74',X'',1
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
 SET @@session.binlog_format= statement;
 XA START '3-stmt';
 INSERT INTO d1.t VALUES (3);
@@ -132,7 +132,7 @@ XA ROLLBACK 'bulk_trx_3';
 XA COMMIT 'bulk_trx_2';
 XA ROLLBACK 'bulk_trx_1';
 include/rpl_restart_server.inc [server_number=1]
-include/start_slave.inc
+include/start_replica.inc
 *** '3-stmt','3-row' xa-transactions must be in the list ***
 XA RECOVER;
 formatID	gtrid_length	bqual_length	data
@@ -140,7 +140,7 @@ formatID	gtrid_length	bqual_length	data
 1	5	0	3-row
 XA COMMIT '3-stmt';
 XA ROLLBACK '3-row';
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 XA START '';
 INSERT INTO d1.t VALUES (4);
 XA END '';
@@ -157,7 +157,7 @@ XA COMMIT '';
 XA COMMIT '0123456789012345678901234567890123456789012345678901234567890124','0123456789012345678901234567890123456789012345678901234567890124',64;
 XA COMMIT X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',X'00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',0;
 XA COMMIT 'RANDOM XID'
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 XA START 'one_phase_10';
 INSERT INTO d1.t VALUES (10);
 INSERT INTO d2.t VALUES (10);
@@ -208,14 +208,14 @@ INSERT INTO d1.t VALUES (1);
 INSERT INTO d2.t VALUES (1);
 XA END 'one_phase_1';
 XA COMMIT 'one_phase_1' ONE PHASE;
-include/sync_slave_sql_with_master.inc
-include/diff_tables.inc [master:d1.t, slave:d1.t]
-include/diff_tables.inc [master:d2.t, slave:d2.t]
+include/sync_replica_sql_with_primary.inc
+include/diff_tables.inc [primary:d1.t, replica:d1.t]
+include/diff_tables.inc [primary:d2.t, replica:d2.t]
 DELETE FROM d1.t;
 DELETE FROM d2.t;
 DROP TABLE d1.t, d2.t;
 DROP DATABASE d1;
 DROP DATABASE d2;
 DROP VIEW v_processlist;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

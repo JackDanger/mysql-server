@@ -43,14 +43,14 @@ create table t1(a int primary key, b varchar(50)) engine=ndb;
 
 insert into t1 values (1,'Summertime');
 
---sync_slave_with_master cluster2
+--sync_replica_with_primary cluster2
 --echo Cluster2 has insert and apply_status from Cluster1
 show variables like 'server_id';
 --replace_column 2 # 3 # 4 # 5 #
 select * from mysql.ndb_apply_status order by server_id;
 select * from test.t1;
 
---sync_slave_with_master cluster3
+--sync_replica_with_primary cluster3
 --echo Cluster3 has insert and apply_status from Cluster1+2
 show variables like 'server_id';
 --replace_column 2 # 3 # 4 # 5 #
@@ -61,7 +61,7 @@ select * from test.t1;
 --let $rpl_connection_name= cluster3
 --source include/rpl_connection.inc
 
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
 --echo Make further changes on Cluster1
 --let $rpl_connection_name= cluster1
@@ -69,7 +69,7 @@ select * from test.t1;
 insert into test.t1 values (2, "The cotton is high");
 insert into test.t1 values (3, "Daddys rich");
 
---sync_slave_with_master cluster2
+--sync_replica_with_primary cluster2
 --echo Show changes exist on Cluster2
 select * from test.t1 order by a;
 
@@ -96,18 +96,18 @@ let $CLUSTER1_LOG_FILE= query_get_value('select @binlog_file_name as v', v, 1);
 let $CLUSTER1_LOG_POS= query_get_value('select @binlog_file_pos as v', v, 1);
 
 # Avoid warnings about epoch# differences between Cluster 2 and Cluster 1
-reset slave;
+reset replica;
 
 --let $rpl_topology= 1->2, 1->3
---let $rpl_master_log_file= 3:$CLUSTER1_LOG_FILE
---let $rpl_master_log_pos= 3:$CLUSTER1_LOG_POS
+--let $rpl_primary_log_file= 3:$CLUSTER1_LOG_FILE
+--let $rpl_primary_log_pos= 3:$CLUSTER1_LOG_POS
 --source include/rpl_change_topology.inc
 
---source include/start_slave.inc
+--source include/start_replica.inc
 
 --let $rpl_connection_name= cluster1
 --source include/rpl_connection.inc
---sync_slave_with_master cluster3
+--sync_replica_with_primary cluster3
 
 --echo Now show that cluster 3 is successfully replicating from Cluster1
 --let $rpl_connection_name= cluster3

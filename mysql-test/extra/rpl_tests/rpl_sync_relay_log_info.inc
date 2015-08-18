@@ -27,9 +27,9 @@ if ( `SELECT '$_storage_engine' <> 'INNODB' AND '$_storage_engine' <> 'MYISAM'` 
   --die ERROR IN TEST: invalid value for mysqltest variable 'storage_engine': $storage_engine
 }
 
-# Sync slave SQL with master
---source include/rpl_connection_master.inc
---source include/sync_slave_sql_with_master.inc
+# Sync replica SQL with primary
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Define test "header"
 --let $_rrli_sync= `SELECT @@GLOBAL.sync_relay_log_info`
@@ -38,52 +38,52 @@ if ( `SELECT '$_storage_engine' <> 'INNODB' AND '$_storage_engine' <> 'MYISAM'` 
 # Initialize the sub test counter
 --let $_rrli_counter= 0
 
-# 1 - Stop the slave should always sync SQL thread positions
---source include/stop_slave.inc
---let $gtid_step_uuid= $master_uuid
+# 1 - Stop the replica should always sync SQL thread positions
+--source include/stop_replica.inc
+--let $gtid_step_uuid= $primary_uuid
 --source include/gtid_step_reset.inc
 --let $gtid_step_count= 0
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
-# Start the slave
---source include/start_slave.inc
+# Start the replica
+--source include/start_replica.inc
 
 # 2 - Simple DDL
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --eval CREATE TABLE t1 (c1 int PRIMARY KEY) ENGINE=$storage_engine
 --let $gtid_step_count= 1
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
 # 3 - Simple DML
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 INSERT INTO t1 VALUES (1);
 --let $gtid_step_count= 1
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
-# 4 - The master has flushed the binary log
---source include/rpl_connection_master.inc
+# 4 - The primary has flushed the binary log
+--source include/rpl_connection_primary.inc
 FLUSH LOCAL BINARY LOGS;
 --let $gtid_step_count= 0
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
 # 5 - Simple DDL
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 DROP TABLE t1;
 --let $gtid_step_count= 1
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
-# 6 - Stop the slave and restart only the SQL thread
---source include/stop_slave.inc
---source include/start_slave_sql.inc
+# 6 - Stop the replica and restart only the SQL thread
+--source include/stop_replica.inc
+--source include/start_replica_sql.inc
 --let $gtid_step_count= 0
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
 # 7 - The GTID of a simple DDL
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --eval CREATE TABLE t1 (c1 int PRIMARY KEY) ENGINE=$storage_engine
 
 # Hang the I/O thread after the GTID is received
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 --let $rpl_after_received_events_action= hang
 --let $rpl_event_count= 1
 --let $rpl_count_only_event_type= Gtid
@@ -99,23 +99,23 @@ FLUSH LOCAL RELAY LOGS;
 
 # 9 - The rest of the simple DDL
 SET DEBUG_SYNC= 'now SIGNAL continue_after_queue_event';
---source include/rpl_connection_master.inc
---source include/sync_slave_io_with_master.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_io_with_primary.inc
 --let $gtid_step_count= 1
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
-# 10 - Stop the slave and restart only the SQL thread
---source include/stop_slave.inc
---source include/start_slave_sql.inc
+# 10 - Stop the replica and restart only the SQL thread
+--source include/stop_replica.inc
+--source include/start_replica_sql.inc
 --let $gtid_step_count= 0
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
 # 11 - The GTID of a simple DML
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 INSERT INTO t1 VALUES (2);
 
 # Hang the I/O thread after the GTID is received
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 --let $rpl_after_received_events_action= hang
 --let $rpl_event_count= 1
 --let $rpl_count_only_event_type= Gtid
@@ -131,24 +131,24 @@ FLUSH LOCAL RELAY LOGS;
 
 # 13 - The rest of the simple DML
 SET DEBUG_SYNC= 'now SIGNAL continue_after_queue_event';
---source include/rpl_connection_master.inc
---source include/sync_slave_io_with_master.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_io_with_primary.inc
 --let $gtid_step_count= 1
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
-# 14 - Stop the slave and restart only the SQL thread
---source include/stop_slave.inc
---source include/start_slave_sql.inc
+# 14 - Stop the replica and restart only the SQL thread
+--source include/stop_replica.inc
+--source include/start_replica_sql.inc
 --let $gtid_step_count= 0
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
 # 15 - The GTID of a simple DML with a User var
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 SET @v=3;
 INSERT INTO t1 VALUES (@v);
 
 # Hang the I/O thread after the User var is received
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 --let $rpl_after_received_events_action= hang
 --let $rpl_event_count= 1
 --let $rpl_count_only_event_type= User var
@@ -164,13 +164,13 @@ FLUSH LOCAL RELAY LOGS;
 
 # 17 - The rest of the simple DML
 SET DEBUG_SYNC= 'now SIGNAL continue_after_queue_event';
---source include/rpl_connection_master.inc
---source include/sync_slave_io_with_master.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_io_with_primary.inc
 --let $gtid_step_count= 1
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
 # 18 - Simple DDL
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 DROP TABLE t1;
 --let $gtid_step_count= 1
 --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
@@ -179,19 +179,19 @@ DROP TABLE t1;
 if ($_storage_engine == "INNODB")
 {
   # 19 - Simple DDL
-  --source include/rpl_connection_master.inc
+  --source include/rpl_connection_primary.inc
   --eval CREATE TABLE t1 (c1 int PRIMARY KEY) ENGINE=$storage_engine
   --let $gtid_step_count= 1
   --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
-  # 20 - Stop the slave and restart only the SQL thread
-  --source include/stop_slave.inc
-  --source include/start_slave_sql.inc
+  # 20 - Stop the replica and restart only the SQL thread
+  --source include/stop_replica.inc
+  --source include/start_replica_sql.inc
   --let $gtid_step_count= 0
   --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
   # 21 - The first half of a multi statement DML
-  --source include/rpl_connection_master.inc
+  --source include/rpl_connection_primary.inc
   BEGIN;
   INSERT INTO t1 VALUES (1);
   SET @v=2;
@@ -199,7 +199,7 @@ if ($_storage_engine == "INNODB")
   COMMIT;
 
   # Hang the I/O thread after the User var is received
-  --source include/rpl_connection_slave.inc
+  --source include/rpl_connection_replica.inc
   --let $rpl_after_received_events_action= hang
   --let $rpl_event_count= 1
   --let $rpl_count_only_event_type= User var
@@ -228,12 +228,12 @@ if ($_storage_engine == "INNODB")
 
   # 23 - The multi statement DML should be rolled back
   SET DEBUG_SYNC= 'now SIGNAL continue_after_queue_event';
-  --source include/rpl_connection_master.inc
-  --source include/sync_slave_io_with_master.inc
+  --source include/rpl_connection_primary.inc
+  --source include/sync_replica_io_with_primary.inc
 
   # Wait for the SQL thread to stop with error
-  --let $slave_sql_errno= convert_error(ER_DUP_ENTRY)
-  --source include/wait_for_slave_sql_error.inc
+  --let $replica_sql_errno= convert_error(ER_DUP_ENTRY)
+  --source include/wait_for_replica_sql_error.inc
 
   --let $gtid_step_count= 0
   --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
@@ -246,15 +246,15 @@ if ($_storage_engine == "INNODB")
   --source include/gtid_step_assert.inc
 
   # 24 - The multi statement DML should be rolled back
-  --source include/start_slave_sql.inc
-  --source include/rpl_connection_master.inc
-  --source include/sync_slave_io_with_master.inc
+  --source include/start_replica_sql.inc
+  --source include/rpl_connection_primary.inc
+  --source include/sync_replica_io_with_primary.inc
   --let $gtid_step_count= 1
-  --let $gtid_step_uuid= $master_uuid
+  --let $gtid_step_uuid= $primary_uuid
   --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc
 
   # 25 - Simple DDL
-  --source include/rpl_connection_master.inc
+  --source include/rpl_connection_primary.inc
   DROP TABLE t1;
   --let $gtid_step_count= 1
   --source extra/rpl_tests/rpl_sync_relay_log_info_assert_pos.inc

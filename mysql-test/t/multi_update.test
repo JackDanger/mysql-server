@@ -15,11 +15,11 @@ CALL mtr.add_suppression("Unsafe statement written to the binary log using state
 CALL mtr.add_suppression("REVOKE/GRANT failed while storing table level "
                          "and column level grants in the privilege "
                          "tables. An incident event has been written to "
-                         "the binary log which will stop the slaves.");
+                         "the binary log which will stop the replicas.");
 CALL mtr.add_suppression("REVOKE/GRANT failed while granting/revoking "
                          "privileges in databases. An incident event "
                          "has been written to the binary log which "
-                         "will stop the slaves.");
+                         "will stop the replicas.");
 call mtr.add_suppression("Did not write failed .* into binary log while "
                          "granting/revoking privileges in databases.");
 call mtr.add_suppression("Did not write failed .* into binary log while "
@@ -384,7 +384,7 @@ drop table t1, t2;
 # privilege check for multiupdate with other tables
 #
 
-connect (root,localhost,root,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+connect (root,localhost,root,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 connection root;
 --disable_warnings
 create database mysqltest;
@@ -397,7 +397,7 @@ set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 grant select on mysqltest.* to mysqltest_1@localhost;
 set sql_mode= @orig_sql_mode;
 grant update on mysqltest.t1 to mysqltest_1@localhost;
-connect (user1,localhost,mysqltest_1,,mysqltest,$MASTER_MYPORT,$MASTER_MYSOCK);
+connect (user1,localhost,mysqltest_1,,mysqltest,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 connection user1;
 update t1, t2 set t1.b=1 where t1.a=t2.a;
 update t1, t2 set t1.b=(select t3.b from t3 where t1.a=t3.a) where t1.a=t2.a;
@@ -607,7 +607,7 @@ set @@session.binlog_format= mixed;
 # A. testing multi_update::send_error() effective update
 insert into t1 values (1,1),(2,2);
 insert into t2 values (1,1),(4,4);
-reset master;
+reset primary;
 --error ER_DUP_ENTRY
 UPDATE t2,t1 SET t2.a=t1.a+2;
 # check
@@ -620,7 +620,7 @@ delete from t1;
 delete from t2;
 insert into t1 values (1,2),(3,4),(4,4);
 insert into t2 values (1,2),(3,4),(4,4);
-reset master;
+reset primary;
 --error ER_DUP_ENTRY
 UPDATE t2,t1  SET t2.a=t2.b where t2.a=t1.a;
 source include/show_binlog_events.inc;
@@ -644,7 +644,7 @@ create trigger trg_del_t3 before  delete on t3 for each row insert into t1 value
 
 insert into t2 values (1),(2);
 insert into t3 values (1),(2);
-reset master;
+reset primary;
 
 # exec cases B, A - see innodb.test
 

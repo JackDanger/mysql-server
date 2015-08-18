@@ -11,21 +11,21 @@
 #   2) Composite AnyValues are placed into the ServerId of events in the
 #      Binary logs of attached binlogging MySQLDs
 #   3) Composite ServerIds are correctly split into ServerId by the replication
-#      framework on the slave-side for the purposes of :
+#      framework on the replica-side for the purposes of :
 #      a) Loop detection
 #      b) ndb_apply_status updates
 #   4) Composite ServerIds are placed into the composite AnyValues of row
-#      operations by the slave
-#   5) Binlogging MySQLDs on the slave correctly identify replicated composite
+#      operations by the replica
+#   5) Binlogging MySQLDs on the replica correctly identify replicated composite
 #      AnyValues as being replicated.
 #
-# This test is a re-run of rpl_ndb_slave_lsu with different configuration :
+# This test is a re-run of rpl_ndb_replica_lsu with different configuration :
 #   a) server-id-bits is set to 7, implying that :
 #      - Only the bottom 7 bits of event ServerIds written to the Binlog are
 #        set to the ServerId.  The other bits come from the event AnyValue
 #        received by the Binlog injector. 
 #      - Only the bottom 7 bits of ServerIds received in Binlogs are used as
-#        the ServerId in the Slave, the other bits are ignored, but are placed
+#        the ServerId in the Replica, the other bits are ignored, but are placed
 #        in the AnyValue of resulting NdbApi operations.
 #   b) NDB_TEST_ANYVALUE_USERDATA is set to Y
 #      - This causes MySQLD to set the UserData part of the AnyValue (in this
@@ -36,9 +36,9 @@
 #        values (which use the server-id-bits to only show the server-id, to 
 #        output from the mysqlbinlog tool when it passed no server-id-bits
 #        option, and shows the full serverid.
-#        It can be seen that events originating on the master are given a
-#        composite server id which is available at the slave as it is written
-#        into the binlog of the slave running with --log-slave-updates on.
+#        It can be seen that events originating on the primary are given a
+#        composite server id which is available at the replica as it is written
+#        into the binlog of the replica running with --log-replica-updates on.
 ###############################################################################
 --source include/have_debug.inc
---source suite/ndb_rpl/t/ndb_rpl_slave_lsu.test
+--source suite/ndb_rpl/t/ndb_rpl_replica_lsu.test

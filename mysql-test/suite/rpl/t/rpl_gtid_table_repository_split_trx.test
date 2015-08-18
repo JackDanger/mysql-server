@@ -1,21 +1,21 @@
 # ==== Purpose ====
 #
-# This test case will verify that applier works correctly (writing the slave
+# This test case will verify that applier works correctly (writing the replica
 # rpl info on table and also storing GTIDs on table) when a relay log split
 # a transaction letting the GTID event in one relay log file and the rest of
 # the transaction on the next relay log file. The reported issue happened when
-# log-slave-updates was off and relay-log-info-repository was set to TABLE,
-# both defined at test case '-slave.opt' file.
+# log-replica-updates was off and relay-log-info-repository was set to TABLE,
+# both defined at test case '-replica.opt' file.
 #
 # The test case will generate a stream of events with two "transactions" and
-# will flush the slave relay log once queuing the second GTID event received.
+# will flush the replica relay log once queuing the second GTID event received.
 #
 # After syncing the receiver thread, the test case will start the applier
 # thread to ensure its proper behavior.
 #
 # ==== Related Bugs and Worklogs ====
 #
-# BUG#20451386 SQL THREAD CRASH: LOG-SLAVE-UPDATES OFF, RELAY LOG ENDS
+# BUG#20451386 SQL THREAD CRASH: LOG-REPLICA-UPDATES OFF, RELAY LOG ENDS
 #              WITH GTID_LOG_EVENT
 
 # This test should run only on debug build
@@ -25,8 +25,8 @@
 --source include/have_innodb.inc
 --source include/have_binlog_format_statement.inc
 --source include/have_gtid.inc
---let $rpl_skip_start_slave= 1
---source include/master-slave.inc
+--let $rpl_skip_start_replica= 1
+--source include/primary-replica.inc
 
 # Create a table and insert some data
 CREATE TABLE t1 (c1 INT) ENGINE= InnoDB;
@@ -35,22 +35,22 @@ INSERT INTO t1 VALUES (1);
 ###
 ### Flush the relay log after the second GTID is received
 ###
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 --let $rpl_after_received_events_action= flush
 --let $rpl_event_count= 2
 --let $rpl_count_only_event_type= Gtid
 --source include/rpl_receive_event_count.inc
 
-# Sync the receiver thread with the master
---source include/rpl_connection_master.inc
---source include/sync_slave_io_with_master.inc
+# Sync the receiver thread with the primary
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_io_with_primary.inc
 
 # Now start the applier thread
---source include/start_slave_sql.inc
---source include/rpl_connection_master.inc
---source include/sync_slave_sql_with_master.inc
+--source include/start_replica_sql.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # Cleanup
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 DROP TABLE t1;
 --source include/rpl_end.inc

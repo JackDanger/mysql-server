@@ -1,12 +1,12 @@
 if (!$SWITCH_CLUSTER_ROLES)
 {
-  --connection slave
-  --sync_slave_with_master master
-  --connection master
+  --connection replica
+  --sync_replica_with_primary primary
+  --connection primary
 }
 if ($SWITCH_CLUSTER_ROLES)
 {
-  --connection master
-  --sync_slave_with_master slave
-  --connection slave
+  --connection primary
+  --sync_replica_with_primary replica
+  --connection replica
 }

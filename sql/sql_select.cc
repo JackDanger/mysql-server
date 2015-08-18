@@ -1256,7 +1256,7 @@ bool create_ref_for_key(JOIN *join, JOIN_TAB *j, Key_use *org_keyuse,
 
     length=0;
     keyparts=1;
-    ifm->get_master()->join_key= 1;
+    ifm->get_primary()->join_key= 1;
   }
   else /* not ftkey */
     calc_length_and_keyparts(keyuse, j, key, used_tables, chosen_keyuses,
@@ -2491,7 +2491,7 @@ void JOIN::join_free()
        tmp_unit= tmp_unit->next_unit())
     for (sl= tmp_unit->first_select(); sl; sl= sl->next_select())
     {
-      Item_subselect *subselect= sl->master_unit()->item;
+      Item_subselect *subselect= sl->primary_unit()->item;
       bool full_local= full && (!subselect || subselect->is_evaluated());
       /*
         If this join is evaluated, we can partially clean it up and clean up
@@ -3337,7 +3337,7 @@ bool SELECT_LEX::change_query_result(Query_result_interceptor *new_result,
   if (old_result == NULL || query_result() == old_result)
   {
     set_query_result(new_result);
-    if (query_result()->prepare(fields_list, master_unit()) ||
+    if (query_result()->prepare(fields_list, primary_unit()) ||
         query_result()->prepare2())
       DBUG_RETURN(true); /* purecov: inspected */
     DBUG_RETURN(false);

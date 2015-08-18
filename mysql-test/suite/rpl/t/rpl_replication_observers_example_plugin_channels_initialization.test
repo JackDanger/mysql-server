@@ -1,7 +1,7 @@
 # This test verifies that the channel service interface cannot be used when:
 # 1) The server is configured with a server id = 0
 # 2) The relay log info repository is set to FILE
-# 3) The master info repository is set to FILE
+# 3) The primary info repository is set to FILE
 
 --source include/not_embedded.inc
 --source include/have_debug.inc
@@ -13,11 +13,11 @@
 --source include/install_replication_observers_example.inc
 
 CALL mtr.add_suppression('For the creation of replication channels the server *');
-CALL mtr.add_suppression('For the creation of replication channels the master *');
+CALL mtr.add_suppression('For the creation of replication channels the primary *');
 
 CREATE TABLE t1 (a INT PRIMARY KEY) ENGINE=InnoDB;
 
-SET @original_slave_server_id= @@GLOBAL.server_id;
+SET @original_replica_server_id= @@GLOBAL.server_id;
 
 # Execute a query that on a server hook will execute a test that verifies that
 # the channel service interface was not properly initialized (server-id = 0).
@@ -32,23 +32,23 @@ SET @@GLOBAL.server_id= 0;
 # Check that the interface still fails with the relay log info repository set to
 # FILE
 
-SET @@GLOBAL.server_id= @original_slave_server_id;
+SET @@GLOBAL.server_id= @original_replica_server_id;
 SET @@GLOBAL.relay_log_info_repository='FILE';
-SET @@GLOBAL.master_info_repository='TABLE';
+SET @@GLOBAL.primary_info_repository='TABLE';
 
 --eval INSERT INTO t1 VALUES(2)
 
-# Check that the interface still fails with the master info repository set to
+# Check that the interface still fails with the primary info repository set to
 # FILE
 
 SET @@GLOBAL.relay_log_info_repository='TABLE';
-SET @@GLOBAL.master_info_repository='FILE';
+SET @@GLOBAL.primary_info_repository='FILE';
 
 --eval INSERT INTO t1 VALUES(3)
 
 # Clean
 
-SET @@GLOBAL.master_info_repository='TABLE';
+SET @@GLOBAL.primary_info_repository='TABLE';
 
 SET @@GLOBAL.DEBUG= @debug_saved;
 DROP TABLE t1;

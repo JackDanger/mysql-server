@@ -11,11 +11,11 @@
 -- source include/not_group_replication_plugin.inc
 -- source include/have_binlog_format_row.inc
 -- source include/not_embedded.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 
 # Begin clean up test section
-connection master;
+connection primary;
 --disable_warnings
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
@@ -39,10 +39,10 @@ GRANT EXECUTE ON PROCEDURE p1 TO user1@localhost;
 GRANT EXECUTE ON PROCEDURE p2 TO user1@localhost;
 GRANT EXECUTE ON PROCEDURE p3 TO user1@localhost;
 
-# Need to wait for the rights to be applied at the slave
---source include/sync_slave_sql_with_master.inc
+# Need to wait for the rights to be applied at the replica
+--source include/sync_replica_sql_with_primary.inc
 
-let $message=<********  Master user1 p3 & p2 calls *******>;
+let $message=<********  Primary user1 p3 & p2 calls *******>;
 --source include/show_msg.inc
 connect (muser1,localhost,user1,,);
 connection muser1;
@@ -51,14 +51,14 @@ SELECT USER();
 CALL test.p3();
 CALL test.p2();
 
-let $message=<********  Slave user1 p3 & p2 calls *******>;
+let $message=<********  Replica user1 p3 & p2 calls *******>;
 --source include/show_msg.inc
-connect (suser1,127.0.0.1,user1,,test,$SLAVE_MYPORT,);
+connect (suser1,127.0.0.1,user1,,test,$REPLICA_MYPORT,);
 
-connection master;
-save_master_pos;
+connection primary;
+save_primary_pos;
 connection suser1;
-sync_with_master;
+sync_with_primary;
 
 SELECT CURRENT_USER();
 SELECT USER();
@@ -66,14 +66,14 @@ CALL test.p3();
 CALL test.p2();
 
 # Cleanup
-connection master;
+connection primary;
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p3;
 DROP PROCEDURE IF EXISTS test.p2;
 DROP TABLE IF EXISTS test.t1;
 DROP TABLE IF EXISTS test.t2;
 DROP USER user1@localhost;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # End of 5.0 test case
 

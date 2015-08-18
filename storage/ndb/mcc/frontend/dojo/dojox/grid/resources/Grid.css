@@ -13,13 +13,13 @@
 .dojoxGrid td {
 	-moz-outline: none;
 }
-.dojoxGridMasterHeader {
+.dojoxGridPrimaryHeader {
 	position: relative;
 }
-.dojoxGridMasterView  {
+.dojoxGridPrimaryView  {
 	position: relative;
 }
-.dojoxGridMasterMessages {
+.dojoxGridPrimaryMessages {
 	position: relative;
 	padding: 1em;
 	text-align: center;

@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP DATABASE IF EXISTS mysqltest1;
 CREATE DATABASE mysqltest1;
 CREATE USER tester IDENTIFIED BY 'test';
@@ -35,7 +35,7 @@ a	users
 2	@localhost%
 3	tester@localhost
 4	@localhost%
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM mysqltest1.t1 ORDER BY a;
 a	users
 1	tester@localhost
@@ -47,7 +47,7 @@ REVOKE ALL ON mysqltest1.* FROM 'tester'@'%';
 REVOKE ALL ON mysqltest1.* FROM ''@'localhost%';
 DROP USER tester@'%';
 DROP USER ''@'localhost%';
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP DATABASE IF EXISTS mysqltest1;
 CREATE DATABASE mysqltest1;
 CREATE USER 'tester1'@'' IDENTIFIED BY 'test';
@@ -70,7 +70,7 @@ a	users
 2	tester1@
 3	tester1@localhost
 4	tester1@
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM mysqltest1.t1 ORDER BY a;
 a	users
 1	tester1@localhost
@@ -80,5 +80,5 @@ a	users
 DROP DATABASE mysqltest1;
 REVOKE ALL ON mysqltest1.* FROM 'tester1'@'';
 DROP USER tester1@'';
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#ifndef MASTER_GCP_HPP
-#define MASTER_GCP_HPP
+#ifndef PRIMARY_GCP_HPP
+#define PRIMARY_GCP_HPP
 
 #include <NodeBitmask.hpp>
 
@@ -26,7 +26,7 @@
 /**
  * 
  */
-class MasterGCPConf {
+class PrimaryGCPConf {
   /**
    * Sender(s) / Reciver(s)
    */
@@ -104,7 +104,7 @@ private:
 /**
  * 
  */
-class MasterGCPReq {
+class PrimaryGCPReq {
   /**
    * Sender(s) / Reciver(s)
    */
@@ -113,14 +113,14 @@ class MasterGCPReq {
 public:
   STATIC_CONST( SignalLength = 2 );
 private:
-  Uint32 masterRef;
+  Uint32 primaryRef;
   Uint32 failedNodeId;
 };
 
 /**
  * 
  */
-class MasterGCPRef {
+class PrimaryGCPRef {
   /**
    * Sender(s) / Reciver(s)
    */

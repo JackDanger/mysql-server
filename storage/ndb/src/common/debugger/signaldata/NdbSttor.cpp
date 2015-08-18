@@ -26,7 +26,7 @@ printNDB_STTOR(FILE * output, const Uint32 * theData,
   fprintf(output, " nodeId: %x\n", sig->nodeId);
   fprintf(output, " internalStartPhase: %x\n", sig->internalStartPhase);
   fprintf(output, " typeOfStart: %x\n", sig->typeOfStart);
-  fprintf(output, " masterNodeId: %x\n", sig->masterNodeId);
+  fprintf(output, " primaryNodeId: %x\n", sig->primaryNodeId);
 
   int left = len - NdbSttor::SignalLength;
   if(left > 0){

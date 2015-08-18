@@ -38,7 +38,7 @@ SELECT @@session.session_track_system_variables;
 --echo
 
 --echo # Variables' values in a new session.
-connect (con1,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con1,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 
 --echo # Global - expect "autocommit"
 SELECT @@global.session_track_system_variables;
@@ -64,7 +64,7 @@ SELECT @@session.session_track_system_variables;
 --echo
 
 --echo # Variables' values in a new session (con2).
-connect (con2,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con2,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 
 SELECT @@global.session_track_system_variables;
 SELECT @@session.session_track_system_variables;
@@ -77,7 +77,7 @@ SELECT @@session.session_track_system_variables;
 --echo
 
 --echo # Variables' values in a new session (con3).
-connect (con3,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con3,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 
 --echo # Altering global should not affect session.
 SET @@global.session_track_system_variables = 'sql_mode';

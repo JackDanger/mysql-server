@@ -2,17 +2,17 @@
 -- source include/have_binlog_format_row.inc
 -- source include/have_innodb.inc
 -- source include/have_myisam.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 #
-#  BUG#53643: assert in Field_new_decimal::store_value on slave server
+#  BUG#53643: assert in Field_new_decimal::store_value on replica server
 #
 
 CREATE TABLE t0 ( col1 INT NOT NULL, col2 INT ) ENGINE=InnoDB;
 INSERT INTO t0 (col1,col2) VALUES (4,7),(4,8);
 
---source include/sync_slave_sql_with_master.inc
--- connection master
+--source include/sync_replica_sql_with_primary.inc
+-- connection primary
 
 CREATE TABLE t1 (col3 DECIMAL(35,0) DEFAULT NULL, 
                  col1 INT NOT NULL, 
@@ -22,16 +22,16 @@ CREATE TABLE t1 (col3 DECIMAL(35,0) DEFAULT NULL,
 
 SET SESSION BINLOG_ROW_IMAGE = minimal;
 
-# This statement would lead to an assert on slave
+# This statement would lead to an assert on replica
 REPLACE INTO t1 ( col1,col2) SELECT col1,col2 FROM t0;
 
---source include/sync_slave_sql_with_master.inc
--- connection master
+--source include/sync_replica_sql_with_primary.inc
+-- connection primary
 
--- let $diff_tables= master:t0, slave:t0
+-- let $diff_tables= primary:t0, replica:t0
 -- source include/diff_tables.inc
 
--- let $diff_tables= master:t1, slave:t1
+-- let $diff_tables= primary:t1, replica:t1
 -- source include/diff_tables.inc
 
 DROP TABLE t0, t1;

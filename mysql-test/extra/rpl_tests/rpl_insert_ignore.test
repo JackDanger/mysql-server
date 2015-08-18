@@ -1,11 +1,11 @@
-# Testcase for BUG#6287 "Slave skips auto_increment values in Replication with InnoDB"
-# The bug was that if on master, INSERT IGNORE ignored some
-# rows, and the table was InnoDB with auto_inc column, then on slave
-# some rows received an auto_inc bigger than on master.
-# Slave needs to be started with --innodb to store table in InnoDB.
+# Testcase for BUG#6287 "Replica skips auto_increment values in Replication with InnoDB"
+# The bug was that if on primary, INSERT IGNORE ignored some
+# rows, and the table was InnoDB with auto_inc column, then on replica
+# some rows received an auto_inc bigger than on primary.
+# Replica needs to be started with --innodb to store table in InnoDB.
 # Same test for MyISAM (which had no bug).
 
---connection master
+--connection primary
 eval CREATE TABLE t1 (
  a int unsigned not null auto_increment primary key,
  b int unsigned,
@@ -37,9 +37,9 @@ INSERT IGNORE INTO t1 SELECT NULL, t2.b FROM t2 ORDER BY t2.a;
 --let $assert_text= Count of elements in t1 should be 6.
 --source include/assert.inc
 
-# Compare master and slave
---source include/sync_slave_sql_with_master.inc
---let $diff_tables= master:test.t1 , slave:test.t1
+# Compare primary and replica
+--source include/sync_replica_sql_with_primary.inc
+--let $diff_tables= primary:test.t1 , replica:test.t1
 --source include/diff_tables.inc
 
 # BUG#59338 Inconsistency in binlog for statements that don't change any rows STATEMENT SBR
@@ -47,9 +47,9 @@ INSERT IGNORE INTO t1 SELECT NULL, t2.b FROM t2 ORDER BY t2.a;
 # and MIXED modes. We check this property by counting occurrences in t1 before and after
 # the insert and comparing the binlog positions. The count should be the same in both points
 # and the statement should be in the binary log.
---connection master
---let $binlog_file= query_get_value("SHOW MASTER STATUS", File, 1)
---let $binlog_start= query_get_value("SHOW MASTER STATUS", Position, 1)
+--connection primary
+--let $binlog_file= query_get_value("SHOW PRIMARY STATUS", File, 1)
+--let $binlog_start= query_get_value("SHOW PRIMARY STATUS", Position, 1)
 --let $statement_file=INSERT IGNORE INTO t1 SELECT NULL, t2.b FROM t2 ORDER BY t2.a
 --disable_warnings ONCE
 --eval $statement_file
@@ -59,12 +59,12 @@ INSERT IGNORE INTO t1 SELECT NULL, t2.b FROM t2 ORDER BY t2.a;
 --source include/assert.inc
 
 # force outstanding executed transactions to be flushed to binlog for ndb
---save_master_pos
+--save_primary_pos
 
 if (`SELECT @@BINLOG_FORMAT != 'STATEMENT'`)
 {
   --let $binlog_position_cmp= =
-  --let $assert_cond= [SHOW MASTER STATUS, Position, 1] $binlog_position_cmp $binlog_start
+  --let $assert_cond= [SHOW PRIMARY STATUS, Position, 1] $binlog_position_cmp $binlog_start
   --let $assert_text= In SBR or MIXED modes, the event in the binlog should be the same that was executed. In RBR mode, binlog position should stay unchanged.
 }
 if (`SELECT @@BINLOG_FORMAT = 'STATEMENT'`)
@@ -95,10 +95,10 @@ INSERT INTO t1 VALUES (1);
 INSERT INTO t2 VALUES (1);
 
 # force outstanding executed transactions to be flushed to binlog for ndb
---save_master_pos
+--save_primary_pos
 
---let $binlog_file= query_get_value("SHOW MASTER STATUS", File, 1)
---let $binlog_start= query_get_value("SHOW MASTER STATUS", Position, 1)
+--let $binlog_file= query_get_value("SHOW PRIMARY STATUS", File, 1)
+--let $binlog_start= query_get_value("SHOW PRIMARY STATUS", Position, 1)
 --let $statement_file=INSERT INTO t1 SELECT t2.a FROM t2 ORDER BY t2.a ON DUPLICATE KEY UPDATE t1.a= t1.a
 --disable_warnings ONCE
 --eval $statement_file
@@ -108,12 +108,12 @@ INSERT INTO t2 VALUES (1);
 --source include/assert.inc
 
 # force outstanding executed transactions to be flushed to binlog for ndb
---save_master_pos
+--save_primary_pos
 
 if (`SELECT @@BINLOG_FORMAT != 'STATEMENT'`)
 {
   --let $binlog_position_cmp= =
-  --let $assert_cond= [SHOW MASTER STATUS, Position, 1] $binlog_position_cmp $binlog_start
+  --let $assert_cond= [SHOW PRIMARY STATUS, Position, 1] $binlog_position_cmp $binlog_start
   --let $assert_text= In SBR or MIXED modes, the event in the binlog should be the same that was executed. In RBR mode, binlog position should stay unchanged.
 }
 if (`SELECT @@BINLOG_FORMAT = 'STATEMENT'`)
@@ -125,6 +125,6 @@ if (`SELECT @@BINLOG_FORMAT = 'STATEMENT'`)
 
 
 # Clean up
---connection master
+--connection primary
 drop table t1, t2;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc

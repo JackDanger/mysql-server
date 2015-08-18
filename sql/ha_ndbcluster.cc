@@ -405,7 +405,7 @@ uint ha_ndbcluster::alter_flags(uint flags) const
 static int ndbcluster_inited= 0;
 
 /* 
-   Indicator and CONDVAR used to delay client and slave
+   Indicator and CONDVAR used to delay client and replica
    connections until Ndb has Binlog setup
    (bug#46955)
 */
@@ -449,38 +449,38 @@ long long g_event_data_count = 0;
 long long g_event_nondata_count = 0;
 long long g_event_bytes_count = 0;
 
-static long long g_slave_api_client_stats[Ndb::NumClientStatistics];
+static long long g_replica_api_client_stats[Ndb::NumClientStatistics];
 
 static long long g_server_api_client_stats[Ndb::NumClientStatistics];
 
 void
-update_slave_api_stats(Ndb* ndb)
+update_replica_api_stats(Ndb* ndb)
 {
   for (Uint32 i=0; i < Ndb::NumClientStatistics; i++)
-    g_slave_api_client_stats[i] = ndb->getClientStat(i);
+    g_replica_api_client_stats[i] = ndb->getClientStat(i);
 }
 
-st_ndb_slave_state g_ndb_slave_state;
+st_ndb_replica_state g_ndb_replica_state;
 
-static int check_slave_state(THD* thd)
+static int check_replica_state(THD* thd)
 {
-  DBUG_ENTER("check_slave_state");
+  DBUG_ENTER("check_replica_state");
 
 #ifdef HAVE_NDB_BINLOG
-  if (!thd->slave_thread)
+  if (!thd->replica_thread)
     DBUG_RETURN(0);
 
-  const Uint32 runId = ndb_mi_get_slave_run_id();
-  DBUG_PRINT("info", ("Slave SQL thread run id is %u",
+  const Uint32 runId = ndb_mi_get_replica_run_id();
+  DBUG_PRINT("info", ("Replica SQL thread run id is %u",
                       runId));
-  if (unlikely(runId != g_ndb_slave_state.sql_run_id))
+  if (unlikely(runId != g_ndb_replica_state.sql_run_id))
   {
-    DBUG_PRINT("info", ("Slave run id changed from %u, "
-                        "treating as Slave restart",
-                        g_ndb_slave_state.sql_run_id));
-    g_ndb_slave_state.sql_run_id = runId;
+    DBUG_PRINT("info", ("Replica run id changed from %u, "
+                        "treating as Replica restart",
+                        g_ndb_replica_state.sql_run_id));
+    g_ndb_replica_state.sql_run_id = runId;
 
-    g_ndb_slave_state.atStartSlave();
+    g_ndb_replica_state.atStartReplica();
 
     /* Always try to load the Max Replicated Epoch info
      * first.
@@ -570,8 +570,8 @@ static int check_slave_state(THD* thd)
 
       if (ndb_error.code != 0)
       {
-        sql_print_warning("NDB Slave : Could not determine maximum replicated epoch from %s.%s "
-                          "at Slave start, error %u %s",
+        sql_print_warning("NDB Replica : Could not determine maximum replicated epoch from %s.%s "
+                          "at Replica start, error %u %s",
                           NDB_REP_DB,
                           NDB_APPLY_TABLE,
                           ndb_error.code, ndb_error.message);
@@ -582,13 +582,13 @@ static int check_slave_state(THD* thd)
         the Cluster DB.
         If none was found, this will be zero.
       */
-      g_ndb_slave_state.max_rep_epoch = highestAppliedEpoch;
-      sql_print_information("NDB Slave : MaxReplicatedEpoch set to %llu (%u/%u) at Slave start",
-                            g_ndb_slave_state.max_rep_epoch,
-                            (Uint32)(g_ndb_slave_state.max_rep_epoch >> 32),
-                            (Uint32)(g_ndb_slave_state.max_rep_epoch & 0xffffffff));
+      g_ndb_replica_state.max_rep_epoch = highestAppliedEpoch;
+      sql_print_information("NDB Replica : MaxReplicatedEpoch set to %llu (%u/%u) at Replica start",
+                            g_ndb_replica_state.max_rep_epoch,
+                            (Uint32)(g_ndb_replica_state.max_rep_epoch >> 32),
+                            (Uint32)(g_ndb_replica_state.max_rep_epoch & 0xffffffff));
     } // Load highest replicated epoch
-  } // New Slave SQL thread run id
+  } // New Replica SQL thread run id
 #endif
 
   DBUG_RETURN(0);
@@ -748,9 +748,9 @@ SHOW_VAR ndb_status_injector_variables[]= {
   {NullS, NullS, SHOW_LONG, SHOW_SCOPE_GLOBAL}
 };
 
-SHOW_VAR ndb_status_slave_variables[]= {
-  NDBAPI_COUNTERS("_slave", &g_slave_api_client_stats),
-  {"slave_max_replicated_epoch", (char*) &g_ndb_slave_state.max_rep_epoch, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+SHOW_VAR ndb_status_replica_variables[]= {
+  NDBAPI_COUNTERS("_replica", &g_replica_api_client_stats),
+  {"replica_max_replicated_epoch", (char*) &g_ndb_replica_state.max_rep_epoch, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
   {NullS, NullS, SHOW_LONG, SHOW_SCOPE_GLOBAL}
 };
 
@@ -846,7 +846,7 @@ int ndb_to_mysql_error(const NdbError *ndberr)
   return error;
 }
 
-ulong opt_ndb_slave_conflict_role;
+ulong opt_ndb_replica_conflict_role;
 
 #ifdef HAVE_NDB_BINLOG
 
@@ -989,7 +989,7 @@ check_completed_operations_pre_commit(Thd_ndb *thd_ndb, NdbTransaction *trans,
     {
       if (nonMaskedError.status == NdbError::TemporaryError)
       {
-        /* Slave will roll back and retry entire transaction. */
+        /* Replica will roll back and retry entire transaction. */
         ERR_RETURN(nonMaskedError);
       }
       else
@@ -1001,7 +1001,7 @@ check_completed_operations_pre_commit(Thd_ndb *thd_ndb, NdbTransaction *trans,
         push_warning_printf(current_thd, Sql_condition::SL_ERROR,
                             ER_EXCEPTIONS_WRITE_ERROR,
                             ER(ER_EXCEPTIONS_WRITE_ERROR), msg);
-        /* Slave will stop replication. */
+        /* Replica will stop replication. */
         DBUG_RETURN(ER_EXCEPTIONS_WRITE_ERROR);
       }
     }
@@ -1106,10 +1106,10 @@ execute_no_commit(Thd_ndb *thd_ndb, NdbTransaction *trans,
                                                ignore_count);
   } while (0);
 
-  if (unlikely(thd_ndb->is_slave_thread() &&
+  if (unlikely(thd_ndb->is_replica_thread() &&
                rc != 0))
   {
-    g_ndb_slave_state.atTransactionAbort();
+    g_ndb_replica_state.atTransactionAbort();
   }
 
   DBUG_PRINT("info", ("execute_no_commit rc is %d", rc));
@@ -1171,16 +1171,16 @@ execute_commit(Thd_ndb *thd_ndb, NdbTransaction *trans,
     }
   }
 
-  if (thd_ndb->is_slave_thread())
+  if (thd_ndb->is_replica_thread())
   {
     if (likely(rc == 0))
     {
       /* Success */
-      g_ndb_slave_state.atTransactionCommit(thd_ndb->m_last_commit_epoch_session);
+      g_ndb_replica_state.atTransactionCommit(thd_ndb->m_last_commit_epoch_session);
     }
     else
     {
-      g_ndb_slave_state.atTransactionAbort();
+      g_ndb_replica_state.atTransactionAbort();
     }
   }
 
@@ -1219,7 +1219,7 @@ uchar *thd_ndb_share_get_key(THD_NDB_SHARE *thd_ndb_share, size_t *length,
 
 Thd_ndb::Thd_ndb(THD* thd) :
   m_thd(thd),
-  m_slave_thread(thd->slave_thread),
+  m_replica_thread(thd->replica_thread),
   m_skip_binlog_setup_in_find_files(false),
   schema_locks_count(0),
   m_last_commit_epoch_session(0)
@@ -1528,7 +1528,7 @@ static bool field_type_forces_var_part(enum_field_types type)
 
   The memory is freed by the first call to add_row_check_if_batch_full_size()
   following any execute() call. The intention is that the memory is associated
-  with one batch of operations during batched slave updates.
+  with one batch of operations during batched replica updates.
 
   Note in particular that using get_buffer() / copy_row_to_buffer() separately
   from add_row_check_if_batch_full_size() could make meory usage grow without
@@ -3151,8 +3151,8 @@ int ha_ndbcluster::ndb_pk_update_row(THD *thd,
     DBUG_PRINT("info", ("insert failed"));
     if (trans->commitStatus() == NdbConnection::Started)
     {
-      if (thd->slave_thread)
-        g_ndb_slave_state.atTransactionAbort();
+      if (thd->replica_thread)
+        g_ndb_replica_state.atTransactionAbort();
       m_thd_ndb->m_unsent_bytes= 0;
       m_thd_ndb->m_execute_count++;
       DBUG_PRINT("info", ("execute_count: %u", m_thd_ndb->m_execute_count));
@@ -4659,16 +4659,16 @@ ha_ndbcluster::eventSetAnyValue(THD *thd,
   if (unlikely(m_slow_path))
   {
     /*
-      Ignore TNTO_NO_LOGGING for slave thd.  It is used to indicate
-      log-slave-updates option.  This is instead handled in the
+      Ignore TNTO_NO_LOGGING for replica thd.  It is used to indicate
+      log-replica-updates option.  This is instead handled in the
       injector thread, by looking explicitly at the
-      opt_log_slave_updates flag.
+      opt_log_replica_updates flag.
     */
     Thd_ndb *thd_ndb= get_thd_ndb(thd);
-    if (thd->slave_thread)
+    if (thd->replica_thread)
     {
       /*
-        Slave-thread, we are applying a replicated event.
+        Replica-thread, we are applying a replicated event.
         We set the server_id to the value received from the log which
         may be a composite of server_id and other data according
         to the server_id_bits option.
@@ -4716,7 +4716,7 @@ ha_ndbcluster::eventSetAnyValue(THD *thd,
 /**
    prepare_conflict_detection
 
-   This method is called during operation definition by the slave,
+   This method is called during operation definition by the replica,
    when writing to a table with conflict detection defined.
 
    It is responsible for defining and adding any operation filtering
@@ -4744,7 +4744,7 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
   DBUG_ENTER("prepare_conflict_detection");
   THD* thd = table->in_use;
   int res = 0;
-  assert(thd->slave_thread);
+  assert(thd->replica_thread);
 
   conflict_handled = false;
 
@@ -4778,10 +4778,10 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
     Ndb_binlog_extra_row_info extra_row_info;
     if (extra_row_info.loadFromBuffer(thd->binlog_row_event_extra_data) != 0)
     {
-      sql_print_warning("NDB Slave : Malformed event received on table %s "
-                        "cannot parse.  Stopping Slave.",
+      sql_print_warning("NDB Replica : Malformed event received on table %s "
+                        "cannot parse.  Stopping Replica.",
                         m_share->key);
-      DBUG_RETURN( ER_SLAVE_CORRUPT_EVENT );
+      DBUG_RETURN( ER_REPLICA_CORRUPT_EVENT );
     }
     
     if (extra_row_info.getFlags() &
@@ -4792,20 +4792,20 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
         Ndb_binlog_extra_row_info::NDB_ERIF_CFT_FLAGS)
     {
       DBUG_PRINT("info", 
-                 ("Slave : have conflict flags : %x\n",
+                 ("Replica : have conflict flags : %x\n",
                   extra_row_info.getConflictFlags()));
       conflict_flags = extra_row_info.getConflictFlags();
 
       if (conflict_flags & NDB_ERIF_CFT_REFLECT_OP)
       {
         op_is_marked_as_reflected= true;
-        g_ndb_slave_state.current_reflect_op_prepare_count++;
+        g_ndb_replica_state.current_reflect_op_prepare_count++;
       }
       
       if (conflict_flags & NDB_ERIF_CFT_REFRESH_OP)
       {
         op_is_marked_as_refresh= true;
-        g_ndb_slave_state.current_refresh_op_count++;
+        g_ndb_replica_state.current_refresh_op_count++;
       }
 
       if (conflict_flags & NDB_ERIF_CFT_READ_OP)
@@ -4827,19 +4827,19 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
   bool pass_mode = false;
   if (conflict_fn)
   {
-    /* Check Slave Conflict Role Variable setting */
+    /* Check Replica Conflict Role Variable setting */
     if (conflict_fn->flags & CF_USE_ROLE_VAR)
     {
-      switch (opt_ndb_slave_conflict_role)
+      switch (opt_ndb_replica_conflict_role)
       {
       case SCR_NONE:
       {
-        sql_print_warning("NDB Slave : Conflict function %s defined on "
-                          "table %s requires ndb_slave_conflict_role variable "
-                          "to be set.  Stopping slave.",
+        sql_print_warning("NDB Replica : Conflict function %s defined on "
+                          "table %s requires ndb_replica_conflict_role variable "
+                          "to be set.  Stopping replica.",
                           conflict_fn->name,
                           m_share->key);
-        DBUG_RETURN(ER_SLAVE_CONFIGURATION);
+        DBUG_RETURN(ER_REPLICA_CONFIGURATION);
       }
       case SCR_PASS:
       {
@@ -4855,7 +4855,7 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
   {
     bool handle_conflict_now = false;
     const uchar* row_data = (op_type == WRITE_ROW? new_data : old_data);
-    int res = g_ndb_slave_state.atPrepareConflictDetection(m_table,
+    int res = g_ndb_replica_state.atPrepareConflictDetection(m_table,
                                                            key_rec,
                                                            row_data,
                                                            transaction_id,
@@ -4897,7 +4897,7 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
       if (unlikely(res))
         DBUG_RETURN(res);
 
-      g_ndb_slave_state.conflict_flags |= SCS_OPS_DEFINED;
+      g_ndb_replica_state.conflict_flags |= SCS_OPS_DEFINED;
 
       /*
         Indicate that there (may be) some more operations to
@@ -4929,12 +4929,12 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
   if (unlikely((conflict_fn->flags & CF_TRANSACTIONAL) &&
                (transaction_id == Ndb_binlog_extra_row_info::InvalidTransactionId)))
   {
-    sql_print_warning("NDB Slave : Transactional conflict detection defined on table %s, but "
+    sql_print_warning("NDB Replica : Transactional conflict detection defined on table %s, but "
                       "events received without transaction ids.  Check --ndb-log-transaction-id setting "
                       "on upstream Cluster.",
                       m_share->key);
     /* This is a user error, but we want them to notice, so treat seriously */
-    DBUG_RETURN( ER_SLAVE_CORRUPT_EVENT );
+    DBUG_RETURN( ER_REPLICA_CORRUPT_EVENT );
   }
 
   /**
@@ -4951,7 +4951,7 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
   {
     /* This conflict function reflects secondary ops at the Primary */
     
-    if (opt_ndb_slave_conflict_role == SCR_PRIMARY)
+    if (opt_ndb_replica_conflict_role == SCR_PRIMARY)
     {
       /**
        * Here we mark the applied operations to indicate that they
@@ -4960,7 +4960,7 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
        *   1.  They are given local Binlog Event source serverids
        *       and so will pass through to the storage engine layer
        *       on the SECONDARY.
-       *       (Normally they would be filtered in the Slave IO thread
+       *       (Normally they would be filtered in the Replica IO thread
        *        as having returned-to-source)
        *
        *   2.  They can be tagged as reflected so that the SECONDARY
@@ -4973,7 +4973,7 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
         NdbOperation::OperationOptions::OO_ANYVALUE;
       ndbcluster_anyvalue_set_reflect_op(options->anyValue);
     }
-    else if (opt_ndb_slave_conflict_role == SCR_SECONDARY)
+    else if (opt_ndb_replica_conflict_role == SCR_SECONDARY)
     {
       /**
        * On the Secondary, we receive reflected operations which
@@ -5047,15 +5047,15 @@ ha_ndbcluster::prepare_conflict_detection(enum_conflicting_op_type op_type,
     }
     else
     {
-      sql_print_warning("NDB Slave : Binlog event on table %s missing "
+      sql_print_warning("NDB Replica : Binlog event on table %s missing "
                         "info necessary for conflict detection.  "
                         "Check binlog format options on upstream cluster.",
                         m_share->key);
-      DBUG_RETURN( ER_SLAVE_CORRUPT_EVENT);
+      DBUG_RETURN( ER_REPLICA_CORRUPT_EVENT);
     }
   } // if (op_type != WRITE_ROW)
 
-  g_ndb_slave_state.conflict_flags |= SCS_OPS_DEFINED;
+  g_ndb_replica_state.conflict_flags |= SCS_OPS_DEFINED;
 
   /* Now save data for potential insert to exceptions table... */
   Ndb_exceptions_data ex_data;
@@ -5252,7 +5252,7 @@ handle_conflict_op_error(NdbTransaction* trans,
              (err.classification == NdbError::ConstraintViolation) ||
              (err.classification == NdbError::NoDataFound));
       
-      g_ndb_slave_state.current_reflect_op_discard_count++;
+      g_ndb_replica_state.current_reflect_op_discard_count++;
 
       DBUG_RETURN(0);
     }
@@ -5268,7 +5268,7 @@ handle_conflict_op_error(NdbTransaction* trans,
       bool secondary = cfn_share &&
         cfn_share->m_conflict_fn &&
         (cfn_share->m_conflict_fn->flags & CF_USE_ROLE_VAR) &&
-        (opt_ndb_slave_conflict_role == SCR_SECONDARY);
+        (opt_ndb_replica_conflict_role == SCR_SECONDARY);
       
       if (secondary)
       {
@@ -5293,7 +5293,7 @@ handle_conflict_op_error(NdbTransaction* trans,
              (conflict_cause == ROW_DOES_NOT_EXIST)))
       {
         /* Perform special transactional conflict-detected handling */
-        int res = g_ndb_slave_state.atTransConflictDetected(ex_data.trans_id);
+        int res = g_ndb_replica_state.atTransConflictDetected(ex_data.trans_id);
         if (res)
           DBUG_RETURN(res);
       }
@@ -5304,7 +5304,7 @@ handle_conflict_op_error(NdbTransaction* trans,
       /* Now handle the conflict on this row */
       enum_conflict_fn_type cft = cfn_share->m_conflict_fn->type;
 
-      g_ndb_slave_state.current_violation_count[cft]++;
+      g_ndb_replica_state.current_violation_count[cft]++;
 
       int res = handle_row_conflict(cfn_share,
                                     share->table_name,
@@ -5362,21 +5362,21 @@ int ha_ndbcluster::write_row(uchar *record)
 {
   DBUG_ENTER("ha_ndbcluster::write_row");
 #ifdef HAVE_NDB_BINLOG
-  if (m_share == ndb_apply_status_share && table->in_use->slave_thread)
+  if (m_share == ndb_apply_status_share && table->in_use->replica_thread)
   {
-    uint32 row_server_id, master_server_id= ndb_mi_get_master_server_id();
+    uint32 row_server_id, primary_server_id= ndb_mi_get_primary_server_id();
     uint64 row_epoch;
     memcpy(&row_server_id, table->field[0]->ptr + (record - table->record[0]),
            sizeof(row_server_id));
     memcpy(&row_epoch, table->field[1]->ptr + (record - table->record[0]),
            sizeof(row_epoch));
-    int rc = g_ndb_slave_state.atApplyStatusWrite(master_server_id,
+    int rc = g_ndb_replica_state.atApplyStatusWrite(primary_server_id,
                                                   row_server_id,
                                                   row_epoch,
                                                   is_serverid_local(row_server_id));
     if (rc != 0)
     {
-      /* Stop Slave */
+      /* Stop Replica */
       DBUG_RETURN(rc);
     }
   }
@@ -5402,7 +5402,7 @@ int ha_ndbcluster::ndb_write_row(uchar *record,
   Uint32 num_sets= 0;
   DBUG_ENTER("ha_ndbcluster::ndb_write_row");
 
-  error = check_slave_state(thd);
+  error = check_replica_state(thd);
   if (unlikely(error))
     DBUG_RETURN(error);
 
@@ -5543,10 +5543,10 @@ int ha_ndbcluster::ndb_write_row(uchar *record,
       thd_ndb->add_row_check_if_batch_full(m_bytes_per_write);
 
   const Uint32 authorValue = 1;
-  if ((thd->slave_thread) &&
+  if ((thd->replica_thread) &&
       (m_table->getExtraRowAuthorBits()))
   {
-    /* Set author to indicate slave updated last */
+    /* Set author to indicate replica updated last */
     sets[num_sets].column= NdbDictionary::Column::ROW_AUTHOR;
     sets[num_sets].value= &authorValue;
     num_sets++;
@@ -5563,7 +5563,7 @@ int ha_ndbcluster::ndb_write_row(uchar *record,
     options.extraSetValues= sets;
     options.numExtraSetValues= num_sets;
   }
-  if (thd->slave_thread || THDVAR(thd, deferred_constraints))
+  if (thd->replica_thread || THDVAR(thd, deferred_constraints))
   {
     options.optionsPresent |=
       NdbOperation::OperationOptions::OO_DEFERRED_CONSTAINTS;
@@ -5585,8 +5585,8 @@ int ha_ndbcluster::ndb_write_row(uchar *record,
   MY_BITMAP *user_cols_written_bitmap;
   bool avoidNdbApiWriteOp = false; /* ndb_write_row defaults to write */
 #ifdef HAVE_NDB_BINLOG
-  /* Conflict resolution in slave thread */
-  if (thd->slave_thread)
+  /* Conflict resolution in replica thread */
+  if (thd->replica_thread)
   {
     bool conflict_handled = false;
 
@@ -5863,7 +5863,7 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
         DBUG_RETURN(ER_EXCEPTIONS_WRITE_ERROR);
       }
 
-      /* When the slave splits an epoch into batches, a conflict row detected
+      /* When the replica splits an epoch into batches, a conflict row detected
        * and refreshed in an early batch can be written to by operations in
        * a later batch.  As the operations will not have applied, and the
        * row has already been refreshed, we need not attempt to refresh
@@ -5881,17 +5881,17 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
 
       /* When a delete operation finds that the row does not exist, it indicates
        * a DELETE vs DELETE conflict.  If we refresh the row then we can get
-       * non deterministic behaviour depending on slave batching as follows :
+       * non deterministic behaviour depending on replica batching as follows :
        *   Row is deleted
        *
        *     Case 1
-       *       Slave applied DELETE, INSERT in 1 batch
+       *       Replica applied DELETE, INSERT in 1 batch
        *
        *         After first batch, the row is present (due to INSERT), it is
        *         refreshed.
        *
        *     Case 2
-       *       Slave applied DELETE in 1 batch, INSERT in 2nd batch
+       *       Replica applied DELETE in 1 batch, INSERT in 2nd batch
        *
        *         After first batch, the row is not present, it is refreshed
        *         INSERT is then rejected.
@@ -5905,7 +5905,7 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
       if ((op_type == DELETE_ROW) &&
           (conflict_cause == ROW_DOES_NOT_EXIST))
       {
-        g_ndb_slave_state.current_delete_delete_count++;
+        g_ndb_replica_state.current_delete_delete_count++;
         DBUG_PRINT("info", ("Delete vs Delete detected, NOT refreshing"));
         break;
       }
@@ -5923,7 +5923,7 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
         Otherwise we can 'pickup' the ANYVALUE of a previous
         update to the row.
         If some previous update in this transaction came from a
-        Slave, then using its ANYVALUE can result in that Slave
+        Replica, then using its ANYVALUE can result in that Replica
         ignoring this correction.
       */
       NdbOperation::OperationOptions options;
@@ -5950,7 +5950,7 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
 
         if (err.status == NdbError::TemporaryError)
         {
-          /* Slave will roll back and retry entire transaction. */
+          /* Replica will roll back and retry entire transaction. */
           ERR_RETURN(err);
         }
         else
@@ -5964,7 +5964,7 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
           push_warning_printf(current_thd, Sql_condition::SL_WARNING,
                               ER_EXCEPTIONS_WRITE_ERROR,
                               ER(ER_EXCEPTIONS_WRITE_ERROR), msg);
-          /* Slave will stop replication. */
+          /* Replica will stop replication. */
           DBUG_RETURN(ER_EXCEPTIONS_WRITE_ERROR);
         }
       }
@@ -5983,8 +5983,8 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
                                             key_rec,
                                             data_rec,
                                             ::server_id,
-                                            ndb_mi_get_master_server_id(),
-                                            g_ndb_slave_state.current_master_server_epoch,
+                                            ndb_mi_get_primary_server_id(),
+                                            g_ndb_replica_state.current_primary_server_epoch,
                                             old_row,
                                             new_row,
                                             op_type,
@@ -5997,7 +5997,7 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
       {
         if (err.status == NdbError::TemporaryError)
         {
-          /* Slave will roll back and retry entire transaction. */
+          /* Replica will roll back and retry entire transaction. */
           ERR_RETURN(err);
         }
         else
@@ -6012,7 +6012,7 @@ handle_row_conflict(NDB_CONFLICT_FN_SHARE* cfn_share,
           push_warning_printf(current_thd, Sql_condition::SL_WARNING,
                               ER_EXCEPTIONS_WRITE_ERROR,
                               ER(ER_EXCEPTIONS_WRITE_ERROR), msg);
-          /* Slave will stop replication. */
+          /* Replica will stop replication. */
           DBUG_RETURN(ER_EXCEPTIONS_WRITE_ERROR);
         }
       }
@@ -6100,7 +6100,7 @@ int ha_ndbcluster::exec_bulk_update(uint *dup_key_found)
   {
     /*
       Turned on by @@transaction_allow_batching=ON
-      or implicitly by slave exec thread
+      or implicitly by replica exec thread
     */
     DBUG_PRINT("exit", ("skip execute - transaction_allow_batching is ON"));
     DBUG_RETURN(0);
@@ -6224,7 +6224,7 @@ int ha_ndbcluster::ndb_update_row(const uchar *old_data, uchar *new_data,
   NdbTransaction *trans= m_thd_ndb->trans;
   DBUG_ASSERT(trans);
 
-  error = check_slave_state(thd);
+  error = check_replica_state(thd);
   if (unlikely(error))
     DBUG_RETURN(error);
 
@@ -6338,10 +6338,10 @@ int ha_ndbcluster::ndb_update_row(const uchar *old_data, uchar *new_data,
       thd_ndb->add_row_check_if_batch_full(m_bytes_per_write);
 
  const Uint32 authorValue = 1;
- if ((thd->slave_thread) &&
+ if ((thd->replica_thread) &&
      (m_table->getExtraRowAuthorBits()))
  {
-   /* Set author to indicate slave updated last */
+   /* Set author to indicate replica updated last */
    sets[num_sets].column= NdbDictionary::Column::ROW_AUTHOR;
    sets[num_sets].value= &authorValue;
    num_sets++;
@@ -6354,7 +6354,7 @@ int ha_ndbcluster::ndb_update_row(const uchar *old_data, uchar *new_data,
    options.numExtraSetValues= num_sets;
  }
 
-  if (thd->slave_thread || THDVAR(thd, deferred_constraints))
+  if (thd->replica_thread || THDVAR(thd, deferred_constraints))
   {
     options.optionsPresent |=
       NdbOperation::OperationOptions::OO_DEFERRED_CONSTAINTS;
@@ -6404,11 +6404,11 @@ int ha_ndbcluster::ndb_update_row(const uchar *old_data, uchar *new_data,
     NdbInterpretedCode code(m_table, buffer,
                             sizeof(buffer)/sizeof(buffer[0]));
 
-    if (thd->slave_thread)
+    if (thd->replica_thread)
     {
       bool conflict_handled = false;
-      /* Conflict resolution in slave thread. */
-      DBUG_PRINT("info", ("Slave thread, preparing conflict resolution for update with mask : %x", *((Uint32*)mask)));
+      /* Conflict resolution in replica thread. */
+      DBUG_PRINT("info", ("Replica thread, preparing conflict resolution for update with mask : %x", *((Uint32*)mask)));
 
       if (unlikely((error = prepare_conflict_detection(UPDATE_ROW,
                                                        key_rec,
@@ -6566,7 +6566,7 @@ int ha_ndbcluster::end_bulk_delete()
   {
     /*
       Turned on by @@transaction_allow_batching=ON
-      or implicitly by slave exec thread
+      or implicitly by replica exec thread
     */
     DBUG_PRINT("exit", ("skip execute - transaction_allow_batching is ON"));
     DBUG_RETURN(0);
@@ -6630,7 +6630,7 @@ int ha_ndbcluster::ndb_delete_row(const uchar *record,
   NdbTransaction *trans= m_thd_ndb->trans;
   DBUG_ASSERT(trans);
 
-  error = check_slave_state(thd);
+  error = check_replica_state(thd);
   if (unlikely(error))
     DBUG_RETURN(error);
 
@@ -6678,7 +6678,7 @@ int ha_ndbcluster::ndb_delete_row(const uchar *record,
   const bool need_flush =
       thd_ndb->add_row_check_if_batch_full(delete_size);
 
-  if (thd->slave_thread || THDVAR(thd, deferred_constraints))
+  if (thd->replica_thread || THDVAR(thd, deferred_constraints))
   {
     options.optionsPresent |=
       NdbOperation::OperationOptions::OO_DEFERRED_CONSTAINTS;
@@ -6740,12 +6740,12 @@ int ha_ndbcluster::ndb_delete_row(const uchar *record,
     Uint32 buffer[ MAX_CONFLICT_INTERPRETED_PROG_SIZE ];
     NdbInterpretedCode code(m_table, buffer,
                             sizeof(buffer)/sizeof(buffer[0]));
-    if (thd->slave_thread)
+    if (thd->replica_thread)
     {
        bool conflict_handled = false;
        bool dummy_delete_does_not_care = false;
 
-      /* Conflict resolution in slave thread. */
+      /* Conflict resolution in replica thread. */
       if (unlikely((error = prepare_conflict_detection(DELETE_ROW,
                                                        key_rec,
                                                        m_ndb_record,
@@ -7787,7 +7787,7 @@ int ha_ndbcluster::extra(enum ha_extra_function operation)
     DBUG_PRINT("info", ("HA_EXTRA_WRITE_CAN_REPLACE"));
     if (!m_has_unique_index ||
         /* 
-           Always set if slave, quick fix for bug 27378
+           Always set if replica, quick fix for bug 27378
            or if manual binlog application, for bug 46662
         */
         applying_binlog(current_thd))
@@ -8143,7 +8143,7 @@ THR_LOCK_DATA **ha_ndbcluster::store_lock(THD *thd,
   we can use this to start the transactions.
   If we are in auto_commit mode we just need to start a transaction
   for the statement, this will be stored in thd_ndb.stmt.
-  If not, we have to start a master transaction if there doesn't exist
+  If not, we have to start a primary transaction if there doesn't exist
   one from before, this will be stored in thd_ndb.all
  
   When a table lock is held one transaction will be started which holds
@@ -8186,10 +8186,10 @@ static int ndbcluster_update_apply_status(THD *thd, int do_update)
     r|= op->setValue(1u, (Uint64)0);
     DBUG_ASSERT(r == 0);
   }
-  const char* group_master_log_name =
-    ndb_mi_get_group_master_log_name();
-  const Uint64 group_master_log_pos =
-    ndb_mi_get_group_master_log_pos();
+  const char* group_primary_log_name =
+    ndb_mi_get_group_primary_log_name();
+  const Uint64 group_primary_log_pos =
+    ndb_mi_get_group_primary_log_pos();
   const Uint64 future_event_relay_log_pos =
     ndb_mi_get_future_event_relay_log_pos();
   const Uint64 group_relay_log_pos =
@@ -8198,14 +8198,14 @@ static int ndbcluster_update_apply_status(THD *thd, int do_update)
   // log_name
   char tmp_buf[FN_REFLEN];
   ndb_pack_varchar(ndbtab->getColumn(2u), tmp_buf,
-                   group_master_log_name, (int)strlen(group_master_log_name));
+                   group_primary_log_name, (int)strlen(group_primary_log_name));
   r|= op->setValue(2u, tmp_buf);
   DBUG_ASSERT(r == 0);
   // start_pos
-  r|= op->setValue(3u, group_master_log_pos);
+  r|= op->setValue(3u, group_primary_log_pos);
   DBUG_ASSERT(r == 0);
   // end_pos
-  r|= op->setValue(4u, group_master_log_pos +
+  r|= op->setValue(4u, group_primary_log_pos +
                    (future_event_relay_log_pos - group_relay_log_pos));
   DBUG_ASSERT(r == 0);
   return 0;
@@ -8225,12 +8225,12 @@ Thd_ndb::transaction_checks()
   else if (!THDVAR(thd, use_transactions))
     trans_options|= TNTO_TRANSACTIONS_OFF;
   m_force_send= THDVAR(thd, force_send);
-  if (!thd->slave_thread)
+  if (!thd->replica_thread)
     m_batch_size= THDVAR(thd, batch_size);
   else
   {
     m_batch_size= THDVAR(NULL, batch_size); /* using global value */
-    /* Do not use hinted TC selection in slave thread */
+    /* Do not use hinted TC selection in replica thread */
     THDVAR(thd, optimized_node_selection)=
       THDVAR(NULL, optimized_node_selection) & 1; /* using global value */
   }
@@ -8307,7 +8307,7 @@ int ha_ndbcluster::start_statement(THD *thd,
       thd_ndb->trans_options|= TNTO_NO_LOGGING;
       thd_ndb->m_slow_path= TRUE;
     }
-    else if (thd->slave_thread)
+    else if (thd->replica_thread)
       thd_ndb->m_slow_path= TRUE;
   }
   DBUG_RETURN(0);
@@ -8392,7 +8392,7 @@ int ha_ndbcluster::init_handler_for_statement(THD *thd)
 #ifdef HAVE_NDB_BINLOG
   if (unlikely(m_slow_path))
   {
-    if (m_share == ndb_apply_status_share && thd->slave_thread)
+    if (m_share == ndb_apply_status_share && thd->replica_thread)
         m_thd_ndb->trans_options|= TNTO_INJECTED_APPLY_STATUS;
   }
 #endif
@@ -8737,8 +8737,8 @@ int ndbcluster_commit(handlerton *hton, THD *thd, bool all)
   Thd_ndb *thd_ndb= get_thd_ndb(thd);
   Ndb *ndb= thd_ndb->ndb;
   NdbTransaction *trans= thd_ndb->trans;
-  bool retry_slave_trans = false;
-  (void) retry_slave_trans;
+  bool retry_replica_trans = false;
+  (void) retry_replica_trans;
 
   DBUG_ENTER("ndbcluster_commit");
   DBUG_ASSERT(ndb);
@@ -8770,35 +8770,35 @@ int ndbcluster_commit(handlerton *hton, THD *thd, bool all)
 #ifdef HAVE_NDB_BINLOG
   if (unlikely(thd_ndb->m_slow_path))
   {
-    if (thd->slave_thread)
+    if (thd->replica_thread)
       ndbcluster_update_apply_status
         (thd, thd_ndb->trans_options & TNTO_INJECTED_APPLY_STATUS);
   }
 #endif /* HAVE_NDB_BINLOG */
 
-  if (thd->slave_thread)
+  if (thd->replica_thread)
   {
 #ifdef HAVE_NDB_BINLOG
-    /* If this slave transaction has included conflict detecting ops
+    /* If this replica transaction has included conflict detecting ops
      * and some defined operations are not yet sent, then perform
      * an execute(NoCommit) before committing, as conflict op handling
      * is done by execute(NoCommit)
      */
     /* TODO : Add as function */
-    if (g_ndb_slave_state.conflict_flags & SCS_OPS_DEFINED)
+    if (g_ndb_replica_state.conflict_flags & SCS_OPS_DEFINED)
     {
       if (thd_ndb->m_unsent_bytes)
         res = execute_no_commit(thd_ndb, trans, TRUE);
     }
 
     if (likely(res == 0))
-      res = g_ndb_slave_state.atConflictPreCommit(retry_slave_trans);
+      res = g_ndb_replica_state.atConflictPreCommit(retry_replica_trans);
 #endif /* HAVE_NDB_BINLOG */
 
     if (likely(res == 0))
       res= execute_commit(thd_ndb, trans, 1, TRUE);
 
-    update_slave_api_stats(thd_ndb->ndb);
+    update_replica_api_stats(thd_ndb->ndb);
   }
   else
   {
@@ -8850,21 +8850,21 @@ int ndbcluster_commit(handlerton *hton, THD *thd, bool all)
   if (res != 0)
   {
 #ifdef HAVE_NDB_BINLOG
-    if (retry_slave_trans)
+    if (retry_replica_trans)
     {
-      if (st_ndb_slave_state::MAX_RETRY_TRANS_COUNT >
-          g_ndb_slave_state.retry_trans_count++)
+      if (st_ndb_replica_state::MAX_RETRY_TRANS_COUNT >
+          g_ndb_replica_state.retry_trans_count++)
       {
         /*
-           Warning is necessary to cause retry from slave.cc
+           Warning is necessary to cause retry from replica.cc
            exec_relay_log_event()
         */
         push_warning(thd, Sql_condition::SL_WARNING,
-                     ER_SLAVE_SILENT_RETRY_TRANSACTION,
-                     "Slave transaction rollback requested");
+                     ER_REPLICA_SILENT_RETRY_TRANSACTION,
+                     "Replica transaction rollback requested");
         /*
           Set retry count to zero to:
-          1) Avoid consuming slave-temp-error retry attempts
+          1) Avoid consuming replica-temp-error retry attempts
           2) Ensure no inter-attempt sleep
 
           Better fix : Save + restore retry count around transactional
@@ -8878,8 +8878,8 @@ int ndbcluster_commit(handlerton *hton, THD *thd, bool all)
            Too many retries, print error and exit - normal
            too many retries mechanism will cause exit
          */
-        sql_print_error("Ndb slave retried transaction %u time(s) in vain.  Giving up.",
-                        st_ndb_slave_state::MAX_RETRY_TRANS_COUNT);
+        sql_print_error("Ndb replica retried transaction %u time(s) in vain.  Giving up.",
+                        st_ndb_replica_state::MAX_RETRY_TRANS_COUNT);
       }
       res= ER_GET_TEMPORARY_ERRMSG;
     }
@@ -8974,8 +8974,8 @@ static int ndbcluster_rollback(handlerton *hton, THD *thd, bool all)
     DBUG_RETURN(0);
   }
   thd_ndb->save_point_count= 0;
-  if (thd->slave_thread)
-    g_ndb_slave_state.atTransactionAbort();
+  if (thd->replica_thread)
+    g_ndb_replica_state.atTransactionAbort();
   thd_ndb->m_unsent_bytes= 0;
   thd_ndb->m_execute_count++;
   DBUG_PRINT("info", ("execute_count: %u", thd_ndb->m_execute_count));
@@ -9002,8 +9002,8 @@ static int ndbcluster_rollback(handlerton *hton, THD *thd, bool all)
   }
   thd_ndb->changed_tables.empty();
 
-  if (thd->slave_thread)
-    update_slave_api_stats(thd_ndb->ndb);
+  if (thd->replica_thread)
+    update_replica_api_stats(thd_ndb->ndb);
 
   DBUG_RETURN(res);
 }
@@ -12987,7 +12987,7 @@ int ndbcluster_init(void* p)
   ndb_wait_setup_func= ndb_wait_setup_func_impl;
 #endif
 
-  memset(&g_slave_api_client_stats, 0, sizeof(g_slave_api_client_stats));
+  memset(&g_replica_api_client_stats, 0, sizeof(g_replica_api_client_stats));
 
   ndbcluster_inited= 1;
 
@@ -18470,7 +18470,7 @@ SHOW_VAR ndb_status_variables_export[]= {
   {"Ndb",          (char*) &show_ndb_vars,                 SHOW_FUNC,  SHOW_SCOPE_GLOBAL},
   {"Ndb_conflict", (char*) &show_ndb_conflict_status_vars, SHOW_FUNC,  SHOW_SCOPE_GLOBAL},
   {"Ndb",          (char*) &ndb_status_injector_variables, SHOW_ARRAY, SHOW_SCOPE_GLOBAL},
-  {"Ndb",          (char*) &ndb_status_slave_variables,    SHOW_ARRAY, SHOW_SCOPE_GLOBAL},
+  {"Ndb",          (char*) &ndb_status_replica_variables,    SHOW_ARRAY, SHOW_SCOPE_GLOBAL},
   {"Ndb",          (char*) &show_ndb_server_api_stats,     SHOW_FUNC,  SHOW_SCOPE_GLOBAL},
   {"Ndb_index_stat", (char*) &ndb_status_index_stat_variables, SHOW_ARRAY, SHOW_SCOPE_GLOBAL},
   {NullS, NullS, SHOW_LONG, SHOW_SCOPE_GLOBAL}
@@ -18891,7 +18891,7 @@ static MYSQL_SYSVAR_BOOL(
   log_apply_status,                 /* name */
   opt_ndb_log_apply_status,         /* var */
   PLUGIN_VAR_OPCMDARG,
-  "Log ndb_apply_status updates from Master in the Binlog",
+  "Log ndb_apply_status updates from Primary in the Binlog",
   NULL,                             /* check func. */
   NULL,                             /* update func. */
   0                                 /* default */
@@ -18946,7 +18946,7 @@ static MYSQL_SYSVAR_UINT(
   0                                 /* block */
 );
 
-static const char* slave_conflict_role_names[] =
+static const char* replica_conflict_role_names[] =
 {
   "NONE",
   "SECONDARY",
@@ -18955,22 +18955,22 @@ static const char* slave_conflict_role_names[] =
   NullS
 };
 
-static TYPELIB slave_conflict_role_typelib = 
+static TYPELIB replica_conflict_role_typelib = 
 {
-  array_elements(slave_conflict_role_names) - 1,
+  array_elements(replica_conflict_role_names) - 1,
   "",
-  slave_conflict_role_names,
+  replica_conflict_role_names,
   NULL
 };
 
 
 /**
- * slave_conflict_role_check_func.
+ * replica_conflict_role_check_func.
  * 
  * Perform most validation of a role change request.
  * Inspired by sql_plugin.cc::check_func_enum()
  */
-static int slave_conflict_role_check_func(THD *thd, struct st_mysql_sys_var *var,
+static int replica_conflict_role_check_func(THD *thd, struct st_mysql_sys_var *var,
                                           void *save, st_mysql_value *value)
 {
   char buff[STRING_BUFFER_USUAL_SIZE];
@@ -18986,34 +18986,34 @@ static int slave_conflict_role_check_func(THD *thd, struct st_mysql_sys_var *var
       length= sizeof(buff);
       if (!(str= value->val_str(value, buff, &length)))
         break;
-      if ((result= (long)find_type(str, &slave_conflict_role_typelib, 0) - 1) < 0)
+      if ((result= (long)find_type(str, &replica_conflict_role_typelib, 0) - 1) < 0)
         break;
     }
     else
     {
       if (value->val_int(value, &tmp))
         break;
-      if (tmp < 0 || tmp >= slave_conflict_role_typelib.count)
+      if (tmp < 0 || tmp >= replica_conflict_role_typelib.count)
         break;
       result= (long) tmp;
     }
     
     const char* failure_cause_str = NULL;
-    if (!st_ndb_slave_state::checkSlaveConflictRoleChange(
-               (enum_slave_conflict_role) opt_ndb_slave_conflict_role,
-               (enum_slave_conflict_role) result,
+    if (!st_ndb_replica_state::checkReplicaConflictRoleChange(
+               (enum_replica_conflict_role) opt_ndb_replica_conflict_role,
+               (enum_replica_conflict_role) result,
                &failure_cause_str))
     {
       char msgbuf[256];
       my_snprintf(msgbuf, 
                   sizeof(msgbuf), 
                   "Role change from %s to %s failed : %s",
-                  get_type(&slave_conflict_role_typelib, opt_ndb_slave_conflict_role),
-                  get_type(&slave_conflict_role_typelib, result),
+                  get_type(&replica_conflict_role_typelib, opt_ndb_replica_conflict_role),
+                  get_type(&replica_conflict_role_typelib, result),
                   failure_cause_str);
       
       thd->raise_error_printf(ER_ERROR_WHEN_EXECUTING_COMMAND,
-                              "SET GLOBAL ndb_slave_conflict_role",
+                              "SET GLOBAL ndb_replica_conflict_role",
                               msgbuf);
       
       break;
@@ -19028,28 +19028,28 @@ static int slave_conflict_role_check_func(THD *thd, struct st_mysql_sys_var *var
 };
 
 /**
- * slave_conflict_role_update_func
+ * replica_conflict_role_update_func
  *
  * Perform actual change of role, using saved 'long' enum value
  * prepared by the update func above.
  *
  * Inspired by sql_plugin.cc::update_func_long()
  */
-static void slave_conflict_role_update_func(THD *thd, struct st_mysql_sys_var *var,
+static void replica_conflict_role_update_func(THD *thd, struct st_mysql_sys_var *var,
                                             void *tgt, const void *save)
 {
   *(long *)tgt= *(long *) save;
 };
 
 static MYSQL_SYSVAR_ENUM(
-  slave_conflict_role,               /* Name */
-  opt_ndb_slave_conflict_role,       /* Var */
+  replica_conflict_role,               /* Name */
+  opt_ndb_replica_conflict_role,       /* Var */
   PLUGIN_VAR_RQCMDARG,
-  "Role for Slave to play in asymmetric conflict algorithms.",
-  slave_conflict_role_check_func,    /* Check func */
-  slave_conflict_role_update_func,   /* Update func */
+  "Role for Replica to play in asymmetric conflict algorithms.",
+  replica_conflict_role_check_func,    /* Check func */
+  replica_conflict_role_update_func,   /* Update func */
   SCR_NONE,                          /* Default value */
-  &slave_conflict_role_typelib       /* typelib */
+  &replica_conflict_role_typelib       /* typelib */
 );
 
 #ifndef DBUG_OFF
@@ -19163,7 +19163,7 @@ static struct st_mysql_sys_var* system_variables[]= {
   MYSQL_SYSVAR(version),
   MYSQL_SYSVAR(version_string),
   MYSQL_SYSVAR(show_foreign_key_mock_tables),
-  MYSQL_SYSVAR(slave_conflict_role),
+  MYSQL_SYSVAR(replica_conflict_role),
   NULL
 };
 

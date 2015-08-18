@@ -1802,12 +1802,12 @@ End of 5.5 tests
 SET @@sql_mode= 4294967296;
 ERROR 42000: Variable 'sql_mode' can't be set to the value of '4294967296'
 #
-# Bug #59860: log-slow-admin-statements and log-slow-slave-statements not displayed
+# Bug #59860: log-slow-admin-statements and log-slow-replica-statements not displayed
 #
 show variables like 'log_slow%';
 Variable_name	Value
 log_slow_admin_statements	OFF
-log_slow_slave_statements	OFF
+log_slow_replica_statements	OFF
 set global log_slow_admin_statements = on;
 show global variables like 'log_slow_admin_statements';
 Variable_name	Value
@@ -1815,15 +1815,15 @@ log_slow_admin_statements	ON
 select * from information_schema.global_variables where variable_name like 'log_slow_admin_statements';
 VARIABLE_NAME	VARIABLE_VALUE
 LOG_SLOW_ADMIN_STATEMENTS	ON
-set global log_slow_slave_statements = on;
-show global variables like 'log_slow_slave_statements';
+set global log_slow_replica_statements = on;
+show global variables like 'log_slow_replica_statements';
 Variable_name	Value
-log_slow_slave_statements	ON
-select * from information_schema.global_variables where variable_name like 'log_slow_slave_statements';
+log_slow_replica_statements	ON
+select * from information_schema.global_variables where variable_name like 'log_slow_replica_statements';
 VARIABLE_NAME	VARIABLE_VALUE
-LOG_SLOW_SLAVE_STATEMENTS	ON
+LOG_SLOW_REPLICA_STATEMENTS	ON
 set global log_slow_admin_statements = default;
-set global log_slow_slave_statements = default;
+set global log_slow_replica_statements = default;
 #
 # WL#7764 - Make STRICT mode for transactional SEs default in 5.7
 #

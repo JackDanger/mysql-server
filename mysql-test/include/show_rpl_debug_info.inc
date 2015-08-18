@@ -6,8 +6,8 @@
 # The following is printed on the current connection:
 #
 #   SELECT NOW(), @@SERVER_ID, @@SERVER_UUID
-#   SHOW SLAVE STATUS
-#   SHOW MASTER STATUS
+#   SHOW REPLICA STATUS
+#   SHOW PRIMARY STATUS
 #   SHOW PROCESSLIST
 #   SHOW BINLOG EVENTS IN <binlog_name>
 #
@@ -90,9 +90,9 @@ while ($_rpl_server)
   query_vertical
   SELECT @@GLOBAL.GTID_MODE, @@GLOBAL.GTID_EXECUTED, @@GLOBAL.GTID_PURGED, @@GLOBAL.GTID_OWNED, @@SESSION.GTID_EXECUTED, @@SESSION.GTID_OWNED;
   --echo
-  --echo **** SHOW SLAVE STATUS on $CURRENT_CONNECTION ****
+  --echo **** SHOW REPLICA STATUS on $CURRENT_CONNECTION ****
   query_vertical
-   SHOW SLAVE STATUS;
+   SHOW REPLICA STATUS;
   --echo
   --echo **** replication_connection_status on $CURRENT_CONNECTION ****
   query_vertical
@@ -106,13 +106,13 @@ while ($_rpl_server)
   query_vertical
   SELECT * FROM performance_schema.replication_applier_status_by_coordinator;
   --echo
-  --echo **** SHOW MASTER STATUS on $CURRENT_CONNECTION ****
+  --echo **** SHOW PRIMARY STATUS on $CURRENT_CONNECTION ****
   query_vertical
-  SHOW MASTER STATUS;
+  SHOW PRIMARY STATUS;
   --echo
-  --echo **** SHOW SLAVE HOSTS on $CURRENT_CONNECTION ****
+  --echo **** SHOW REPLICA HOSTS on $CURRENT_CONNECTION ****
   query_vertical
-  SHOW SLAVE HOSTS;
+  SHOW REPLICA HOSTS;
   --echo
   --echo **** SHOW PROCESSLIST on $CURRENT_CONNECTION ****
   SHOW PROCESSLIST;
@@ -124,20 +124,20 @@ while ($_rpl_server)
   SHOW BINARY LOGS;
   --echo
   --echo **** SHOW BINLOG EVENTS on $CURRENT_CONNECTION ****
-  let $binlog_name= query_get_value("SHOW MASTER STATUS", File, 1);
+  let $binlog_name= query_get_value("SHOW PRIMARY STATUS", File, 1);
   --echo binlog_name = '$binlog_name'
   eval SHOW BINLOG EVENTS IN '$binlog_name';
   --echo
   --echo **** SHOW RELAYLOG EVENTS on $CURRENT_CONNECTION ****
-  let $relaylog_name= query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1);
+  let $relaylog_name= query_get_value(SHOW REPLICA STATUS, Relay_Log_File, 1);
   --echo relaylog_name = '$relaylog_name'
   eval SHOW RELAYLOG EVENTS IN '$relaylog_name';
   --echo
-  --echo **** slave_relay_info on $CURRENT_CONNECTION ****
-  SELECT * FROM mysql.slave_relay_log_info;
+  --echo **** replica_relay_info on $CURRENT_CONNECTION ****
+  SELECT * FROM mysql.replica_relay_log_info;
   --echo
-  --echo **** slave_master_info on $CURRENT_CONNECTION ****
-  SELECT * FROM mysql.slave_master_info;
+  --echo **** replica_primary_info on $CURRENT_CONNECTION ****
+  SELECT * FROM mysql.replica_primary_info;
   --echo
   --echo **** mysql.gtid_executed on $CURRENT_CONNECTION ****
   SELECT * FROM mysql.gtid_executed;

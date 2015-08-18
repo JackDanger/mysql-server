@@ -21,13 +21,13 @@ dojo.declare("dojo.store.__CacheArgs", null, {
 	}
 });
 =====*/
-store.Cache = function(masterStore, cachingStore, /*dojo.store.__CacheArgs*/ options){
+store.Cache = function(primaryStore, cachingStore, /*dojo.store.__CacheArgs*/ options){
 	// summary:
-	//		The Cache store wrapper takes a master store and a caching store,
-	//		caches data from the master into the caching store for faster
+	//		The Cache store wrapper takes a primary store and a caching store,
+	//		caches data from the primary into the caching store for faster
 	//		lookup. Normally one would use a memory store for the caching
-	//		store and a server store like JsonRest for the master store.
-	// masterStore:
+	//		store and a server store like JsonRest for the primary store.
+	// primaryStore:
 	//		This is the authoritative store, all uncached requests or non-safe requests will
 	//		be made against this store.
 	// cachingStore:
@@ -36,9 +36,9 @@ store.Cache = function(masterStore, cachingStore, /*dojo.store.__CacheArgs*/ opt
 	// options:
 	//		These are additional options for how caching is handled.
 	options = options || {};
-	return lang.delegate(masterStore, {
+	return lang.delegate(primaryStore, {
 		query: function(query, directives){
-			var results = masterStore.query(query, directives);
+			var results = primaryStore.query(query, directives);
 			results.forEach(function(object){
 				if(!options.isLoaded || options.isLoaded(object)){
 					cachingStore.put(object);
@@ -47,10 +47,10 @@ store.Cache = function(masterStore, cachingStore, /*dojo.store.__CacheArgs*/ opt
 			return results;
 		},
 		// look for a queryEngine in either store
-		queryEngine: masterStore.queryEngine || cachingStore.queryEngine,
+		queryEngine: primaryStore.queryEngine || cachingStore.queryEngine,
 		get: function(id, directives){
 			return Deferred.when(cachingStore.get(id), function(result){
-				return result || Deferred.when(masterStore.get(id, directives), function(result){
+				return result || Deferred.when(primaryStore.get(id, directives), function(result){
 					if(result){
 						cachingStore.put(result, {id: id});
 					}
@@ -59,21 +59,21 @@ store.Cache = function(masterStore, cachingStore, /*dojo.store.__CacheArgs*/ opt
 			});
 		},
 		add: function(object, directives){
-			return Deferred.when(masterStore.add(object, directives), function(result){
+			return Deferred.when(primaryStore.add(object, directives), function(result){
 				// now put result in cache
 				return cachingStore.add(typeof result == "object" ? result : object, directives);
 			});
 		},
 		put: function(object, directives){
-			// first remove from the cache, so it is empty until we get a response from the master store
+			// first remove from the cache, so it is empty until we get a response from the primary store
 			cachingStore.remove((directives && directives.id) || this.getIdentity(object));
-			return Deferred.when(masterStore.put(object, directives), function(result){
+			return Deferred.when(primaryStore.put(object, directives), function(result){
 				// now put result in cache
 				return cachingStore.put(typeof result == "object" ? result : object, directives);
 			});
 		},
 		remove: function(id, directives){
-			return Deferred.when(masterStore.remove(id, directives), function(result){
+			return Deferred.when(primaryStore.remove(id, directives), function(result){
 				return cachingStore.remove(id, directives);
 			});
 		},
@@ -85,13 +85,13 @@ store.Cache = function(masterStore, cachingStore, /*dojo.store.__CacheArgs*/ opt
 /*=====
 dojo.declare("dojo.store.Cache", null, {
 	// example:
-	//	|	var master = new dojo.store.Memory(data);
+	//	|	var primary = new dojo.store.Memory(data);
 	//	|	var cacher = new dojo.store.Memory();
-	//	|	var store = new dojo.store.Cache(master, cacher);
+	//	|	var store = new dojo.store.Cache(primary, cacher);
 	//
 	query: function(query, directives){
 		// summary:
-		//		Query the underlying master store and cache any results.
+		//		Query the underlying primary store and cache any results.
 		// query: Object|String
 		//		The object or string containing query information. Dependent on the query engine used.
 		// directives: dojo.store.util.SimpleQueryEngine.__queryOptions?

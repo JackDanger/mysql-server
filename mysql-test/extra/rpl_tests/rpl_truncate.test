@@ -2,7 +2,7 @@
 # The statements are "TRUNCATE tbl" and "DELETE FROM tbl". We check
 # the behaviour of each possible value for BINLOG_FORMAT.
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 let $trunc_stmt = TRUNCATE TABLE;
 --source extra/rpl_tests/rpl_truncate_helper.test

@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 drop database if exists mysqltest1;
 create database mysqltest1 /*!40100 character set latin2 */;
 use mysqltest1;
@@ -17,9 +17,9 @@ INSERT INTO t1 VALUES ('ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ','C0');
 INSERT INTO t1 VALUES ('ĞÑÒÓÔÕÖ×ØÙÚÛÜİŞß','D0');
 INSERT INTO t1 VALUES ('àáâãäåæçèéêëìíîï','E0');
 INSERT INTO t1 VALUES ('ğñòóôõö÷øùúûüışÿ','F0');
-select "--- on master ---";
---- on master ---
---- on master ---
+select "--- on primary ---";
+--- on primary ---
+--- on primary ---
 select hex(a),b from t1 order by b;
 hex(a)	b
 A9A6ABAEAC	80
@@ -30,11 +30,11 @@ C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF	C0
 D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF	D0
 E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF	E0
 F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF	F0
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 use mysqltest1;
-select "--- on slave ---";
---- on slave ---
---- on slave ---
+select "--- on replica ---";
+--- on replica ---
+--- on replica ---
 select hex(a),b from t1 order by b;
 hex(a)	b
 A9A6ABAEAC	80
@@ -46,5 +46,5 @@ D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF	D0
 E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF	E0
 F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF	F0
 drop database mysqltest1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

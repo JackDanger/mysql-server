@@ -3,7 +3,7 @@
 # Replication is disabled in embedded mode.
 #
 --source include/not_embedded.inc
-# Not GTIDs because it sets slave_sql_skip_counter
+# Not GTIDs because it sets replica_sql_skip_counter
 --source include/not_gtid_enabled.inc
 
 #
@@ -12,48 +12,48 @@
 #
 
 #
-# Commands associated with the SLAVE.
+# Commands associated with the REPLICA.
 #
-SHOW SLAVE STATUS;
---error ER_SLAVE_CONFIGURATION
-RESET SLAVE;
---error ER_SLAVE_CONFIGURATION
+SHOW REPLICA STATUS;
+--error ER_REPLICA_CONFIGURATION
+RESET REPLICA;
+--error ER_REPLICA_CONFIGURATION
 SHOW RELAYLOG EVENTS;
---error ER_SLAVE_CONFIGURATION
-STOP SLAVE;
---error ER_SLAVE_CONFIGURATION
-START SLAVE;
-SELECT MASTER_POS_WAIT('non-existent', 0);
---error ER_SLAVE_CONFIGURATION
-CHANGE MASTER TO MASTER_CONNECT_RETRY = 1, MASTER_HEARTBEAT_PERIOD = 1.01;
+--error ER_REPLICA_CONFIGURATION
+STOP REPLICA;
+--error ER_REPLICA_CONFIGURATION
+START REPLICA;
+SELECT PRIMARY_POS_WAIT('non-existent', 0);
+--error ER_REPLICA_CONFIGURATION
+CHANGE PRIMARY TO PRIMARY_CONNECT_RETRY = 1, PRIMARY_HEARTBEAT_PERIOD = 1.01;
 --error 2
---exec $MYSQL_DUMP --compact --master-data=2 test
+--exec $MYSQL_DUMP --compact --primary-data=2 test
 FLUSH LOGS;
 FLUSH RELAY LOGS;
 
 # Commands associated with replication filters
---error ER_SLAVE_CONFIGURATION
+--error ER_REPLICA_CONFIGURATION
 CHANGE REPLICATION FILTER REPLICATE_DO_DB=(db1);
---error ER_SLAVE_CONFIGURATION
+--error ER_REPLICA_CONFIGURATION
 CHANGE REPLICATION FILTER REPLICATE_IGNORE_DB=(db1);
---error ER_SLAVE_CONFIGURATION
+--error ER_REPLICA_CONFIGURATION
 CHANGE REPLICATION FILTER REPLICATE_DO_TABLE=(db1.t1);
---error ER_SLAVE_CONFIGURATION
+--error ER_REPLICA_CONFIGURATION
 CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db1.t1);
---error ER_SLAVE_CONFIGURATION
+--error ER_REPLICA_CONFIGURATION
 CHANGE REPLICATION FILTER REPLICATE_WILD_DO_TABLE=('db1.t%');
---error ER_SLAVE_CONFIGURATION
+--error ER_REPLICA_CONFIGURATION
 CHANGE REPLICATION FILTER REPLICATE_WILD_IGNORE_TABLE=('db1.t%');
---error ER_SLAVE_CONFIGURATION
+--error ER_REPLICA_CONFIGURATION
 CHANGE REPLICATION FILTER REPLICATE_REWRITE_DB=((db1,db2));
 
 #
-# Configuration options associated with the SLAVE.
+# Configuration options associated with the REPLICA.
 #
---let $saved= `SELECT @@GLOBAL.master_info_repository`
-SET @@GLOBAL.master_info_repository= "TABLE";
+--let $saved= `SELECT @@GLOBAL.primary_info_repository`
+SET @@GLOBAL.primary_info_repository= "TABLE";
 --disable_query_log
---eval SET @@GLOBAL.master_info_repository= "$saved"
+--eval SET @@GLOBAL.primary_info_repository= "$saved"
 --enable_query_log
 --let $saved= `SELECT @@GLOBAL.relay_log_info_repository`
 SET @@GLOBAL.relay_log_info_repository= "TABLE";
@@ -63,33 +63,33 @@ SET @@GLOBAL.relay_log_info_repository= "TABLE";
 --let $saved= `SELECT @@GLOBAL.max_relay_log_size`
 SET @@GLOBAL.max_relay_log_size= 536870912;
 --eval SET @@GLOBAL.max_relay_log_size= $saved
---let $saved= `SELECT @@GLOBAL.slave_net_timeout`
-SET @@GLOBAL.slave_net_timeout= 10;
---eval SET @@GLOBAL.slave_net_timeout= $saved
---let $saved= `SELECT @@GLOBAL.sql_slave_skip_counter`
-SET @@GLOBAL.sql_slave_skip_counter= 10;
---eval SET @@GLOBAL.sql_slave_skip_counter= $saved
+--let $saved= `SELECT @@GLOBAL.replica_net_timeout`
+SET @@GLOBAL.replica_net_timeout= 10;
+--eval SET @@GLOBAL.replica_net_timeout= $saved
+--let $saved= `SELECT @@GLOBAL.sql_replica_skip_counter`
+SET @@GLOBAL.sql_replica_skip_counter= 10;
+--eval SET @@GLOBAL.sql_replica_skip_counter= $saved
 --let $saved= `SELECT @@SESSION.sql_log_bin`
 SET @@SESSION.sql_log_bin= 0;
 --eval SET @@SESSION.sql_log_bin= $saved
 
 #
-# Commands associated with the MASTER.
+# Commands associated with the PRIMARY.
 #
 --error ER_NO_BINARY_LOGGING
-SHOW MASTER LOGS;
-SHOW MASTER STATUS;
-SHOW SLAVE HOSTS;
-RESET MASTER;
+SHOW PRIMARY LOGS;
+SHOW PRIMARY STATUS;
+SHOW REPLICA HOSTS;
+RESET PRIMARY;
 SHOW BINLOG EVENTS;
 --error 2
---exec $MYSQL_DUMP --compact --master-data=2 test
+--exec $MYSQL_DUMP --compact --primary-data=2 test
 FLUSH LOGS;
 FLUSH BINARY LOGS;
 
 
 #
-# Configuration options associated with the MASTER.
+# Configuration options associated with the PRIMARY.
 #
 --let $saved= `SELECT @@GLOBAL.max_binlog_size`
 SET @@GLOBAL.max_binlog_size= 536870912;

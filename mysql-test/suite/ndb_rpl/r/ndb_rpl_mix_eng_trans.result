@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE tmyisam (a int) ENGINE = MYISAM;
 CREATE TABLE tinnodb (a int) ENGINE = INNODB;
 CREATE TABLE tndb (a int) ENGINE = NDB;
@@ -21,7 +21,7 @@ Table	Create Table
 tndb	CREATE TABLE `tndb` (
   `a` int(11) DEFAULT NULL
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-[on master]
+[on primary]
 ==== Single-engine transactions ====
 ---- autocommitted ----
 SET AUTOCOMMIT = 1;
@@ -475,12 +475,12 @@ a
 150
 151
 152
-[on slave]
-include/diff_tables.inc [master:tmyisam, slave:tmyisam]
-include/diff_tables.inc [master:tinnodb, slave:tinnodb]
-include/diff_tables.inc [master:tndb, slave:tndb]
+[on replica]
+include/diff_tables.inc [primary:tmyisam, replica:tmyisam]
+include/diff_tables.inc [primary:tinnodb, replica:tinnodb]
+include/diff_tables.inc [primary:tndb, replica:tndb]
 ==== Clean up ====
-[on master]
+[on primary]
 DROP TABLE tmyisam, tinnodb, tndb;
-[on slave]
+[on replica]
 include/rpl_end.inc

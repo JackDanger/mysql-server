@@ -1,17 +1,17 @@
 !include include/default_mysqld.cnf
 
 [mysqld.1]
-log-slave-updates
+log-replica-updates
 new=1
 innodb_flush_log_at_trx_commit= 0
 
 [mysqld.2]
-log-slave-updates
+log-replica-updates
 new=1
 innodb_flush_log_at_trx_commit= 0
 
 [mysqld.3]
-log-slave-updates
+log-replica-updates
 new=1
 innodb_flush_log_at_trx_commit= 0
 

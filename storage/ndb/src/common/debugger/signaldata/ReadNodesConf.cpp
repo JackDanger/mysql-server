@@ -24,7 +24,7 @@ printREAD_NODES_CONF(FILE * output, const Uint32 * theData,
   const ReadNodesConf * const sig = (ReadNodesConf *)theData;
   fprintf(output, " noOfNodes: %x\n", sig->noOfNodes);
   fprintf(output, " ndynamicId: %x\n", sig->ndynamicId);
-  fprintf(output, " masterNodeId: %x\n", sig->masterNodeId);
+  fprintf(output, " primaryNodeId: %x\n", sig->primaryNodeId);
 
   char buf[32*NdbNodeBitmask::Size+1];
   fprintf(output, " allNodes(defined): %s\n", 

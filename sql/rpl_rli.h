@@ -31,21 +31,21 @@
 #include <vector>
 
 struct RPL_TABLE_LIST;
-class Master_info;
+class Primary_info;
 class Mts_submode;
 class Commit_order_manager;
-class Slave_committed_queue;
+class Replica_committed_queue;
 typedef struct st_db_worker_hash_entry db_worker_hash_entry;
-extern uint sql_slave_skip_counter;
+extern uint sql_replica_skip_counter;
 
-typedef Prealloced_array<Slave_worker*, 4> Slave_worker_array;
+typedef Prealloced_array<Replica_worker*, 4> Replica_worker_array;
 
-typedef struct slave_job_item
+typedef struct replica_job_item
 {
   Log_event *data;
   uint relay_number;
   my_off_t relay_pos;
-} Slave_job_item;
+} Replica_job_item;
 
 /*******************************************************************************
 Replication SQL Thread
@@ -53,8 +53,8 @@ Replication SQL Thread
 Relay_log_info contains:
   - the current relay log
   - the current relay log offset
-  - master log name
-  - master log sequence corresponding to the last update
+  - primary log name
+  - primary log sequence corresponding to the last update
   - misc information specific to the SQL thread
 
 Relay_log_info is initialized from a repository, i.e. table or file, if there is
@@ -89,7 +89,7 @@ failure happens. For that reason, there is no point in updating the positions
 within the boundaries of any on-going transaction. This is true for both commit
 and rollback. If a failure happens after processing the pseudo-transaction but
 before updating the positions, the transaction will be re-executed when the
-slave is up most likely causing an error that needs to be manually circumvented.
+replica is up most likely causing an error that needs to be manually circumvented.
 This is a well-known issue when non-transactional statements are executed.
 
 Specifically, if rolling back any transaction, positions are updated outside the
@@ -108,7 +108,7 @@ DDLs or maintenance commands which are not transactional. These means that they
 cannot be rolled back if a failure happens. In such cases, the positions are
 updated after processing the events. If a failure happens after processing the
 statement but before updating the positions, the statement will be
-re-executed when the slave is up most likely causing an error that needs to be
+re-executed when the replica is up most likely causing an error that needs to be
 manually circumvented. This is a well-known issue when non-transactional
 statements are executed.
 
@@ -144,7 +144,7 @@ public:
   inline bool belongs_to_client()
   {
     DBUG_ASSERT(info_thd);
-    return !info_thd->slave_thread;
+    return !info_thd->replica_thread;
   }
 /* Instrumentation key for performance schema for mts_temp_table_LOCK */
 #ifdef HAVE_PSI_INTERFACE
@@ -195,21 +195,21 @@ public:
 
   /*
     Identifies when the recovery process is going on.
-    See sql/slave.cc:init_recovery for further details.
+    See sql/replica.cc:init_recovery for further details.
   */
   bool is_relay_log_recovery;
 
   /* The following variables are safe to read any time */
 
   /*
-    When we restart slave thread we need to have access to the previously
+    When we restart replica thread we need to have access to the previously
     created temporary tables. Modified only on init/end and by the SQL
     thread, read only by SQL thread.
   */
   TABLE *save_temporary_tables;
 
-  /* parent Master_info structure */
-  Master_info *mi;
+  /* parent Primary_info structure */
+  Primary_info *mi;
 
   /*
     Needed to deal properly with cur_log getting closed and re-opened with
@@ -226,7 +226,7 @@ public:
     We need these rli coordinates :
     - relay log name and position of the beginning of the group we currently are
     executing. Needed to know where we have to restart when replication has
-    stopped in the middle of a group (which has been rolled back by the slave).
+    stopped in the middle of a group (which has been rolled back by the replica).
     - relay log name and position just after the event we have just
     executed. This event is part of the current group.
     Formerly we only had the immediately above coordinates, plus a 'pending'
@@ -249,24 +249,24 @@ protected:
   /*
      Original log name and position of the group we're currently executing
      (whose coordinates are group_relay_log_name/pos in the relay log)
-     in the master's binlog. These concern the *group*, because in the master's
+     in the primary's binlog. These concern the *group*, because in the primary's
      binlog the log_pos that comes with each event is the position of the
      beginning of the group.
 
-    Note: group_master_log_name, group_master_log_pos must only be
+    Note: group_primary_log_name, group_primary_log_pos must only be
     written from the thread owning the Relay_log_info (SQL thread if
     !belongs_to_client(); client thread executing BINLOG statement if
     belongs_to_client()).
   */
-  char group_master_log_name[FN_REFLEN];
-  volatile my_off_t group_master_log_pos;
+  char group_primary_log_name[FN_REFLEN];
+  volatile my_off_t group_primary_log_pos;
 
 private:
   Gtid_set gtid_set;
   /*
     Identifies when this object belongs to the SQL thread and was not
     created for a client thread or some other purpose including
-    Slave_worker instance initializations. Ends up serving the same
+    Replica_worker instance initializations. Ends up serving the same
     purpose as the belongs_to_client method, but its value is set
     earlier on in the class constructor.
   */
@@ -299,12 +299,12 @@ public:
 
 
   /*
-    Flag that the group_master_log_pos is invalid. This may occur
-    (for example) after CHANGE MASTER TO RELAY_LOG_POS.  This will
+    Flag that the group_primary_log_pos is invalid. This may occur
+    (for example) after CHANGE PRIMARY TO RELAY_LOG_POS.  This will
     be unset after the first event has been executed and the
-    group_master_log_pos is valid again.
+    group_primary_log_pos is valid again.
    */
-  bool is_group_master_log_pos_invalid;
+  bool is_group_primary_log_pos_invalid;
 
   /*
     Handling of the relay_log_space_limit optional constraint.
@@ -322,13 +322,13 @@ public:
    */
   bool sql_force_rotate_relay;
 
-  time_t last_master_timestamp;
+  time_t last_primary_timestamp;
 
   void clear_until_condition();
 
   /**
     Reset the delay.
-    This is used by RESET SLAVE to clear the delay.
+    This is used by RESET REPLICA to clear the delay.
   */
   void clear_sql_delay()
   {
@@ -336,17 +336,17 @@ public:
   }
 
   /*
-    Needed for problems when slave stops and we want to restart it
-    skipping one or more events in the master log that have caused
+    Needed for problems when replica stops and we want to restart it
+    skipping one or more events in the primary log that have caused
     errors, and have been manually applied by DBA already.
   */
-  volatile uint32 slave_skip_counter;
-  volatile ulong abort_pos_wait;	/* Incremented on change master */
+  volatile uint32 replica_skip_counter;
+  volatile ulong abort_pos_wait;	/* Incremented on change primary */
   mysql_mutex_t log_space_lock;
   mysql_cond_t log_space_cond;
 
   /*
-     Condition and its parameters from START SLAVE UNTIL clause.
+     Condition and its parameters from START REPLICA UNTIL clause.
      
      UNTIL condition is tested with is_until_satisfied() method that is
      called by exec_relay_log_event(). is_until_satisfied() caches the result
@@ -358,7 +358,7 @@ public:
   enum
   {
     UNTIL_NONE= 0,
-    UNTIL_MASTER_POS,
+    UNTIL_PRIMARY_POS,
     UNTIL_RELAY_POS,
     UNTIL_SQL_BEFORE_GTIDS,
     UNTIL_SQL_AFTER_GTIDS,
@@ -373,7 +373,7 @@ public:
   /* extension extracted from log_name and converted to int */
   ulong until_log_name_extension;
   /**
-    The START SLAVE UNTIL SQL_*_GTIDS initializes until_sql_gtids.
+    The START REPLICA UNTIL SQL_*_GTIDS initializes until_sql_gtids.
     Each time a gtid is about to be processed, we check if it is in the
     set. Depending on until_condition, SQL thread is stopped before or
     after applying the gtid.
@@ -381,7 +381,7 @@ public:
   Gtid_set until_sql_gtids;
   /*
     True if the current event is the first gtid event to be processed
-    after executing START SLAVE UNTIL SQL_*_GTIDS.
+    after executing START REPLICA UNTIL SQL_*_GTIDS.
   */
   bool until_sql_gtids_first_event;
   /* 
@@ -416,31 +416,31 @@ public:
   bool until_view_id_commit_found;
 
   /*
-    trans_retries varies between 0 to slave_transaction_retries and counts how
-    many times the slave has retried the present transaction; gets reset to 0
+    trans_retries varies between 0 to replica_transaction_retries and counts how
+    many times the replica has retried the present transaction; gets reset to 0
     when the transaction finally succeeds. retried_trans is a cumulative
-    counter: how many times the slave has retried a transaction (any) since
-    slave started.
+    counter: how many times the replica has retried a transaction (any) since
+    replica started.
   */
   ulong trans_retries, retried_trans;
 
   /*
-    If the end of the hot relay log is made of master's events ignored by the
-    slave I/O thread, these two keep track of the coords (in the master's
-    binlog) of the last of these events seen by the slave I/O thread. If not,
-    ign_master_log_name_end[0] == 0.
+    If the end of the hot relay log is made of primary's events ignored by the
+    replica I/O thread, these two keep track of the coords (in the primary's
+    binlog) of the last of these events seen by the replica I/O thread. If not,
+    ign_primary_log_name_end[0] == 0.
     As they are like a Rotate event read/written from/to the relay log, they
     are both protected by rli->relay_log.LOCK_log.
   */
-  char ign_master_log_name_end[FN_REFLEN];
-  ulonglong ign_master_log_pos_end;
+  char ign_primary_log_name_end[FN_REFLEN];
+  ulonglong ign_primary_log_pos_end;
 
   /* 
     Indentifies where the SQL Thread should create temporary files for the
     LOAD DATA INFILE. This is used for security reasons.
    */ 
-  char slave_patternload_file[FN_REFLEN]; 
-  size_t slave_patternload_file_size;
+  char replica_patternload_file[FN_REFLEN]; 
+  size_t replica_patternload_file_size;
 
   /**
     Identifies the last time a checkpoint routine has been executed.
@@ -460,11 +460,11 @@ public:
 
   /**
     The same as @c notify_group_relay_log_name_update but for
-    @c group_master_log_name.
+    @c group_primary_log_name.
   */
-  inline void notify_group_master_log_name_update()
+  inline void notify_group_primary_log_name_update()
   {
-    if (until_condition==UNTIL_MASTER_POS)
+    if (until_condition==UNTIL_PRIMARY_POS)
       until_log_names_cmp_result= UNTIL_LOG_NAMES_CMP_UNKNOWN;
   }
   
@@ -483,11 +483,11 @@ public:
 
   void close_temporary_tables();
 
-  /* Check if UNTIL condition is satisfied. See slave.cc for more. */
+  /* Check if UNTIL condition is satisfied. See replica.cc for more. */
   bool is_until_satisfied(THD *thd, Log_event *ev);
   inline ulonglong until_pos()
   {
-    return ((until_condition == UNTIL_MASTER_POS) ? group_master_log_pos :
+    return ((until_condition == UNTIL_PRIMARY_POS) ? group_primary_log_pos :
 	    group_relay_log_pos);
   }
 
@@ -515,7 +515,7 @@ public:
   }
 
   /**
-    Last charset (6 bytes) seen by slave SQL thread is cached here; it helps
+    Last charset (6 bytes) seen by replica SQL thread is cached here; it helps
     the thread save 3 @c get_charset() per @c Query_log_event if the charset is not
     changing from event to event (common situation).
     When the 6 bytes are equal to 0 is used to mean "cache is invalidated".
@@ -524,7 +524,7 @@ public:
   bool cached_charset_compare(char *charset) const;
 
   void cleanup_context(THD *, bool);
-  void slave_close_thread_tables(THD *);
+  void replica_close_thread_tables(THD *);
   void clear_tables_to_lock();
   int purge_relay_logs(THD *thd, bool just_reset, const char** errmsg,
                        bool delete_only= false);
@@ -532,12 +532,12 @@ public:
   /*
     Used to defer stopping the SQL thread to give it a chance
     to finish up the current group of events.
-    The timestamp is set and reset in @c sql_slave_killed().
+    The timestamp is set and reset in @c sql_replica_killed().
   */
   time_t last_event_start_time;
   /*
     A container to hold on Intvar-, Rand-, Uservar- log-events in case
-    the slave is configured with table filtering rules.
+    the replica is configured with table filtering rules.
     The withhold events are executed when their parent Query destiny is
     determined for execution as well.
   */
@@ -557,14 +557,14 @@ public:
     W  - Worker;
     WQ - Worker Queue containing event assignments
   */
-  // number's is determined by global slave_parallel_workers
-  Slave_worker_array workers;
+  // number's is determined by global replica_parallel_workers
+  Replica_worker_array workers;
 
   HASH mapping_db_to_worker; // To map a database to a worker
   bool inited_hash_workers; //  flag to check if mapping_db_to_worker is inited
 
-  mysql_mutex_t slave_worker_hash_lock; // for mapping_db_to_worker
-  mysql_cond_t  slave_worker_hash_cond;// for mapping_db_to_worker
+  mysql_mutex_t replica_worker_hash_lock; // for mapping_db_to_worker
+  mysql_cond_t  replica_worker_hash_cond;// for mapping_db_to_worker
 
   /*
     For the purpose of reporting the worker status in performance schema table,
@@ -577,7 +577,7 @@ public:
     and then we would use a good number of attributes from this object.
   */
 
-  std::vector<Slave_worker*> workers_copy_pfs;
+  std::vector<Replica_worker*> workers_copy_pfs;
 
   /*
     This flag is turned ON when the workers array is initialized.
@@ -593,23 +593,23 @@ public:
   mysql_mutex_t pending_jobs_lock;
   mysql_cond_t pending_jobs_cond;
   mysql_mutex_t exit_count_lock; // mutex of worker exit count
-  ulong       mts_slave_worker_queue_len_max;
+  ulong       mts_replica_worker_queue_len_max;
   ulonglong   mts_pending_jobs_size;      // actual mem usage by WQ:s
   ulonglong   mts_pending_jobs_size_max;  // max of WQ:s size forcing C to wait
   bool    mts_wq_oversize;      // C raises flag to wait some memory's released
-  Slave_worker  *last_assigned_worker;// is set to a Worker at assigning a group
+  Replica_worker  *last_assigned_worker;// is set to a Worker at assigning a group
   /*
-    master-binlog ordered queue of Slave_job_group descriptors of groups
+    primary-binlog ordered queue of Replica_job_group descriptors of groups
     that are under processing. The queue size is @c checkpoint_group.
   */
-  Slave_committed_queue *gaq;
+  Replica_committed_queue *gaq;
   /*
     Container for references of involved partitions for the current event group
   */
   // CGAP dynarray holds id:s of partitions of the Current being executed Group
   Prealloced_array<db_worker_hash_entry*, 4, true> curr_group_assigned_parts;
   // deferred array to hold partition-info-free events
-  Prealloced_array<Slave_job_item, 8, true> curr_group_da;  
+  Prealloced_array<Replica_job_item, 8, true> curr_group_da;  
 
   bool curr_group_seen_gtid;   // current group started with Gtid-event or not
   bool curr_group_seen_begin;   // current group started with B-event or not
@@ -629,8 +629,8 @@ public:
   volatile long mts_wq_excess_cnt;
   long  mts_worker_underrun_level; // % of WQ size at which W is considered hungry
   ulong mts_coordinator_basic_nap; // C sleeps to avoid WQs overrun
-  ulong opt_slave_parallel_workers; // cache for ::opt_slave_parallel_workers
-  ulong slave_parallel_workers; // the one slave session time number of workers
+  ulong opt_replica_parallel_workers; // cache for ::opt_replica_parallel_workers
+  ulong replica_parallel_workers; // the one replica session time number of workers
   ulong exit_counter; // Number of workers contributed to max updated group index
   ulonglong max_updated_index;
   ulong recovery_parallel_workers; // number of workers while recovering
@@ -660,7 +660,7 @@ public:
   {
     /*
        no new events were scheduled after last synchronization,
-       includes Single-Threaded-Slave case.
+       includes Single-Threaded-Replica case.
     */
     MTS_NOT_IN_GROUP,
 
@@ -722,7 +722,7 @@ public:
     Returns a pointer to the worker instance at index n in workers
     array/vector.
   */
-  Slave_worker* get_worker(size_t n)
+  Replica_worker* get_worker(size_t n)
   {
     if (workers_array_initialized)
     {
@@ -748,7 +748,7 @@ public:
   Mts_submode* current_mts_submode;
 
   /*
-    Slave side local seq_no identifying a parent group that being
+    Replica side local seq_no identifying a parent group that being
     the scheduled transaction is considered to be dependent
    */
   ulonglong mts_last_known_parent_group_id;
@@ -761,7 +761,7 @@ public:
 
   /**
      returns true if there is any gap-group of events to execute
-                  at slave starting phase.
+                  at replica starting phase.
   */
   inline bool is_mts_recovery() const
   {
@@ -783,7 +783,7 @@ public:
   */
   inline bool is_parallel_exec() const
   {
-    bool ret= (slave_parallel_workers > 0) && !is_mts_recovery();
+    bool ret= (replica_parallel_workers > 0) && !is_mts_recovery();
 
     DBUG_ASSERT(!ret || !workers.empty());
 
@@ -822,13 +822,13 @@ public:
   /*
    * End of MTS section ******************************************************/
 
-  /* The general cleanup that slave applier may need at the end of query. */
+  /* The general cleanup that replica applier may need at the end of query. */
   inline void cleanup_after_query()
   {
     if (deferred_events)
       deferred_events->rewind();
   };
-  /* The general cleanup that slave applier may need at the end of session. */
+  /* The general cleanup that replica applier may need at the end of session. */
   void cleanup_after_session()
   {
     if (deferred_events)
@@ -844,9 +844,9 @@ public:
     "statement" is inside a transaction.
 
     @param event_log_pos
-    Master log position of the event. The position is recorded in the
+    Primary log position of the event. The position is recorded in the
     relay log info and used to produce information for <code>SHOW
-    SLAVE STATUS</code>.
+    REPLICA STATUS</code>.
   */
   int stmt_done(my_off_t event_log_pos);
 
@@ -930,13 +930,13 @@ public:
     Thus, to check if the execute thread is in a group, there are
     two cases:
 
-    - If the master generates Gtid events (5.7.5 or later, or 5.6 or
+    - If the primary generates Gtid events (5.7.5 or later, or 5.6 or
       later with GTID_MODE=ON), then is_in_group is the same as
       info_thd->owned_gtid.sidno != 0, since owned_gtid.sidno is set
       to non-zero by the Gtid_log_event and cleared to zero at commit
       or rollback.
 
-    - If the master does not generate Gtid events (i.e., master is
+    - If the primary does not generate Gtid events (i.e., primary is
       pre-5.6, or pre-5.7.5 with GTID_MODE=OFF), then is_in_group is
       the same as is_in_trx_or_stmt().
 
@@ -956,7 +956,7 @@ public:
   void end_info();
   int flush_info(bool force= FALSE);
   int flush_current_log();
-  void set_master_info(Master_info *info);
+  void set_primary_info(Primary_info *info);
 
   inline ulonglong get_future_event_relay_log_pos() { return future_event_relay_log_pos; }
   inline void set_future_event_relay_log_pos(ulonglong log_pos)
@@ -964,15 +964,15 @@ public:
     future_event_relay_log_pos= log_pos;
   }
 
-  inline const char* get_group_master_log_name() { return group_master_log_name; }
-  inline ulonglong get_group_master_log_pos() { return group_master_log_pos; }
-  inline void set_group_master_log_name(const char *log_file_name)
+  inline const char* get_group_primary_log_name() { return group_primary_log_name; }
+  inline ulonglong get_group_primary_log_pos() { return group_primary_log_pos; }
+  inline void set_group_primary_log_name(const char *log_file_name)
   {
-     strmake(group_master_log_name,log_file_name, sizeof(group_master_log_name)-1);
+     strmake(group_primary_log_name,log_file_name, sizeof(group_primary_log_name)-1);
   }
-  inline void set_group_master_log_pos(ulonglong log_pos)
+  inline void set_group_primary_log_pos(ulonglong log_pos)
   {
-    group_master_log_pos= log_pos;
+    group_primary_log_pos= log_pos;
   }
 
   inline const char* get_group_relay_log_name() { return group_relay_log_name; }
@@ -1006,11 +1006,11 @@ public:
 
   /**
     Given the extension number of the relay log, gets the full
-    relay log path. Currently used in Slave_worker::retry_transaction()
+    relay log path. Currently used in Replica_worker::retry_transaction()
 
     @param [in]   number      extension number of relay log
     @param[in, out] name      The full path of the relay log (per-channel)
-                              to be read by the slave worker.
+                              to be read by the replica worker.
   */
   void relay_log_number_to_name(uint number, char name[FN_REFLEN+1]);
   uint relay_log_name_to_number(const char *name);
@@ -1024,7 +1024,7 @@ public:
   }
   inline const char* get_rpl_log_name()
   {
-    return (group_master_log_name[0] ? group_master_log_name : "FIRST");
+    return (group_primary_log_name[0] ? group_primary_log_name : "FIRST");
   }
 
   static size_t get_number_info_rli_fields();
@@ -1034,7 +1034,7 @@ public:
 
     This does not actually sleep; it only sets the state of this
     Relay_log_info object to delaying so that the correct state can be
-    reported by SHOW SLAVE STATUS and SHOW PROCESSLIST.
+    reported by SHOW REPLICA STATUS and SHOW PROCESSLIST.
 
     Requires rli->data_lock.
 
@@ -1047,12 +1047,12 @@ public:
     THD_STAGE_INFO(info_thd, stage_sql_thd_waiting_until_delay);
   }
 
-  /* Note that this is cast to uint32 in show_slave_status(). */
+  /* Note that this is cast to uint32 in show_replica_status(). */
   time_t get_sql_delay() { return sql_delay; }
   void set_sql_delay(time_t _sql_delay) { sql_delay= _sql_delay; }
   time_t get_sql_delay_end() { return sql_delay_end; }
 
-  Relay_log_info(bool is_slave_recovery
+  Relay_log_info(bool is_replica_recovery
 #ifdef HAVE_PSI_INTERFACE
                  ,PSI_mutex_key *param_key_info_run_lock,
                  PSI_mutex_key *param_key_info_data_lock,
@@ -1123,10 +1123,10 @@ public:
   }
 
   /**
-    adaptation for the slave applier to specific master versions.
+    adaptation for the replica applier to specific primary versions.
   */
-  void adapt_to_master_version(Format_description_log_event *fdle);
-  uchar slave_version_split[3]; // bytes of the slave server version
+  void adapt_to_primary_version(Format_description_log_event *fdle);
+  uchar replica_version_split[3]; // bytes of the replica server version
 
   Commit_order_manager *get_commit_order_manager()
   {
@@ -1142,7 +1142,7 @@ public:
 
   /**
     Get coordinator's RLI. Especially used get the rli from
-    a slave thread, like this: thd->rli_slave->get_c_rli();
+    a replica thread, like this: thd->rli_replica->get_c_rli();
     thd could be a SQL thread or a worker thread
   */
   virtual Relay_log_info* get_c_rli()
@@ -1164,14 +1164,14 @@ private:
   Commit_order_manager* commit_order_mngr;
 
   /**
-    Delay slave SQL thread by this amount, compared to master (in
-    seconds). This is set with CHANGE MASTER TO MASTER_DELAY=X.
+    Delay replica SQL thread by this amount, compared to primary (in
+    seconds). This is set with CHANGE PRIMARY TO PRIMARY_DELAY=X.
 
     Guarded by data_lock.  Initialized by the client thread executing
-    START SLAVE.  Written by client threads executing CHANGE MASTER TO
-    MASTER_DELAY=X.  Read by SQL thread and by client threads
-    executing SHOW SLAVE STATUS.  Note: must not be written while the
-    slave SQL thread is running, since the SQL thread reads it without
+    START REPLICA.  Written by client threads executing CHANGE PRIMARY TO
+    PRIMARY_DELAY=X.  Read by SQL thread and by client threads
+    executing SHOW REPLICA STATUS.  Note: must not be written while the
+    replica SQL thread is running, since the SQL thread reads it without
     a lock when executing flush_info().
   */
   time_t sql_delay;
@@ -1179,17 +1179,17 @@ private:
   /**
     During a delay, specifies the point in time when the delay ends.
 
-    This is used for the SQL_Remaining_Delay column in SHOW SLAVE STATUS.
+    This is used for the SQL_Remaining_Delay column in SHOW REPLICA STATUS.
 
     Guarded by data_lock. Written by the sql thread.  Read by client
-    threads executing SHOW SLAVE STATUS.
+    threads executing SHOW REPLICA STATUS.
   */
   time_t sql_delay_end;
 
   uint32 m_flags;
 
   /*
-    Before the MASTER_DELAY parameter was added (WL#344), relay_log.info
+    Before the PRIMARY_DELAY parameter was added (WL#344), relay_log.info
     had 4 lines. Now it has 5 lines.
   */
   static const int LINES_IN_RELAY_LOG_INFO_WITH_DELAY= 5;
@@ -1206,7 +1206,7 @@ private:
   static const int LINES_IN_RELAY_LOG_INFO_WITH_ID= 7;
 
   /*
-    Add a channel in the slave relay log info
+    Add a channel in the replica relay log info
   */
   static const int LINES_IN_RELAY_LOG_INFO_WITH_CHANNEL= 8;
 
@@ -1217,7 +1217,7 @@ private:
   Relay_log_info& operator=(const Relay_log_info& info);
 
   /*
-    Runtime state for printing a note when slave is taking
+    Runtime state for printing a note when replica is taking
     too long while processing a row event.
    */
   time_t row_stmt_start_timestamp;
@@ -1226,7 +1226,7 @@ private:
   /*
     If on init_info() call error_on_rli_init_info is true that means
     that previous call to init_info() terminated with an error, RESET
-    SLAVE must be executed and the problem fixed manually.
+    REPLICA must be executed and the problem fixed manually.
    */
   bool error_on_rli_init_info;
 
@@ -1271,7 +1271,7 @@ bool mysql_show_relaylog_events(THD* thd);
 */
 inline bool is_mts_worker(const THD *thd)
 {
-  return thd->system_thread == SYSTEM_THREAD_SLAVE_WORKER;
+  return thd->system_thread == SYSTEM_THREAD_REPLICA_WORKER;
 }
 
 

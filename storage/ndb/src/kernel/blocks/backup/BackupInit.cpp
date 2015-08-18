@@ -38,7 +38,7 @@ Backup::Backup(Block_context& ctx, Uint32 instanceNumber) :
 {
   BLOCK_CONSTRUCTOR(Backup);
   
-  c_masterNodeId = getOwnNodeId();
+  c_primaryNodeId = getOwnNodeId();
   
   // Add received signals
   addRecSignal(GSN_READ_CONFIG_REQ, &Backup::execREAD_CONFIG_REQ);

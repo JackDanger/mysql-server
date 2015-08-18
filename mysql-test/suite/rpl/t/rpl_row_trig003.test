@@ -10,13 +10,13 @@
 
 # Includes
 -- source include/have_binlog_format_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 #-- disable_query_log
 #-- disable_result_log
 
 # Begin clean up test section
-connection master;
+connection primary;
 --disable_warnings
 --error 0,1360
 DROP TRIGGER test.t1_bi;
@@ -41,7 +41,7 @@ CREATE TABLE test.t1 (id MEDIUMINT NOT NULL AUTO_INCREMENT, b1 BIT(8), vc VARCHA
 CREATE TABLE test.t2 (id MEDIUMINT NOT NULL AUTO_INCREMENT, b1 BIT(8), vc VARCHAR(255), bc CHAR(255), d DECIMAL(10,4) DEFAULT 0, f FLOAT DEFAULT 0, total BIGINT UNSIGNED, y YEAR, t TIMESTAMP,PRIMARY KEY(id));
 CREATE TABLE test.t3 (id MEDIUMINT NOT NULL AUTO_INCREMENT, b1 BIT(8), vc VARCHAR(255), bc CHAR(255), d DECIMAL(10,4) DEFAULT 0, f FLOAT DEFAULT 0, total BIGINT UNSIGNED, y YEAR, t TIMESTAMP,PRIMARY KEY(id));
 
-# Note Most of these cause the slave to core or do not produce desired results. Currently commenting out the ones not working until they are fixed.
+# Note Most of these cause the replica to core or do not produce desired results. Currently commenting out the ones not working until they are fixed.
 
 delimiter |;
 CREATE TRIGGER test.t1_bi BEFORE INSERT ON test.t1 FOR EACH ROW UPDATE test.t3 SET b1=1 and y=YEAR(NOW())|
@@ -103,7 +103,7 @@ INSERT INTO test.t2 VALUES(NULL,0,'Testing MySQL databases is a cool ', 'MySQL C
 
 UPDATE test.t1 SET b1 = 0 WHERE b1 = 1;
 
-INSERT INTO test.t2 VALUES(NULL,1,'This is an after update test.', 'If this works, total will not be zero on the master or slave',1.4321,5.221,0,YEAR(NOW()),NOW());
+INSERT INTO test.t2 VALUES(NULL,1,'This is an after update test.', 'If this works, total will not be zero on the primary or replica',1.4321,5.221,0,YEAR(NOW()),NOW());
 UPDATE test.t2 SET b1 = 0 WHERE b1 = 1;
 
 INSERT INTO test.t1 VALUES(NULL,1,'add some more test data test.', 'and hope for the best', 3.321,5.221,0,YEAR(NOW()),NOW());
@@ -120,13 +120,13 @@ DELETE FROM test.t1 WHERE id = 1;
 
 DELETE FROM test.t2 WHERE id = 1;
 
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 # time to dump the databases and so we can see if they match
 
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/trg003_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/trg003_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/trg003_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/trg003_replica.sql
 
 # cleanup
 --disable_warnings
@@ -147,7 +147,7 @@ DROP TABLE IF EXISTS test.t2;
 DROP TABLE IF EXISTS test.t3;
 --enable_warnings
 
-diff_files $MYSQLTEST_VARDIR/tmp/trg003_master.sql $MYSQLTEST_VARDIR/tmp/trg003_slave.sql;
+diff_files $MYSQLTEST_VARDIR/tmp/trg003_primary.sql $MYSQLTEST_VARDIR/tmp/trg003_replica.sql;
 
 # End of 5.0 test case
 --source include/rpl_end.inc

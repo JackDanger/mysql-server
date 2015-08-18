@@ -24,9 +24,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log
 note     : The storage engine for the table doesn't support analyze
 mysql.tables_priv                                  OK
@@ -83,13 +83,13 @@ status   : OK
 mysql.servers
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
-mysql.slave_master_info
+mysql.replica_primary_info
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
-mysql.slave_relay_log_info
+mysql.replica_relay_log_info
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
-mysql.slave_worker_info
+mysql.replica_worker_info
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
 mysql.slow_log
@@ -135,9 +135,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log
 note     : The storage engine for the table doesn't support analyze
 mysql.tables_priv                                  OK
@@ -191,13 +191,13 @@ status   : OK
 mysql.servers
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
-mysql.slave_master_info
+mysql.replica_primary_info
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
-mysql.slave_relay_log_info
+mysql.replica_relay_log_info
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
-mysql.slave_worker_info
+mysql.replica_worker_info
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
 mysql.slow_log

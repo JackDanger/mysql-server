@@ -16,7 +16,7 @@
 #include "my_global.h"
 #include "log.h"
 #include "rpl_channel_service_interface.h"
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_info_factory.h"
 #include "rpl_mi.h"
 #include "rpl_msr.h"         /* Multisource replication */
@@ -27,11 +27,11 @@ int initialize_channel_service_interface()
 {
   DBUG_ENTER("initialize_channel_service_interface");
 
-  //master info and relay log repositories must be TABLE
+  //primary info and relay log repositories must be TABLE
   if (opt_mi_repository_id != INFO_REPOSITORY_TABLE ||
       opt_rli_repository_id != INFO_REPOSITORY_TABLE)
   {
-    sql_print_error("For the creation of replication channels the master info"
+    sql_print_error("For the creation of replication channels the primary info"
                     " and relay log info repositories must be set to TABLE");
     DBUG_RETURN(1);
   }
@@ -49,7 +49,7 @@ int initialize_channel_service_interface()
 
 #ifdef HAVE_REPLICATION
 
-void set_mi_settings(Master_info *mi, Channel_creation_info* channel_info)
+void set_mi_settings(Primary_info *mi, Channel_creation_info* channel_info)
 {
   mysql_mutex_lock(&mi->data_lock);
 
@@ -59,9 +59,9 @@ void set_mi_settings(Master_info *mi, Channel_creation_info* channel_info)
     (channel_info->replicate_same_server_id == RPL_SERVICE_SERVER_DEFAULT) ?
      replicate_same_server_id : channel_info->replicate_same_server_id;
 
-  mi->rli->opt_slave_parallel_workers=
+  mi->rli->opt_replica_parallel_workers=
     (channel_info->channel_mts_parallel_workers == RPL_SERVICE_SERVER_DEFAULT) ?
-    opt_mts_slave_parallel_workers : channel_info->channel_mts_parallel_workers;
+    opt_mts_replica_parallel_workers : channel_info->channel_mts_parallel_workers;
 
   if (channel_info->channel_mts_parallel_type == RPL_SERVICE_SERVER_DEFAULT)
   {
@@ -123,7 +123,7 @@ void delete_surrogate_thread(THD *thd)
 void
 initialize_channel_creation_info(Channel_creation_info* channel_info)
 {
-  channel_info->type= SLAVE_REPLICATION_CHANNEL;
+  channel_info->type= REPLICA_REPLICATION_CHANNEL;
   channel_info->hostname= 0;
   channel_info->port= 0;
   channel_info->user= 0;
@@ -162,12 +162,12 @@ initialize_channel_connection_info(Channel_connection_info* channel_info)
   channel_info->view_id= 0;
 }
 
-void set_mi_ssl_options(LEX_MASTER_INFO* lex_mi, Channel_ssl_info* channel_ssl_info)
+void set_mi_ssl_options(LEX_PRIMARY_INFO* lex_mi, Channel_ssl_info* channel_ssl_info)
 {
 
   if (channel_ssl_info->use_ssl)
   {
-    lex_mi->ssl= LEX_MASTER_INFO::LEX_MI_ENABLE;
+    lex_mi->ssl= LEX_PRIMARY_INFO::LEX_MI_ENABLE;
   }
 
   if (channel_ssl_info->ssl_ca_file_name != NULL)
@@ -207,7 +207,7 @@ void set_mi_ssl_options(LEX_MASTER_INFO* lex_mi, Channel_ssl_info* channel_ssl_i
 
   if (channel_ssl_info->ssl_verify_server_cert)
   {
-    lex_mi->ssl_verify_server_cert= LEX_MASTER_INFO::LEX_MI_ENABLE;
+    lex_mi->ssl_verify_server_cert= LEX_PRIMARY_INFO::LEX_MI_ENABLE;
   }
 }
 
@@ -216,9 +216,9 @@ int channel_create(const char* channel,
 {
   DBUG_ENTER("channel_create");
 
-  Master_info *mi= 0;
+  Primary_info *mi= 0;
   int error= 0;
-  LEX_MASTER_INFO* lex_mi= NULL;
+  LEX_PRIMARY_INFO* lex_mi= NULL;
 
   bool thd_created= false;
   THD *thd= current_thd;
@@ -232,13 +232,13 @@ int channel_create(const char* channel,
     goto err;
   }
 
-  if (sql_slave_skip_counter > 0)
+  if (sql_replica_skip_counter > 0)
   {
-    error= RPL_CHANNEL_SERVICE_SLAVE_SKIP_COUNTER_ACTIVE;
+    error= RPL_CHANNEL_SERVICE_REPLICA_SKIP_COUNTER_ACTIVE;
     goto err;
   }
 
-  /* Get the Master_info of the channel */
+  /* Get the Primary_info of the channel */
   mi= msr_map.get_mi(channel);
 
     /* create a new channel if doesn't exist */
@@ -249,7 +249,7 @@ int channel_create(const char* channel,
         goto err;
   }
 
-  lex_mi= new st_lex_master_info();
+  lex_mi= new st_lex_primary_info();
   lex_mi->channel= channel;
   lex_mi->host= channel_info->hostname;
   lex_mi->port= channel_info->port;
@@ -259,17 +259,17 @@ int channel_create(const char* channel,
   lex_mi->connect_retry= channel_info->connect_retry;
   if (channel_info->retry_count)
   {
-    lex_mi->retry_count_opt= LEX_MASTER_INFO::LEX_MI_ENABLE;
+    lex_mi->retry_count_opt= LEX_PRIMARY_INFO::LEX_MI_ENABLE;
     lex_mi->retry_count= channel_info->retry_count;
   }
 
   if (channel_info->auto_position)
   {
-    lex_mi->auto_position= LEX_MASTER_INFO::LEX_MI_ENABLE;
+    lex_mi->auto_position= LEX_PRIMARY_INFO::LEX_MI_ENABLE;
     if (mi && mi->is_auto_position())
     {
-      //So change master allows new configurations with a running SQL thread
-      lex_mi->auto_position= LEX_MASTER_INFO::LEX_MI_UNCHANGED;
+      //So change primary allows new configurations with a running SQL thread
+      lex_mi->auto_position= LEX_PRIMARY_INFO::LEX_MI_UNCHANGED;
     }
   }
 
@@ -286,7 +286,7 @@ int channel_create(const char* channel,
       thd= create_surrogate_thread();
     }
 
-    if ((error= change_master(thd, mi, lex_mi,
+    if ((error= change_primary(thd, mi, lex_mi,
                               channel_info->preserve_relay_logs)))
     {
       goto err;
@@ -315,7 +315,7 @@ int channel_start(const char* channel,
 {
   DBUG_ENTER("channel_start(channel, threads_to_start, wait_for_connection");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
   int error= 0;
 
   if (mi == NULL)
@@ -323,47 +323,47 @@ int channel_start(const char* channel,
     DBUG_RETURN(RPL_CHANNEL_SERVICE_CHANNEL_DOES_NOT_EXISTS_ERROR);
   }
 
-  if (sql_slave_skip_counter > 0)
+  if (sql_replica_skip_counter > 0)
   {
-    error= RPL_CHANNEL_SERVICE_SLAVE_SKIP_COUNTER_ACTIVE;
+    error= RPL_CHANNEL_SERVICE_REPLICA_SKIP_COUNTER_ACTIVE;
     DBUG_RETURN(error);
   }
 
   int thread_mask= 0;
   if (threads_to_start & CHANNEL_APPLIER_THREAD)
   {
-    thread_mask |= SLAVE_SQL;
+    thread_mask |= REPLICA_SQL;
   }
   if (threads_to_start & CHANNEL_RECEIVER_THREAD)
   {
-    thread_mask |= SLAVE_IO;
+    thread_mask |= REPLICA_IO;
   }
 
   //Nothing to be done here
   if (!thread_mask)
     DBUG_RETURN(0);
 
-  LEX_SLAVE_CONNECTION lex_connection;
+  LEX_REPLICA_CONNECTION lex_connection;
   lex_connection.reset();
 
-  LEX_MASTER_INFO lex_mi;
+  LEX_PRIMARY_INFO lex_mi;
   if (connection_info->until_condition != CHANNEL_NO_UNTIL_CONDITION)
   {
     switch (connection_info->until_condition)
     {
       case CHANNEL_UNTIL_APPLIER_AFTER_GTIDS:
-        lex_mi.gtid_until_condition= LEX_MASTER_INFO::UNTIL_SQL_AFTER_GTIDS;
+        lex_mi.gtid_until_condition= LEX_PRIMARY_INFO::UNTIL_SQL_AFTER_GTIDS;
         lex_mi.gtid= connection_info->gtid;
         break;
       case CHANNEL_UNTIL_APPLIER_BEFORE_GTIDS:
-        lex_mi.gtid_until_condition= LEX_MASTER_INFO::UNTIL_SQL_BEFORE_GTIDS;
+        lex_mi.gtid_until_condition= LEX_PRIMARY_INFO::UNTIL_SQL_BEFORE_GTIDS;
         lex_mi.gtid= connection_info->gtid;
         break;
       case CHANNEL_UNTIL_APPLIER_AFTER_GAPS:
         lex_mi.until_after_gaps= true;
         break;
       case CHANNEL_UNTIL_VIEW_ID:
-        DBUG_ASSERT((thread_mask & SLAVE_SQL) && connection_info->view_id);
+        DBUG_ASSERT((thread_mask & REPLICA_SQL) && connection_info->view_id);
         lex_mi.view_id= connection_info->view_id;
         break;
       default:
@@ -372,8 +372,8 @@ int channel_start(const char* channel,
   }
 
   ulong thread_start_id= 0;
-  if (wait_for_connection && (thread_mask & SLAVE_IO))
-    thread_start_id= mi->slave_run_id;
+  if (wait_for_connection && (thread_mask & REPLICA_IO))
+    thread_start_id= mi->replica_run_id;
 
   bool thd_created= false;
 
@@ -384,26 +384,26 @@ int channel_start(const char* channel,
     thd= create_surrogate_thread();
   }
 
-  error= start_slave(thd, &lex_connection, &lex_mi,
+  error= start_replica(thd, &lex_connection, &lex_mi,
                          thread_mask, mi, false, true);
 
-  if (wait_for_connection && (thread_mask & SLAVE_IO) && !error)
+  if (wait_for_connection && (thread_mask & REPLICA_IO) && !error)
   {
     mysql_mutex_lock(&mi->run_lock);
     /*
       If the ids are still equal this means the start thread method did not
       wait for the thread to start
     */
-    while (thread_start_id == mi->slave_run_id)
+    while (thread_start_id == mi->replica_run_id)
     {
       mysql_cond_wait(&mi->start_cond, &mi->run_lock);
     }
     mysql_mutex_unlock(&mi->run_lock);
 
-    while (mi->slave_running != MYSQL_SLAVE_RUN_CONNECT)
+    while (mi->replica_running != MYSQL_REPLICA_RUN_CONNECT)
     {
       //If there is such a state change then there was an error on connection
-      if (mi->slave_running == MYSQL_SLAVE_NOT_RUN)
+      if (mi->replica_running == MYSQL_REPLICA_NOT_RUN)
       {
         error= RPL_CHANNEL_SERVICE_RECEIVER_CONNECTION_ERROR;
         break;
@@ -426,7 +426,7 @@ int channel_stop(const char* channel,
 {
   DBUG_ENTER("channel_stop(channel, stop_receiver, stop_applier, timeout");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {
@@ -435,19 +435,19 @@ int channel_stop(const char* channel,
 
   int thread_mask= 0;
   int server_thd_mask= 0;
-  lock_slave_threads(mi);
+  lock_replica_threads(mi);
 
   init_thread_mask(&server_thd_mask, mi, 0 /* not inverse*/);
 
   if ((threads_to_stop & CHANNEL_APPLIER_THREAD)
-          && (server_thd_mask & SLAVE_SQL))
+          && (server_thd_mask & REPLICA_SQL))
   {
-    thread_mask |= SLAVE_SQL;
+    thread_mask |= REPLICA_SQL;
   }
   if ((threads_to_stop & CHANNEL_RECEIVER_THREAD)
-          && (server_thd_mask & SLAVE_IO))
+          && (server_thd_mask & REPLICA_IO))
   {
-    thread_mask |= SLAVE_IO;
+    thread_mask |= REPLICA_IO;
   }
 
   if (thread_mask == 0)
@@ -457,8 +457,8 @@ int channel_stop(const char* channel,
 
   bool thd_init= init_thread_context();
 
-  int error= terminate_slave_threads(mi, thread_mask, timeout, false);
-  unlock_slave_threads(mi);
+  int error= terminate_replica_threads(mi, thread_mask, timeout, false);
+  unlock_replica_threads(mi);
 
   if (thd_init)
   {
@@ -472,7 +472,7 @@ int channel_purge_queue(const char* channel, bool reset_all)
 {
   DBUG_ENTER("channel_purge_queue(channel, only_purge");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {
@@ -481,7 +481,7 @@ int channel_purge_queue(const char* channel, bool reset_all)
 
   bool thd_init= init_thread_context();
 
-  int error= reset_slave(current_thd, mi, reset_all);
+  int error= reset_replica(current_thd, mi, reset_all);
 
   if (thd_init)
   {
@@ -495,7 +495,7 @@ bool channel_is_active(const char* channel, enum_channel_thread_types thd_type)
 {
   DBUG_ENTER("channel_is_active(channel, thd_type");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {
@@ -510,9 +510,9 @@ bool channel_is_active(const char* channel, enum_channel_thread_types thd_type)
     case CHANNEL_NO_THD:
       DBUG_RETURN(true); //return true as the channel exists
     case CHANNEL_RECEIVER_THREAD:
-      DBUG_RETURN(thread_mask & SLAVE_IO);
+      DBUG_RETURN(thread_mask & REPLICA_IO);
     case CHANNEL_APPLIER_THREAD:
-      DBUG_RETURN(thread_mask & SLAVE_SQL);
+      DBUG_RETURN(thread_mask & REPLICA_SQL);
     default:
       DBUG_ASSERT(0);
   }
@@ -526,7 +526,7 @@ int channel_get_appliers_thread_id(const char* channel,
 
   int number_appliers= -1;
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {
@@ -537,7 +537,7 @@ int channel_get_appliers_thread_id(const char* channel,
   {
     mysql_mutex_lock(&mi->rli->run_lock);
 
-    int num_workers= mi->rli->slave_parallel_workers;
+    int num_workers= mi->rli->replica_parallel_workers;
     if (num_workers > 1)
     {
       *appliers_id=
@@ -578,7 +578,7 @@ long long channel_get_last_delivered_gno(const char* channel, int sidno)
 {
   DBUG_ENTER("channel_get_last_delivered_gno(channel, sidno)");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {
@@ -611,7 +611,7 @@ int channel_queue_packet(const char* channel,
 {
   DBUG_ENTER("channel_queue_packet(channel, event_buffer, event_len)");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {
@@ -625,7 +625,7 @@ int channel_wait_until_apply_queue_empty(char* channel, long long timeout)
 {
   DBUG_ENTER("channel_wait_until_apply_queue_empty(channel, timeout)");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {
@@ -647,7 +647,7 @@ int channel_flush(const char* channel)
 {
   DBUG_ENTER("channel_flush(channel)");
 
-  Master_info *mi= msr_map.get_mi(channel);
+  Primary_info *mi= msr_map.get_mi(channel);
 
   if (mi == NULL)
   {

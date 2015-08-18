@@ -4,43 +4,43 @@
 #
 # ==== Notes ====
 #
-# This test uses the -slave.opt file to start the slave with
-# --skip-slave-start.
+# This test uses the -replica.opt file to start the replica with
+# --skip-replica-start.
 
 --source include/not_group_replication_plugin.inc
 --source include/not_windows.inc
---source include/not_master_info_table.inc
+--source include/not_primary_info_table.inc
 
---let $rpl_skip_start_slave= 1
---source include/master-slave.inc
+--let $rpl_skip_start_replica= 1
+--source include/primary-replica.inc
 
---connection slave
---let $slave_datadir= `SELECT @@datadir`
+--connection replica
+--let $replica_datadir= `SELECT @@datadir`
 
---remove_file $slave_datadir/master.info
---write_file $slave_datadir/master.info
-master-bin.000001
+--remove_file $replica_datadir/primary.info
+--write_file $replica_datadir/primary.info
+primary-bin.000001
 4
 127.0.0.1
 replicate
 aaaaaaaaaaaaaaab
-$MASTER_MYPORT
+$PRIMARY_MYPORT
 1
 0
 EOF
 
-connection master;
-grant replication slave on *.* to replicate@localhost identified by 'aaaaaaaaaaaaaaab';
-grant replication slave on *.* to replicate@127.0.0.1 identified by 'aaaaaaaaaaaaaaab';
-connection slave;
---source include/start_slave.inc
+connection primary;
+grant replication replica on *.* to replicate@localhost identified by 'aaaaaaaaaaaaaaab';
+grant replication replica on *.* to replicate@127.0.0.1 identified by 'aaaaaaaaaaaaaaab';
+connection replica;
+--source include/start_replica.inc
 
-connection master;
+connection primary;
 create table t1(n int);
 insert into t1 values(24);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from t1;
-connection master;
+connection primary;
 drop table t1;
 delete from mysql.user where user="replicate";
 

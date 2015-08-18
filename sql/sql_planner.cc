@@ -1211,7 +1211,7 @@ float calculate_condition_filter(const JOIN_TAB *const tab,
              OPTIMIZER_SWITCH_COND_FANOUT_FILTER) &&                       // 1)
        (is_join_buffering ||                                               // 2a
         remaining_tables != 0 ||                                           // 2b
-        tab->join()->select_lex-> master_unit()->outer_select() != NULL || // 2c
+        tab->join()->select_lex-> primary_unit()->outer_select() != NULL || // 2c
         !tab->join()->select_lex->sj_nests.is_empty() ||                   // 2d
         ((tab->join()->order || tab->join()->group_list) &&
          tab->join()->unit->select_limit_cnt != HA_POS_ERROR) ||           // 2e

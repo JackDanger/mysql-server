@@ -31,11 +31,11 @@ if ($binlog_file)
   {
     if ($is_relay_log)
     {
-      --let $_binlog_file= query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1)
+      --let $_binlog_file= query_get_value(SHOW REPLICA STATUS, Relay_Log_File, 1)
     }
     if (!$is_relay_log)
     {
-      --let $_binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+      --let $_binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
     }
   }
   --let $statement= $statement IN '$_binlog_file'
@@ -94,9 +94,9 @@ let $script=
   s{file_id=[0-9]+}{file_id=#};
   s{block_len=[0-9]+}{block_len=#};
   s{Server ver:.*DOLLAR}{SERVER_VERSION, BINLOG_VERSION};
-  s{SQL_LOAD-[a-z,0-9,-]*.[a-z]*}{SQL_LOAD-<SERVER UUID>-<MASTER server-id>-<file-id>.<extension>};
+  s{SQL_LOAD-[a-z,0-9,-]*.[a-z]*}{SQL_LOAD-<SERVER UUID>-<PRIMARY server-id>-<file-id>.<extension>};
   s{rand_seed1=[0-9]*,rand_seed2=[0-9]*}{rand_seed1=<seed 1>,rand_seed2=<seed 2>};
-  s{((?:master|slave|slave-relay)-bin\.[0-9]{6};pos=)[0-9]+DOLLAR}{DOLLAR1POS};
+  s{((?:primary|replica|replica-relay)-bin\.[0-9]{6};pos=)[0-9]+DOLLAR}{DOLLAR1POS};
   s{SONAME ".*"}{SONAME "LIB"};
   s{DOLLARmysqltest_vardir}{MYSQLTEST_VARDIR}g;
 ||

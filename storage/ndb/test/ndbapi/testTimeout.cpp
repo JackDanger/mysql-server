@@ -33,7 +33,7 @@ setTransactionTimeout(NDBT_Context* ctx, NDBT_Step* step){
   int timeout = ctx->getProperty("TransactionInactiveTimeout",TIMEOUT);
 
   NdbConfig conf;
-  if (!conf.getProperty(conf.getMasterNodeId(),
+  if (!conf.getProperty(conf.getPrimaryNodeId(),
 			NODE_TYPE_DB, 
 			CFG_DB_TRANSACTION_INACTIVE_TIMEOUT,
 			&g_org_timeout)){
@@ -70,7 +70,7 @@ setDeadlockTimeout(NDBT_Context* ctx, NDBT_Step* step){
   int timeout = ctx->getProperty("TransactionDeadlockTimeout", TIMEOUT);
   
   NdbConfig conf;
-  if (!conf.getProperty(conf.getMasterNodeId(),
+  if (!conf.getProperty(conf.getPrimaryNodeId(),
 			NODE_TYPE_DB, 
 			CFG_DB_TRANSACTION_DEADLOCK_TIMEOUT,
 			&g_org_deadlock))
@@ -91,7 +91,7 @@ getDeadlockTimeout(NDBT_Context* ctx, NDBT_Step* step){
   
   Uint32 val = 0;
   NdbConfig conf;
-  if (!conf.getProperty(conf.getMasterNodeId(),
+  if (!conf.getProperty(conf.getPrimaryNodeId(),
 			NODE_TYPE_DB, 
 			CFG_DB_TRANSACTION_DEADLOCK_TIMEOUT,
 			&val))
@@ -314,7 +314,7 @@ int runDeadlockTimeoutTrans(NDBT_Context* ctx, NDBT_Step* step){
 
   Uint32 deadlock_timeout;
   NdbConfig conf;
-  if (!conf.getProperty(conf.getMasterNodeId(),
+  if (!conf.getProperty(conf.getPrimaryNodeId(),
                         NODE_TYPE_DB,
                         CFG_DB_TRANSACTION_DEADLOCK_TIMEOUT,
                         &deadlock_timeout)){

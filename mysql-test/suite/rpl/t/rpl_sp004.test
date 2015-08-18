@@ -8,11 +8,11 @@
 
 
 # Includes
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 
 # Begin clean up test section
-connection master;
+connection primary;
 --disable_warnings
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
@@ -46,46 +46,46 @@ delimiter ;|
 CALL test.p1();
 SELECT * FROM test.t1 ORDER BY a;
 SELECT * FROM test.t2 ORDER BY a;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1 ORDER BY a;
 SELECT * FROM test.t2 ORDER BY a;
 
-connection master;
+connection primary;
 CALL test.p2();
 USE test;
 SHOW TABLES;
 #SELECT * FROM test.t3;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 USE test;
 SHOW TABLES;
 #SELECT * FROM test.t3;
 
-connection master;
+connection primary;
 CALL test.p1();
 SELECT * FROM test.t1 ORDER BY a;
 SELECT * FROM test.t2 ORDER BY a;
 #SELECT * FROM test.t3;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1 ORDER BY a;
 SELECT * FROM test.t2 ORDER BY a;
 #SELECT * FROM test.t3;
 
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp004_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp004_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp004_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLTEST_VARDIR/tmp/sp004_replica.sql
 
 # Cleanup
-connection master;
+connection primary;
 #show binlog events;
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
 DROP TABLE IF EXISTS test.t1;
 DROP TABLE IF EXISTS test.t2;
 DROP TABLE IF EXISTS test.t3;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # If the test fails, you will need to diff the dumps to see why.
 
-diff_files $MYSQLTEST_VARDIR/tmp/sp004_master.sql $MYSQLTEST_VARDIR/tmp/sp004_slave.sql;
+diff_files $MYSQLTEST_VARDIR/tmp/sp004_primary.sql $MYSQLTEST_VARDIR/tmp/sp004_replica.sql;
 
 
 # End of 5.0 test case

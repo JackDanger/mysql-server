@@ -273,7 +273,7 @@ bool filesort(THD *thd, Filesort *filesort, bool sort_positions,
   DBUG_ASSERT(!table->reginfo.join_tab);
   DBUG_ASSERT(tab == table->reginfo.qep_tab);
   Item_subselect *const subselect= tab && tab->join() ?
-    tab->join()->select_lex->master_unit()->item : NULL;
+    tab->join()->select_lex->primary_unit()->item : NULL;
 
   MYSQL_FILESORT_START(const_cast<char*>(table->s->db.str),
                        const_cast<char*>(table->s->table_name.str));

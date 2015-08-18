@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP PROCEDURE IF EXISTS test.p1;
 DROP TABLE IF EXISTS test.t2;
 CREATE TABLE test.t1 (a INT,PRIMARY KEY(a));
@@ -14,7 +14,7 @@ SELECT SQL_CALC_FOUND_ROWS * FROM test.t1 LIMIT 1;
 INSERT INTO test.t2 VALUES(FOUND_ROWS());
 END|
 
-< ---- Master selects-- >
+< ---- Primary selects-- >
 -------------------------
 CALL test.p1();
 a
@@ -23,14 +23,14 @@ SELECT * FROM test.t2;
 a
 2
 
-< ---- Slave selects-- >
+< ---- Replica selects-- >
 ------------------------
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t2;
 a
 2
 DROP PROCEDURE IF EXISTS test.p1;
 DROP TABLE IF EXISTS test.t1;
 DROP TABLE IF EXISTS test.t2;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

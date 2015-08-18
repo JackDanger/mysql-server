@@ -12,7 +12,7 @@
 # Includes
 --source include/not_group_replication_plugin.inc
 -- source include/have_binlog_format_mixed_or_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 -- source extra/rpl_tests/rpl_loadfile.test
 
@@ -22,46 +22,46 @@
 #
 #    Problem: when using load_file string function and mixed binlogging format
 #             there was no switch to row based binlogging format. This leads
-#             to scenarios on which the slave replicates the statement and it
+#             to scenarios on which the replica replicates the statement and it
 #             will try to load the file from local file system, which in most
 #             likely it will not exist.
 #
 #    Solution:
 #             Marking this function as unsafe for statement format, makes the
 #             statement using it to be logged in row based format. As such, data 
-#             replicated from the master, becomes the content of the loaded file.
-#             Consequently, the slave receives the necessary data to complete
+#             replicated from the primary, becomes the content of the loaded file.
+#             Consequently, the replica receives the necessary data to complete
 #             the load_file instruction correctly.
 #
 #  IMPLEMENTATION
 #
 #    The test is implemented as follows:
 #
-#      On Master,
+#      On Primary,
 #       i) write to file the desired content.
 #      ii) create table and stored procedure with load_file
-#     iii) stop slave
+#     iii) stop replica
 #     iii) execute load_file 
 #      iv) remove file
 #
-#      On Slave,
-#       v) start slave
-#      vi) sync it with master so that it gets the updates from binlog (which 
+#      On Replica,
+#       v) start replica
+#      vi) sync it with primary so that it gets the updates from binlog (which 
 #          should have bin logged in row format). 
 #
 #          If the the binlog format does not change to row, then the assertion
 #          done in the following step fails. This happens because tables differ 
-#          since the file does not exist anymore, meaning that when slave 
+#          since the file does not exist anymore, meaning that when replica 
 #          attempts to execute LOAD_FILE statement it inserts NULL on table 
-#          instead of the same contents that the master loaded when it executed 
+#          instead of the same contents that the primary loaded when it executed 
 #          the procedure (which was executed when file existed).
 #
-#     vii) assert that the contents of master and slave 
+#     vii) assert that the contents of primary and replica 
 #          table are the same
 
 --source include/rpl_reset.inc
 
-connection master;
+connection primary;
 let $file= $MYSQLTEST_VARDIR/tmp/bug_39701.data;
 
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
@@ -79,37 +79,37 @@ CREATE PROCEDURE p(file varchar(4096))
   END|
 DELIMITER ;|
 
-# stop slave before issuing the load_file on master
-connection slave;
-source include/stop_slave.inc;
+# stop replica before issuing the load_file on primary
+connection replica;
+source include/stop_replica.inc;
 
-connection master;
+connection primary;
 
 # test: check that logging falls back to rbr.
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 --eval CALL p('$file')
 
-# test: remove the file from the filesystem and assert that slave still 
+# test: remove the file from the filesystem and assert that replica still 
 #       gets the loaded file
 remove_file $file;
 
 # now that the file is removed it is safe (regarding what we want to test) 
-# to start slave
-connection slave;
-source include/start_slave.inc;
+# to start replica
+connection replica;
+source include/start_replica.inc;
 
-connection master;
---source include/sync_slave_sql_with_master.inc
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
 
-# assertion: assert that the slave got the updates even
-#            if the file was removed before the slave started,
+# assertion: assert that the replica got the updates even
+#            if the file was removed before the replica started,
 #            meaning that contents were indeed transfered
 #            through binlog (in row format)
-let $diff_tables= master:t1, slave:t1;
+let $diff_tables= primary:t1, replica:t1;
 source include/diff_tables.inc;
 
 # CLEAN UP
---connection master
+--connection primary
 DROP TABLE t1;
 DROP PROCEDURE p;
 

@@ -1,7 +1,7 @@
 
 SET BINLOG_FORMAT=MIXED;
 
-RESET MASTER;
+RESET PRIMARY;
 
 CREATE TABLE t1 (a INT PRIMARY KEY, b INT) ENGINE=INNODB;
 INSERT INTO t1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6);
@@ -148,7 +148,7 @@ CREATE TABLE `t2` (
 # A. testing multi_update::send_eof() execution branch
 insert into t1 values (1,1),(2,2);
 insert into t2 values (1,1),(4,4);
-reset master;
+reset primary;
 --error ER_DUP_ENTRY
 UPDATE t2,t1 SET t2.a=t1.a+2;
 # check
@@ -161,7 +161,7 @@ delete from t1;
 delete from t2;
 insert into t1 values (1,2),(3,4),(4,4);
 insert into t2 values (1,2),(3,4),(4,4);
-reset master;
+reset primary;
 --error ER_DUP_ENTRY
 UPDATE t2,t1  SET t2.a=t2.b where t2.a=t1.a;
 --echo # There must be no UPDATE query event;

@@ -41,7 +41,7 @@
 # --source ../include/event_aggregate_setup.inc
 # --source ../include/event_aggregate_load.inc
 # --source ../include/event_aggregate_cleanup.inc
-# and a t/event_aggregate_xxx-master.opt file
+# and a t/event_aggregate_xxx-primary.opt file
 #
 # Naming conventions for t/event_aggregate_xxx.test are as follows:
 # t/event_aggregate_<account><user><host>

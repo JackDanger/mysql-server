@@ -4,8 +4,8 @@
 # The test verifies that INSTALL PLUGIN and UNINSTALL PLUGIN
 # work with replication.
 #
-# The test tries to install and uninstall a plugin on master,
-# and verifies that it does not affect the slave,
+# The test tries to install and uninstall a plugin on primary,
+# and verifies that it does not affect the replica,
 # and that it does not add anything to the binlog.
 
 --source include/not_embedded.inc
@@ -15,15 +15,15 @@
 --source include/have_example_plugin.inc
 
 # Initialize replication.
---source include/master-slave.inc
+--source include/primary-replica.inc
 --echo Verify that example engine is not installed.
 SELECT * FROM INFORMATION_SCHEMA.ENGINES WHERE ENGINE='EXAMPLE';
 --echo Get binlog position before install plugin.
-let $before_pos = query_get_value("SHOW MASTER STATUS", Position, 1);
+let $before_pos = query_get_value("SHOW PRIMARY STATUS", Position, 1);
 --echo Install example engine.
 INSTALL PLUGIN example SONAME 'ha_example.so';
 --echo Get binlog position after install plugin.
-let $after_pos = query_get_value("SHOW MASTER STATUS", Position, 1);
+let $after_pos = query_get_value("SHOW PRIMARY STATUS", Position, 1);
 --echo Compute the difference of the  binlog positions.
 --echo Should be zero as install plugin should not be replicated.
 --disable_query_log
@@ -31,20 +31,20 @@ eval SELECT $after_pos - $before_pos AS Delta;
 --enable_query_log
 --echo Verify that example engine is installed.
 SELECT * FROM INFORMATION_SCHEMA.ENGINES WHERE ENGINE='EXAMPLE';
-# Wait for slave to catch up with master.
---source include/sync_slave_sql_with_master.inc
+# Wait for replica to catch up with primary.
+--source include/sync_replica_sql_with_primary.inc
 #
-    --echo connection slave: Verify that example engine is not installed.
-    connection slave;
+    --echo connection replica: Verify that example engine is not installed.
+    connection replica;
     SELECT * FROM INFORMATION_SCHEMA.ENGINES WHERE ENGINE='EXAMPLE';
 #
---echo connection master: Uninstall example engine.
-connection master;
+--echo connection primary: Uninstall example engine.
+connection primary;
 --echo Get binlog position before uninstall plugin.
-let $before_pos = query_get_value("SHOW MASTER STATUS", Position, 1);
+let $before_pos = query_get_value("SHOW PRIMARY STATUS", Position, 1);
 UNINSTALL PLUGIN example;
 --echo Get binlog position after uninstall plugin.
-let $after_pos = query_get_value("SHOW MASTER STATUS", Position, 1);
+let $after_pos = query_get_value("SHOW PRIMARY STATUS", Position, 1);
 --echo Compute the difference of the  binlog positions.
 --echo Should be zero as uninstall plugin should not be replicated.
 --disable_query_log
@@ -52,8 +52,8 @@ eval SELECT $after_pos - $before_pos AS Delta;
 --enable_query_log
 --echo Verify that example engine is not installed.
 SELECT * FROM INFORMATION_SCHEMA.ENGINES WHERE ENGINE='EXAMPLE';
-# Wait for slave to catch up with master.
---source include/sync_slave_sql_with_master.inc
+# Wait for replica to catch up with primary.
+--source include/sync_replica_sql_with_primary.inc
 #
 # Cleanup
 --source include/rpl_end.inc

@@ -60,7 +60,7 @@ def	mysql	event	on_completion	14	DROP	NO	enum	8	24	NULL	NULL	NULL	utf8	utf8_gene
 def	mysql	event	originator	17	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned					
 def	mysql	event	sql_mode	15		NO	set	478	1434	NULL	NULL	NULL	utf8	utf8_general_ci	set('REAL_AS_FLOAT','PIPES_AS_CONCAT','ANSI_QUOTES','IGNORE_SPACE','NOT_USED','ONLY_FULL_GROUP_BY','NO_UNSIGNED_SUBTRACTION','NO_DIR_IN_CREATE','POSTGRESQL','ORACLE','MSSQL','DB2','MAXDB','NO_KEY_OPTIONS','NO_TABLE_OPTIONS','NO_FIELD_OPTIONS','MYSQL323','MYSQL40','ANSI','NO_AUTO_VALUE_ON_ZERO','NO_BACKSLASH_ESCAPES','STRICT_TRANS_TABLES','STRICT_ALL_TABLES','NO_ZERO_IN_DATE','NO_ZERO_DATE','INVALID_DATES','ERROR_FOR_DIVISION_BY_ZERO','TRADITIONAL','NO_AUTO_CREATE_USER','HIGH_NOT_PRECEDENCE','NO_ENGINE_SUBSTITUTION','PAD_CHAR_TO_FULL_LENGTH')					
 def	mysql	event	starts	11	NULL	YES	datetime	NULL	NULL	NULL	NULL	0	NULL	NULL	datetime					
-def	mysql	event	status	13	ENABLED	NO	enum	18	54	NULL	NULL	NULL	utf8	utf8_general_ci	enum('ENABLED','DISABLED','SLAVESIDE_DISABLED')					
+def	mysql	event	status	13	ENABLED	NO	enum	18	54	NULL	NULL	NULL	utf8	utf8_general_ci	enum('ENABLED','DISABLED','REPLICASIDE_DISABLED')					
 def	mysql	event	time_zone	18	SYSTEM	NO	char	64	64	NULL	NULL	NULL	latin1	latin1_swedish_ci	char(64)					
 def	mysql	func	dl	3		NO	char	128	384	NULL	NULL	NULL	utf8	utf8_bin	char(128)					
 def	mysql	func	name	1		NO	char	64	192	NULL	NULL	NULL	utf8	utf8_bin	char(64)	PRI				
@@ -165,52 +165,52 @@ def	mysql	server_cost	comment	4	NULL	YES	varchar	1024	3072	NULL	NULL	NULL	utf8	u
 def	mysql	server_cost	cost_name	1	NULL	NO	varchar	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	varchar(64)	PRI				
 def	mysql	server_cost	cost_value	2	NULL	YES	float	NULL	NULL	12	NULL	NULL	NULL	NULL	float					
 def	mysql	server_cost	last_update	3	CURRENT_TIMESTAMP	NO	timestamp	NULL	NULL	NULL	NULL	0	NULL	NULL	timestamp		on update CURRENT_TIMESTAMP			
-def	mysql	slave_master_info	Bind	17	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				Displays which interface is employed when connecting to the MySQL server	
-def	mysql	slave_master_info	Channel_name	24	NULL	NO	char	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	char(64)	PRI			The channel on which the slave is connected to a source. Used in Multisource Replication	
-def	mysql	slave_master_info	Connect_retry	8	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				The period (in seconds) that the slave will wait before trying to reconnect to the master.	
-def	mysql	slave_master_info	Enabled_auto_position	23	NULL	NO	tinyint	NULL	NULL	3	0	NULL	NULL	NULL	tinyint(1)				Indicates whether GTIDs will be used to retrieve events from the master.	
-def	mysql	slave_master_info	Enabled_ssl	9	NULL	NO	tinyint	NULL	NULL	3	0	NULL	NULL	NULL	tinyint(1)				Indicates whether the server supports SSL connections.	
-def	mysql	slave_master_info	Heartbeat	16	NULL	NO	float	NULL	NULL	12	NULL	NULL	NULL	NULL	float					
-def	mysql	slave_master_info	Host	4	NULL	YES	char	64	192	NULL	NULL	NULL	utf8	utf8_bin	char(64)				The host name of the master.	
-def	mysql	slave_master_info	Ignored_server_ids	18	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The number of server IDs to be ignored, followed by the actual server IDs	
-def	mysql	slave_master_info	Master_log_name	2	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the master binary log currently being read from the master.	
-def	mysql	slave_master_info	Master_log_pos	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				The master log position of the last read event.	
-def	mysql	slave_master_info	Number_of_lines	1	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				Number of lines in the file.	
-def	mysql	slave_master_info	Port	7	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				The network port used to connect to the master.	
-def	mysql	slave_master_info	Retry_count	20	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				Number of reconnect attempts, to the master, before giving up.	
-def	mysql	slave_master_info	Ssl_ca	10	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The file used for the Certificate Authority (CA) certificate.	
-def	mysql	slave_master_info	Ssl_capath	11	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The path to the Certificate Authority (CA) certificates.	
-def	mysql	slave_master_info	Ssl_cert	12	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the SSL certificate file.	
-def	mysql	slave_master_info	Ssl_cipher	13	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the cipher in use for the SSL connection.	
-def	mysql	slave_master_info	Ssl_crl	21	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The file used for the Certificate Revocation List (CRL)	
-def	mysql	slave_master_info	Ssl_crlpath	22	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The path used for Certificate Revocation List (CRL) files	
-def	mysql	slave_master_info	Ssl_key	14	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the SSL key file.	
-def	mysql	slave_master_info	Ssl_verify_server_cert	15	NULL	NO	tinyint	NULL	NULL	3	0	NULL	NULL	NULL	tinyint(1)				Whether to verify the server certificate.	
-def	mysql	slave_master_info	User_name	5	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The user name used to connect to the master.	
-def	mysql	slave_master_info	User_password	6	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The password used to connect to the master.	
-def	mysql	slave_master_info	Uuid	19	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The master server uuid.	
-def	mysql	slave_relay_log_info	Channel_name	9	NULL	NO	char	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	char(64)	PRI			The channel on which the slave is connected to a source. Used in Multisource Replication	
-def	mysql	slave_relay_log_info	Id	8	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				Internal Id that uniquely identifies this record.	
-def	mysql	slave_relay_log_info	Master_log_name	4	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the master binary log file from which the events in the relay log file were read.	
-def	mysql	slave_relay_log_info	Master_log_pos	5	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				The master log position of the last executed event.	
-def	mysql	slave_relay_log_info	Number_of_lines	1	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				Number of lines in the file or rows in the table. Used to version table definitions.	
-def	mysql	slave_relay_log_info	Number_of_workers	7	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned					
-def	mysql	slave_relay_log_info	Relay_log_name	2	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the current relay log file.	
-def	mysql	slave_relay_log_info	Relay_log_pos	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				The relay log position of the last executed event.	
-def	mysql	slave_relay_log_info	Sql_delay	6	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(11)				The number of seconds that the slave must lag behind the master.	
-def	mysql	slave_worker_info	Channel_name	13	NULL	NO	char	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	char(64)	PRI			The channel on which the slave is connected to a source. Used in Multisource Replication	
-def	mysql	slave_worker_info	Checkpoint_group_bitmap	12	NULL	NO	blob	65535	65535	NULL	NULL	NULL	NULL	NULL	blob					
-def	mysql	slave_worker_info	Checkpoint_group_size	11	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned					
-def	mysql	slave_worker_info	Checkpoint_master_log_name	8	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
-def	mysql	slave_worker_info	Checkpoint_master_log_pos	9	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
-def	mysql	slave_worker_info	Checkpoint_relay_log_name	6	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
-def	mysql	slave_worker_info	Checkpoint_relay_log_pos	7	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
-def	mysql	slave_worker_info	Checkpoint_seqno	10	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned					
-def	mysql	slave_worker_info	Id	1	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned	PRI				
-def	mysql	slave_worker_info	Master_log_name	4	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
-def	mysql	slave_worker_info	Master_log_pos	5	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
-def	mysql	slave_worker_info	Relay_log_name	2	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
-def	mysql	slave_worker_info	Relay_log_pos	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
+def	mysql	replica_primary_info	Bind	17	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				Displays which interface is employed when connecting to the MySQL server	
+def	mysql	replica_primary_info	Channel_name	24	NULL	NO	char	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	char(64)	PRI			The channel on which the replica is connected to a source. Used in Multisource Replication	
+def	mysql	replica_primary_info	Connect_retry	8	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				The period (in seconds) that the replica will wait before trying to reconnect to the primary.	
+def	mysql	replica_primary_info	Enabled_auto_position	23	NULL	NO	tinyint	NULL	NULL	3	0	NULL	NULL	NULL	tinyint(1)				Indicates whether GTIDs will be used to retrieve events from the primary.	
+def	mysql	replica_primary_info	Enabled_ssl	9	NULL	NO	tinyint	NULL	NULL	3	0	NULL	NULL	NULL	tinyint(1)				Indicates whether the server supports SSL connections.	
+def	mysql	replica_primary_info	Heartbeat	16	NULL	NO	float	NULL	NULL	12	NULL	NULL	NULL	NULL	float					
+def	mysql	replica_primary_info	Host	4	NULL	YES	char	64	192	NULL	NULL	NULL	utf8	utf8_bin	char(64)				The host name of the primary.	
+def	mysql	replica_primary_info	Ignored_server_ids	18	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The number of server IDs to be ignored, followed by the actual server IDs	
+def	mysql	replica_primary_info	Primary_log_name	2	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the primary binary log currently being read from the primary.	
+def	mysql	replica_primary_info	Primary_log_pos	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				The primary log position of the last read event.	
+def	mysql	replica_primary_info	Number_of_lines	1	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				Number of lines in the file.	
+def	mysql	replica_primary_info	Port	7	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				The network port used to connect to the primary.	
+def	mysql	replica_primary_info	Retry_count	20	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				Number of reconnect attempts, to the primary, before giving up.	
+def	mysql	replica_primary_info	Ssl_ca	10	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The file used for the Certificate Authority (CA) certificate.	
+def	mysql	replica_primary_info	Ssl_capath	11	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The path to the Certificate Authority (CA) certificates.	
+def	mysql	replica_primary_info	Ssl_cert	12	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the SSL certificate file.	
+def	mysql	replica_primary_info	Ssl_cipher	13	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the cipher in use for the SSL connection.	
+def	mysql	replica_primary_info	Ssl_crl	21	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The file used for the Certificate Revocation List (CRL)	
+def	mysql	replica_primary_info	Ssl_crlpath	22	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The path used for Certificate Revocation List (CRL) files	
+def	mysql	replica_primary_info	Ssl_key	14	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the SSL key file.	
+def	mysql	replica_primary_info	Ssl_verify_server_cert	15	NULL	NO	tinyint	NULL	NULL	3	0	NULL	NULL	NULL	tinyint(1)				Whether to verify the server certificate.	
+def	mysql	replica_primary_info	User_name	5	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The user name used to connect to the primary.	
+def	mysql	replica_primary_info	User_password	6	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The password used to connect to the primary.	
+def	mysql	replica_primary_info	Uuid	19	NULL	YES	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The primary server uuid.	
+def	mysql	replica_relay_log_info	Channel_name	9	NULL	NO	char	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	char(64)	PRI			The channel on which the replica is connected to a source. Used in Multisource Replication	
+def	mysql	replica_relay_log_info	Id	8	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				Internal Id that uniquely identifies this record.	
+def	mysql	replica_relay_log_info	Primary_log_name	4	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the primary binary log file from which the events in the relay log file were read.	
+def	mysql	replica_relay_log_info	Primary_log_pos	5	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				The primary log position of the last executed event.	
+def	mysql	replica_relay_log_info	Number_of_lines	1	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned				Number of lines in the file or rows in the table. Used to version table definitions.	
+def	mysql	replica_relay_log_info	Number_of_workers	7	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned					
+def	mysql	replica_relay_log_info	Relay_log_name	2	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text				The name of the current relay log file.	
+def	mysql	replica_relay_log_info	Relay_log_pos	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned				The relay log position of the last executed event.	
+def	mysql	replica_relay_log_info	Sql_delay	6	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(11)				The number of seconds that the replica must lag behind the primary.	
+def	mysql	replica_worker_info	Channel_name	13	NULL	NO	char	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	char(64)	PRI			The channel on which the replica is connected to a source. Used in Multisource Replication	
+def	mysql	replica_worker_info	Checkpoint_group_bitmap	12	NULL	NO	blob	65535	65535	NULL	NULL	NULL	NULL	NULL	blob					
+def	mysql	replica_worker_info	Checkpoint_group_size	11	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned					
+def	mysql	replica_worker_info	Checkpoint_primary_log_name	8	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
+def	mysql	replica_worker_info	Checkpoint_primary_log_pos	9	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
+def	mysql	replica_worker_info	Checkpoint_relay_log_name	6	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
+def	mysql	replica_worker_info	Checkpoint_relay_log_pos	7	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
+def	mysql	replica_worker_info	Checkpoint_seqno	10	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned					
+def	mysql	replica_worker_info	Id	1	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned	PRI				
+def	mysql	replica_worker_info	Primary_log_name	4	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
+def	mysql	replica_worker_info	Primary_log_pos	5	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
+def	mysql	replica_worker_info	Relay_log_name	2	NULL	NO	text	65535	65535	NULL	NULL	NULL	utf8	utf8_bin	text					
+def	mysql	replica_worker_info	Relay_log_pos	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned					
 def	mysql	slow_log	db	7	NULL	NO	varchar	512	1536	NULL	NULL	NULL	utf8	utf8_general_ci	varchar(512)					
 def	mysql	slow_log	insert_id	9	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(11)					
 def	mysql	slow_log	last_insert_id	8	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(11)					
@@ -277,7 +277,7 @@ def	mysql	user	Process_priv	11	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci
 def	mysql	user	References_priv	14	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
 def	mysql	user	Reload_priv	9	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
 def	mysql	user	Repl_client_priv	23	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
-def	mysql	user	Repl_slave_priv	22	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
+def	mysql	user	Repl_replica_priv	22	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
 def	mysql	user	Select_priv	3	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
 def	mysql	user	Show_db_priv	17	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
 def	mysql	user	Show_view_priv	25	N	NO	enum	1	3	NULL	NULL	NULL	utf8	utf8_general_ci	enum('N','Y')					
@@ -409,7 +409,7 @@ NULL	mysql	event	modified	timestamp	NULL	NULL	NULL	NULL	timestamp
 NULL	mysql	event	last_executed	datetime	NULL	NULL	NULL	NULL	datetime
 NULL	mysql	event	starts	datetime	NULL	NULL	NULL	NULL	datetime
 NULL	mysql	event	ends	datetime	NULL	NULL	NULL	NULL	datetime
-3.0000	mysql	event	status	enum	18	54	utf8	utf8_general_ci	enum('ENABLED','DISABLED','SLAVESIDE_DISABLED')
+3.0000	mysql	event	status	enum	18	54	utf8	utf8_general_ci	enum('ENABLED','DISABLED','REPLICASIDE_DISABLED')
 3.0000	mysql	event	on_completion	enum	8	24	utf8	utf8_general_ci	enum('DROP','PRESERVE')
 3.0000	mysql	event	sql_mode	set	478	1434	utf8	utf8_general_ci	set('REAL_AS_FLOAT','PIPES_AS_CONCAT','ANSI_QUOTES','IGNORE_SPACE','NOT_USED','ONLY_FULL_GROUP_BY','NO_UNSIGNED_SUBTRACTION','NO_DIR_IN_CREATE','POSTGRESQL','ORACLE','MSSQL','DB2','MAXDB','NO_KEY_OPTIONS','NO_TABLE_OPTIONS','NO_FIELD_OPTIONS','MYSQL323','MYSQL40','ANSI','NO_AUTO_VALUE_ON_ZERO','NO_BACKSLASH_ESCAPES','STRICT_TRANS_TABLES','STRICT_ALL_TABLES','NO_ZERO_IN_DATE','NO_ZERO_DATE','INVALID_DATES','ERROR_FOR_DIVISION_BY_ZERO','TRADITIONAL','NO_AUTO_CREATE_USER','HIGH_NOT_PRECEDENCE','NO_ENGINE_SUBSTITUTION','PAD_CHAR_TO_FULL_LENGTH')
 3.0000	mysql	event	comment	char	64	192	utf8	utf8_bin	char(64)
@@ -522,52 +522,52 @@ NULL	mysql	servers	Port	int	NULL	NULL	NULL	NULL	int(4)
 NULL	mysql	server_cost	cost_value	float	NULL	NULL	NULL	NULL	float
 NULL	mysql	server_cost	last_update	timestamp	NULL	NULL	NULL	NULL	timestamp
 3.0000	mysql	server_cost	comment	varchar	1024	3072	utf8	utf8_general_ci	varchar(1024)
-NULL	mysql	slave_master_info	Number_of_lines	int	NULL	NULL	NULL	NULL	int(10) unsigned
-1.0000	mysql	slave_master_info	Master_log_name	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_master_info	Master_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-3.0000	mysql	slave_master_info	Host	char	64	192	utf8	utf8_bin	char(64)
-1.0000	mysql	slave_master_info	User_name	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	User_password	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_master_info	Port	int	NULL	NULL	NULL	NULL	int(10) unsigned
-NULL	mysql	slave_master_info	Connect_retry	int	NULL	NULL	NULL	NULL	int(10) unsigned
-NULL	mysql	slave_master_info	Enabled_ssl	tinyint	NULL	NULL	NULL	NULL	tinyint(1)
-1.0000	mysql	slave_master_info	Ssl_ca	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	Ssl_capath	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	Ssl_cert	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	Ssl_cipher	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	Ssl_key	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_master_info	Ssl_verify_server_cert	tinyint	NULL	NULL	NULL	NULL	tinyint(1)
-NULL	mysql	slave_master_info	Heartbeat	float	NULL	NULL	NULL	NULL	float
-1.0000	mysql	slave_master_info	Bind	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	Ignored_server_ids	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	Uuid	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_master_info	Retry_count	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-1.0000	mysql	slave_master_info	Ssl_crl	text	65535	65535	utf8	utf8_bin	text
-1.0000	mysql	slave_master_info	Ssl_crlpath	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_master_info	Enabled_auto_position	tinyint	NULL	NULL	NULL	NULL	tinyint(1)
-3.0000	mysql	slave_master_info	Channel_name	char	64	192	utf8	utf8_general_ci	char(64)
-NULL	mysql	slave_relay_log_info	Number_of_lines	int	NULL	NULL	NULL	NULL	int(10) unsigned
-1.0000	mysql	slave_relay_log_info	Relay_log_name	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_relay_log_info	Relay_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-1.0000	mysql	slave_relay_log_info	Master_log_name	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_relay_log_info	Master_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-NULL	mysql	slave_relay_log_info	Sql_delay	int	NULL	NULL	NULL	NULL	int(11)
-NULL	mysql	slave_relay_log_info	Number_of_workers	int	NULL	NULL	NULL	NULL	int(10) unsigned
-NULL	mysql	slave_relay_log_info	Id	int	NULL	NULL	NULL	NULL	int(10) unsigned
-3.0000	mysql	slave_relay_log_info	Channel_name	char	64	192	utf8	utf8_general_ci	char(64)
-NULL	mysql	slave_worker_info	Id	int	NULL	NULL	NULL	NULL	int(10) unsigned
-1.0000	mysql	slave_worker_info	Relay_log_name	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_worker_info	Relay_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-1.0000	mysql	slave_worker_info	Master_log_name	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_worker_info	Master_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-1.0000	mysql	slave_worker_info	Checkpoint_relay_log_name	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_worker_info	Checkpoint_relay_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-1.0000	mysql	slave_worker_info	Checkpoint_master_log_name	text	65535	65535	utf8	utf8_bin	text
-NULL	mysql	slave_worker_info	Checkpoint_master_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-NULL	mysql	slave_worker_info	Checkpoint_seqno	int	NULL	NULL	NULL	NULL	int(10) unsigned
-NULL	mysql	slave_worker_info	Checkpoint_group_size	int	NULL	NULL	NULL	NULL	int(10) unsigned
-1.0000	mysql	slave_worker_info	Checkpoint_group_bitmap	blob	65535	65535	NULL	NULL	blob
-3.0000	mysql	slave_worker_info	Channel_name	char	64	192	utf8	utf8_general_ci	char(64)
+NULL	mysql	replica_primary_info	Number_of_lines	int	NULL	NULL	NULL	NULL	int(10) unsigned
+1.0000	mysql	replica_primary_info	Primary_log_name	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_primary_info	Primary_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+3.0000	mysql	replica_primary_info	Host	char	64	192	utf8	utf8_bin	char(64)
+1.0000	mysql	replica_primary_info	User_name	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	User_password	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_primary_info	Port	int	NULL	NULL	NULL	NULL	int(10) unsigned
+NULL	mysql	replica_primary_info	Connect_retry	int	NULL	NULL	NULL	NULL	int(10) unsigned
+NULL	mysql	replica_primary_info	Enabled_ssl	tinyint	NULL	NULL	NULL	NULL	tinyint(1)
+1.0000	mysql	replica_primary_info	Ssl_ca	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	Ssl_capath	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	Ssl_cert	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	Ssl_cipher	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	Ssl_key	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_primary_info	Ssl_verify_server_cert	tinyint	NULL	NULL	NULL	NULL	tinyint(1)
+NULL	mysql	replica_primary_info	Heartbeat	float	NULL	NULL	NULL	NULL	float
+1.0000	mysql	replica_primary_info	Bind	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	Ignored_server_ids	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	Uuid	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_primary_info	Retry_count	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+1.0000	mysql	replica_primary_info	Ssl_crl	text	65535	65535	utf8	utf8_bin	text
+1.0000	mysql	replica_primary_info	Ssl_crlpath	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_primary_info	Enabled_auto_position	tinyint	NULL	NULL	NULL	NULL	tinyint(1)
+3.0000	mysql	replica_primary_info	Channel_name	char	64	192	utf8	utf8_general_ci	char(64)
+NULL	mysql	replica_relay_log_info	Number_of_lines	int	NULL	NULL	NULL	NULL	int(10) unsigned
+1.0000	mysql	replica_relay_log_info	Relay_log_name	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_relay_log_info	Relay_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+1.0000	mysql	replica_relay_log_info	Primary_log_name	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_relay_log_info	Primary_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+NULL	mysql	replica_relay_log_info	Sql_delay	int	NULL	NULL	NULL	NULL	int(11)
+NULL	mysql	replica_relay_log_info	Number_of_workers	int	NULL	NULL	NULL	NULL	int(10) unsigned
+NULL	mysql	replica_relay_log_info	Id	int	NULL	NULL	NULL	NULL	int(10) unsigned
+3.0000	mysql	replica_relay_log_info	Channel_name	char	64	192	utf8	utf8_general_ci	char(64)
+NULL	mysql	replica_worker_info	Id	int	NULL	NULL	NULL	NULL	int(10) unsigned
+1.0000	mysql	replica_worker_info	Relay_log_name	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_worker_info	Relay_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+1.0000	mysql	replica_worker_info	Primary_log_name	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_worker_info	Primary_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+1.0000	mysql	replica_worker_info	Checkpoint_relay_log_name	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_worker_info	Checkpoint_relay_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+1.0000	mysql	replica_worker_info	Checkpoint_primary_log_name	text	65535	65535	utf8	utf8_bin	text
+NULL	mysql	replica_worker_info	Checkpoint_primary_log_pos	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
+NULL	mysql	replica_worker_info	Checkpoint_seqno	int	NULL	NULL	NULL	NULL	int(10) unsigned
+NULL	mysql	replica_worker_info	Checkpoint_group_size	int	NULL	NULL	NULL	NULL	int(10) unsigned
+1.0000	mysql	replica_worker_info	Checkpoint_group_bitmap	blob	65535	65535	NULL	NULL	blob
+3.0000	mysql	replica_worker_info	Channel_name	char	64	192	utf8	utf8_general_ci	char(64)
 NULL	mysql	slow_log	start_time	timestamp	NULL	NULL	NULL	NULL	timestamp(6)
 1.0000	mysql	slow_log	user_host	mediumtext	16777215	16777215	utf8	utf8_general_ci	mediumtext
 NULL	mysql	slow_log	query_time	time	NULL	NULL	NULL	NULL	time(6)
@@ -623,7 +623,7 @@ NULL	mysql	time_zone_transition_type	Is_DST	tinyint	NULL	NULL	NULL	NULL	tinyint(
 3.0000	mysql	user	Create_tmp_table_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')
 3.0000	mysql	user	Lock_tables_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')
 3.0000	mysql	user	Execute_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')
-3.0000	mysql	user	Repl_slave_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')
+3.0000	mysql	user	Repl_replica_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')
 3.0000	mysql	user	Repl_client_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')
 3.0000	mysql	user	Create_view_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')
 3.0000	mysql	user	Show_view_priv	enum	1	3	utf8	utf8_general_ci	enum('N','Y')

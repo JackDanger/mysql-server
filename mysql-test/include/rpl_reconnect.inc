@@ -1,7 +1,7 @@
 # ==== Purpose ====
 #
 # After a server has restarted, this waits for all clients configured
-# by rpl_init.inc and/or master-slave.inc to reconnect again.
+# by rpl_init.inc and/or primary-replica.inc to reconnect again.
 #
 # For each connection, it issues this:
 #   --enable_reconnect
@@ -19,7 +19,7 @@
 # Parameters:
 #   $rpl_server_number
 #     Number to identify the server that needs to reconnect.  1 is the
-#     master server, 2 the slave server, 3 the 3rd server, and so on.
+#     primary server, 2 the replica server, 3 the 3rd server, and so on.
 #     Cf. include/rpl_init.inc
 #
 #   $rpl_extra_connections_per_server, $rpl_debug
@@ -52,11 +52,11 @@ if ($rpl_server_number == 1)
 
   if ($_have_default_connections)
   {
-    --let $rpl_connection_name= master
+    --let $rpl_connection_name= primary
     --source include/rpl_connection.inc
     --enable_reconnect
 
-    --let $rpl_connection_name= master1
+    --let $rpl_connection_name= primary1
     --source include/rpl_connection.inc
     --enable_reconnect
 
@@ -73,11 +73,11 @@ if ($rpl_server_number == 2)
 {
   if ($_have_default_connections)
   {
-    --let $rpl_connection_name= slave
+    --let $rpl_connection_name= replica
     --source include/rpl_connection.inc
     --enable_reconnect
 
-    --let $rpl_connection_name= slave1
+    --let $rpl_connection_name= replica1
     --source include/rpl_connection.inc
     --enable_reconnect
 
@@ -119,12 +119,12 @@ if ($rpl_server_number == 1)
 
   if ($_have_default_connections)
   {
-    --let $rpl_connection_name= master
+    --let $rpl_connection_name= primary
     --source include/rpl_connection.inc
     --source include/wait_until_connected_again.inc
     --disable_reconnect
 
-    --let $rpl_connection_name= master1
+    --let $rpl_connection_name= primary1
     --source include/rpl_connection.inc
     --source include/wait_until_connected_again.inc
     --disable_reconnect
@@ -143,12 +143,12 @@ if ($rpl_server_number == 2)
 {
   if ($_have_default_connections)
   {
-    --let $rpl_connection_name= slave
+    --let $rpl_connection_name= replica
     --source include/rpl_connection.inc
     --source include/wait_until_connected_again.inc
     --disable_reconnect
 
-    --let $rpl_connection_name= slave1
+    --let $rpl_connection_name= replica1
     --source include/rpl_connection.inc
     --source include/wait_until_connected_again.inc
     --disable_reconnect

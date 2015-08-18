@@ -105,8 +105,8 @@ private:
    */  
   DLList<NodeRecord> c_theNodes;
 
-  Uint32 c_masterNodeId;
-  BlockReference c_masterTrixRef;
+  Uint32 c_primaryNodeId;
+  BlockReference c_primaryTrixRef;
   Uint16 c_noNodesFailed;
   Uint16 c_noActiveNodes;
 

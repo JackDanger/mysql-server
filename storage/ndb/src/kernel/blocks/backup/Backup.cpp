@@ -141,7 +141,7 @@ Backup::execSTTOR(Signal* signal)
   }
 
   if(startphase == 7 && g_TypeOfStart == NodeState::ST_INITIAL_START &&
-     c_masterNodeId == getOwnNodeId() && !isNdbMtLqh()){
+     c_primaryNodeId == getOwnNodeId() && !isNdbMtLqh()){
     jam();
     createSequence(signal);
     return;
@@ -180,7 +180,7 @@ Backup::execREAD_NODESCONF(Signal* signal)
       }//if
     }//if
   }//for
-  c_masterNodeId = conf->masterNodeId;
+  c_primaryNodeId = conf->primaryNodeId;
   ndbrequire(count == conf->noOfNodes);
   sendSTTORRY(signal);
 }
@@ -1094,9 +1094,9 @@ Backup::execDUMP_STATE_ORD(Signal* signal)
      */
     BackupRecordPtr ptr;
     for(c_backups.first(ptr); ptr.i != RNIL; c_backups.next(ptr)){
-      infoEvent("BackupRecord %d: BackupId: %u MasterRef: %x ClientRef: %x",
-		ptr.i, ptr.p->backupId, ptr.p->masterRef, ptr.p->clientRef);
-      infoEvent(" State: %d", ptr.p->slaveState.getState());
+      infoEvent("BackupRecord %d: BackupId: %u PrimaryRef: %x ClientRef: %x",
+		ptr.i, ptr.p->backupId, ptr.p->primaryRef, ptr.p->clientRef);
+      infoEvent(" State: %d", ptr.p->replicaState.getState());
       BackupFilePtr filePtr;
       for(ptr.p->files.first(filePtr); filePtr.i != RNIL; 
 	  ptr.p->files.next(filePtr)){
@@ -1129,9 +1129,9 @@ Backup::execDUMP_STATE_ORD(Signal* signal)
 
     for(c_backups.first(ptr); ptr.i != RNIL; c_backups.next(ptr))
     {
-      ndbout_c("BackupRecord %u:  BackupId: %u  MasterRef: %x  ClientRef: %x",
-               ptr.i, ptr.p->backupId, ptr.p->masterRef, ptr.p->clientRef);
-      ndbout_c(" State: %u", ptr.p->slaveState.getState());
+      ndbout_c("BackupRecord %u:  BackupId: %u  PrimaryRef: %x  ClientRef: %x",
+               ptr.i, ptr.p->backupId, ptr.p->primaryRef, ptr.p->clientRef);
+      ndbout_c(" State: %u", ptr.p->replicaState.getState());
       ndbout_c(" noOfByte: %llu  noOfRecords: %llu",
                ptr.p->noOfBytes, ptr.p->noOfRecords);
       ndbout_c(" noOfLogBytes: %llu  noOfLogRecords: %llu",
@@ -1145,7 +1145,7 @@ Backup::execDUMP_STATE_ORD(Signal* signal)
                  filePtr.i, filePtr.p->fileType, filePtr.p->m_flags,
                  filePtr.p->tableId, filePtr.p->fragmentNo);
       }
-      if (ptr.p->slaveState.getState() == SCANNING && ptr.p->dataFilePtr != RNIL)
+      if (ptr.p->replicaState.getState() == SCANNING && ptr.p->dataFilePtr != RNIL)
       {
         c_backupFilePool.getPtr(filePtr, ptr.p->dataFilePtr);
         OperationRecord & op = filePtr.p->operation;
@@ -1847,7 +1847,7 @@ const TriggerEvent::Value triggerEventValues[] = {
 };
 
 const Backup::State 
-Backup::validSlaveTransitions[] = {
+Backup::validReplicaTransitions[] = {
   INITIAL,  DEFINING,
   DEFINING, DEFINED,
   DEFINED,  STARTED,
@@ -1864,16 +1864,16 @@ Backup::validSlaveTransitions[] = {
   STARTED,  ABORTING,
   SCANNING, ABORTING,
   STOPPING, ABORTING,
-  CLEANING, ABORTING, // Node fail w/ master takeover
-  ABORTING, ABORTING, // Slave who initiates ABORT should have this transition
+  CLEANING, ABORTING, // Node fail w/ primary takeover
+  ABORTING, ABORTING, // Replica who initiates ABORT should have this transition
   
   ABORTING, INITIAL,
   INITIAL,  INITIAL
 };
 
 const Uint32
-Backup::validSlaveTransitionsCount = 
-sizeof(Backup::validSlaveTransitions) / sizeof(Backup::State);
+Backup::validReplicaTransitionsCount = 
+sizeof(Backup::validReplicaTransitions) / sizeof(Backup::State);
 
 void
 Backup::CompoundState::setState(State newState){
@@ -1953,12 +1953,12 @@ Backup::execNODE_FAILREP(Signal* signal)
   Start by saving important signal data which will be destroyed before the
   process is completed.
   */
-  NodeId new_master_node_id = rep->masterNodeId;
+  NodeId new_primary_node_id = rep->primaryNodeId;
   Uint32 theFailedNodes[NdbNodeBitmask::Size];
   for (Uint32 i = 0; i < NdbNodeBitmask::Size; i++)
     theFailedNodes[i] = rep->theNodes[i];
   
-  c_masterNodeId = new_master_node_id;
+  c_primaryNodeId = new_primary_node_id;
 
   NodePtr nodePtr;
   for(c_nodes.first(nodePtr); nodePtr.i != RNIL; c_nodes.next(nodePtr)) {
@@ -1986,7 +1986,7 @@ Backup::execNODE_FAILREP(Signal* signal)
   ndbout_c("****************** Node fail rep ******************");
 #endif
 
-  NodeId newCoordinator = c_masterNodeId;
+  NodeId newCoordinator = c_primaryNodeId;
   BackupRecordPtr ptr;
   for(c_backups.first(ptr); ptr.i != RNIL; c_backups.next(ptr)) {
     jam();
@@ -2060,12 +2060,12 @@ Backup::checkNodeFail(Signal* signal,
     return; // failed node is not part of backup process, safe to continue
   }
 
-  if(mask.get(refToNode(ptr.p->masterRef)))
+  if(mask.get(refToNode(ptr.p->primaryRef)))
   {
     /**
-     * Master died...abort
+     * Primary died...abort
      */
-    ptr.p->masterRef = reference();
+    ptr.p->primaryRef = reference();
     ptr.p->nodes.clear();
     ptr.p->nodes.set(getOwnNodeId());
     ptr.p->setErrorCode(AbortBackupOrd::BackupFailureDueToNodeFail);
@@ -2075,8 +2075,8 @@ Backup::checkNodeFail(Signal* signal,
     case GSN_BACKUP_FRAGMENT_REQ:
     case GSN_STOP_BACKUP_REQ:
       // I'm currently processing...reply to self and abort...
-      ptr.p->masterData.gsn = ptr.p->m_gsn;
-      ptr.p->masterData.sendCounter = ptr.p->nodes;
+      ptr.p->primaryData.gsn = ptr.p->m_gsn;
+      ptr.p->primaryData.sendCounter = ptr.p->nodes;
       return;
     case GSN_DEFINE_BACKUP_REF:
     case GSN_DEFINE_BACKUP_CONF:
@@ -2086,8 +2086,8 @@ Backup::checkNodeFail(Signal* signal,
     case GSN_BACKUP_FRAGMENT_CONF:
     case GSN_STOP_BACKUP_REF:
     case GSN_STOP_BACKUP_CONF:
-      ptr.p->masterData.gsn = GSN_DEFINE_BACKUP_REQ;
-      masterAbort(signal, ptr);
+      ptr.p->primaryData.gsn = GSN_DEFINE_BACKUP_REQ;
+      primaryAbort(signal, ptr);
       return;
     case GSN_ABORT_BACKUP_ORD:
       // Already aborting
@@ -2097,18 +2097,18 @@ Backup::checkNodeFail(Signal* signal,
   else if (newCoord == getOwnNodeId())
   {
     /**
-     * I'm master for this backup
+     * I'm primary for this backup
      */
     jam();
     CRASH_INSERTION((10001));
 #ifdef DEBUG_ABORT
-    ndbout_c("**** Master: Node failed: Master id = %u", 
-	     refToNode(ptr.p->masterRef));
+    ndbout_c("**** Primary: Node failed: Primary id = %u", 
+	     refToNode(ptr.p->primaryRef));
 #endif
 
     Uint32 gsn, len, pos;
     ptr.p->nodes.bitANDC(mask);
-    switch(ptr.p->masterData.gsn){
+    switch(ptr.p->primaryData.gsn){
     case GSN_DEFINE_BACKUP_REQ:
     {
       DefineBackupRef * ref = (DefineBackupRef*)signal->getDataPtr();
@@ -2179,7 +2179,7 @@ Backup::checkNodeFail(Signal* signal,
   }//if
   
   /**
-   * I abort myself as slave if not master
+   * I abort myself as replica if not primary
    */
   CRASH_INSERTION((10021));
 } 
@@ -2215,7 +2215,7 @@ Backup::execINCL_NODEREQ(Signal* signal)
 
 /*****************************************************************************
  * 
- * Master functionallity - Define backup
+ * Primary functionallity - Define backup
  *
  *****************************************************************************/
 
@@ -2231,11 +2231,11 @@ Backup::execBACKUP_REQ(Signal* signal)
   const Uint32 flags = signal->getLength() > 2 ? req->flags : 2;
   const Uint32 input_backupId = signal->getLength() > 3 ? req->inputBackupId : 0;
 
-  if (getOwnNodeId() != getMasterNodeId())
+  if (getOwnNodeId() != getPrimaryNodeId())
   {
     jam();
     sendBackupRef(senderRef, flags, signal, senderData,
-                  BackupRef::IAmNotMaster);
+                  BackupRef::IAmNotPrimary);
     return;
   }//if
 
@@ -2278,7 +2278,7 @@ Backup::execBACKUP_REQ(Signal* signal)
   ptr.p->clientRef = senderRef;
   ptr.p->clientData = senderData;
   ptr.p->flags = flags;
-  ptr.p->masterRef = reference();
+  ptr.p->primaryRef = reference();
   ptr.p->nodes = c_aliveNodes;
   if (input_backupId)
   {
@@ -2293,9 +2293,9 @@ Backup::execBACKUP_REQ(Signal* signal)
   ptr.p->backupKey[0] = 0;
   ptr.p->backupKey[1] = 0;
   ptr.p->backupDataLen = 0;
-  ptr.p->masterData.errorCode = 0;
+  ptr.p->primaryData.errorCode = 0;
 
-  ptr.p->masterData.sequence.retriesLeft = 3;
+  ptr.p->primaryData.sequence.retriesLeft = 3;
   sendUtilSequenceReq(signal, ptr);
 }
 
@@ -2305,7 +2305,7 @@ Backup::sendUtilSequenceReq(Signal* signal, BackupRecordPtr ptr, Uint32 delay)
   jam();
 
   UtilSequenceReq * utilReq = (UtilSequenceReq*)signal->getDataPtrSend();
-  ptr.p->masterData.gsn = GSN_UTIL_SEQUENCE_REQ;
+  ptr.p->primaryData.gsn = GSN_UTIL_SEQUENCE_REQ;
   utilReq->senderData  = ptr.i;
   utilReq->sequenceId  = NDB_BACKUP_SEQUENCE;
 
@@ -2343,17 +2343,17 @@ Backup::execUTIL_SEQUENCE_REF(Signal* signal)
   UtilSequenceRef * utilRef = (UtilSequenceRef*)signal->getDataPtr();
   ptr.i = utilRef->senderData;
   c_backupPool.getPtr(ptr);
-  ndbrequire(ptr.p->masterData.gsn == GSN_UTIL_SEQUENCE_REQ);
+  ndbrequire(ptr.p->primaryData.gsn == GSN_UTIL_SEQUENCE_REQ);
 
   if (utilRef->errorCode == UtilSequenceRef::TCError)
   {
     jam();
-    if (ptr.p->masterData.sequence.retriesLeft > 0)
+    if (ptr.p->primaryData.sequence.retriesLeft > 0)
     {
       jam();
       infoEvent("BACKUP: retrying sequence on error %u",
                 utilRef->TCErrorCode);
-      ptr.p->masterData.sequence.retriesLeft--;
+      ptr.p->primaryData.sequence.retriesLeft--;
       sendUtilSequenceReq(signal, ptr, 300);
       return;
     }
@@ -2385,11 +2385,11 @@ Backup::sendBackupRef(BlockReference senderRef, Uint32 flags, Signal *signal,
     BackupRef* ref = (BackupRef*)signal->getDataPtrSend();
     ref->senderData = senderData;
     ref->errorCode = errorCode;
-    ref->masterRef = numberToRef(BACKUP, getMasterNodeId());
+    ref->primaryRef = numberToRef(BACKUP, getPrimaryNodeId());
     sendSignal(senderRef, GSN_BACKUP_REF, signal, BackupRef::SignalLength, JBB);
   }
 
-  if (errorCode != BackupRef::IAmNotMaster)
+  if (errorCode != BackupRef::IAmNotPrimary)
   {
     jam();
     signal->theData[0] = NDB_LE_BackupFailedToStart;
@@ -2417,7 +2417,7 @@ Backup::execUTIL_SEQUENCE_CONF(Signal* signal)
   ptr.i = conf->senderData;
   c_backupPool.getPtr(ptr);
 
-  ndbrequire(ptr.p->masterData.gsn == GSN_UTIL_SEQUENCE_REQ);
+  ndbrequire(ptr.p->primaryData.gsn == GSN_UTIL_SEQUENCE_REQ);
 
   if (ptr.p->checkError())
   {
@@ -2443,8 +2443,8 @@ Backup::execUTIL_SEQUENCE_CONF(Signal* signal)
   ptr.p->backupKey[0] = (getOwnNodeId() << 16) | (ptr.p->backupId & 0xFFFF);
   ptr.p->backupKey[1] = Uint32(NdbTick_CurrentMillisecond());
 
-  ptr.p->masterData.gsn = GSN_UTIL_LOCK_REQ;
-  Mutex mutex(signal, c_mutexMgr, ptr.p->masterData.m_defineBackupMutex);
+  ptr.p->primaryData.gsn = GSN_UTIL_LOCK_REQ;
+  Mutex mutex(signal, c_mutexMgr, ptr.p->primaryData.m_defineBackupMutex);
   Callback c = { safe_cast(&Backup::defineBackupMutex_locked), ptr.i };
   ndbrequire(mutex.lock(c));
 
@@ -2460,10 +2460,10 @@ Backup::defineBackupMutex_locked(Signal* signal, Uint32 ptrI, Uint32 retVal){
   ptr.i = ptrI;
   c_backupPool.getPtr(ptr);
   
-  ndbrequire(ptr.p->masterData.gsn == GSN_UTIL_LOCK_REQ);
+  ndbrequire(ptr.p->primaryData.gsn == GSN_UTIL_LOCK_REQ);
 
-  ptr.p->masterData.gsn = GSN_UTIL_LOCK_REQ;
-  Mutex mutex(signal, c_mutexMgr, ptr.p->masterData.m_dictCommitTableMutex);
+  ptr.p->primaryData.gsn = GSN_UTIL_LOCK_REQ;
+  Mutex mutex(signal, c_mutexMgr, ptr.p->primaryData.m_dictCommitTableMutex);
   Callback c = { safe_cast(&Backup::dictCommitTableMutex_locked), ptr.i };
   ndbrequire(mutex.lock(c));
 }
@@ -2481,7 +2481,7 @@ Backup::dictCommitTableMutex_locked(Signal* signal, Uint32 ptrI,Uint32 retVal)
   ptr.i = ptrI;
   c_backupPool.getPtr(ptr);
 
-  ndbrequire(ptr.p->masterData.gsn == GSN_UTIL_LOCK_REQ);
+  ndbrequire(ptr.p->primaryData.gsn == GSN_UTIL_LOCK_REQ);
 
   if (ERROR_INSERTED(10031)) {
     ptr.p->setErrorCode(331);
@@ -2495,12 +2495,12 @@ Backup::dictCommitTableMutex_locked(Signal* signal, Uint32 ptrI,Uint32 retVal)
      * Unlock mutexes
      */
     jam();
-    Mutex mutex1(signal, c_mutexMgr, ptr.p->masterData.m_dictCommitTableMutex);
+    Mutex mutex1(signal, c_mutexMgr, ptr.p->primaryData.m_dictCommitTableMutex);
     jam();
     mutex1.unlock(); // ignore response
     
     jam();
-    Mutex mutex2(signal, c_mutexMgr, ptr.p->masterData.m_defineBackupMutex);
+    Mutex mutex2(signal, c_mutexMgr, ptr.p->primaryData.m_defineBackupMutex);
     jam();
     mutex2.unlock(); // ignore response
     
@@ -2513,20 +2513,20 @@ Backup::dictCommitTableMutex_locked(Signal* signal, Uint32 ptrI,Uint32 retVal)
 
 /*****************************************************************************
  * 
- * Master functionallity - Define backup cont'd (from now on all slaves are in)
+ * Primary functionallity - Define backup cont'd (from now on all replicas are in)
  *
  *****************************************************************************/
 
 bool
 Backup::haveAllSignals(BackupRecordPtr ptr, Uint32 gsn, Uint32 nodeId)
 { 
-  ndbrequire(ptr.p->masterRef == reference());
-  ndbrequire(ptr.p->masterData.gsn == gsn);
-  ndbrequire(!ptr.p->masterData.sendCounter.done());
-  ndbrequire(ptr.p->masterData.sendCounter.isWaitingFor(nodeId));
+  ndbrequire(ptr.p->primaryRef == reference());
+  ndbrequire(ptr.p->primaryData.gsn == gsn);
+  ndbrequire(!ptr.p->primaryData.sendCounter.done());
+  ndbrequire(ptr.p->primaryData.sendCounter.isWaitingFor(nodeId));
   
-  ptr.p->masterData.sendCounter.clearWaitingFor(nodeId);
-  return ptr.p->masterData.sendCounter.done();
+  ptr.p->primaryData.sendCounter.clearWaitingFor(nodeId);
+  return ptr.p->primaryData.sendCounter.done();
 }
 
 void
@@ -2547,8 +2547,8 @@ Backup::sendDefineBackupReq(Signal *signal, BackupRecordPtr ptr)
   req->backupDataLen = ptr.p->backupDataLen;
   req->flags = ptr.p->flags;
   
-  ptr.p->masterData.gsn = GSN_DEFINE_BACKUP_REQ;
-  ptr.p->masterData.sendCounter = ptr.p->nodes;
+  ptr.p->primaryData.gsn = GSN_DEFINE_BACKUP_REQ;
+  ptr.p->primaryData.sendCounter = ptr.p->nodes;
   BlockNumber backupBlockNo = numberToBlock(BACKUP, instanceKey(ptr));
   NodeReceiverGroup rg(backupBlockNo, ptr.p->nodes);
   sendSignal(rg, GSN_DEFINE_BACKUP_REQ, signal, 
@@ -2623,19 +2623,19 @@ Backup::defineBackupReply(Signal* signal, BackupRecordPtr ptr, Uint32 nodeId)
    * Unlock mutexes
    */
   jam();
-  Mutex mutex1(signal, c_mutexMgr, ptr.p->masterData.m_dictCommitTableMutex);
+  Mutex mutex1(signal, c_mutexMgr, ptr.p->primaryData.m_dictCommitTableMutex);
   jam();
   mutex1.unlock(); // ignore response
 
   jam();
-  Mutex mutex2(signal, c_mutexMgr, ptr.p->masterData.m_defineBackupMutex);
+  Mutex mutex2(signal, c_mutexMgr, ptr.p->primaryData.m_defineBackupMutex);
   jam();
   mutex2.unlock(); // ignore response
 
   if(ptr.p->checkError())
   {
     jam();
-    masterAbort(signal, ptr);
+    primaryAbort(signal, ptr);
     return;
   }
   
@@ -2656,7 +2656,7 @@ Backup::defineBackupReply(Signal* signal, BackupRecordPtr ptr, Uint32 nodeId)
 
 /*****************************************************************************
  * 
- * Master functionallity - Prepare triggers
+ * Primary functionallity - Prepare triggers
  *
  *****************************************************************************/
 void
@@ -2689,7 +2689,7 @@ Backup::sendCreateTrig(Signal* signal,
       ref->backupId = ptr.p->backupId;
       ref->errorCode = StartBackupRef::FailedToAllocateTriggerRecord;
       ref->nodeId = getOwnNodeId();
-      sendSignal(ptr.p->masterRef, GSN_START_BACKUP_REF, signal,
+      sendSignal(ptr.p->primaryRef, GSN_START_BACKUP_REF, signal,
 		 StartBackupRef::SignalLength, JBB);
       return;
     } // if
@@ -2713,9 +2713,9 @@ Backup::sendCreateTrig(Signal* signal,
   /*
    * now ask DBTUP to create
    */
-  ptr.p->slaveData.gsn = GSN_CREATE_TRIG_IMPL_REQ;
-  ptr.p->slaveData.trigSendCounter = 3;
-  ptr.p->slaveData.createTrig.tableId = tabPtr.p->tableId;
+  ptr.p->replicaData.gsn = GSN_CREATE_TRIG_IMPL_REQ;
+  ptr.p->replicaData.trigSendCounter = 3;
+  ptr.p->replicaData.createTrig.tableId = tabPtr.p->tableId;
 
   req->senderRef = reference();
   req->receiverRef = reference();
@@ -2784,12 +2784,12 @@ Backup::execCREATE_TRIG_IMPL_CONF(Signal* signal)
   /**
    * Verify that I'm waiting for this conf
    *
-   * ptr.p->masterRef != reference()
-   * as slaves and masters have triggers now.
+   * ptr.p->primaryRef != reference()
+   * as replicas and primarys have triggers now.
    */
-  ndbrequire(ptr.p->slaveData.gsn == GSN_CREATE_TRIG_IMPL_REQ);
-  ndbrequire(ptr.p->slaveData.trigSendCounter.done() == false);
-  ndbrequire(ptr.p->slaveData.createTrig.tableId == tableId);
+  ndbrequire(ptr.p->replicaData.gsn == GSN_CREATE_TRIG_IMPL_REQ);
+  ndbrequire(ptr.p->replicaData.trigSendCounter.done() == false);
+  ndbrequire(ptr.p->replicaData.createTrig.tableId == tableId);
 
   TablePtr tabPtr;
   ndbrequire(findTable(ptr, tabPtr, tableId));
@@ -2814,12 +2814,12 @@ Backup::execCREATE_TRIG_IMPL_REF(Signal* signal)
   /**
    * Verify that I'm waiting for this ref
    *
-   * ptr.p->masterRef != reference()
-   * as slaves and masters have triggers now
+   * ptr.p->primaryRef != reference()
+   * as replicas and primarys have triggers now
    */
-  ndbrequire(ptr.p->slaveData.gsn == GSN_CREATE_TRIG_IMPL_REQ);
-  ndbrequire(ptr.p->slaveData.trigSendCounter.done() == false);
-  ndbrequire(ptr.p->slaveData.createTrig.tableId == tableId);
+  ndbrequire(ptr.p->replicaData.gsn == GSN_CREATE_TRIG_IMPL_REQ);
+  ndbrequire(ptr.p->replicaData.trigSendCounter.done() == false);
+  ndbrequire(ptr.p->replicaData.createTrig.tableId == tableId);
 
   ptr.p->setErrorCode(ref->errorCode);
 
@@ -2834,8 +2834,8 @@ Backup::createTrigReply(Signal* signal, BackupRecordPtr ptr)
   /**
    * Check finished with table
    */
-  ptr.p->slaveData.trigSendCounter--;
-  if(ptr.p->slaveData.trigSendCounter.done() == false){
+  ptr.p->replicaData.trigSendCounter--;
+  if(ptr.p->replicaData.trigSendCounter.done() == false){
     jam();
     return;
   }//if
@@ -2853,13 +2853,13 @@ Backup::createTrigReply(Signal* signal, BackupRecordPtr ptr)
     ref->backupId = ptr.p->backupId;
     ref->errorCode = ptr.p->errorCode;
     ref->nodeId = getOwnNodeId();
-    sendSignal(ptr.p->masterRef, GSN_START_BACKUP_REF, signal,
+    sendSignal(ptr.p->primaryRef, GSN_START_BACKUP_REF, signal,
                StartBackupRef::SignalLength, JBB);
     return;
   }//if
 
   TablePtr tabPtr;
-  ndbrequire(findTable(ptr, tabPtr, ptr.p->slaveData.createTrig.tableId));
+  ndbrequire(findTable(ptr, tabPtr, ptr.p->replicaData.createTrig.tableId));
 
   /**
    * Next table
@@ -2880,20 +2880,20 @@ Backup::createTrigReply(Signal* signal, BackupRecordPtr ptr)
   StartBackupConf* conf = (StartBackupConf*)signal->getDataPtrSend();
   conf->backupPtr = ptr.i;
   conf->backupId = ptr.p->backupId;
-  sendSignal(ptr.p->masterRef, GSN_START_BACKUP_CONF, signal,
+  sendSignal(ptr.p->primaryRef, GSN_START_BACKUP_CONF, signal,
 	     StartBackupConf::SignalLength, JBB);
 }
 
 /*****************************************************************************
  * 
- * Master functionallity - Start backup
+ * Primary functionallity - Start backup
  *
  *****************************************************************************/
 void
 Backup::sendStartBackup(Signal* signal, BackupRecordPtr ptr, TablePtr tabPtr)
 {
 
-  ptr.p->masterData.startBackup.tablePtr = tabPtr.i;
+  ptr.p->primaryData.startBackup.tablePtr = tabPtr.i;
 
   StartBackupReq* req = (StartBackupReq*)signal->getDataPtrSend();
   req->backupId = ptr.p->backupId;
@@ -2906,8 +2906,8 @@ Backup::sendStartBackup(Signal* signal, BackupRecordPtr ptr, TablePtr tabPtr)
    *
    * Consequently, backups during online upgrade won't work
    */
-  ptr.p->masterData.gsn = GSN_START_BACKUP_REQ;
-  ptr.p->masterData.sendCounter = ptr.p->nodes;
+  ptr.p->primaryData.gsn = GSN_START_BACKUP_REQ;
+  ptr.p->primaryData.sendCounter = ptr.p->nodes;
   BlockNumber backupBlockNo = numberToBlock(BACKUP, instanceKey(ptr));
   NodeReceiverGroup rg(backupBlockNo, ptr.p->nodes);
   sendSignal(rg, GSN_START_BACKUP_REQ, signal,
@@ -2965,7 +2965,7 @@ Backup::startBackupReply(Signal* signal, BackupRecordPtr ptr, Uint32 nodeId)
 
   if(ptr.p->checkError()){
     jam();
-    masterAbort(signal, ptr);
+    primaryAbort(signal, ptr);
     return;
   }
 
@@ -2991,8 +2991,8 @@ Backup::startBackupReply(Signal* signal, BackupRecordPtr ptr, Uint32 nodeId)
   /**
    * Wait for GCP
    */
-  ptr.p->masterData.gsn = GSN_WAIT_GCP_REQ;
-  ptr.p->masterData.waitGCP.startBackup = true;
+  ptr.p->primaryData.gsn = GSN_WAIT_GCP_REQ;
+  ptr.p->primaryData.waitGCP.startBackup = true;
 
   WaitGCPReq * waitGCPReq = (WaitGCPReq*)signal->getDataPtrSend();
   waitGCPReq->senderRef = reference();
@@ -3021,8 +3021,8 @@ Backup::execWAIT_GCP_REF(Signal* signal)
   BackupRecordPtr ptr;
   c_backupPool.getPtr(ptr, ptrI);
 
-  ndbrequire(ptr.p->masterRef == reference());
-  ndbrequire(ptr.p->masterData.gsn == GSN_WAIT_GCP_REQ);
+  ndbrequire(ptr.p->primaryRef == reference());
+  ndbrequire(ptr.p->primaryData.gsn == GSN_WAIT_GCP_REQ);
 
   WaitGCPReq * req = (WaitGCPReq*)signal->getDataPtrSend();
   req->senderRef = reference();
@@ -3045,21 +3045,21 @@ Backup::execWAIT_GCP_CONF(Signal* signal){
   BackupRecordPtr ptr;
   c_backupPool.getPtr(ptr, ptrI);
   
-  ndbrequire(ptr.p->masterRef == reference());
-  ndbrequire(ptr.p->masterData.gsn == GSN_WAIT_GCP_REQ);
+  ndbrequire(ptr.p->primaryRef == reference());
+  ndbrequire(ptr.p->primaryData.gsn == GSN_WAIT_GCP_REQ);
   
   if(ptr.p->checkError()) {
     jam();
-    masterAbort(signal, ptr);
+    primaryAbort(signal, ptr);
     return;
   }//if
   
-  if(ptr.p->masterData.waitGCP.startBackup) {
+  if(ptr.p->primaryData.waitGCP.startBackup) {
     jam();
     CRASH_INSERTION((10008));
     ptr.p->startGCP = gcp;
-    ptr.p->masterData.sendCounter= 0;
-    ptr.p->masterData.gsn = GSN_BACKUP_FRAGMENT_REQ;
+    ptr.p->primaryData.sendCounter= 0;
+    ptr.p->primaryData.gsn = GSN_BACKUP_FRAGMENT_REQ;
     nextFragment(signal, ptr);
     return;
   } else {
@@ -3092,7 +3092,7 @@ Backup::execWAIT_GCP_CONF(Signal* signal){
 
 /*****************************************************************************
  * 
- * Master functionallity - Backup fragment
+ * Primary functionallity - Backup fragment
  *
  *****************************************************************************/
 void
@@ -3136,7 +3136,7 @@ Backup::nextFragment(Signal* signal, BackupRecordPtr ptr)
 	req->fragmentNo = i;
 	req->count = 0;
 
-	ptr.p->masterData.sendCounter++;
+	ptr.p->primaryData.sendCounter++;
 	BlockReference ref = numberToRef(BACKUP, instanceKey(ptr), nodeId);
 	sendSignal(ref, GSN_BACKUP_FRAGMENT_REQ, signal,
 		   BackupFragmentReq::SignalLength, JBB);
@@ -3153,8 +3153,8 @@ Backup::nextFragment(Signal* signal, BackupRecordPtr ptr)
    * Finished with all tables
    */
   {
-    ptr.p->masterData.gsn = GSN_WAIT_GCP_REQ;
-    ptr.p->masterData.waitGCP.startBackup = false;
+    ptr.p->primaryData.gsn = GSN_WAIT_GCP_REQ;
+    ptr.p->primaryData.waitGCP.startBackup = false;
     
     WaitGCPReq * req = (WaitGCPReq*)signal->getDataPtrSend();
     req->senderRef = reference();
@@ -3188,7 +3188,7 @@ Backup::execBACKUP_FRAGMENT_CONF(Signal* signal)
 
   ptr.p->noOfBytes += noOfBytes;
   ptr.p->noOfRecords += noOfRecords;
-  ptr.p->masterData.sendCounter--;
+  ptr.p->primaryData.sendCounter--;
 
   TablePtr tabPtr;
   ndbrequire(findTable(ptr, tabPtr, tableId));
@@ -3214,10 +3214,10 @@ Backup::execBACKUP_FRAGMENT_CONF(Signal* signal)
 
   if(ptr.p->checkError()) 
   {
-    if(ptr.p->masterData.sendCounter.done())
+    if(ptr.p->primaryData.sendCounter.done())
     {
       jam();
-      masterAbort(signal, ptr);
+      primaryAbort(signal, ptr);
       return;
     }//if
   }
@@ -3285,13 +3285,13 @@ Backup::execBACKUP_FRAGMENT_REF(Signal* signal)
   goto err;
 
 done:
-  ptr.p->masterData.sendCounter--;
+  ptr.p->primaryData.sendCounter--;
   ptr.p->setErrorCode(ref->errorCode);
   
-  if(ptr.p->masterData.sendCounter.done())
+  if(ptr.p->primaryData.sendCounter.done())
   {
     jam();
-    masterAbort(signal, ptr);
+    primaryAbort(signal, ptr);
     return;
   }//if
 
@@ -3329,7 +3329,7 @@ Backup::execBACKUP_FRAGMENT_COMPLETE_REP(Signal* signal)
 
 /*****************************************************************************
  *
- * Slave functionallity - Drop triggers
+ * Replica functionallity - Drop triggers
  *
  *****************************************************************************/
 
@@ -3337,9 +3337,9 @@ void
 Backup::sendDropTrig(Signal* signal, BackupRecordPtr ptr)
 {
   TablePtr tabPtr;
-  ptr.p->slaveData.gsn = GSN_DROP_TRIG_IMPL_REQ;
+  ptr.p->replicaData.gsn = GSN_DROP_TRIG_IMPL_REQ;
 
-  if (ptr.p->slaveData.dropTrig.tableId == RNIL) {
+  if (ptr.p->replicaData.dropTrig.tableId == RNIL) {
     jam();
     if(ptr.p->tables.count())
       ptr.p->tables.first(tabPtr);
@@ -3352,7 +3352,7 @@ Backup::sendDropTrig(Signal* signal, BackupRecordPtr ptr)
     }
   } else {
     jam();
-    ndbrequire(findTable(ptr, tabPtr, ptr.p->slaveData.dropTrig.tableId));
+    ndbrequire(findTable(ptr, tabPtr, ptr.p->replicaData.dropTrig.tableId));
     ptr.p->tables.next(tabPtr);
   }//if
   if (tabPtr.i != RNIL) {
@@ -3425,8 +3425,8 @@ Backup::sendDropTrig(Signal* signal, BackupRecordPtr ptr, TablePtr tabPtr)
   jam();
   DropTrigImplReq* req = (DropTrigImplReq*)signal->getDataPtrSend();
 
-  ptr.p->slaveData.gsn = GSN_DROP_TRIG_IMPL_REQ;
-  ptr.p->slaveData.trigSendCounter = 0;
+  ptr.p->replicaData.gsn = GSN_DROP_TRIG_IMPL_REQ;
+  ptr.p->replicaData.trigSendCounter = 0;
   req->senderRef = reference(); // Sending to myself
   req->senderData = ptr.i;
   req->requestType = 0;
@@ -3446,7 +3446,7 @@ Backup::sendDropTrig(Signal* signal, BackupRecordPtr ptr, TablePtr tabPtr)
   TriggerInfo::setMonitorReplicas(ti, true);
   TriggerInfo::setMonitorAllAttributes(ti, false);
 
-  ptr.p->slaveData.dropTrig.tableId = tabPtr.p->tableId;
+  ptr.p->replicaData.dropTrig.tableId = tabPtr.p->tableId;
   req->tableId = tabPtr.p->tableId;
 
   for (int i = 0; i < 3; i++) {
@@ -3459,7 +3459,7 @@ Backup::sendDropTrig(Signal* signal, BackupRecordPtr ptr, TablePtr tabPtr)
 
     sendSignal(DBTUP_REF, GSN_DROP_TRIG_IMPL_REQ,
 	       signal, DropTrigImplReq::SignalLength, JBB);
-    ptr.p->slaveData.trigSendCounter ++;
+    ptr.p->replicaData.trigSendCounter ++;
   }
 }
 
@@ -3502,12 +3502,12 @@ Backup::dropTrigReply(Signal* signal, BackupRecordPtr ptr)
 {
   CRASH_INSERTION((10012));
 
-  ndbrequire(ptr.p->slaveData.gsn == GSN_DROP_TRIG_IMPL_REQ);
-  ndbrequire(ptr.p->slaveData.trigSendCounter.done() == false);
+  ndbrequire(ptr.p->replicaData.gsn == GSN_DROP_TRIG_IMPL_REQ);
+  ndbrequire(ptr.p->replicaData.trigSendCounter.done() == false);
 
-  // move from .masterData to .slaveData
-  ptr.p->slaveData.trigSendCounter--;
-  if(ptr.p->slaveData.trigSendCounter.done() == false){
+  // move from .primaryData to .replicaData
+  ptr.p->replicaData.trigSendCounter--;
+  if(ptr.p->replicaData.trigSendCounter.done() == false){
     jam();
     return;
   }//if
@@ -3517,7 +3517,7 @@ Backup::dropTrigReply(Signal* signal, BackupRecordPtr ptr)
 
 /*****************************************************************************
  * 
- * Master functionallity - Stop backup
+ * Primary functionallity - Stop backup
  *
  *****************************************************************************/
 void
@@ -3548,8 +3548,8 @@ Backup::sendStopBackup(Signal* signal, BackupRecordPtr ptr)
   stop->startGCP = ptr.p->startGCP;
   stop->stopGCP = ptr.p->stopGCP;
 
-  ptr.p->masterData.gsn = GSN_STOP_BACKUP_REQ;
-  ptr.p->masterData.sendCounter = ptr.p->nodes;
+  ptr.p->primaryData.gsn = GSN_STOP_BACKUP_REQ;
+  ptr.p->primaryData.sendCounter = ptr.p->nodes;
   BlockNumber backupBlockNo = numberToBlock(BACKUP, instanceKey(ptr));
   NodeReceiverGroup rg(backupBlockNo, ptr.p->nodes);
   sendSignal(rg, GSN_STOP_BACKUP_REQ, signal, 
@@ -3587,7 +3587,7 @@ Backup::stopBackupReply(Signal* signal, BackupRecordPtr ptr, Uint32 nodeId)
 
   sendAbortBackupOrd(signal, ptr, AbortBackupOrd::BackupComplete);
   
-  if(!ptr.p->checkError() &&  ptr.p->masterData.errorCode == 0)
+  if(!ptr.p->checkError() &&  ptr.p->primaryData.errorCode == 0)
   {
     if (SEND_BACKUP_COMPLETED_FLAG(ptr.p->flags))
     {
@@ -3625,7 +3625,7 @@ Backup::stopBackupReply(Signal* signal, BackupRecordPtr ptr, Uint32 nodeId)
   }
   else
   {
-    masterAbort(signal, ptr);
+    primaryAbort(signal, ptr);
   }
 }
 
@@ -3662,7 +3662,7 @@ Backup::reportStatus(Signal* signal, BackupRecordPtr ptr,
 
   if (ptr.i == RNIL ||
       (ptr.p->m_gsn == 0 &&
-       ptr.p->masterData.gsn == 0))
+       ptr.p->primaryData.gsn == 0))
   {
     sendSignal(ref, GSN_EVENT_REP, signal, signal_length, JBB);
     return;
@@ -3701,20 +3701,20 @@ Backup::reportStatus(Signal* signal, BackupRecordPtr ptr,
 
 /*****************************************************************************
  * 
- * Master functionallity - Abort backup
+ * Primary functionallity - Abort backup
  *
  *****************************************************************************/
 void
-Backup::masterAbort(Signal* signal, BackupRecordPtr ptr)
+Backup::primaryAbort(Signal* signal, BackupRecordPtr ptr)
 {
   jam();
 #ifdef DEBUG_ABORT
-  ndbout_c("************ masterAbort");
+  ndbout_c("************ primaryAbort");
 #endif
 
-  ndbassert(ptr.p->masterRef == reference());
+  ndbassert(ptr.p->primaryRef == reference());
 
-  if(ptr.p->masterData.errorCode != 0)
+  if(ptr.p->primaryData.errorCode != 0)
   {
     jam();
     return;
@@ -3736,7 +3736,7 @@ Backup::masterAbort(Signal* signal, BackupRecordPtr ptr)
   sendSignal(CMVMI_REF, GSN_EVENT_REP, signal, 4, JBB);
 
   ndbrequire(ptr.p->errorCode);
-  ptr.p->masterData.errorCode = ptr.p->errorCode;
+  ptr.p->primaryData.errorCode = ptr.p->errorCode;
 
   AbortBackupOrd *ord = (AbortBackupOrd*)signal->getDataPtrSend();
   ord->backupId = ptr.p->backupId;
@@ -3745,7 +3745,7 @@ Backup::masterAbort(Signal* signal, BackupRecordPtr ptr)
   BlockNumber backupBlockNo = numberToBlock(BACKUP, instanceKey(ptr));
   NodeReceiverGroup rg(backupBlockNo, ptr.p->nodes);
   
-  switch(ptr.p->masterData.gsn){
+  switch(ptr.p->primaryData.gsn){
   case GSN_DEFINE_BACKUP_REQ:
     ord->requestType = AbortBackupOrd::BackupFailure;
     sendSignal(rg, GSN_ABORT_BACKUP_ORD, signal, 
@@ -3805,7 +3805,7 @@ Backup::abort_scan(Signal * signal, BackupRecordPtr ptr)
 
 /*****************************************************************************
  * 
- * Slave functionallity: Define Backup 
+ * Replica functionallity: Define Backup 
  *
  *****************************************************************************/
 void
@@ -3824,7 +3824,7 @@ Backup::defineBackupRef(Signal* signal, BackupRecordPtr ptr, Uint32 errCode)
        ref->backupPtr = ptr.i;
        ref->errorCode = ptr.p->errorCode;
        ref->nodeId = getOwnNodeId();
-       sendSignal(ptr.p->masterRef, GSN_DEFINE_BACKUP_REF, signal,
+       sendSignal(ptr.p->primaryRef, GSN_DEFINE_BACKUP_REF, signal,
                   DefineBackupRef::SignalLength, JBB);
        return;
      }
@@ -3857,7 +3857,7 @@ Backup::defineBackupRef(Signal* signal, BackupRecordPtr ptr, Uint32 errCode)
     ref->tableId = tabPtr.p->tableId;
     ref->fragmentId = fragPtr.p->fragmentId;
     ref->errorCode = errCode;
-    sendSignal(ptr.p->masterRef, GSN_LCP_PREPARE_REF, 
+    sendSignal(ptr.p->primaryRef, GSN_LCP_PREPARE_REF, 
 	       signal, LcpPrepareRef::SignalLength, JBB);
     return;
   }
@@ -3870,7 +3870,7 @@ Backup::defineBackupRef(Signal* signal, BackupRecordPtr ptr, Uint32 errCode)
   ref->backupPtr = ptr.i;
   ref->errorCode = ptr.p->errorCode;
   ref->nodeId = getOwnNodeId();
-  sendSignal(ptr.p->masterRef, GSN_DEFINE_BACKUP_REF, signal, 
+  sendSignal(ptr.p->primaryRef, GSN_DEFINE_BACKUP_REF, signal, 
 	     DefineBackupRef::SignalLength, JBB);
 }
 
@@ -3899,7 +3899,7 @@ Backup::execDEFINE_BACKUP_REQ(Signal* signal)
 #endif
     if (!c_backups.getPool().seizeId(ptr, ptrI)) {
       jam();
-      ndbrequire(false); // If master has succeeded slave should succed
+      ndbrequire(false); // If primary has succeeded replica should succed
     }//if
     c_backups.addFirst(ptr);
   }//if
@@ -3907,9 +3907,9 @@ Backup::execDEFINE_BACKUP_REQ(Signal* signal)
   CRASH_INSERTION((10014));
   
   ptr.p->m_gsn = GSN_DEFINE_BACKUP_REQ;
-  ptr.p->slaveState.forceState(INITIAL);
-  ptr.p->slaveState.setState(DEFINING);
-  ptr.p->slaveData.dropTrig.tableId = RNIL;
+  ptr.p->replicaState.forceState(INITIAL);
+  ptr.p->replicaState.setState(DEFINING);
+  ptr.p->replicaData.dropTrig.tableId = RNIL;
   ptr.p->errorCode = 0;
   ptr.p->clientRef = req->clientRef;
   ptr.p->clientData = req->clientData;
@@ -3917,16 +3917,16 @@ Backup::execDEFINE_BACKUP_REQ(Signal* signal)
     ptr.p->flags = req->flags;
   else
     ptr.p->flags = req->flags & ~((Uint32)BackupReq::WAITCOMPLETED); /* remove waitCompleted flags
-						 * as non master should never
+						 * as non primary should never
 						 * reply
 						 */
-  ptr.p->masterRef = senderRef;
+  ptr.p->primaryRef = senderRef;
   ptr.p->nodes = req->nodes;
   ptr.p->backupId = backupId;
   ptr.p->backupKey[0] = req->backupKey[0];
   ptr.p->backupKey[1] = req->backupKey[1];
   ptr.p->backupDataLen = req->backupDataLen;
-  ptr.p->masterData.errorCode = 0;
+  ptr.p->primaryData.errorCode = 0;
   ptr.p->noOfBytes = 0;
   ptr.p->noOfRecords = 0;
   ptr.p->noOfLogBytes = 0;
@@ -4578,7 +4578,7 @@ Backup::execGET_TABINFO_CONF(Signal* signal)
       ord->backupPtr = ptr.i;
       ord->requestType = AbortBackupOrd::ClientAbort;
       ord->senderData= ptr.p->clientData;
-      sendSignal(ptr.p->masterRef, GSN_ABORT_BACKUP_ORD, signal, 
+      sendSignal(ptr.p->primaryRef, GSN_ABORT_BACKUP_ORD, signal, 
                  AbortBackupOrd::SignalLength, JBB);
     }
     return;
@@ -4878,18 +4878,18 @@ void
 Backup::getFragmentInfoDone(Signal* signal, BackupRecordPtr ptr)
 {
   ptr.p->m_gsn = GSN_DEFINE_BACKUP_CONF;
-  ptr.p->slaveState.setState(DEFINED);
+  ptr.p->replicaState.setState(DEFINED);
   DefineBackupConf * conf = (DefineBackupConf*)signal->getDataPtr();
   conf->backupPtr = ptr.i;
   conf->backupId = ptr.p->backupId;
-  sendSignal(ptr.p->masterRef, GSN_DEFINE_BACKUP_CONF, signal,
+  sendSignal(ptr.p->primaryRef, GSN_DEFINE_BACKUP_CONF, signal,
 	     DefineBackupConf::SignalLength, JBB);
 }
 
 
 /*****************************************************************************
  * 
- * Slave functionallity: Start backup
+ * Replica functionallity: Start backup
  *
  *****************************************************************************/
 void
@@ -4905,7 +4905,7 @@ Backup::execSTART_BACKUP_REQ(Signal* signal)
   BackupRecordPtr ptr;
   c_backupPool.getPtr(ptr, ptrI);
 
-  ptr.p->slaveState.setState(STARTED);
+  ptr.p->replicaState.setState(STARTED);
   ptr.p->m_gsn = GSN_START_BACKUP_REQ;
 
   /**
@@ -4935,7 +4935,7 @@ Backup::execSTART_BACKUP_REQ(Signal* signal)
 
 /*****************************************************************************
  * 
- * Slave functionallity: Backup fragment
+ * Replica functionallity: Backup fragment
  *
  *****************************************************************************/
 void
@@ -4958,7 +4958,7 @@ Backup::execBACKUP_FRAGMENT_REQ(Signal* signal)
   BackupRecordPtr ptr;
   c_backupPool.getPtr(ptr, ptrI);
 
-  ptr.p->slaveState.setState(SCANNING);
+  ptr.p->replicaState.setState(SCANNING);
   ptr.p->m_gsn = GSN_BACKUP_FRAGMENT_REQ;
 
   /**
@@ -4985,7 +4985,7 @@ Backup::execBACKUP_FRAGMENT_REQ(Signal* signal)
 
   ndbrequire(fragPtr.p->scanned == 0);
   ndbrequire(fragPtr.p->scanning == 0 || 
-	     refToNode(ptr.p->masterRef) == getOwnNodeId());
+	     refToNode(ptr.p->primaryRef) == getOwnNodeId());
 
   /**
    * Init operation
@@ -5005,7 +5005,7 @@ Backup::execBACKUP_FRAGMENT_REQ(Signal* signal)
     sendSignalWithDelay(reference(), GSN_BACKUP_FRAGMENT_REQ, signal,
                         WaitDiskBufferCapacityMillis,
 			signal->length());
-    ptr.p->slaveState.setState(STARTED);
+    ptr.p->replicaState.setState(STARTED);
     return;
   }//if
   
@@ -5413,7 +5413,7 @@ Backup::fragmentCompleted(Signal* signal, BackupFilePtr filePtr)
     ptr.p->noOfRecords+= op.noOfRecords;
     ptr.p->noOfBytes+= op.noOfBytes;
     
-    ptr.p->slaveState.setState(STOPPING);
+    ptr.p->replicaState.setState(STOPPING);
     filePtr.p->operation.dataBuffer.eof();
   }
   else
@@ -5427,11 +5427,11 @@ Backup::fragmentCompleted(Signal* signal, BackupFilePtr filePtr)
     conf->noOfRecordsHigh = (Uint32)(op.noOfRecords >> 32);
     conf->noOfBytesLow = (Uint32)(op.noOfBytes & 0xFFFFFFFF);
     conf->noOfBytesHigh = (Uint32)(op.noOfBytes >> 32);
-    sendSignal(ptr.p->masterRef, GSN_BACKUP_FRAGMENT_CONF, signal,
+    sendSignal(ptr.p->primaryRef, GSN_BACKUP_FRAGMENT_CONF, signal,
 	       BackupFragmentConf::SignalLength, JBB);
 
     ptr.p->m_gsn = GSN_BACKUP_FRAGMENT_CONF;
-    ptr.p->slaveState.setState(STARTED);
+    ptr.p->replicaState.setState(STARTED);
   }
   return;
 }
@@ -5452,7 +5452,7 @@ Backup::backupFragmentRef(Signal * signal, BackupFilePtr filePtr)
   ref->backupPtr = ptr.i;
   ref->nodeId = getOwnNodeId();
   ref->errorCode = filePtr.p->errorCode;
-  sendSignal(ptr.p->masterRef, GSN_BACKUP_FRAGMENT_REF, signal,
+  sendSignal(ptr.p->primaryRef, GSN_BACKUP_FRAGMENT_REF, signal,
 	     BackupFragmentRef::SignalLength, JBB);
 }
  
@@ -5537,7 +5537,7 @@ Backup::checkScan(Signal* signal, BackupFilePtr filePtr)
       ord->backupPtr = ptr.i;
       ord->requestType = AbortBackupOrd::FileOrScanError;
       ord->senderData= ptr.i;
-      sendSignal(ptr.p->masterRef, GSN_ABORT_BACKUP_ORD, signal, 
+      sendSignal(ptr.p->primaryRef, GSN_ABORT_BACKUP_ORD, signal, 
 		 AbortBackupOrd::SignalLength, JBB);
     }
 #ifdef ERROR_INSERT
@@ -5807,7 +5807,7 @@ Backup::checkFile(Signal* signal, BackupFilePtr filePtr)
 
 /****************************************************************************
  * 
- * Slave functionallity: Perform logging
+ * Replica functionallity: Perform logging
  *
  ****************************************************************************/
 void
@@ -5874,7 +5874,7 @@ Backup::get_log_buffer(Signal* signal,
     ord->backupPtr = ptr.i;
     ord->requestType = AbortBackupOrd::LogBufferFull;
     ord->senderData= ptr.i;
-    sendSignal(ptr.p->masterRef, GSN_ABORT_BACKUP_ORD, signal,
+    sendSignal(ptr.p->primaryRef, GSN_ABORT_BACKUP_ORD, signal,
                AbortBackupOrd::SignalLength, JBB);
 
     memcpy(signal->getDataPtrSend(), save, 4*TrigAttrInfo::StaticLength);
@@ -6114,7 +6114,7 @@ Backup::sendAbortBackupOrd(Signal* signal, BackupRecordPtr ptr,
 
 /*****************************************************************************
  * 
- * Slave functionallity: Stop backup
+ * Replica functionallity: Stop backup
  *
  *****************************************************************************/
 void
@@ -6141,7 +6141,7 @@ Backup::execSTOP_BACKUP_REQ(Signal* signal)
   BackupRecordPtr ptr;
   c_backupPool.getPtr(ptr, ptrI);
 
-  ptr.p->slaveState.setState(STOPPING);
+  ptr.p->replicaState.setState(STOPPING);
   ptr.p->m_gsn = GSN_STOP_BACKUP_REQ;
   ptr.p->startGCP= startGCP;
   ptr.p->stopGCP= stopGCP;
@@ -6293,11 +6293,11 @@ Backup::closeFilesDone(Signal* signal, BackupRecordPtr ptr)
     ref->backupId = ptr.p->backupId;
     ref->errorCode = ptr.p->errorCode;
     ref->nodeId = getOwnNodeId();
-    sendSignal(ptr.p->masterRef, GSN_STOP_BACKUP_REF, signal,
+    sendSignal(ptr.p->primaryRef, GSN_STOP_BACKUP_REF, signal,
              StopBackupConf::SignalLength, JBB);
 
     ptr.p->m_gsn = GSN_STOP_BACKUP_REF;
-    ptr.p->slaveState.setState(CLEANING);
+    ptr.p->replicaState.setState(CLEANING);
     return;
   }
 
@@ -6318,21 +6318,21 @@ Backup::closeFilesDone(Signal* signal, BackupRecordPtr ptr)
     conf->noOfLogRecords= 0;
   }
 
-  sendSignal(ptr.p->masterRef, GSN_STOP_BACKUP_CONF, signal,
+  sendSignal(ptr.p->primaryRef, GSN_STOP_BACKUP_CONF, signal,
 	     StopBackupConf::SignalLength, JBB);
   
   ptr.p->m_gsn = GSN_STOP_BACKUP_CONF;
-  ptr.p->slaveState.setState(CLEANING);
+  ptr.p->replicaState.setState(CLEANING);
 }
 
 /*****************************************************************************
  * 
- * Slave functionallity: Abort backup
+ * Replica functionallity: Abort backup
  *
  *****************************************************************************/
 /*****************************************************************************
  * 
- * Slave functionallity: Abort backup
+ * Replica functionallity: Abort backup
  *
  *****************************************************************************/
 void
@@ -6356,14 +6356,14 @@ Backup::execABORT_BACKUP_ORD(Signal* signal)
 
   BackupRecordPtr ptr;
   if(requestType == AbortBackupOrd::ClientAbort) {
-    if (getOwnNodeId() != getMasterNodeId()) {
+    if (getOwnNodeId() != getPrimaryNodeId()) {
       jam();
-      // forward to master
+      // forward to primary
 #ifdef DEBUG_ABORT
-      ndbout_c("---- Forward to master nodeId = %u", getMasterNodeId());
+      ndbout_c("---- Forward to primary nodeId = %u", getPrimaryNodeId());
 #endif
       BlockReference ref = numberToRef(BACKUP, UserBackupInstanceKey, 
-                                       getMasterNodeId());
+                                       getPrimaryNodeId());
       sendSignal(ref, GSN_ABORT_BACKUP_ORD, 
 		 signal, AbortBackupOrd::SignalLength, JBB);
       return;
@@ -6395,13 +6395,13 @@ Backup::execABORT_BACKUP_ORD(Signal* signal)
   }//if
   
   ptr.p->m_gsn = GSN_ABORT_BACKUP_ORD;
-  const bool isCoordinator = (ptr.p->masterRef == reference());
+  const bool isCoordinator = (ptr.p->primaryRef == reference());
   
   bool ok = false;
   switch(requestType){
 
     /**
-     * Requests sent to master
+     * Requests sent to primary
      */
   case AbortBackupOrd::ClientAbort:
     jam();
@@ -6413,7 +6413,7 @@ Backup::execABORT_BACKUP_ORD(Signal* signal)
     jam();
     ndbrequire(isCoordinator);
     ptr.p->setErrorCode(requestType);
-    if(ptr.p->masterData.gsn == GSN_BACKUP_FRAGMENT_REQ)
+    if(ptr.p->primaryData.gsn == GSN_BACKUP_FRAGMENT_REQ)
     {
       /**
        * Only scans are actively aborted
@@ -6423,7 +6423,7 @@ Backup::execABORT_BACKUP_ORD(Signal* signal)
     return;
     
     /**
-     * Requests sent to slave
+     * Requests sent to replica
      */
   case AbortBackupOrd::AbortScan:
     jam();
@@ -6442,12 +6442,12 @@ Backup::execABORT_BACKUP_ORD(Signal* signal)
   default:
 #endif
     ptr.p->setErrorCode(requestType);
-    ptr.p->masterData.errorCode = requestType;
+    ptr.p->primaryData.errorCode = requestType;
     ok= true;
   }
   ndbrequire(ok);
   
-  ptr.p->masterRef = reference();
+  ptr.p->primaryRef = reference();
   ptr.p->nodes.clear();
   ptr.p->nodes.set(getOwnNodeId());
 
@@ -6464,9 +6464,9 @@ Backup::dumpUsedResources()
   BackupRecordPtr ptr;
 
   for(c_backups.first(ptr); ptr.i != RNIL; c_backups.next(ptr)) {
-    ndbout_c("Backup id=%u, slaveState.getState = %u, errorCode=%u",
+    ndbout_c("Backup id=%u, replicaState.getState = %u, errorCode=%u",
 	     ptr.p->backupId,
-	     ptr.p->slaveState.getState(),
+	     ptr.p->replicaState.getState(),
 	     ptr.p->errorCode);
 
     TablePtr tabPtr;
@@ -6567,7 +6567,7 @@ Backup::cleanupNextTable(Signal *signal, BackupRecordPtr ptr, TablePtr tabPtr)
       if backup ia running and current state
     */
     ptr.p->m_gsn = 0;
-    ptr.p->masterData.gsn = 0;
+    ptr.p->primaryData.gsn = 0;
     c_backups.release(ptr);
   }
 }
@@ -6620,7 +6620,7 @@ Backup::execFSREMOVECONF(Signal* signal){
     if backup ia running and current state
   */
   ptr.p->m_gsn = 0;
-  ptr.p->masterData.gsn = 0;
+  ptr.p->primaryData.gsn = 0;
   c_backups.release(ptr);
 }
 
@@ -6748,7 +6748,7 @@ Backup::lcp_close_file_conf(Signal* signal, BackupRecordPtr ptr)
   conf->noOfRecordsHigh = (op.noOfRecords >> 32);
   conf->noOfBytesLow = (op.noOfBytes & 0xFFFFFFFF);
   conf->noOfBytesHigh = (op.noOfBytes >> 32);
-  sendSignal(ptr.p->masterRef, GSN_BACKUP_FRAGMENT_CONF, signal,
+  sendSignal(ptr.p->primaryRef, GSN_BACKUP_FRAGMENT_CONF, signal,
 	     BackupFragmentConf::SignalLength, JBB);
 }
 
@@ -6810,14 +6810,14 @@ Backup::lcp_open_file_done(Signal* signal, BackupRecordPtr ptr)
 	     (BackupFile::BF_OPEN | BackupFile::BF_LCP_META));
   filePtr.p->m_flags &= ~(Uint32)BackupFile::BF_LCP_META;
 
-  ptr.p->slaveState.setState(STARTED);
+  ptr.p->replicaState.setState(STARTED);
   
   LcpPrepareConf* conf= (LcpPrepareConf*)signal->getDataPtrSend();
   conf->senderData = ptr.p->clientData;
   conf->senderRef = reference();
   conf->tableId = tabPtr.p->tableId;
   conf->fragmentId = fragPtr.p->fragmentId;
-  sendSignal(ptr.p->masterRef, GSN_LCP_PREPARE_CONF, 
+  sendSignal(ptr.p->primaryRef, GSN_LCP_PREPARE_CONF, 
 	     signal, LcpPrepareConf::SignalLength, JBB);
 
   /**
@@ -6856,15 +6856,15 @@ Backup::execEND_LCPREQ(Signal* signal)
   }
 
   ptr.p->errorCode = 0;
-  ptr.p->slaveState.setState(CLEANING);
-  ptr.p->slaveState.setState(INITIAL);
-  ptr.p->slaveState.setState(DEFINING);
-  ptr.p->slaveState.setState(DEFINED);
+  ptr.p->replicaState.setState(CLEANING);
+  ptr.p->replicaState.setState(INITIAL);
+  ptr.p->replicaState.setState(DEFINING);
+  ptr.p->replicaState.setState(DEFINED);
 
   EndLcpConf* conf= (EndLcpConf*)signal->getDataPtr();
   conf->senderData = ptr.p->clientData;
   conf->senderRef = reference();
-  sendSignal(ptr.p->masterRef, GSN_END_LCPCONF,
+  sendSignal(ptr.p->primaryRef, GSN_END_LCPCONF,
 	     signal, EndLcpConf::SignalLength, JBB);
 }
 
@@ -6899,7 +6899,7 @@ Backup::execLCP_STATUS_REQ(Signal* signal)
       found_lcp = true;
       
       LcpStatusConf::LcpState state = LcpStatusConf::LCP_IDLE;
-      switch (ptr.p->slaveState.getState())
+      switch (ptr.p->replicaState.getState())
       {
       case STARTED:
         jam();
@@ -6920,7 +6920,7 @@ Backup::execLCP_STATUS_REQ(Signal* signal)
       default:
         jam();
         ndbout_c("Unusual LCP state in LCP_STATUS_REQ() : %u",
-                 ptr.p->slaveState.getState());
+                 ptr.p->replicaState.getState());
         state = LcpStatusConf::LCP_IDLE;
       };
         

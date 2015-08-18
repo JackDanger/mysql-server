@@ -3242,10 +3242,10 @@ DECLARE_THREAD(buf_flush_page_cleaner_coordinator)(
 	must wait for all other activity in the server to die down.
 	Note that we can start flushing the buffer pool as soon as the
 	server enters shutdown phase but we must stay alive long enough
-	to ensure that any work done by the master or purge threads is
+	to ensure that any work done by the primary or purge threads is
 	also flushed.
 	During shutdown we pass through two stages. In the first stage,
-	when SRV_SHUTDOWN_CLEANUP is set other threads like the master
+	when SRV_SHUTDOWN_CLEANUP is set other threads like the primary
 	and the purge threads may be working as well. We start flushing
 	the buffer pool but can't be sure that no new pages are being
 	dirtied until we enter SRV_SHUTDOWN_FLUSH_PHASE phase. */
@@ -3267,7 +3267,7 @@ DECLARE_THREAD(buf_flush_page_cleaner_coordinator)(
 		}
 	} while (srv_shutdown_state == SRV_SHUTDOWN_CLEANUP);
 
-	/* At this point all threads including the master and the purge
+	/* At this point all threads including the primary and the purge
 	thread must have been suspended. */
 	ut_a(srv_get_active_thread_type() == SRV_NONE);
 	ut_a(srv_shutdown_state == SRV_SHUTDOWN_FLUSH_PHASE);

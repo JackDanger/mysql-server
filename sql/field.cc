@@ -32,7 +32,7 @@
 #include "item_json_func.h"              // ensure_utf8mb4
 #include "log_event.h"                   // class Table_map_log_event
 #include "rpl_rli.h"                     // Relay_log_info
-#include "rpl_slave.h"                   // rpl_master_has_bug
+#include "rpl_replica.h"                   // rpl_primary_has_bug
 #include "sql_class.h"                   // THD
 #include "sql_join_buffer.h"             // CACHE_FIELD
 #include "sql_time.h"                    // str_to_datetime_with_warn
@@ -1681,15 +1681,15 @@ bool Field::send_binary(Protocol *protocol)
    Check to see if field size is compatible with destination.
 
    This method is used in row-based replication to verify that the
-   slave's field size is less than or equal to the master's field
-   size. The encoded field metadata (from the master or source) is
-   decoded and compared to the size of this field (the slave or
+   replica's field size is less than or equal to the primary's field
+   size. The encoded field metadata (from the primary or source) is
+   decoded and compared to the size of this field (the replica or
    destination).
 
    @note
 
-   The comparison is made so that if the source data (from the master)
-   is less than the target data (on the slave), -1 is returned in @c
+   The comparison is made so that if the source data (from the primary)
+   is less than the target data (on the replica), -1 is returned in @c
    <code>*order_var</code>. This implies that a conversion is
    necessary, but that it is lossy and can result in truncation of the
    value.
@@ -1709,7 +1709,7 @@ bool Field::send_binary(Protocol *protocol)
                              will be returned.
 
    @return @c true if this field's size is compatible with the
-   master's field size, @c false otherwise.
+   primary's field size, @c false otherwise.
 */
 bool Field::compatible_field_size(uint field_metadata,
                                   Relay_log_info *rli_arg __attribute__((unused)),
@@ -1787,8 +1787,8 @@ Field::pack(uchar *to, const uchar *from, uint max_length,
 /**
    Unpack a field from row data.
 
-   This method is used to unpack a field from a master whose size of
-   the field is less than that of the slave.
+   This method is used to unpack a field from a primary whose size of
+   the field is less than that of the replica.
 
    The <code>param_data</code> parameter is a two-byte integer (stored
    in the least significant 16 bits of the unsigned integer) usually
@@ -3192,7 +3192,7 @@ int Field_new_decimal::do_save_field_metadata(uchar *metadata_ptr)
 
    This method is used in row-based replication to determine the number
    of bytes that the field consumes in the row record format. This is
-   used to skip fields in the master that do not exist on the slave.
+   used to skip fields in the primary that do not exist on the replica.
 
    @param   field_metadata   Encoded size in field metadata
 
@@ -3210,10 +3210,10 @@ uint Field_new_decimal::pack_length_from_metadata(uint field_metadata)
 /**
    Check to see if field size is compatible with destination.
 
-   This method is used in row-based replication to verify that the slave's
-   field size is less than or equal to the master's field size. The 
-   encoded field metadata (from the master or source) is decoded and compared
-   to the size of this field (the slave or destination). 
+   This method is used in row-based replication to verify that the replica's
+   field size is less than or equal to the primary's field size. The 
+   encoded field metadata (from the primary or source) is decoded and compared
+   to the size of this field (the replica or destination). 
 
    @param   field_metadata   Encoded size in field metadata
    @param   order_var        Pointer to variable where the order
@@ -3250,8 +3250,8 @@ uint Field_new_decimal::is_equal(Create_field *new_field)
 /**
    Unpack a decimal field from row data.
 
-   This method is used to unpack a decimal or numeric field from a master
-   whose size of the field is less than that of the slave.
+   This method is used to unpack a decimal or numeric field from a primary
+   whose size of the field is less than that of the replica.
   
    @param   to         Destination of the data
    @param   from       Source of the data
@@ -3279,7 +3279,7 @@ Field_new_decimal::unpack(uchar* to,
       (from_decimal < decimals()))
   {
     /*
-      If the master's data is smaller than the slave, we need to convert
+      If the primary's data is smaller than the replica, we need to convert
       the binary to decimal then resize the decimal converting it back to
       a decimal and write that to the raw data buffer.
     */
@@ -3290,7 +3290,7 @@ Field_new_decimal::unpack(uchar* to,
     /*
       Note: bin2decimal does not change the length of the field. So it is
       just the first step the resizing operation. The second step does the
-      resizing using the precision and decimals from the slave.
+      resizing using the precision and decimals from the replica.
     */
     bin2decimal((uchar *)from, &dec_val, from_precision, from_decimal);
     decimal2bin(&dec_val, to, precision, decimals());
@@ -7172,7 +7172,7 @@ Field_string::compatible_field_size(uint field_metadata,
 {
 #ifdef HAVE_REPLICATION
   const Check_field_param check_param = { this };
-  if (!is_mts_worker(rli_arg->info_thd) && rpl_master_has_bug(rli_arg, 37426, TRUE,
+  if (!is_mts_worker(rli_arg->info_thd) && rpl_primary_has_bug(rli_arg, 37426, TRUE,
                          check_field_for_37426, &check_param))
     return FALSE;                        // Not compatible field sizes
 #endif
@@ -7276,12 +7276,12 @@ uchar *Field_string::pack(uchar *to, const uchar *from,
 /**
    Unpack a string field from row data.
 
-   This method is used to unpack a string field from a master whose size 
-   of the field is less than that of the slave. Note that there can be a
+   This method is used to unpack a string field from a primary whose size 
+   of the field is less than that of the replica. Note that there can be a
    variety of field types represented with this class. Certain types like
    ENUM or SET are processed differently. Hence, the upper byte of the 
    @c param_data argument contains the result of field->real_type() from
-   the master.
+   the primary.
 
    @note For information about how the length is packed, see @c
    Field_string::do_save_field_metadata
@@ -7301,7 +7301,7 @@ Field_string::unpack(uchar *to,
   uint from_length, length;
 
   /*
-    Compute the declared length of the field on the master. This is
+    Compute the declared length of the field on the primary. This is
     used to decide if one or two bytes should be read as length.
    */
   if (param_data)
@@ -7314,7 +7314,7 @@ Field_string::unpack(uchar *to,
               param_data, field_length, from_length));
   /*
     Compute the actual length of the data by reading one or two bits
-    (depending on the declared field length on the master).
+    (depending on the declared field length on the primary).
    */
   if (from_length > 255)
   {
@@ -7737,15 +7737,15 @@ uchar *Field_varstring::pack(uchar *to, const uchar *from,
 /**
    Unpack a varstring field from row data.
 
-   This method is used to unpack a varstring field from a master
-   whose size of the field is less than that of the slave.
+   This method is used to unpack a varstring field from a primary
+   whose size of the field is less than that of the replica.
 
    @note
    The string length is always packed little-endian.
   
    @param   to         Destination of the data
    @param   from       Source of the data
-   @param   param_data Length bytes from the master's field data
+   @param   param_data Length bytes from the primary's field data
 
    @return  New pointer into memory based on from + length of the data
 */
@@ -8498,8 +8498,8 @@ uchar *Field_blob::pack(uchar *to, const uchar *from,
 /**
    Unpack a blob field from row data.
 
-   This method is used to unpack a blob field from a master whose size of 
-   the field is less than that of the slave. Note: This method is included
+   This method is used to unpack a blob field from a primary whose size of 
+   the field is less than that of the replica. Note: This method is included
    to satisfy inheritance rules, but is not needed for blob fields. It
    simply is used as a pass-through to the original unpack() method for
    blob fields.
@@ -8521,12 +8521,12 @@ const uchar *Field_blob::unpack(uchar *to,
   DBUG_PRINT("enter", ("to: 0x%lx; from: 0x%lx;"
                        " param_data: %u; low_byte_first: %d",
                        (ulong) to, (ulong) from, param_data, low_byte_first));
-  uint const master_packlength=
+  uint const primary_packlength=
     param_data > 0 ? param_data & 0xFF : packlength;
-  uint32 const length= get_length(from, master_packlength, low_byte_first);
-  DBUG_DUMP("packed", from, length + master_packlength);
+  uint32 const length= get_length(from, primary_packlength, low_byte_first);
+  DBUG_DUMP("packed", from, length + primary_packlength);
   bitmap_set_bit(table->write_set, field_index);
-  Field_blob::store(pointer_cast<const char*>(from) + master_packlength,
+  Field_blob::store(pointer_cast<const char*>(from) + primary_packlength,
                     length, field_charset);
 #ifndef DBUG_OFF  
   uchar *vptr;
@@ -8534,7 +8534,7 @@ const uchar *Field_blob::unpack(uchar *to,
   DBUG_DUMP("field", ptr, pack_length() /* len bytes + ptr bytes */);
   DBUG_DUMP("value", vptr, length /* the blob value length */);
 #endif
-  DBUG_RETURN(from + master_packlength + length);
+  DBUG_RETURN(from + primary_packlength + length);
 }
 
 uint Field_blob::packed_col_length(const uchar *data_ptr, uint length)
@@ -9990,7 +9990,7 @@ int Field_bit::do_save_field_metadata(uchar *metadata_ptr)
 
    This method is used in row-based replication to determine the number
    of bytes that the field consumes in the row record format. This is
-   used to skip fields in the master that do not exist on the slave.
+   used to skip fields in the primary that do not exist on the replica.
 
    @param   field_metadata   Encoded size in field metadata
 
@@ -10007,10 +10007,10 @@ uint Field_bit::pack_length_from_metadata(uint field_metadata)
 /**
    Check to see if field size is compatible with destination.
 
-   This method is used in row-based replication to verify that the slave's
-   field size is less than or equal to the master's field size. The 
-   encoded field metadata (from the master or source) is decoded and compared
-   to the size of this field (the slave or destination). 
+   This method is used in row-based replication to verify that the replica's
+   field size is less than or equal to the primary's field size. The 
+   encoded field metadata (from the primary or source) is decoded and compared
+   to the size of this field (the replica or destination). 
 
    @param   field_metadata   Encoded size in field metadata
    @param   order_var        Pointer to variable where the order
@@ -10033,7 +10033,7 @@ Field_bit::compatible_field_size(uint field_metadata,
                        from_bit_len, to_bit_len));
   /*
     If the bit length exact flag is clear, we are dealing with an old
-    master, so we allow some less strict behaviour if replicating by
+    primary, so we allow some less strict behaviour if replicating by
     moving both bit lengths to an even multiple of 8.
 
     We do this by computing the number of bytes to store the field
@@ -10098,8 +10098,8 @@ Field_bit::pack(uchar *to, const uchar *from, uint max_length,
 /**
    Unpack a bit field from row data.
 
-   This method is used to unpack a bit field from a master whose size
-   of the field is less than that of the slave.
+   This method is used to unpack a bit field from a primary whose size
+   of the field is less than that of the replica.
 
    @param   to         Destination of the data
    @param   from       Source of the data
@@ -10121,8 +10121,8 @@ Field_bit::unpack(uchar *to, const uchar *from, uint param_data,
   DBUG_PRINT("debug", ("from_len: %u, from_bit_len: %u",
                        from_len, from_bit_len));
   /*
-    If the parameter data is zero (i.e., undefined), or if the master
-    and slave have the same sizes, then use the old unpack() method.
+    If the parameter data is zero (i.e., undefined), or if the primary
+    and replica have the same sizes, then use the old unpack() method.
   */
   if (param_data == 0 ||
       ((from_bit_len == bit_len) && (from_len == bytes_in_rec)))
@@ -10158,7 +10158,7 @@ Field_bit::unpack(uchar *to, const uchar *from, uint param_data,
   memcpy(value + (new_len - len), from, len);
   /*
     Mask out the unused bits in the partial byte. 
-    TODO: Add code to the master to always mask these bits and remove
+    TODO: Add code to the primary to always mask these bits and remove
           the following.
   */
   if ((from_bit_len > 0) && (from_len > 0))

@@ -874,7 +874,7 @@ WHERE id IN ($requestor_id, $holder_id);
 
 
 --echo #
---echo # Bug#21286221: DEBUG SERVER CRASHES ON RESET SLAVE WITH
+--echo # Bug#21286221: DEBUG SERVER CRASHES ON RESET REPLICA WITH
 --echo #               LOCKED VERSION TOKEN
 --echo #
 

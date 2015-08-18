@@ -5,14 +5,14 @@
 
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 #
-# Slave behaviour when replicating unique index operations
+# Replica behaviour when replicating unique index operations
 #
 #
 
---connection master
+--connection primary
 
 CREATE TABLE t1 (pk int primary key, uk1 int not null, uk2 int not null,
        unique(uk1), unique(uk2)) engine=ndb;
@@ -40,20 +40,20 @@ update t1 set uk2=uk2+1 order by pk desc;
 --sorted_result
 select * from t1 where uk1 in (0,1,2,3,4);
 
---echo Master table contents
+--echo Primary table contents
 select * from t1 order by pk;
 
 flush logs;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
+--connection replica
 
---echo Slave table contents
+--echo Replica table contents
 select * from t1 order by pk;
 select * from t1 where uk1 in (0,1,2,3,4);
 
---connection master
+--connection primary
 drop table t1;
 
 --source include/rpl_end.inc

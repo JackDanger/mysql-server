@@ -87,7 +87,7 @@ sub write_properties {
   add($F, 'connect.verbose', '1');
   add($F, 'connect.timeout.before', '30');
   add($F, 'connect.timeout.after', '20');
-  add($F, 'jdbc.url', "jdbc:mysql://localhost:$ENV{MASTER_MYPORT}/$db");
+  add($F, 'jdbc.url', "jdbc:mysql://localhost:$ENV{PRIMARY_MYPORT}/$db");
   add($F, 'jdbc.driver', 'com.mysql.jdbc.Driver');
   add($F, 'jdbc.username', $user);
   add($F, 'jdbc.password', '');

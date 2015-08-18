@@ -3,13 +3,13 @@
 # Verifies that empty transactions are generated when they are
 # supposed to. There are three cases:
 #
-#  1. Transaction is filtered out on slave
+#  1. Transaction is filtered out on replica
 #
 #  2. Transaction does not have any effect, gets logged and assigned a
-#     GTID on master because master uses binlog_format=statement, but
-#     does not get logged on slave because slave uses binlog_format=row.
+#     GTID on primary because primary uses binlog_format=statement, but
+#     does not get logged on replica because replica uses binlog_format=row.
 #
-#  3. Transaction is explicitly made empty on master by setting
+#  3. Transaction is explicitly made empty on primary by setting
 #     gtid_next and executing a COMMIT.
 #
 # Moreover, verify that no empty transaction is generated for rolled
@@ -19,22 +19,22 @@
 #
 # For case 1, we use a filter (specified in the .cnf file) to filter
 # out table t_ignore, and verify that empty transaction is generated
-# on slave.  Do this both for (1A) base tables and for (1B) temporary
+# on replica.  Do this both for (1A) base tables and for (1B) temporary
 # tables.
 #
-# For case 2, we use binlog_format=statement on master and
-# binlog_format=row on the first slave.  We test two cases of
+# For case 2, we use binlog_format=statement on primary and
+# binlog_format=row on the first replica.  We test two cases of
 # transactions that are not logged in row format: (2A) temporary table
 # DDL and DML and (2B) an UPDATE statement that matches no row.  We
-# use a second slave where the effect of the statement would be seen,
+# use a second replica where the effect of the statement would be seen,
 # if it was not logged as an empty statement.  In case (2A) we check
-# that slave_open_temp_tables is still 0 on the second slave. In case
-# (2B) we do an UPDATE on master that matches no rows on master, but
-# that would match a row on the second slave.
+# that replica_open_temp_tables is still 0 on the second replica. In case
+# (2B) we do an UPDATE on primary that matches no rows on primary, but
+# that would match a row on the second replica.
 #
 # For case 3, we just execute an explicit empty transaction
-# inside/outside stored procedure on master and verify that it gets
-# assigned a GTID and gets replicated to the slaves.
+# inside/outside stored procedure on primary and verify that it gets
+# assigned a GTID and gets replicated to the replicas.
 #
 # To verify nothing is logged for rollback transactions, we execute a
 # DDL statement that generates an error, a DML statement that
@@ -47,7 +47,7 @@
 # - The base worklog implementing empty transactions.
 # BUG#18145032 - NO EMPTY TRANSACTION IS CREATED FOR A FILTERED CREATE TEMPORARY TABLE WITH GTIDS
 # - Addressing the special cases for CREATE/ALTER/DROP TEMPORARY.
-# BUG#18095502 - RESTART OF SLAVE INSTANCE FAIL IN GTID REPLICATION IF WE USE REPLICATE-IGNORE-DB
+# BUG#18095502 - RESTART OF REPLICA INSTANCE FAIL IN GTID REPLICATION IF WE USE REPLICATE-IGNORE-DB
 # - Addressing database filters in the applier thread.
 # BUG#19774317 GTID_NEXT WITH EMPTY TRANSACTIONS DOES NOT WORK INSIDE STORED PROCEDURES
 # - Addressing gtid_next with empty transaction inside stored procedure.
@@ -78,7 +78,7 @@ DROP TABLE t_ignore_wild;
 --let $gtid_step_count= 6
 --source include/gtid_step_assert.inc
 
-# Verify that the GTIDs make it to every slave
+# Verify that the GTIDs make it to every replica
 --source include/rpl_sync.inc
 
 --echo ==== Case 1B: CREATE/ALTER/DROP TEMPORARY filtered out ====
@@ -97,14 +97,14 @@ DROP TEMPORARY TABLE t_ignore_wild;
 --let $gtid_step_count= 8
 --source include/gtid_step_assert.inc
 
-# Verify that the GTIDs make it to every slave.
+# Verify that the GTIDs make it to every replica.
 --source include/rpl_sync.inc
 
---echo ==== Case 1C: database filters on slave applier ====
+--echo ==== Case 1C: database filters on replica applier ====
 
 --source include/gtid_step_reset.inc
 
-# These two will be ignored on first slave.
+# These two will be ignored on first replica.
 CREATE DATABASE db_ignore;
 USE db_ignore;
 CREATE TABLE t1 (a INT);
@@ -117,22 +117,22 @@ USE test;
 
 --source include/rpl_sync.inc
 
---let $assert_text= db_ignore should not be created on slave
---let $assert_cond= "[slave:SHOW DATABASES LIKE "db_ignore"]" = ""
+--let $assert_text= db_ignore should not be created on replica
+--let $assert_cond= "[replica:SHOW DATABASES LIKE "db_ignore"]" = ""
 --source include/assert.inc
 
---let $assert_text= db_ignore should not be created on second slave
+--let $assert_text= db_ignore should not be created on second replica
 --let $assert_cond= "[server_3:SHOW DATABASES LIKE "db_ignore"]" = ""
 --source include/assert.inc
 
 DROP DATABASE db_ignore;
 --source include/rpl_sync.inc
 
---echo ==== Case 1D: database filters on slave binary log ====
+--echo ==== Case 1D: database filters on replica binary log ====
 
 --source include/gtid_step_reset.inc
 
-# These two will be ignored on first slave.
+# These two will be ignored on first replica.
 CREATE DATABASE db_binlog_ignore;
 USE db_binlog_ignore;
 CREATE TABLE t1 (a INT);
@@ -145,11 +145,11 @@ USE test;
 
 --source include/rpl_sync.inc
 
---let $assert_text= db_binlog_ignore should not be created on slave
---let $assert_cond= "[slave:SHOW DATABASES LIKE "db_binlog_ignore"]" = "db_binlog_ignore"
+--let $assert_text= db_binlog_ignore should not be created on replica
+--let $assert_cond= "[replica:SHOW DATABASES LIKE "db_binlog_ignore"]" = "db_binlog_ignore"
 --source include/assert.inc
 
---let $assert_text= db_binlog_ignore should not be created on second slave
+--let $assert_text= db_binlog_ignore should not be created on second replica
 --let $assert_cond= "[server_3:SHOW DATABASES LIKE "db_binlog_ignore"]" = ""
 --source include/assert.inc
 
@@ -160,25 +160,25 @@ DROP DATABASE db_binlog_ignore;
 
 --echo ---- Initialize ----
 
---connection slave
+--connection replica
 SET @save.binlog_format= @@global.binlog_format;
 SET @@global.binlog_format= row;
-source include/restart_slave_sql.inc;
+source include/restart_replica_sql.inc;
 
 --echo ---- Test ----
 
 --source include/gtid_step_reset.inc
 
 
-# - Master will log these statements and assign them GTIDs, since
-#   master uses binlog_format=statement.
+# - Primary will log these statements and assign them GTIDs, since
+#   primary uses binlog_format=statement.
 #
-# - First slave will not log any change since it uses row format, but
+# - First replica will not log any change since it uses row format, but
 #   it should log empty transactions with GTIDs.
 #
-# - Second slave should also not log any change, since it receives an
-#   empty transaction from the first slave.  Thus
-#   Slave_open_temp_tables should remain 0 on the second slave.
+# - Second replica should also not log any change, since it receives an
+#   empty transaction from the first replica.  Thus
+#   Replica_open_temp_tables should remain 0 on the second replica.
 CREATE TEMPORARY TABLE t2 (a INT);
 ALTER TABLE t2 ADD COLUMN b INT;
 INSERT INTO t2 VALUES (1, 2);
@@ -191,59 +191,59 @@ INSERT INTO t2 VALUES (1, 2);
 --let $use_gtids= 1
 --source include/rpl_sync.inc
 
-# Verify temp tables on first slave but not on second slave
---let $assert_text= First slave should not have created any temp table
---let $assert_cond= [slave:SHOW GLOBAL STATUS LIKE 'Slave_open_temp_tables'] = 1
+# Verify temp tables on first replica but not on second replica
+--let $assert_text= First replica should not have created any temp table
+--let $assert_cond= [replica:SHOW GLOBAL STATUS LIKE 'Replica_open_temp_tables'] = 1
 
---let $assert_text= Second slave should not have created any temp table
---let $assert_cond= [server_3:SHOW GLOBAL STATUS LIKE 'Slave_open_temp_tables'] = 0
+--let $assert_text= Second replica should not have created any temp table
+--let $assert_cond= [server_3:SHOW GLOBAL STATUS LIKE 'Replica_open_temp_tables'] = 0
 
 --echo ---- Clean up ----
 
 DROP TEMPORARY TABLE t2;
 --source include/rpl_sync.inc
 
---connection slave
+--connection replica
 SET @@global.binlog_format= @save.binlog_format;
---connection master
+--connection primary
 
 --echo ==== Case 2B: transaction with no effect not logged in row format ====
 
 --echo ---- Initialize ----
 
---connection slave
+--connection replica
 SET @save.binlog_format= @@global.binlog_format;
 SET @@global.binlog_format= row;
-source include/restart_slave_sql.inc;
+source include/restart_replica_sql.inc;
 
---connection master
+--connection primary
 SET @@session.binlog_format= statement;
 CREATE TABLE t1(id INT) ENGINE = InnoDB;
 --source include/rpl_sync.inc
 --connection server_3
 INSERT INTO t1 VALUES (0);
---connection master
+--connection primary
 
 --echo ---- Test ----
 
-# - Master will log this and assign it a GTID despite it has no
-#   effect, since master uses binlog_format=statement.
+# - Primary will log this and assign it a GTID despite it has no
+#   effect, since primary uses binlog_format=statement.
 #
-# - First slave will not log any change since it uses row format, but
+# - First replica will not log any change since it uses row format, but
 #   it should log an empty transaction with a GTID.
 #
-# - Second slave should also not log any change, since it receives an
-#   empty transaction from the first slave.  It should also not update
+# - Second replica should also not log any change, since it receives an
+#   empty transaction from the first replica.  It should also not update
 #   the table despite the original SQL statement would match a row on
-#   the second slave, since it only receives the empty transaction
-#   from the first slave.
+#   the second replica, since it only receives the empty transaction
+#   from the first replica.
 UPDATE t1 SET id= 1 WHERE id = 0;
 
 # Verify that the GTID gets replicated everywhere.
 --let $use_gtids= 1
 --source include/rpl_sync.inc
 
---let $assert_text= Second slave should not have done any update
+--let $assert_text= Second replica should not have done any update
 --let $assert_cond= [server_3:SELECT * FROM t1] = 0
 
 -- echo ---- Clean up ----
@@ -251,11 +251,11 @@ UPDATE t1 SET id= 1 WHERE id = 0;
 DROP TABLE t1;
 --source include/rpl_sync.inc
 
---connection slave
+--connection replica
 SET @@global.binlog_format= @save.binlog_format;
---connection master
+--connection primary
 
---echo ==== Case 3: explicit empty transaction on master ====
+--echo ==== Case 3: explicit empty transaction on primary ====
 
 SET @@SESSION.binlog_format= row;
 --source include/gtid_step_reset.inc
@@ -310,7 +310,7 @@ SET @@SESSION.GTID_NEXT = 'AUTOMATIC';
 
 DROP TABLE t1;
 
-# Verify the GTID makes it to every slave.
+# Verify the GTID makes it to every replica.
 --source include/rpl_sync.inc
 
 --echo ==== Case 4: Nothing logged for ROLLBACK transactions ====

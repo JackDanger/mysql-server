@@ -15,7 +15,7 @@
 
 
 #ifdef HAVE_REPLICATION
-#include "rpl_master.h"
+#include "rpl_primary.h"
 
 #include "hash.h"                               // HASH
 #include "m_string.h"                           // strmake
@@ -36,9 +36,9 @@
 int max_binlog_dump_events = 0; // unlimited
 my_bool opt_sporadic_binlog_dump_fail = 0;
 
-#define SLAVE_LIST_CHUNK 128
-#define SLAVE_ERRMSG_SIZE (FN_REFLEN+64)
-HASH slave_list;
+#define REPLICA_LIST_CHUNK 128
+#define REPLICA_ERRMSG_SIZE (FN_REFLEN+64)
+HASH replica_list;
 extern TYPELIB binlog_checksum_typelib;
 
 
@@ -62,60 +62,60 @@ extern TYPELIB binlog_checksum_typelib;
 }\
 
 extern "C" uint32
-*slave_list_key(SLAVE_INFO* si, size_t *len,
+*replica_list_key(REPLICA_INFO* si, size_t *len,
 		my_bool not_used __attribute__((unused)))
 {
   *len = 4;
   return &si->server_id;
 }
 
-extern "C" void slave_info_free(void *s)
+extern "C" void replica_info_free(void *s)
 {
   my_free(s);
 }
 
 #ifdef HAVE_PSI_INTERFACE
-static PSI_mutex_key key_LOCK_slave_list;
+static PSI_mutex_key key_LOCK_replica_list;
 
-static PSI_mutex_info all_slave_list_mutexes[]=
+static PSI_mutex_info all_replica_list_mutexes[]=
 {
-  { &key_LOCK_slave_list, "LOCK_slave_list", PSI_FLAG_GLOBAL}
+  { &key_LOCK_replica_list, "LOCK_replica_list", PSI_FLAG_GLOBAL}
 };
 
-static void init_all_slave_list_mutexes(void)
+static void init_all_replica_list_mutexes(void)
 {
   int count;
 
-  count= array_elements(all_slave_list_mutexes);
-  mysql_mutex_register("sql", all_slave_list_mutexes, count);
+  count= array_elements(all_replica_list_mutexes);
+  mysql_mutex_register("sql", all_replica_list_mutexes, count);
 }
 #endif /* HAVE_PSI_INTERFACE */
 
-void init_slave_list()
+void init_replica_list()
 {
 #ifdef HAVE_PSI_INTERFACE
-  init_all_slave_list_mutexes();
+  init_all_replica_list_mutexes();
 #endif
 
-  my_hash_init(&slave_list, system_charset_info, SLAVE_LIST_CHUNK, 0, 0,
-               (my_hash_get_key) slave_list_key,
-               (my_hash_free_key) slave_info_free, 0,
-               key_memory_SLAVE_INFO);
-  mysql_mutex_init(key_LOCK_slave_list, &LOCK_slave_list, MY_MUTEX_INIT_FAST);
+  my_hash_init(&replica_list, system_charset_info, REPLICA_LIST_CHUNK, 0, 0,
+               (my_hash_get_key) replica_list_key,
+               (my_hash_free_key) replica_info_free, 0,
+               key_memory_REPLICA_INFO);
+  mysql_mutex_init(key_LOCK_replica_list, &LOCK_replica_list, MY_MUTEX_INIT_FAST);
 }
 
-void end_slave_list()
+void end_replica_list()
 {
   /* No protection by a mutex needed as we are only called at shutdown */
-  if (my_hash_inited(&slave_list))
+  if (my_hash_inited(&replica_list))
   {
-    my_hash_free(&slave_list);
-    mysql_mutex_destroy(&LOCK_slave_list);
+    my_hash_free(&replica_list);
+    mysql_mutex_destroy(&LOCK_replica_list);
   }
 }
 
 /**
-  Register slave in 'slave_list' hash table.
+  Register replica in 'replica_list' hash table.
 
   @return
     0	ok
@@ -123,17 +123,17 @@ void end_slave_list()
     1	Error.   Error message sent to client
 */
 
-int register_slave(THD* thd, uchar* packet, size_t packet_length)
+int register_replica(THD* thd, uchar* packet, size_t packet_length)
 {
   int res;
-  SLAVE_INFO *si;
+  REPLICA_INFO *si;
   uchar *p= packet, *p_end= packet + packet_length;
-  const char *errmsg= "Wrong parameters to function register_slave";
+  const char *errmsg= "Wrong parameters to function register_replica";
 
-  if (check_access(thd, REPL_SLAVE_ACL, any_db, NULL, NULL, 0, 0))
+  if (check_access(thd, REPL_REPLICA_ACL, any_db, NULL, NULL, 0, 0))
     return 1;
-  if (!(si = (SLAVE_INFO*)my_malloc(key_memory_SLAVE_INFO,
-                                    sizeof(SLAVE_INFO), MYF(MY_WME))))
+  if (!(si = (REPLICA_INFO*)my_malloc(key_memory_REPLICA_INFO,
+                                    sizeof(REPLICA_INFO), MYF(MY_WME))))
     goto err2;
 
   /* 4 bytes for the server id */
@@ -146,9 +146,9 @@ int register_slave(THD* thd, uchar* packet, size_t packet_length)
 
   thd->server_id= si->server_id= uint4korr(p);
   p+= 4;
-  get_object(p,si->host, "Failed to register slave: too long 'report-host'");
-  get_object(p,si->user, "Failed to register slave: too long 'report-user'");
-  get_object(p,si->password, "Failed to register slave; too long 'report-password'");
+  get_object(p,si->host, "Failed to register replica: too long 'report-host'");
+  get_object(p,si->user, "Failed to register replica: too long 'report-user'");
+  get_object(p,si->password, "Failed to register replica; too long 'report-password'");
   if (p+10 > p_end)
     goto err;
   si->port= uint2korr(p);
@@ -156,18 +156,18 @@ int register_slave(THD* thd, uchar* packet, size_t packet_length)
   /* 
      We need to by pass the bytes used in the fake rpl_recovery_rank
      variable. It was removed in patch for BUG#13963. But this would 
-     make a server with that patch unable to connect to an old master.
+     make a server with that patch unable to connect to an old primary.
      See: BUG#49259
   */
   p += 4;
-  if (!(si->master_id= uint4korr(p)))
-    si->master_id= server_id;
+  if (!(si->primary_id= uint4korr(p)))
+    si->primary_id= server_id;
   si->thd= thd;
 
-  mysql_mutex_lock(&LOCK_slave_list);
-  unregister_slave(thd, false, false/*need_lock_slave_list=false*/);
-  res= my_hash_insert(&slave_list, (uchar*) si);
-  mysql_mutex_unlock(&LOCK_slave_list);
+  mysql_mutex_lock(&LOCK_replica_list);
+  unregister_replica(thd, false, false/*need_lock_replica_list=false*/);
+  res= my_hash_insert(&replica_list, (uchar*) si);
+  mysql_mutex_unlock(&LOCK_replica_list);
   return res;
 
 err:
@@ -177,29 +177,29 @@ err2:
   return 1;
 }
 
-void unregister_slave(THD* thd, bool only_mine, bool need_lock_slave_list)
+void unregister_replica(THD* thd, bool only_mine, bool need_lock_replica_list)
 {
   if (thd->server_id)
   {
-    if (need_lock_slave_list)
-      mysql_mutex_lock(&LOCK_slave_list);
+    if (need_lock_replica_list)
+      mysql_mutex_lock(&LOCK_replica_list);
     else
-      mysql_mutex_assert_owner(&LOCK_slave_list);
+      mysql_mutex_assert_owner(&LOCK_replica_list);
 
-    SLAVE_INFO* old_si;
-    if ((old_si = (SLAVE_INFO*)my_hash_search(&slave_list,
+    REPLICA_INFO* old_si;
+    if ((old_si = (REPLICA_INFO*)my_hash_search(&replica_list,
                                               (uchar*)&thd->server_id, 4)) &&
 	(!only_mine || old_si->thd == thd))
-    my_hash_delete(&slave_list, (uchar*)old_si);
+    my_hash_delete(&replica_list, (uchar*)old_si);
 
-    if (need_lock_slave_list)
-      mysql_mutex_unlock(&LOCK_slave_list);
+    if (need_lock_replica_list)
+      mysql_mutex_unlock(&LOCK_replica_list);
   }
 }
 
 
 /**
-  Execute a SHOW SLAVE HOSTS statement.
+  Execute a SHOW REPLICA HOSTS statement.
 
   @param thd Pointer to THD object for the client thread executing the
   statement.
@@ -207,56 +207,56 @@ void unregister_slave(THD* thd, bool only_mine, bool need_lock_slave_list)
   @retval FALSE success
   @retval TRUE failure
 */
-bool show_slave_hosts(THD* thd)
+bool show_replica_hosts(THD* thd)
 {
   List<Item> field_list;
   Protocol *protocol= thd->get_protocol();
-  DBUG_ENTER("show_slave_hosts");
+  DBUG_ENTER("show_replica_hosts");
 
   field_list.push_back(new Item_return_int("Server_id", 10,
 					   MYSQL_TYPE_LONG));
   field_list.push_back(new Item_empty_string("Host", 20));
-  if (opt_show_slave_auth_info)
+  if (opt_show_replica_auth_info)
   {
     field_list.push_back(new Item_empty_string("User",20));
     field_list.push_back(new Item_empty_string("Password",20));
   }
   field_list.push_back(new Item_return_int("Port", 7, MYSQL_TYPE_LONG));
-  field_list.push_back(new Item_return_int("Master_id", 10,
+  field_list.push_back(new Item_return_int("Primary_id", 10,
 					   MYSQL_TYPE_LONG));
-  field_list.push_back(new Item_empty_string("Slave_UUID", UUID_LENGTH));
+  field_list.push_back(new Item_empty_string("Replica_UUID", UUID_LENGTH));
 
   if (thd->send_result_metadata(&field_list,
                                 Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF))
     DBUG_RETURN(TRUE);
 
-  mysql_mutex_lock(&LOCK_slave_list);
+  mysql_mutex_lock(&LOCK_replica_list);
 
-  for (uint i = 0; i < slave_list.records; ++i)
+  for (uint i = 0; i < replica_list.records; ++i)
   {
-    SLAVE_INFO* si = (SLAVE_INFO*) my_hash_element(&slave_list, i);
+    REPLICA_INFO* si = (REPLICA_INFO*) my_hash_element(&replica_list, i);
     protocol->start_row();
     protocol->store((uint32) si->server_id);
     protocol->store(si->host, &my_charset_bin);
-    if (opt_show_slave_auth_info)
+    if (opt_show_replica_auth_info)
     {
       protocol->store(si->user, &my_charset_bin);
       protocol->store(si->password, &my_charset_bin);
     }
     protocol->store((uint32) si->port);
-    protocol->store((uint32) si->master_id);
+    protocol->store((uint32) si->primary_id);
 
-    /* get slave's UUID */
-    String slave_uuid;
-    if (get_slave_uuid(si->thd, &slave_uuid))
-      protocol->store(slave_uuid.c_ptr_safe(), &my_charset_bin);
+    /* get replica's UUID */
+    String replica_uuid;
+    if (get_replica_uuid(si->thd, &replica_uuid))
+      protocol->store(replica_uuid.c_ptr_safe(), &my_charset_bin);
     if (protocol->end_row())
     {
-      mysql_mutex_unlock(&LOCK_slave_list);
+      mysql_mutex_unlock(&LOCK_replica_list);
       DBUG_RETURN(TRUE);
     }
   }
-  mysql_mutex_unlock(&LOCK_slave_list);
+  mysql_mutex_unlock(&LOCK_replica_list);
   my_eof(thd);
   DBUG_RETURN(FALSE);
 }
@@ -313,14 +313,14 @@ bool com_binlog_dump(THD *thd, char *packet, size_t packet_length)
 {
   DBUG_ENTER("com_binlog_dump");
   ulong pos;
-  String slave_uuid;
+  String replica_uuid;
   ushort flags= 0;
   const uchar* packet_position= (uchar *) packet;
   size_t packet_bytes_todo= packet_length;
 
   thd->status_var.com_other++;
   thd->enable_slow_log= opt_log_slow_admin_statements;
-  if (check_global_access(thd, REPL_SLAVE_ACL))
+  if (check_global_access(thd, REPL_REPLICA_ACL))
     DBUG_RETURN(false);
 
   /*
@@ -334,14 +334,14 @@ bool com_binlog_dump(THD *thd, char *packet, size_t packet_length)
 
   DBUG_PRINT("info", ("pos=%lu flags=%d server_id=%d", pos, flags, thd->server_id));
 
-  get_slave_uuid(thd, &slave_uuid);
-  kill_zombie_dump_threads(&slave_uuid);
+  get_replica_uuid(thd, &replica_uuid);
+  kill_zombie_dump_threads(&replica_uuid);
 
   query_logger.general_log_print(thd, thd->get_command(), "Log: '%s'  Pos: %ld",
                                  packet + 10, (long) pos);
   mysql_binlog_send(thd, thd->mem_strdup(packet + 10), (my_off_t) pos, NULL, flags);
 
-  unregister_slave(thd, true, true/*need_lock_slave_list=true*/);
+  unregister_replica(thd, true, true/*need_lock_replica_list=true*/);
   /*  fake COM_QUIT -- if we get here, the thread needs to terminate */
   DBUG_RETURN(true);
 
@@ -358,7 +358,7 @@ bool com_binlog_dump_gtid(THD *thd, char *packet, size_t packet_length)
     Before going GA, we need to make this protocol extensible without
     breaking compatitibilty. /Alfranio.
   */
-  String slave_uuid;
+  String replica_uuid;
   ushort flags= 0;
   uint32 data_size= 0;
   uint64 pos= 0;
@@ -368,11 +368,11 @@ bool com_binlog_dump_gtid(THD *thd, char *packet, size_t packet_length)
   const uchar* packet_position= (uchar *) packet;
   size_t packet_bytes_todo= packet_length;
   Sid_map sid_map(NULL/*no sid_lock because this is a completely local object*/);
-  Gtid_set slave_gtid_executed(&sid_map);
+  Gtid_set replica_gtid_executed(&sid_map);
 
   thd->status_var.com_other++;
   thd->enable_slow_log= opt_log_slow_admin_statements;
-  if (check_global_access(thd, REPL_SLAVE_ACL))
+  if (check_global_access(thd, REPL_REPLICA_ACL))
     DBUG_RETURN(false);
 
   READ_INT(flags,2);
@@ -383,22 +383,22 @@ bool com_binlog_dump_gtid(THD *thd, char *packet, size_t packet_length)
   DBUG_PRINT("info", ("pos=%llu flags=%d server_id=%d", pos, flags, thd->server_id));
   READ_INT(data_size, 4);
   CHECK_PACKET_SIZE(data_size);
-  if (slave_gtid_executed.add_gtid_encoding(packet_position, data_size) !=
+  if (replica_gtid_executed.add_gtid_encoding(packet_position, data_size) !=
       RETURN_STATUS_OK)
     DBUG_RETURN(true);
-  slave_gtid_executed.to_string(&gtid_string);
-  DBUG_PRINT("info", ("Slave %d requested to read %s at position %llu gtid set "
+  replica_gtid_executed.to_string(&gtid_string);
+  DBUG_PRINT("info", ("Replica %d requested to read %s at position %llu gtid set "
                       "'%s'.", thd->server_id, name, pos, gtid_string));
 
-  get_slave_uuid(thd, &slave_uuid);
-  kill_zombie_dump_threads(&slave_uuid);
+  get_replica_uuid(thd, &replica_uuid);
+  kill_zombie_dump_threads(&replica_uuid);
   query_logger.general_log_print(thd, thd->get_command(),
                                  "Log: '%s' Pos: %llu GTIDs: '%s'",
                                  name, pos, gtid_string);
   my_free(gtid_string);
-  mysql_binlog_send(thd, name, (my_off_t) pos, &slave_gtid_executed, flags);
+  mysql_binlog_send(thd, name, (my_off_t) pos, &replica_gtid_executed, flags);
 
-  unregister_slave(thd, true, true/*need_lock_slave_list=true*/);
+  unregister_replica(thd, true, true/*need_lock_replica_list=true*/);
   /*  fake COM_QUIT -- if we get here, the thread needs to terminate */
   DBUG_RETURN(true);
 
@@ -408,24 +408,24 @@ error_malformed_packet:
 }
 
 void mysql_binlog_send(THD* thd, char* log_ident, my_off_t pos,
-                       Gtid_set* slave_gtid_executed, uint32 flags)
+                       Gtid_set* replica_gtid_executed, uint32 flags)
 {
-  Binlog_sender sender(thd, log_ident, pos, slave_gtid_executed, flags);
+  Binlog_sender sender(thd, log_ident, pos, replica_gtid_executed, flags);
 
   sender.run();
 }
 
 /**
-  An auxiliary function extracts slave UUID.
+  An auxiliary function extracts replica UUID.
 
   @param[in]    thd  THD to access a user variable
   @param[out]   value String to return UUID value.
 
   @return       if success value is returned else NULL is returned.
 */
-String *get_slave_uuid(THD *thd, String *value)
+String *get_replica_uuid(THD *thd, String *value)
 {
-  uchar name[]= "slave_uuid";
+  uchar name[]= "replica_uuid";
 
   if (value == NULL)
     return NULL;
@@ -456,15 +456,15 @@ String *get_slave_uuid(THD *thd, String *value)
 class Find_zombie_dump_thread : public Find_THD_Impl
 {
 public:
-  Find_zombie_dump_thread(char* value): m_slave_uuid(value) {}
+  Find_zombie_dump_thread(char* value): m_replica_uuid(value) {}
   virtual bool operator()(THD *thd)
   {
     if (thd != current_thd && (thd->get_command() == COM_BINLOG_DUMP ||
                                thd->get_command() == COM_BINLOG_DUMP_GTID))
     {
       String tmp_uuid;
-      if (get_slave_uuid(thd, &tmp_uuid) != NULL &&
-          !strncmp(m_slave_uuid, tmp_uuid.c_ptr(), UUID_LENGTH))
+      if (get_replica_uuid(thd, &tmp_uuid) != NULL &&
+          !strncmp(m_replica_uuid, tmp_uuid.c_ptr(), UUID_LENGTH))
       {
         mysql_mutex_lock(&thd->LOCK_thd_data);
         return true;
@@ -473,35 +473,35 @@ public:
     return false;
   }
 private:
-  char* m_slave_uuid;
+  char* m_replica_uuid;
 };
 
 /*
 
-  Kill all Binlog_dump threads which previously talked to the same slave
-  ("same" means with the same server id). Indeed, if the slave stops, if the
+  Kill all Binlog_dump threads which previously talked to the same replica
+  ("same" means with the same server id). Indeed, if the replica stops, if the
   Binlog_dump thread is waiting (mysql_cond_wait) for binlog update, then it
-  will keep existing until a query is written to the binlog. If the master is
-  idle, then this could last long, and if the slave reconnects, we could have 2
+  will keep existing until a query is written to the binlog. If the primary is
+  idle, then this could last long, and if the replica reconnects, we could have 2
   Binlog_dump threads in SHOW PROCESSLIST, until a query is written to the
-  binlog. To avoid this, when the slave reconnects and sends COM_BINLOG_DUMP,
-  the master kills any existing thread with the slave's server id (if this id is
-  not zero; it will be true for real slaves, but false for mysqlbinlog when it
+  binlog. To avoid this, when the replica reconnects and sends COM_BINLOG_DUMP,
+  the primary kills any existing thread with the replica's server id (if this id is
+  not zero; it will be true for real replicas, but false for mysqlbinlog when it
   sends COM_BINLOG_DUMP to get a remote binlog dump).
 
   SYNOPSIS
     kill_zombie_dump_threads()
-    slave_uuid      the slave's UUID
+    replica_uuid      the replica's UUID
 
 */
 
-void kill_zombie_dump_threads(String *slave_uuid)
+void kill_zombie_dump_threads(String *replica_uuid)
 {
-  if (slave_uuid->length() == 0)
+  if (replica_uuid->length() == 0)
     return;
-  DBUG_ASSERT(slave_uuid->length() == UUID_LENGTH);
+  DBUG_ASSERT(replica_uuid->length() == UUID_LENGTH);
 
-  Find_zombie_dump_thread find_zombie_dump_thread(slave_uuid->c_ptr());
+  Find_zombie_dump_thread find_zombie_dump_thread(replica_uuid->c_ptr());
   THD *tmp= Global_THD_manager::get_instance()->
                                 find_thd(&find_zombie_dump_thread);
   if (tmp)
@@ -512,11 +512,11 @@ void kill_zombie_dump_threads(String *slave_uuid)
       again. We just to do kill the thread ourselves.
     */
     if (log_warnings > 1)
-      sql_print_information("While initializing dump thread for slave with "
+      sql_print_information("While initializing dump thread for replica with "
                             "UUID <%s>, found a zombie dump thread with "
-                            "the same UUID. Master is killing the zombie dump "
-                            "thread.", slave_uuid->c_ptr());
-    tmp->duplicate_slave_uuid= true;
+                            "the same UUID. Primary is killing the zombie dump "
+                            "thread.", replica_uuid->c_ptr());
+    tmp->duplicate_replica_uuid= true;
     tmp->awake(THD::KILL_QUERY);
     mysql_mutex_unlock(&tmp->LOCK_thd_data);
   }
@@ -524,7 +524,7 @@ void kill_zombie_dump_threads(String *slave_uuid)
 
 
 /**
-  Execute a RESET MASTER statement.
+  Execute a RESET PRIMARY statement.
 
   @param thd Pointer to THD object of the client thread executing the
   statement.
@@ -532,7 +532,7 @@ void kill_zombie_dump_threads(String *slave_uuid)
   @retval false success
   @retval true error
 */
-bool reset_master(THD* thd)
+bool reset_primary(THD* thd)
 {
   bool ret= false;
   if (mysql_bin_log.is_open())
@@ -558,17 +558,17 @@ bool reset_master(THD* thd)
   }
 
   /*
-    Only run after_reset_master hook, when all reset operations preceding this
+    Only run after_reset_primary hook, when all reset operations preceding this
     have succeeded.
   */
   if (!ret)
-    (void) RUN_HOOK(binlog_transmit, after_reset_master, (thd, 0 /* flags */));
+    (void) RUN_HOOK(binlog_transmit, after_reset_primary, (thd, 0 /* flags */));
   return ret;
  }
 
 
 /**
-  Execute a SHOW MASTER STATUS statement.
+  Execute a SHOW PRIMARY STATUS statement.
 
   @param thd Pointer to THD object for the client thread executing the
   statement.
@@ -576,7 +576,7 @@ bool reset_master(THD* thd)
   @retval false success
   @retval true failure
 */
-bool show_master_status(THD* thd)
+bool show_primary_status(THD* thd)
 {
   Protocol *protocol= thd->get_protocol();
   char* gtid_set_buffer= NULL;

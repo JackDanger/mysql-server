@@ -178,7 +178,7 @@ struct NdbError {
     SchemaObjectExists = ndberror_cl_schema_object_already_exists,
 
     /**
-     * Request sent to non master
+     * Request sent to non primary
      */
     InternalTemporary = ndberror_cl_internal_temporary
   };

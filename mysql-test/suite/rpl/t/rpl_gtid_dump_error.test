@@ -1,24 +1,24 @@
 ################################################################################
-# Bug#20464737 SEMI_SYNC: SLAVE IO FAILS WITH ER1236 'SLAVE HAS MORE GTIDS THAN
-#              THE MASTER HAS'
+# Bug#20464737 SEMI_SYNC: REPLICA IO FAILS WITH ER1236 'REPLICA HAS MORE GTIDS THAN
+#              THE PRIMARY HAS'
 #
-# Slaves, especially semisync slaves, encountered ER1236 when connecting to
-# their masters. When connecting to the master with COM_GTID_DUMP request,
-# the slave sends all replicated gtids to master and master checks if all the
-# slave gtids(only the gtids have master's uuid) are included in master's
-# gtid_executed. However, there is a chance that a gtid is already in slave's
-# gtid_executed, but not in master's gtid_executed. Gtid is added into
+# Replicas, especially semisync replicas, encountered ER1236 when connecting to
+# their primarys. When connecting to the primary with COM_GTID_DUMP request,
+# the replica sends all replicated gtids to primary and primary checks if all the
+# replica gtids(only the gtids have primary's uuid) are included in primary's
+# gtid_executed. However, there is a chance that a gtid is already in replica's
+# gtid_executed, but not in primary's gtid_executed. Gtid is added into
 # gtid_executed after it is binlogged, so it is possible that a transaction is
-# replicated and applied on slave, but not committed on master yet.
+# replicated and applied on replica, but not committed on primary yet.
 #
-# To fix it, master will check if all gtids are in the set of (gtid_executed,
+# To fix it, primary will check if all gtids are in the set of (gtid_executed,
 # owned_gtids).
 ################################################################################
 --source include/not_group_replication_plugin.inc
 --source include/have_debug_sync.inc
 --source include/have_gtid.inc
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 CREATE TABLE t1(c1 INT);
 
@@ -30,16 +30,16 @@ SET debug_sync = "bgc_after_sync_stage_before_commit_stage SIGNAL synced WAIT_FO
 --source include/rpl_connection.inc
 SET debug_sync = "now WAIT_FOR synced";
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 # After the transaction is replicated, io thread should be able to connect.
---source include/stop_slave_io.inc
---source include/start_slave_io.inc
+--source include/stop_replica_io.inc
+--source include/start_replica_io.inc
 
 --let $rpl_connection_name= default
 --source include/rpl_connection.inc
 SET debug_sync = "now SIGNAL continue";
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --reap
 INSERT INTO t1 VALUES(2);
 DROP TABLE t1;

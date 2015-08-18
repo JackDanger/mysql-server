@@ -581,7 +581,7 @@ args: -l 1 -n RestartNFDuringNR T6 T13
 
 max-time: 2500
 cmd: testNodeRestart
-args: -n RestartMasterNodeError T6 T8 T13 
+args: -n RestartPrimaryNodeError T6 T8 T13 
 
 max-time: 3600
 cmd: testNodeRestart
@@ -593,7 +593,7 @@ args: -n TwoNodeFailure T6 T8 T13
 
 max-time: 2500
 cmd: testNodeRestart
-args: -n TwoMasterNodeFailure T6 T8 T13 
+args: -n TwoPrimaryNodeFailure T6 T8 T13 
 
 max-time: 2500
 cmd: testNodeRestart

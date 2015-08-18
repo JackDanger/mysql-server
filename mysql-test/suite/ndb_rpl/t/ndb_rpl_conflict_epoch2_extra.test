@@ -6,7 +6,7 @@
 #
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --echo Setup circular replication
 --echo The circle is setup between Primary and Secondary
@@ -37,21 +37,21 @@ select @secondary_server_port:=(variable_value+0)
 let $SECONDARY_SERVER_PORT= query_get_value('select @secondary_server_port as v', v,1);
 
 # Now set it up
-# Stop Slave @ Secondary
-STOP SLAVE;
+# Stop Replica @ Secondary
+STOP REPLICA;
 # Clear Secondary Binlog
-RESET MASTER;
+RESET PRIMARY;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-# Stop Slave @ Primary 
-STOP SLAVE;
+# Stop Replica @ Primary 
+STOP REPLICA;
 # Clear Primary Binlog
-RESET MASTER;
+RESET PRIMARY;
 
---eval CHANGE MASTER TO master_host="127.0.0.1",master_port=$SECONDARY_SERVER_PORT,master_user="root"
+--eval CHANGE PRIMARY TO primary_host="127.0.0.1",primary_port=$SECONDARY_SERVER_PORT,primary_user="root"
 
 # Start Primary replicating from Secondary
-START SLAVE;
+START REPLICA;
 
 --enable_query_log
 --enable_result_log
@@ -62,10 +62,10 @@ START SLAVE;
 --disable_result_log
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---eval CHANGE MASTER TO master_host="127.0.0.1",master_port=$PRIMARY_SERVER_PORT,master_user="root"
+--eval CHANGE PRIMARY TO primary_host="127.0.0.1",primary_port=$PRIMARY_SERVER_PORT,primary_user="root"
 
 # Start Secondary replicating from Primary
-START SLAVE;
+START REPLICA;
 
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
 
@@ -98,8 +98,8 @@ eval replace into mysql.ndb_replication values
 
 create table test.t1$EX(
    ndb$server_id int unsigned,
-   ndb$master_server_id int unsigned,
-   ndb$master_epoch bigint unsigned,
+   ndb$primary_server_id int unsigned,
+   ndb$primary_epoch bigint unsigned,
    ndb$count int unsigned,
    k int not null,
    v$old int,
@@ -108,7 +108,7 @@ create table test.t1$EX(
    c$new varchar(2000),
    ndb$op_type           enum('write_row','update_row', 'delete_row') not null,
    ndb$cft_cause         enum('row_does_not_exist','row_already_exists','data_in_conflict','trans_in_conflict') not null,
-   primary key(ndb$server_id, ndb$master_server_id, ndb$master_epoch, ndb$count)) 
+   primary key(ndb$server_id, ndb$primary_server_id, ndb$primary_epoch, ndb$count)) 
 engine ndb;
 
 create table test.t1 (
@@ -119,13 +119,13 @@ create table test.t1 (
 --echo Setup conflict roles
 --echo --------------------
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="PRIMARY";
-START SLAVE;
+STOP REPLICA;
+set global ndb_replica_conflict_role="PRIMARY";
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="SECONDARY";
-START SLAVE;
+STOP REPLICA;
+set global ndb_replica_conflict_role="SECONDARY";
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
 --echo Create some initial data
@@ -157,9 +157,9 @@ select * from test.t1 order by k;
 --echo Basic delete-delete cases
 --echo -------------------------
 
---echo Stop Slave on SECONDARY
+--echo Stop Replica on SECONDARY
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
+STOP REPLICA;
 
 --echo Delete row 3 on PRIMARY
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -189,9 +189,9 @@ select * from test.t1 order by k;
 
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
 
---echo Re-enable SECONDARY Slave, and check state there
+--echo Re-enable SECONDARY Replica, and check state there
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -214,19 +214,19 @@ SELECT k, v$old, v$new, c$old, c$new, ndb$op_type, ndb$cft_cause from test.t1$EX
 
 --echo Now check behaviour of Secondary when reflected ops should not be applied
 --echo -------------------------------------------------------------------------
---echo The interpreted program attached to reflected ops at the Secondary slave
+--echo The interpreted program attached to reflected ops at the Secondary replica
 --echo is intended to avoid an 'old' reflected op overwriting a 'new' locally
 --echo inserted row value.  The end result should still be the same (the new
 --echo value will be applied later, but we should avoid having every modification
 --echo made at the secondary applied twice with some time lag as that will cause
 --echo chaos for Secondary applications)
 
---echo Stop Slave on SECONDARY
-STOP SLAVE;
+--echo Stop Replica on SECONDARY
+STOP REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo Stop Slave on PRIMARY
-STOP SLAVE;
+--echo Stop Replica on PRIMARY
+STOP REPLICA;
 
 --echo Delete row 4 on PRIMARY
 DELETE from test.t1 where k=4;
@@ -249,7 +249,7 @@ select * from test.t1 order by k;
 
 --echo Allow Primary change to propagate to Secondary
 --echo (Which will delete the new, updated row on the Secondary)
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -259,10 +259,10 @@ select * from test.t1 order by k;
 
 --echo Now allow the SECONDARY Binlog to propagate back to the PRIMARY
 --echo while blocking the return path...
-STOP SLAVE;
+STOP REPLICA;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -271,9 +271,9 @@ START SLAVE;
 --echo as the PRIMARY's delete is not applied if present
 select * from test.t1 order by k;
 
---echo Now stop the PRIMARY Slave - changes from the
+--echo Now stop the PRIMARY Replica - changes from the
 --echo SECONDARY cannot now reach the PRIMARY
-STOP SLAVE;
+STOP REPLICA;
 
 --echo Now go back to the SECONDARY and create a new
 --echo row version
@@ -292,7 +292,7 @@ select * from test.t1 order by k;
 --echo The SECONDARY should reject this application
 
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -310,7 +310,7 @@ select * from test.t1 order by k;
 --echo Ok, now allow SECONDARY Binlog to propagate to Primary
 --echo and realign it
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -328,11 +328,11 @@ select * from test.t1 order by k;
 
 --echo Now show same for UPDATE, then DELETE
 --echo -------------------------------------
---echo First stop SLAVEs
+--echo First stop REPLICAs
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-STOP SLAVE;
+STOP REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
+STOP REPLICA;
 --echo Now perform UPDATE 1 at Secondary
 UPDATE test.t1 SET c="Bathing" where k=1;
 
@@ -345,7 +345,7 @@ select * from test.t1 order by k;
 select * from test.t1 order by k;
 
 --echo Now propagate to Primary...
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -353,8 +353,8 @@ START SLAVE;
 --echo Updated data on Primary
 select * from test.t1 order by k;
 
---echo Now stop Primary slave to stop further propagation
-STOP SLAVE;
+--echo Now stop Primary replica to stop further propagation
+STOP REPLICA;
 
 --echo Now make update 2 on Secondary
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -368,7 +368,7 @@ select * from test.t1 order by k;
 --echo it should be rejected by the Secondary, and increment
 --echo the defined + rejected counts
 
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -384,7 +384,7 @@ select * from test.t1 order by k;
 --echo Now allow sync...
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -406,11 +406,11 @@ select * from test.t1 order by k;
 
 --echo Show same for DELETE
 --echo --------------------
---echo First stop SLAVEs
+--echo First stop REPLICAs
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-STOP SLAVE;
+STOP REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
+STOP REPLICA;
 --echo Now perform DELETE of row 2 at Secondary
 DELETE from test.t1 where k=2;
 
@@ -423,7 +423,7 @@ select * from test.t1 order by k;
 select * from test.t1 order by k;
 
 --echo Now propagate to Primary...
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -431,8 +431,8 @@ START SLAVE;
 --echo Updated data on Primary
 select * from test.t1 order by k;
 
---echo Now stop Primary slave to stop further propagation
-STOP SLAVE;
+--echo Now stop Primary replica to stop further propagation
+STOP REPLICA;
 
 --echo Now make a further change on Secondary
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -445,7 +445,7 @@ select * from test.t1 order by k;
 --echo on row 2 to be applied it should be rejected by the 
 --echo Secondary, and increment the defined + rejected counts
 
-START SLAVE;
+START REPLICA;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -462,7 +462,7 @@ select * from test.t1 order by k;
 --echo Now allow sync...
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -482,11 +482,11 @@ select * from test.t1 order by k;
 
 --echo Primary insert-delete obscures Secondary insert problem
 --echo -------------------------------------------------------
---echo Stop slaves in both directions
+--echo Stop replicas in both directions
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-STOP SLAVE;
+STOP REPLICA;
  --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
+STOP REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --echo Start with non-existent row (5, 50, "Disco dancing") on primary
 insert into test.t1 values (5, 50, "Disco dancing");
@@ -507,7 +507,7 @@ select * from test.t1 order by k;
 
 --echo Allow Primary insert to trample Secondary insert.
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -517,8 +517,8 @@ select * from test.t1 order by k;
 update test.t1 set v=v+5 where k=5;
 select * from test.t1 order by k;
 
---echo Stop Secondary Slave again
-STOP SLAVE; 
+--echo Stop Secondary Replica again
+STOP REPLICA; 
 
 --echo Now delete row from the primary
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -526,7 +526,7 @@ delete from test.t1 where k=5;
 select * from test.t1 order by k;
 
 --echo Now allow Secondary writes to propagate to Primary
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -547,7 +547,7 @@ SELECT k, v$old, v$new, c$old, c$new, ndb$op_type, ndb$cft_cause from test.t1$EX
 
 --echo Now allow Primary changes to propagate back to Secondary
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
@@ -572,21 +572,21 @@ if ($loop_count)
   # Switch primary and secondary roles
   # TODO, various ways to do this etc, just one for now.
   --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-  STOP SLAVE;
+  STOP REPLICA;
   # Reset exceptions table + counters on old primary
   DELETE FROM test.t1$EX;
   --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
 
   # Switch Primary -> Secondary
-  set global ndb_slave_conflict_role="SECONDARY";
+  set global ndb_replica_conflict_role="SECONDARY";
   --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-  STOP SLAVE;
+  STOP REPLICA;
   # Reset exceptions table + counters on old primary
   DELETE FROM test.t1$EX;
   --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
   
   # Switch Secondary -> Primary
-  set global ndb_slave_conflict_role="PRIMARY";
+  set global ndb_replica_conflict_role="PRIMARY";
   
   # TODO : Make it work for more iterations that 1 + 0
   let $switchroles=query_get_value('SELECT $loop_count %2 as odd', odd, 1);
@@ -613,10 +613,10 @@ if ($loop_count)
   (3,30, "Running"),
   (4,40, "Triathlon");
 
-  # Now restart slaves
-  START SLAVE;
+  # Now restart replicas
+  START REPLICA;
   --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-  START SLAVE;
+  START REPLICA;
   --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
   # Now two way sync
@@ -631,7 +631,7 @@ if ($loop_count)
 
 --echo Now test SCR_PASS
 --echo -----------------
---echo SCR_PASS is a slave conflict role which should act as a
+--echo SCR_PASS is a replica conflict role which should act as a
 --echo filterless pass-through of replication events, with no
 --echo conflict detection etc.  The idea is that it might be
 --echo useful for failover situations etc.
@@ -639,17 +639,17 @@ if ($loop_count)
 --echo allows divergence etc.
 --echo Lets set it up
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="PASS";
+STOP REPLICA;
+set global ndb_replica_conflict_role="NONE";
+set global ndb_replica_conflict_role="PASS";
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="PASS";
+STOP REPLICA;
+set global ndb_replica_conflict_role="NONE";
+set global ndb_replica_conflict_role="PASS";
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
-START SLAVE;
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
 --echo Initial data on Primary
@@ -660,8 +660,8 @@ select * from test.t1 order by k;
 --echo Initial data on Secondary
 select * from test.t1 order by k;
 
---echo STOP SLAVE on Secondary
-STOP SLAVE;
+--echo STOP REPLICA on Secondary
+STOP REPLICA;
 
 --echo Create a conflict between two updates
 --echo First at the primary
@@ -688,8 +688,8 @@ SHOW BINLOG EVENTS;  # Force end-of-epoch
 --enable_result_log
 --enable_query_log
 
---echo Now restart the secondary slave and allow propagation
-START SLAVE;
+--echo Now restart the secondary replica and allow propagation
+START REPLICA;
 
 --echo Synchronise
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
@@ -771,7 +771,7 @@ select * from test.t1 order by k;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
 --echo Show state on Primary.  No row, but also no conflicts
---echo or slave errors.
+--echo or replica errors.
 select * from test.t1 order by k;
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2.inc
 
@@ -784,7 +784,7 @@ select * from test.t1 order by k;
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo Show state on Primary.  No conflicts or slave errors
+--echo Show state on Primary.  No conflicts or replica errors
 select * from test.t1 order by k;
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2.inc
 
@@ -796,15 +796,15 @@ delete from test.t1 where k in (3, 6);
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="PRIMARY";
-START SLAVE;
+STOP REPLICA;
+set global ndb_replica_conflict_role="NONE";
+set global ndb_replica_conflict_role="PRIMARY";
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="SECONDARY";
-START SLAVE;
+STOP REPLICA;
+set global ndb_replica_conflict_role="NONE";
+set global ndb_replica_conflict_role="SECONDARY";
+START REPLICA;
 
 --echo Test ndb_conflict_last_stable_epoch
 --echo This status var is intended to help in situations
@@ -812,7 +812,7 @@ START SLAVE;
 --echo the SECONDARY can determine that there were in-flight
 --echo realignment ops (conflicts), based on 
 --echo ndb_conflict_last_conflict_epoch > 
---echo ndb_slave_max_replicated_epoch
+--echo ndb_replica_max_replicated_epoch
 --echo ndb_conflict_last_stable_epoch will contain the 
 --echo last (highest) SECONDARY epoch which is known
 --echo to have replicated via the PRIMARY with no
@@ -824,11 +824,11 @@ START SLAVE;
 
 --echo Testcase to show the variable in action
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---echo Stop SECONDARY slave
-STOP SLAVE;
+--echo Stop SECONDARY replica
+STOP REPLICA;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
---echo Change on Primary, won't propagate to Secondary as SLAVE is stopped.
+--echo Change on Primary, won't propagate to Secondary as REPLICA is stopped.
 update test.t1 set c="Loafing" where k=1;
 
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
@@ -856,7 +856,7 @@ while ($e_count)
 --disable_result_log
 SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
 SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
-SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
+SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_REPLICA_MAX_REPLICATED_EPOCH";
 --enable_result_log
 --enable_query_log
 # SELECT @ndb_last_conflict_epoch, @ndb_last_stable_epoch, @ndb_max_replicated_epoch;
@@ -869,16 +869,16 @@ SELECT (@ndb_last_stable_epoch+0) = (@ndb_max_replicated_epoch+0) AS STABLE_EPOC
 --source suite/ndb_rpl/t/ndb_sync_secondary_to_primary.inc
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
---echo Stop PRIMARY slave just to have control
-STOP SLAVE;
+--echo Stop PRIMARY replica just to have control
+STOP REPLICA;
 
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2.inc
 
---echo Now Start SECONDARY slave, to get conflict realignment
+--echo Now Start SECONDARY replica, to get conflict realignment
 --echo and following SECONDARY epochs re-applied on the SEOCNDARY
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-START SLAVE;
+START REPLICA;
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
@@ -890,7 +890,7 @@ START SLAVE;
 --disable_result_log
 SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
 SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
-SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
+SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_REPLICA_MAX_REPLICATED_EPOCH";
 --enable_result_log
 --enable_query_log
 #SELECT @ndb_last_conflict_epoch, @ndb_last_stable_epoch, @ndb_max_replicated_epoch;
@@ -904,7 +904,7 @@ SELECT (@ndb_last_stable_epoch+0) = (@ndb_max_replicated_epoch+0) AS STABLE_EPOC
 
 --echo Now make a SECONDARY change and allow it to flow
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-START SLAVE;
+START REPLICA;
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 delete from test.t1 where k >=10;
@@ -920,7 +920,7 @@ delete from test.t1 where k >=10;
 --disable_result_log
 SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
 SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
-SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
+SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_REPLICA_MAX_REPLICATED_EPOCH";
 --enable_result_log
 --enable_query_log
 #SELECT @ndb_last_conflict_epoch, @ndb_last_stable_epoch, @ndb_max_replicated_epoch;
@@ -936,23 +936,23 @@ SELECT (@ndb_last_stable_epoch+0) = (@ndb_max_replicated_epoch+0) AS STABLE_EPOC
 --echo Cleanup conflict roles
 --echo --------------------
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-START SLAVE;
+STOP REPLICA;
+set global ndb_replica_conflict_role="NONE";
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
-STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-START SLAVE;
+STOP REPLICA;
+set global ndb_replica_conflict_role="NONE";
+START REPLICA;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
 
 # Note use of fixed connection names here.
---connection master
-stop slave;
-reset slave;
+--connection primary
+stop replica;
+reset replica;
 drop table test.t1;
 drop table test.t1$EX;
 drop table mysql.ndb_replication;
---sync_slave_with_master slave
+--sync_replica_with_primary replica
 
 --source include/rpl_end.inc

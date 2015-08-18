@@ -31,7 +31,7 @@
 #include "my_global.h"
 #include "my_bitmap.h"               // MY_BITMAP
 #include "binary_log.h"              // binary_log
-#include "rpl_utility.h"             // Hash_slave_rows
+#include "rpl_utility.h"             // Hash_replica_rows
 
 #ifdef MYSQL_SERVER
 #include "rpl_filter.h"              // rpl_filter
@@ -68,7 +68,7 @@ using binary_log::Log_event_footer;
 using binary_log::Binary_log_event;
 using binary_log::Format_description_event;
 
-class Slave_reporting_capability;
+class Replica_reporting_capability;
 class String;
 typedef ulonglong sql_mode_t;
 typedef struct st_db_worker_hash_entry db_worker_hash_entry;
@@ -163,18 +163,18 @@ struct sql_ex_info
   NAME_LEN + 1)
 
 /*
-  The new option is added to handle large packets that are sent from the master 
-  to the slave. It is used to increase the thd(max_allowed) for both the
-  DUMP thread on the master and the SQL/IO thread on the slave. 
+  The new option is added to handle large packets that are sent from the primary 
+  to the replica. It is used to increase the thd(max_allowed) for both the
+  DUMP thread on the primary and the SQL/IO thread on the replica. 
 */
 #define MAX_MAX_ALLOWED_PACKET 1024*1024*1024
 
 
-/* slave event post-header (this event is never written) */
+/* replica event post-header (this event is never written) */
 
-#define SL_MASTER_PORT_OFFSET   8
-#define SL_MASTER_POS_OFFSET    0
-#define SL_MASTER_HOST_OFFSET   10
+#define SL_PRIMARY_PORT_OFFSET   8
+#define SL_PRIMARY_POS_OFFSET    0
+#define SL_PRIMARY_HOST_OFFSET   10
 
 /* Intvar event post-header */
 
@@ -189,7 +189,7 @@ struct sql_ex_info
 /*
   The 2 flags below were useless :
   - the first one was never set
-  - the second one was set in all Rotate events on the master, but not used for
+  - the second one was set in all Rotate events on the primary, but not used for
   anything useful.
   So they are now removed and their place may later be reused for other
   flags. Then one must remember that Rotate events in 4.x have
@@ -239,7 +239,7 @@ struct sql_ex_info
    Artificial events are created arbitarily and not written to binary
    log
 
-   These events should not update the master log position when slave
+   These events should not update the primary log position when replica
    SQL thread executes them.
 */
 #define LOG_EVENT_ARTIFICIAL_F 0x20
@@ -247,7 +247,7 @@ struct sql_ex_info
 /**
    @def LOG_EVENT_RELAY_LOG_F
    
-   Events with this flag set are created by slave IO thread and written
+   Events with this flag set are created by replica IO thread and written
    to relay log
 */
 #define LOG_EVENT_RELAY_LOG_F 0x40
@@ -255,7 +255,7 @@ struct sql_ex_info
 /**
    @def LOG_EVENT_IGNORABLE_F
 
-   For an event, 'e', carrying a type code, that a slave,
+   For an event, 'e', carrying a type code, that a replica,
    's', does not recognize, 's' will check 'e' for
    LOG_EVENT_IGNORABLE_F, and if the flag is set, then 'e'
    is ignored. Otherwise, 's' acknowledges that it has
@@ -299,8 +299,8 @@ struct sql_ex_info
   like OPTION_AUTO_IS_NULL and OPTION_NO_FOREIGN_KEYS are the only
   ones which alter how the query modifies the table. It's good to
   replicate OPTION_RELAXED_UNIQUE_CHECKS too because otherwise, the
-  slave may insert data slower than the master, in InnoDB.
-  OPTION_BIG_SELECTS is not needed (the slave thread runs with
+  replica may insert data slower than the primary, in InnoDB.
+  OPTION_BIG_SELECTS is not needed (the replica thread runs with
   max_join_size=HA_POS_ERROR) and OPTION_BIG_TABLES is not needed
   either, as the manual says (because a too big in-memory temp table
   is automatically written to disk).
@@ -331,8 +331,8 @@ class THD;
 
 class Format_description_log_event;
 class Relay_log_info;
-class Slave_worker;
-class Slave_committed_queue;
+class Replica_worker;
+class Replica_committed_queue;
 
 #ifdef MYSQL_CLIENT
 enum enum_base64_output_mode {
@@ -485,7 +485,7 @@ class Log_event
 public:
   /**
      Enumeration of what kinds of skipping (and non-skipping) that can
-     occur when the slave executes an event.
+     occur when the replica executes an event.
 
      @see shall_skip
      @see do_shall_skip
@@ -499,7 +499,7 @@ public:
     /**
        Skip event by ignoring it.
 
-       This means that the slave skip counter will not be changed.
+       This means that the replica skip counter will not be changed.
     */
     EVENT_SKIP_IGNORE,
 
@@ -596,11 +596,11 @@ public:
      event's type, and its content is distributed in the event-specific fields.
   */
   char *temp_buf;
-  /* The number of seconds the query took to run on the master. */
+  /* The number of seconds the query took to run on the primary. */
   ulong exec_time;
 
   /*
-    The master's server id (is preserved in the relay log; used to
+    The primary's server id (is preserved in the relay log; used to
     prevent from infinite loops in circular replication).
   */
   uint32 server_id;
@@ -675,8 +675,8 @@ public:
   /*
     read_log_event() functions read an event from a binlog or relay
     log; used by SHOW BINLOG EVENTS, the binlog_dump thread on the
-    master (reads master's binlog), the slave IO thread (reads the
-    event sent by binlog_dump), the slave SQL thread (reads the event
+    primary (reads primary's binlog), the replica IO thread (reads the
+    event sent by binlog_dump), the replica SQL thread (reads the event
     from the relay log).  If mutex is 0, the read will proceed without
     mutex.  We need the description_event to be able to parse the
     event (to know the post-header's size); in fact in read_log_event
@@ -956,7 +956,7 @@ public:
            are wrapped with BEGIN/COMMIT. Such cases should be identified
            by the caller and treats correspondingly.
 
-           todo: to mts-support Old master Load-data related events
+           todo: to mts-support Old primary Load-data related events
   */
   bool is_mts_sequential_exec(bool is_scheduler_dbname)
   {
@@ -969,7 +969,7 @@ public:
       get_type_code() == binary_log::START_EVENT_V3          ||
       get_type_code() == binary_log::STOP_EVENT              ||
       get_type_code() == binary_log::ROTATE_EVENT            ||
-      get_type_code() == binary_log::SLAVE_EVENT             ||
+      get_type_code() == binary_log::REPLICA_EVENT             ||
       get_type_code() == binary_log::FORMAT_DESCRIPTION_EVENT||
       get_type_code() == binary_log::INCIDENT_EVENT;
   }
@@ -1009,7 +1009,7 @@ private:
      Coordinator concurrently with Workers and some to require synchronization
      with Workers (@c see wait_for_workers_to_finish) before to apply them.
 
-     @param slave_server_id   id of the server, extracted from event
+     @param replica_server_id   id of the server, extracted from event
      @param mts_in_group      the being group parsing status, true
                               means inside the group
      @param  is_scheduler_dbname
@@ -1021,12 +1021,12 @@ private:
      @retval EVENT_EXEC_SYNC      if event is executed by Coordinator
                                   with synchronization against the Workers
   */
-  enum enum_mts_event_exec_mode get_mts_execution_mode(ulong slave_server_id,
+  enum enum_mts_event_exec_mode get_mts_execution_mode(ulong replica_server_id,
                                                        bool mts_in_group,
                                                        bool is_dbname_type)
   {
     /*
-      Slave workers are unable to handle Format_description_log_event,
+      Replica workers are unable to handle Format_description_log_event,
       Rotate_log_event and Previous_gtids_log_event correctly.
       However, when a transaction spans multiple relay logs, these
       events occur in the middle of a transaction. The way we handle
@@ -1034,7 +1034,7 @@ private:
       coordinator thread will handle the events without stopping the
       worker threads.
 
-      @todo Refactor this: make Log_event::get_slave_worker handle
+      @todo Refactor this: make Log_event::get_replica_worker handle
       transaction boundaries in a more robust way, so that it is able
       to process Format_description_log_event, Rotate_log_event, and
       Previous_gtids_log_event.  Then, when these events occur in the
@@ -1045,10 +1045,10 @@ private:
     if (
         /*
           When a Format_description_log_event occurs in the middle of
-          a transaction, it either has the slave's server_id, or has
+          a transaction, it either has the replica's server_id, or has
           end_log_pos==0.
 
-          @todo This does not work when master and slave have the same
+          @todo This does not work when primary and replica have the same
           server_id and replicate-same-server-id is enabled, since
           events that are not in the middle of a transaction will be
           executed in ASYNC mode in that case.
@@ -1057,18 +1057,18 @@ private:
          ((server_id == (uint32) ::server_id) || (common_header->log_pos == 0))) ||
         /*
           All Previous_gtids_log_events in the relay log are generated
-          by the slave. They don't have any meaning to the applier, so
+          by the replica. They don't have any meaning to the applier, so
           they can always be ignored by the applier. So we can process
           them asynchronously by the coordinator. It is also important
           to not feed them to workers because that confuses
-          get_slave_worker.
+          get_replica_worker.
         */
         (get_type_code() == binary_log::PREVIOUS_GTIDS_LOG_EVENT) ||
         /*
           Rotate_log_event can occur in the middle of a transaction.
           When this happens, either it is a Rotate event generated on
-          the slave which has the slave's server_id, or it is a Rotate
-          event that originates from a master but has end_log_pos==0.
+          the replica which has the replica's server_id, or it is a Rotate
+          event that originates from a primary but has end_log_pos==0.
         */
         (get_type_code() == binary_log::ROTATE_EVENT &&
          ((server_id == (uint32) ::server_id) ||
@@ -1085,7 +1085,7 @@ private:
              to be assigned worker;
              M is the max index of the worker pool.
   */
-  Slave_worker *get_slave_worker(Relay_log_info *rli);
+  Replica_worker *get_replica_worker(Relay_log_info *rli);
 
   /*
     Group of events can be marked to force its execution
@@ -1222,15 +1222,15 @@ public:
     return 0;                /* Default implementation does nothing */
   }
 
-  virtual int do_apply_event_worker(Slave_worker *w);
+  virtual int do_apply_event_worker(Replica_worker *w);
 
 protected:
 
   /**
-     Helper function to ignore an event w.r.t. the slave skip counter.
+     Helper function to ignore an event w.r.t. the replica skip counter.
 
      This function can be used inside do_shall_skip() for functions
-     that cannot end a group. If the slave skip counter is 1 when
+     that cannot end a group. If the replica skip counter is 1 when
      seeing such an event, the event shall be ignored, the counter
      left intact, and processing continue with the next event.
 
@@ -1282,7 +1282,7 @@ protected:
        server and <code>rli->replicate_same_server_id</code> is true,
        or
 
-     - if <code>rli->slave_skip_counter</code> is greater than zero.
+     - if <code>rli->replica_skip_counter</code> is greater than zero.
 
      @see do_apply_event
      @see do_update_pos
@@ -1291,13 +1291,13 @@ protected:
      The event shall not be skipped and should be applied.
 
      @retval Log_event::EVENT_SKIP_IGNORE
-     The event shall be skipped by just ignoring it, i.e., the slave
+     The event shall be skipped by just ignoring it, i.e., the replica
      skip counter shall not be changed. This happends if, for example,
      the originating server id of the event is the same as the server
-     id of the slave.
+     id of the replica.
 
      @retval Log_event::EVENT_SKIP_COUNT
-     The event shall be skipped because the slave skip counter was
+     The event shall be skipped because the replica skip counter was
      non-zero. The caller shall decrease the counter by one.
    */
   virtual enum_skip_reason do_shall_skip(Relay_log_info *rli);
@@ -1308,22 +1308,22 @@ protected:
 /*
    One class for each type of event.
    Two constructors for each class:
-   - one to create the event for logging (when the server acts as a master),
+   - one to create the event for logging (when the server acts as a primary),
    called after an update to the database is done,
    which accepts parameters like the query, the database, the options for LOAD
    DATA INFILE...
-   - one to create the event from a packet (when the server acts as a slave),
+   - one to create the event from a packet (when the server acts as a replica),
    called before reproducing the update, which accepts parameters (like a
-   buffer). Used to read from the master, from the relay log, and in
+   buffer). Used to read from the primary, from the relay log, and in
    mysqlbinlog. This constructor must be format-tolerant.
 */
 
 /**
   A @Query event is written to the binary log whenever the database is
-  modified on the master, unless row based logging is used.
+  modified on the primary, unless row based logging is used.
 
   Query_log_event is created for logging, and is called after an update to the
-  database is done. It is used when the server acts as the master.
+  database is done. It is used when the server acts as the primary.
 
   Virtual inheritance is required here to handle the diamond problem in
   the class Execute_load_query_log_event.
@@ -1352,10 +1352,10 @@ public:
   /*
     For events created by Query_log_event::do_apply_event (and
     Load_log_event::do_apply_event()) we need the *original* thread
-    id, to be able to log the event with the original (=master's)
+    id, to be able to log the event with the original (=primary's)
     thread id (fix for BUG#1686).
   */
-  my_thread_id slave_proxy_id;
+  my_thread_id replica_proxy_id;
 
 #ifdef MYSQL_SERVER
 
@@ -1450,7 +1450,7 @@ public:        /* !!! Public in this patch to allow old usage */
                      size_t q_len_arg);
 #endif /* HAVE_REPLICATION */
   /*
-    If true, the event always be applied by slave SQL thread or be printed by
+    If true, the event always be applied by replica SQL thread or be printed by
     mysqlbinlog
    */
   bool is_trans_keyword()
@@ -1475,7 +1475,7 @@ public:        /* !!! Public in this patch to allow old usage */
   /**
      Notice, DDL queries are logged without BEGIN/COMMIT parentheses
      and identification of such single-query group
-     occures within logics of @c get_slave_worker().
+     occures within logics of @c get_replica_worker().
   */
 
   bool starts_group()
@@ -1509,7 +1509,7 @@ public:        /* !!! Public in this patch to allow old usage */
 
   This log event corresponds to a "LOAD DATA INFILE" SQL query.
   it is a subclass of Rotate_event, defined in binlogevent, and is used
-  by the slave to execute the LOAD DATA INFILE query, as a series of events.
+  by the replica to execute the LOAD DATA INFILE query, as a series of events.
 
   This event type is understood by current versions, but only
   generated by MySQL 3.23 and earlier.
@@ -1609,7 +1609,7 @@ public:        /* !!! Public in this patch to allow old usage */
 #if defined(MYSQL_SERVER) && defined(HAVE_REPLICATION)
   virtual int do_apply_event(Relay_log_info const* rli)
   {
-    return do_apply_event(thd->slave_net,rli,0);
+    return do_apply_event(thd->replica_net,rli,0);
   }
 
   int do_apply_event(NET *net, Relay_log_info const *rli,
@@ -1673,7 +1673,7 @@ protected:
   {
     /*
       Events from ourself should be skipped, but they should not
-      decrease the slave skip counter.
+      decrease the replica skip counter.
      */
     if (this->server_id == ::server_id)
       return Log_event::EVENT_SKIP_IGNORE;
@@ -1771,7 +1771,7 @@ protected:
   defined in the header binlog_event.h. An Intvar_log_event is
   created just before a Query_log_event, if the query uses one
   of the variables LAST_INSERT_ID or INSERT_ID. This class is used
-  by the slave for applying the event.
+  by the replica for applying the event.
 
   @internal
   The inheritance structure in the current design for the classes is
@@ -1895,7 +1895,7 @@ private:
   An XID event is generated for a commit of a transaction that modifies one or
   more tables of an XA-capable storage engine
   Logs xid of the transaction-to-be-committed in the 2pc protocol.
-  Has no meaning in replication, slaves ignore it
+  Has no meaning in replication, replicas ignore it
   The inheritance structure in the current design for the classes is
   as follows
 
@@ -1939,7 +1939,7 @@ protected:
 #if defined(HAVE_REPLICATION) && !defined(MYSQL_CLIENT)
   virtual enum_skip_reason do_shall_skip(Relay_log_info *rli);
   virtual int do_apply_event(Relay_log_info const *rli);
-  virtual int do_apply_event_worker(Slave_worker *rli);
+  virtual int do_apply_event_worker(Replica_worker *rli);
   virtual bool do_commit(THD *thd_arg)= 0;
 #endif
 };
@@ -2137,7 +2137,7 @@ private:
   {
     /*
       Events from ourself should be skipped, but they should not
-      decrease the slave skip counter.
+      decrease the replica skip counter.
      */
     if (this->server_id == ::server_id)
       return Log_event::EVENT_SKIP_IGNORE;
@@ -2152,9 +2152,9 @@ private:
 
   This will be deprecated when we move to using sequence ids.
   This class is a subclass of Rotate_event, defined in binlogevent, and is used
-  by the slave for updating the position in the relay log.
+  by the replica for updating the position in the relay log.
 
-  It is used by the master inorder to write the rotate event in the binary log.
+  It is used by the primary inorder to write the rotate event in the binary log.
 
   @internal
   The inheritance structure in the current design for the classes is
@@ -2211,7 +2211,7 @@ private:
   This was a design flaw since the file cannot be loaded until the
   Exec_load_event is seen. The use of this event was deprecated from
   MySQL server version 5.0.3 and above.
-  To work around this, the slave, when executing the Create_file_log_event,
+  To work around this, the replica, when executing the Create_file_log_event,
   writes the Create_file_log_event to a temporary file.
 
   @internal
@@ -2274,7 +2274,7 @@ public:
   bool write_data_body(IO_CACHE* file);
   /*
     Cut out Create_file extentions and
-    write it as Load event - used on the slave
+    write it as Load event - used on the replica
   */
   bool write_base(IO_CACHE* file);
 #endif
@@ -2348,10 +2348,10 @@ private:
   @class Delete_file_log_event
 
   Delete_file_log_event is created when the LOAD_DATA query fails on the
-  master for some reason, and the slave should be notified to abort the
-  load. The event is required since the master starts writing the loaded
+  primary for some reason, and the replica should be notified to abort the
+  load. The event is required since the primary starts writing the loaded
   block into the binary log before the statement ends. In case of error,
-  the slave should abort, and delete any temporary file created while
+  the replica should abort, and delete any temporary file created while
   applying the (NEW_)LOAD_EVENT.
 
   @internal
@@ -2408,7 +2408,7 @@ private:
   @class Execute_load_log_event
 
   Execute_load_log_event is created when the LOAD_DATA query succeeds on
-  the master, The slave should be notified to load the temporary file into
+  the primary, The replica should be notified to load the temporary file into
   the table. For server versions > 5.0.3, the temporary files that stores
   the parameters to LOAD DATA INFILE is not needed anymore, since they are
   stored in this event. There is still a temp file containing all the data
@@ -2983,7 +2983,7 @@ protected:
      Hash table that will hold the entries for while using HASH_SCAN
      algorithm to search and update/delete rows.
    */
-  Hash_slave_rows m_hash;
+  Hash_replica_rows m_hash;
 
   /**
      The algorithm to use while searching for rows using the before
@@ -2996,11 +2996,11 @@ protected:
     fields are only available for Update_rows events. Observe that the
     width of both the before image COLS vector and the after image
     COLS vector is the same: the number of columns of the table on the
-    master.
+    primary.
   */
   MY_BITMAP   m_cols_ai;
 
-  ulong       m_master_reclength; /* Length of record on master side */
+  ulong       m_primary_reclength; /* Length of record on primary side */
 
   /* Bit buffers in the same memory as the class */
   uint32    m_bitbuf[128/(sizeof(uint32)*8)];
@@ -3063,12 +3063,12 @@ private:
 
     ASSERT_OR_RETURN_ERROR(m_curr_row <= m_rows_end, HA_ERR_CORRUPT_EVENT);
     return ::unpack_row(rli, m_table, m_width, m_curr_row, cols,
-                                   &m_curr_row_end, &m_master_reclength, m_rows_end);
+                                   &m_curr_row_end, &m_primary_reclength, m_rows_end);
   }
 
   /*
     This member function is called when deciding the algorithm to be used to
-    find the rows to be updated on the slave during row based replication.
+    find the rows to be updated on the replica during row based replication.
     This this functions sets the m_rows_lookup_algorithm and also the
     m_key_index with the key index to be used if the algorithm is dependent on
     an index.
@@ -3126,7 +3126,7 @@ private:
       error code otherwise.
   */
   virtual
-  int do_before_row_operations(const Slave_reporting_capability *const log) = 0;
+  int do_before_row_operations(const Replica_reporting_capability *const log) = 0;
 
   /*
     Primitive to clean up after a sequence of row executions.
@@ -3142,7 +3142,7 @@ private:
       function is successful, it should return the error code given in the argument.
   */
   virtual
-  int do_after_row_operations(const Slave_reporting_capability *const log,
+  int do_after_row_operations(const Replica_reporting_capability *const log,
                               int error) = 0;
 
   /*
@@ -3165,7 +3165,7 @@ private:
 
     @param err[IN/OUT] the error to handle. If it is listed as
                        idempotent/ignored related error, then it is cleared.
-    @returns true if the slave should stop executing rows.
+    @returns true if the replica should stop executing rows.
    */
   int handle_idempotent_and_ignored_errors(Relay_log_info const *rli, int *err);
 
@@ -3354,8 +3354,8 @@ private:
 #endif
 
 #if defined(MYSQL_SERVER) && defined(HAVE_REPLICATION)
-  virtual int do_before_row_operations(const Slave_reporting_capability *const);
-  virtual int do_after_row_operations(const Slave_reporting_capability *const,int);
+  virtual int do_before_row_operations(const Replica_reporting_capability *const);
+  virtual int do_after_row_operations(const Replica_reporting_capability *const,int);
   virtual int do_exec_row(const Relay_log_info *const);
 #endif
 };
@@ -3454,8 +3454,8 @@ protected:
 #endif
 
 #if defined(MYSQL_SERVER) && defined(HAVE_REPLICATION)
-  virtual int do_before_row_operations(const Slave_reporting_capability *const);
-  virtual int do_after_row_operations(const Slave_reporting_capability *const,int);
+  virtual int do_before_row_operations(const Replica_reporting_capability *const);
+  virtual int do_after_row_operations(const Replica_reporting_capability *const,int);
   virtual int do_exec_row(const Relay_log_info *const);
 #endif /* defined(MYSQL_SERVER) && defined(HAVE_REPLICATION) */
 };
@@ -3468,8 +3468,8 @@ protected:
 
   RESPONSIBILITIES
 
-    - Act as a container for rows that has been deleted on the master
-      and should be deleted on the slave.
+    - Act as a container for rows that has been deleted on the primary
+      and should be deleted on the replica.
 
   COLLABORATION
 
@@ -3548,8 +3548,8 @@ protected:
 #endif
 
 #if defined(MYSQL_SERVER) && defined(HAVE_REPLICATION)
-  virtual int do_before_row_operations(const Slave_reporting_capability *const);
-  virtual int do_after_row_operations(const Slave_reporting_capability *const,int);
+  virtual int do_before_row_operations(const Replica_reporting_capability *const);
+  virtual int do_after_row_operations(const Replica_reporting_capability *const,int);
   virtual int do_exec_row(const Relay_log_info *const);
 #endif
 };
@@ -3561,10 +3561,10 @@ protected:
   @class Incident_log_event
 
    Class representing an incident, an occurance out of the ordinary,
-   that happened on the master.
+   that happened on the primary.
 
-   The event is used to inform the slave that something out of the
-   ordinary happened on the master that might cause the database to be
+   The event is used to inform the replica that something out of the
+   ordinary happened on the primary that might cause the database to be
    in an inconsistent state.
    Its the derived class of Incident_event
 
@@ -3669,7 +3669,7 @@ private:
 
   Base class for ignorable log events is Ignorable_event.
   Events deriving from this class can be safely ignored
-  by slaves that cannot recognize them.
+  by replicas that cannot recognize them.
 
   Its the derived class of Ignorable_event
 
@@ -3816,8 +3816,8 @@ static inline bool copy_event_cache_to_file_and_reinit(IO_CACHE *cache,
 
   Heartbeat Log Event class
 
-  The class is not logged to a binary log, and is not applied on to the slave.
-  The decoding of the event on the slave side is done by its superclass,
+  The class is not logged to a binary log, and is not applied on to the replica.
+  The decoding of the event on the replica side is done by its superclass,
   binary_log::Heartbeat_event.
 
  ****************************************************************************/
@@ -3829,12 +3829,12 @@ public:
 };
 
 /**
-   The function is called by slave applier in case there are
+   The function is called by replica applier in case there are
    active table filtering rules to force gathering events associated
    with Query-log-event into an array to execute
    them once the fate of the Query is determined for execution.
 */
-bool slave_execute_deferred_events(THD *thd);
+bool replica_execute_deferred_events(THD *thd);
 #endif
 
 int append_query_string(THD *thd, const CHARSET_INFO *csinfo,
@@ -4126,9 +4126,9 @@ public:
   /*
     Previous Gtid Log events should always be skipped
     there is nothing to apply there, whether it is
-    relay log's (generated on Slave) or it is binary log's
-    (generated on Master, copied to slave as relay log).
-    Also, we should not increment slave_skip_counter
+    relay log's (generated on Replica) or it is binary log's
+    (generated on Primary, copied to replica as relay log).
+    Also, we should not increment replica_skip_counter
     for this event, hence return EVENT_SKIP_IGNORE.
    */
   enum_skip_reason do_shall_skip(Relay_log_info *rli)

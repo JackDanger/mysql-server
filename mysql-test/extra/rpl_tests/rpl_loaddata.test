@@ -1,18 +1,18 @@
 # See if replication of a "LOAD DATA in an autoincrement column"
 # Honours autoincrement values
-# i.e. if the master and slave have the same sequence
+# i.e. if the primary and replica have the same sequence
 #
 # check replication of load data for temporary tables with additional
 # parameters
 #
 # check if duplicate entries trigger an error (they should unless IGNORE or
-# REPLACE was used on the master) (bug 571).
+# REPLACE was used on the primary) (bug 571).
 #
-# check if START SLAVE, RESET SLAVE, CHANGE MASTER reset Last_slave_error and
-# Last_slave_errno in SHOW SLAVE STATUS (1st and 3rd commands did not: bug 986)
+# check if START REPLICA, RESET REPLICA, CHANGE PRIMARY reset Last_replica_error and
+# Last_replica_errno in SHOW REPLICA STATUS (1st and 3rd commands did not: bug 986)
 
 -- source include/have_binlog_format_statement.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 source include/have_innodb.inc;
 source include/have_myisam.inc;
 
@@ -46,94 +46,94 @@ create table t3 (day date,id int(9),category enum('a','b','c'),name varchar(60))
 insert into t3 select * from t2;
 --enable_warnings
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 select * from t1;
 select * from t3;
 
-connection master;
+connection primary;
 
 drop table t1;
 drop table t2;
 drop table t3;
 create table t1(a int, b int, unique(b));
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# See if slave stops when there's a duplicate entry for key error in LOAD DATA
+# See if replica stops when there's a duplicate entry for key error in LOAD DATA
 
 insert into t1 values(1,10);
 
-connection master;
+connection primary;
 eval $lower_stmt_head infile '../../std_data/rpl_loaddata.dat' into table t1;
 
-save_master_pos;
-connection slave;
+save_primary_pos;
+connection replica;
 # 1062 = ER_DUP_ENTRY
 --let $er_inconsistent_error= convert_error(ER_INCONSISTENT_ERROR)
-call mtr.add_suppression("Slave SQL.*Error .Duplicate entry .10. for key .b.. on query.* Error_code: 1062");
---eval call mtr.add_suppression("Slave SQL.*Query caused different errors on master and slave.*Error on master:.*error code=1062.*Error on slave:.*Error_code: $er_inconsistent_error")
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
---let $slave_sql_errno= 1062
---source include/wait_for_slave_sql_error_and_skip.inc
+call mtr.add_suppression("Replica SQL.*Error .Duplicate entry .10. for key .b.. on query.* Error_code: 1062");
+--eval call mtr.add_suppression("Replica SQL.*Query caused different errors on primary and replica.*Error on primary:.*error code=1062.*Error on replica:.*Error_code: $er_inconsistent_error")
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+--let $replica_sql_errno= 1062
+--source include/wait_for_replica_sql_error_and_skip.inc
 
-# Skip the bad event and see if error is cleared in SHOW SLAVE STATUS by START
-# SLAVE, even though we are not executing any event (as sql_slave_skip_counter
+# Skip the bad event and see if error is cleared in SHOW REPLICA STATUS by START
+# REPLICA, even though we are not executing any event (as sql_replica_skip_counter
 # takes us directly to the end of the relay log).
 
-sync_with_master;
---source include/check_slave_no_error.inc
+sync_with_primary;
+--source include/check_replica_no_error.inc
 
-# Trigger error again to test CHANGE MASTER
+# Trigger error again to test CHANGE PRIMARY
 
-connection master;
+connection primary;
 set sql_log_bin=0;
 delete from t1;
 set sql_log_bin=1;
 eval $lower_stmt_head infile '../../std_data/rpl_loaddata.dat' into table t1;
-save_master_pos;
-connection slave;
-# The SQL slave thread should be stopped now. 
-# Exec_Master_Log_Pos should point to the start of Execute event
+save_primary_pos;
+connection replica;
+# The SQL replica thread should be stopped now. 
+# Exec_Primary_Log_Pos should point to the start of Execute event
 # for last load data.
 # 1062 = ER_DUP_ENTRY
---let $slave_sql_errno= 1062
---source include/wait_for_slave_sql_error.inc
+--let $replica_sql_errno= 1062
+--source include/wait_for_replica_sql_error.inc
 
-# CHANGE MASTER and see if error is cleared in SHOW SLAVE STATUS.
---source include/stop_slave_io.inc
+# CHANGE PRIMARY and see if error is cleared in SHOW REPLICA STATUS.
+--source include/stop_replica_io.inc
 --replace_column 2 ####
-change master to master_user='test';
+change primary to primary_user='test';
 --replace_column 2 ####
-change master to master_user='root';
---source include/check_slave_no_error.inc
+change primary to primary_user='root';
+--source include/check_replica_no_error.inc
 
-# Trigger error again to test RESET SLAVE
+# Trigger error again to test RESET REPLICA
 
-set global sql_slave_skip_counter=1;
-start slave;
-sync_with_master;
-connection master;
+set global sql_replica_skip_counter=1;
+start replica;
+sync_with_primary;
+connection primary;
 set sql_log_bin=0;
 delete from t1;
 set sql_log_bin=1;
 eval $lower_stmt_head infile '../../std_data/rpl_loaddata.dat' into table t1;
-save_master_pos;
-connection slave;
-# The SQL slave thread should be stopped now.
+save_primary_pos;
+connection replica;
+# The SQL replica thread should be stopped now.
 # 1062 = ER_DUP_ENTRY
---let $slave_sql_errno= 1062
---source include/wait_for_slave_sql_error.inc
+--let $replica_sql_errno= 1062
+--source include/wait_for_replica_sql_error.inc
 
-# RESET SLAVE and see if error is cleared in SHOW SLAVE STATUS.
-stop slave;
-reset slave;
---source include/check_slave_no_error.inc
+# RESET REPLICA and see if error is cleared in SHOW REPLICA STATUS.
+stop replica;
+reset replica;
+--source include/check_replica_no_error.inc
 
-# Finally, see if logging is done ok on master for a failing LOAD DATA INFILE
+# Finally, see if logging is done ok on primary for a failing LOAD DATA INFILE
 
-connection master;
-reset master;
+connection primary;
+reset primary;
 eval create table t2 (day date,id int(9),category enum('a','b','c'),name varchar(60),
 unique(day)) engine=$engine_type; # no transactions
 --error ER_DUP_ENTRY
@@ -141,35 +141,35 @@ eval $lower_stmt_head infile '../../std_data/rpl_loaddata2.dat' into table t2 fi
 terminated by ',' optionally enclosed by '%' escaped by '@' lines terminated by
 '\n##\n' starting by '>' ignore 1 lines;
 select * from t2;
-save_master_pos;
-connection slave;
-start slave;
-sync_with_master;
+save_primary_pos;
+connection replica;
+start replica;
+sync_with_primary;
 select * from t2;
 
-# verify that if no error on slave, this is an error
+# verify that if no error on replica, this is an error
 
 alter table t2 drop key day;
-connection master;
+connection primary;
 delete from t2;
 --error ER_DUP_ENTRY
 eval $lower_stmt_head infile '../../std_data/rpl_loaddata2.dat' into table t2 fields
 terminated by ',' optionally enclosed by '%' escaped by '@' lines terminated by
 '\n##\n' starting by '>' ignore 1 lines;
-connection slave;
+connection replica;
 
 if (`SELECT @@global.binlog_format != 'ROW'`)
 {
-  # Query causes error on master but not on slave. This causes the slave to
+  # Query causes error on primary but not on replica. This causes the replica to
   # stop with error code 0 (which is wrong: see BUG#57287)
   # A new error code ER_INCONSISTENT_ERROR has been introduced instead of 0. 
   --let $er_mts_inconsistent_data= convert_error(ER_MTS_INCONSISTENT_DATA)
-  --let $slave_sql_errno= $er_mts_inconsistent_data,$er_inconsistent_error
-  --source include/wait_for_slave_sql_error.inc
+  --let $replica_sql_errno= $er_mts_inconsistent_data,$er_inconsistent_error
+  --source include/wait_for_replica_sql_error.inc
   drop table t1, t2;
 }
 
-connection master;
+connection primary;
 drop table t1, t2;
 
 # BUG#17233 LOAD DATA INFILE: failure causes mysqld dbug_assert, binlog not flushed
@@ -188,7 +188,7 @@ DROP TABLE t1;
 -- let $db1= b48297_db1
 -- let $db2= b42897_db2
  
--- connection master
+-- connection primary
 
 -- disable_warnings
 -- eval drop database if exists $db1
@@ -237,34 +237,34 @@ connect (conn2,localhost,root,,*NO-ONE*);
 -- let $table= $db1.t1
 --source include/wait_until_rows_count.inc
 
--- echo ### disconnect and switch back to master connection
+-- echo ### disconnect and switch back to primary connection
 -- disconnect conn2
--- connection master
+-- connection primary
 
--- source include/sync_slave_sql_with_master.inc
+-- source include/sync_replica_sql_with_primary.inc
 -- eval use $db1
 
-let $diff_tables= master:$db1.t1, slave:$db1.t1;
+let $diff_tables= primary:$db1.t1, replica:$db1.t1;
 source include/diff_tables.inc;
 
--- connection master
+-- connection primary
 
 -- eval DROP DATABASE $db1
 -- eval DROP DATABASE $db2
 
--- source include/sync_slave_sql_with_master.inc
+-- source include/sync_replica_sql_with_primary.inc
 
 # BUG#49479: LOAD DATA INFILE is binlogged without escaping field names
 -- source include/rpl_reset.inc
--- connection master
+-- connection primary
 use test;
 CREATE TABLE t1 (`key` TEXT, `text` TEXT);
 
 LOAD DATA INFILE '../../std_data/loaddata2.dat' REPLACE INTO TABLE `t1` FIELDS TERMINATED BY ',';
 SELECT * FROM t1;
 
--- source include/sync_slave_sql_with_master.inc
--- connection master
+-- source include/sync_replica_sql_with_primary.inc
+-- connection primary
 DROP TABLE t1;
 
 --source include/rpl_end.inc

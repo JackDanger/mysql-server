@@ -2,9 +2,9 @@
 -- source include/have_binlog_format_row.inc
 -- source include/no_valgrind_without_big.inc
 #
-# Reset master to cleanup binlog
+# Reset primary to cleanup binlog
 #
-reset master;
+reset primary;
 
 #
 #  Write different events to binlog
@@ -23,7 +23,7 @@ load data infile '../../std_data/words.dat' into table t2;
 #  Save binlog
 #
 let $MYSQLD_DATADIR=`select @@datadir`;
-let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 flush logs;
 --exec $MYSQL_BINLOG --hexdump $MYSQLD_DATADIR/$binlog_file > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_base64.sql
 
@@ -32,7 +32,7 @@ flush logs;
 #
 drop table t1;
 drop table t2;
-RESET MASTER;
+RESET PRIMARY;
 --exec $MYSQL test < $MYSQLTEST_VARDIR/tmp/mysqlbinlog_base64.sql
 
 #
@@ -60,10 +60,10 @@ insert into t2 select * from t2;
 insert into t2 select * from t2;
 select count(*) from t2;
 
-let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1);
+let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1);
 flush logs;
 --exec $MYSQL_BINLOG --hexdump $MYSQLD_DATADIR/$binlog_file > $MYSQLTEST_VARDIR/tmp/mysqlbinlog_base64.sql
-RESET MASTER;
+RESET PRIMARY;
 --exec $MYSQL test < $MYSQLTEST_VARDIR/tmp/mysqlbinlog_base64.sql
 
 #
@@ -86,13 +86,13 @@ drop table t2;
 # does not contain any FD event.
 #
 
-RESET MASTER;
+RESET PRIMARY;
 USE test;
 SET @old_binlog_format= @@binlog_format;
 SET SESSION binlog_format=ROW;
 CREATE TABLE t1(c1 INT);
---let $master_binlog= query_get_value(SHOW MASTER STATUS, File, 1)
---let $master_pos= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $primary_binlog= query_get_value(SHOW PRIMARY STATUS, File, 1)
+--let $primary_pos= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 --let $MYSQLD_DATADIR= `SELECT @@datadir`
 
 INSERT INTO t1 VALUES (1);
@@ -100,9 +100,9 @@ INSERT INTO t1 VALUES (1);
 FLUSH LOGS;
 
 --disable_result_log 
---exec $MYSQL_BINLOG --base64-output=DECODE-ROWS --start-position=$master_pos -v $MYSQLD_DATADIR/$master_binlog
+--exec $MYSQL_BINLOG --base64-output=DECODE-ROWS --start-position=$primary_pos -v $MYSQLD_DATADIR/$primary_binlog
 --enable_result_log 
 
 DROP TABLE t1;
 SET SESSION binlog_format= @old_binlog_format;
-RESET MASTER;
+RESET PRIMARY;

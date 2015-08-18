@@ -19,7 +19,7 @@
 #    has no side-effects but returns a value that may be
 #    nondeterministic.  An example is a function that returns UUID().
 #    The function does not have side effects but its a return value
-#    that may differ on slave.  Such statements are invoked so that
+#    that may differ on replica.  Such statements are invoked so that
 #    the return value is discarded (e.g., SELECT func()), with
 #    SQL_LOG_BIN = 1 and binlog_format = STATEMENT.  In this case, no
 #    warning should be given and nothing should be written to the
@@ -337,7 +337,7 @@ if ($CRC_RET_stmt_sidef) {
 
   --echo * SQL_LOG_BIN = 0: expect nothing logged and only deprecation warnings.
   SET SQL_LOG_BIN = 0;
-  RESET MASTER;
+  RESET PRIMARY;
   --eval $CRC_RET_stmt_sidef
 
   --let $n_warnings= `SHOW COUNT(*) WARNINGS`
@@ -352,7 +352,7 @@ if ($CRC_RET_stmt_sidef) {
 
   --echo * binlog_format = MIXED: expect row events in binlog and no warning.
   SET binlog_format = MIXED;
-  RESET MASTER;
+  RESET PRIMARY;
   --eval $CRC_RET_stmt_sidef
   --let $n_warnings= `SHOW COUNT(*) WARNINGS`
   if ($n_warnings != $CRC_expected_number_of_warnings_after_reset) {

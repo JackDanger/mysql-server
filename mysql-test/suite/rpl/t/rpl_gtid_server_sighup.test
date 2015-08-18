@@ -18,11 +18,11 @@
 # 5) Restart the server to see the processing of the new log is not an issue.
 # 6) Verify that Replication works fine at the end of the scenario
 
-# Execute the same steps on both Master and Slave do prove that
+# Execute the same steps on both Primary and Replica do prove that
 #   a) no problem in binary log rotation (i.e., prev_gtids_event exists)
 #   b) no problem in relay log rotation (i.e., prev_gtids event exists)
-#   c) no problem in restarting master
-#   d) no problem in restarting slave
+#   c) no problem in restarting primary
+#   d) no problem in restarting replica
 #   e) Replication works fine after receiving SIGHUP.
 ###############################################################################
 
@@ -34,12 +34,12 @@
 
 # Testing SIGHUP behaviour with one mode is enough
 --source include/have_binlog_format_statement.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 CREATE TABLE pid_table(pid_no INT);
 
 
 # Execute above mentioned steps in two iterations
-# Iteration 1 : Master and Iteration 2: Slave
+# Iteration 1 : Primary and Iteration 2: Replica
 --let $_rpl_server= 1
 while ($_rpl_server <= 2)
 {
@@ -51,14 +51,14 @@ while ($_rpl_server <= 2)
   # Step1: Get server pid
   --let $server_pid=`SELECT pid_no FROM pid_table`
 
-  # Get current master binlog name
+  # Get current primary binlog name
   if ($_rpl_server == 1)
   {
-    --let $before_sighup_log_name=query_get_value(SHOW MASTER STATUS, File, 1)
+    --let $before_sighup_log_name=query_get_value(SHOW PRIMARY STATUS, File, 1)
   }
   if ($_rpl_server == 2)
   {
-    --let $before_sighup_log_name=query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1)
+    --let $before_sighup_log_name=query_get_value(SHOW REPLICA STATUS, Relay_Log_File, 1)
   }
 
   # Step2: send SIGHUP(signal 1) to server which will rotate bin(relay)log
@@ -68,12 +68,12 @@ while ($_rpl_server <= 2)
   # (i.e., completes rotation of binary/relay log) after receiving SIGHUP signal.
   if ($_rpl_server == 1)
   {
-    --let $show_statement=SHOW MASTER STATUS
+    --let $show_statement=SHOW PRIMARY STATUS
     --let $field=File
   }
   if ($_rpl_server == 2)
   {
-    --let $show_statement=SHOW SLAVE STATUS
+    --let $show_statement=SHOW REPLICA STATUS
     --let $field=Relay_Log_File
   }
   --let $condition= <> '$before_sighup_log_name'
@@ -86,7 +86,7 @@ while ($_rpl_server <= 2)
     --source include/rpl_connection.inc
   }
   DELETE FROM pid_table;
-  --source include/sync_slave_sql_with_master.inc
+  --source include/sync_replica_sql_with_primary.inc
   if ($_rpl_server == 1)
   {
     --let $rpl_connection_name= server_1
@@ -111,16 +111,16 @@ while ($_rpl_server <= 2)
   --source include/rpl_start_server.inc
   if ($_rpl_server == 2)
   {
-    --source include/rpl_start_slaves.inc
+    --source include/rpl_start_replicas.inc
   }
   if ($_rpl_server == 1)
   {
-    # We must be sure that the IO thread has connected again with the master
+    # We must be sure that the IO thread has connected again with the primary
     # that has just restarted, or else the results of the test case may vary.
     # As no new GTID was generated since last sync, we will force the use of
     # positions on the sync.
     --let $ignore_gtids_on_sync= 1
-    --source include/sync_slave_sql_with_master.inc
+    --source include/sync_replica_sql_with_primary.inc
     --let $ignore_gtids_on_sync= 0
   }
   --inc $_rpl_server
@@ -130,6 +130,6 @@ while ($_rpl_server <= 2)
 --let $rpl_connection_name= server_1
 --source include/rpl_connection.inc
 DROP TABLE pid_table;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

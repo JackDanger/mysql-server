@@ -1,20 +1,20 @@
 #multi delete replication bugs 
 --source include/not_group_replication_plugin.inc
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 #BUG#11139 - improper wild-table and table rules
 #checking for multi deletes with an alias
 
-connection master;
+connection primary;
 set sql_log_bin=0;
 create database mysqltest_from;
 set sql_log_bin=1;
 
-connection slave;
+connection replica;
 create database mysqltest_to;
 
 
-connection master;
+connection primary;
 use mysqltest_from;
 --disable_warnings
 drop table if exists a;
@@ -26,13 +26,13 @@ SELECT * FROM a;
 insert into a values(2),(3);
 delete alias FROM a alias where alias.i=2;
 select * from a;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 use mysqltest_to;
 select * from a;
 
 # BUG#3461
-connection master;
+connection primary;
 create table t1 (a int primary key);
 create table t2 (a int);
 
@@ -41,24 +41,24 @@ insert into t2 values (1);
 
 delete t1.* from t1, t2 where t1.a = t2.a;
 
-save_master_pos;
+save_primary_pos;
 select * from t1;
 select * from t2;
 
-connection slave;
+connection replica;
 # BUG#3461 would cause sync to fail
-sync_with_master;
+sync_with_primary;
 error 1146;
 select * from t1;
 error 1146;
 select * from t2;
 
 # cleanup
-connection master;
+connection primary;
 set sql_log_bin=0;
 drop database mysqltest_from;
 set sql_log_bin=1;
-connection slave;
+connection replica;
 drop database mysqltest_to;
 
 # End of 4.1 tests

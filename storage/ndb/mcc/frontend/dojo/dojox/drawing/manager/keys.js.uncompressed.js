@@ -15,7 +15,7 @@ dojo.provide("dojox.drawing.manager.keys");
 	
 	dojox.drawing.manager.keys = {
 		// summary:
-		//		A singleton, master object that detects
+		//		A singleton, primary object that detects
 		//		keyboard keys and events
 		// 		Connect to it like:
 		//		dojo.connect(this.keys, "onEnter", ....);

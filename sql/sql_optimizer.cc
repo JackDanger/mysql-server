@@ -1366,7 +1366,7 @@ static Item_func_match *test_if_ft_index_order(ORDER *order)
       order->direction == ORDER::ORDER_DESC &&
       (*order->item)->type() == Item::FUNC_ITEM &&
       ((Item_func*) (*order->item))->functype() == Item_func::FT_FUNC)   
-    return static_cast<Item_func_match*> (*order->item)->get_master();
+    return static_cast<Item_func_match*> (*order->item)->get_primary();
 
   return NULL;
 }
@@ -1856,8 +1856,8 @@ test_if_skip_sort_order(JOIN_TAB *tab, ORDER *order, ha_rows select_limit,
                select_limit != HA_POS_ERROR &&
                select_limit <= ft_func->get_count())
       {
-        /* test_if_ft_index_order() always returns master MATCH function. */
-        DBUG_ASSERT(!ft_func->master);
+        /* test_if_ft_index_order() always returns primary MATCH function. */
+        DBUG_ASSERT(!ft_func->primary);
         /* ref is not set since there is no WHERE condition */
         DBUG_ASSERT(tab->ref().key == -1);
 
@@ -7432,7 +7432,7 @@ add_ft_keys(Key_use_array *keyuse_array,
     double op_value= 0.0;
     if (functype == Item_func::FT_FUNC)
     {
-      cond_func= ((Item_func_match *) cond)->get_master();
+      cond_func= ((Item_func_match *) cond)->get_primary();
       cond_func->set_hints_op(op_type, op_value);
     }
     else if (func->arg_count == 2)
@@ -7447,7 +7447,7 @@ add_ft_keys(Key_use_array *keyuse_array,
            (functype == Item_func::GT_FUNC &&
             (op_value= arg1->val_real()) >=0)))
       {
-        cond_func= ((Item_func_match *) arg0)->get_master();
+        cond_func= ((Item_func_match *) arg0)->get_primary();
         if (functype == Item_func::GE_FUNC)
           op_type= FT_OP_GE;
         else if (functype == Item_func::GT_FUNC)
@@ -7462,7 +7462,7 @@ add_ft_keys(Key_use_array *keyuse_array,
                 (functype == Item_func::LT_FUNC &&
                  (op_value= arg0->val_real()) >=0)))
       {
-        cond_func= ((Item_func_match *) arg1)->get_master();
+        cond_func= ((Item_func_match *) arg1)->get_primary();
         if (functype == Item_func::LE_FUNC)
           op_type= FT_OP_GE;
         else if (functype == Item_func::LT_FUNC)
@@ -8924,7 +8924,7 @@ static bool make_join_select(JOIN *join, Item *cond)
     if (join->primary_tables > 1)
       cond->update_used_tables();    // Table number may have changed
     if (join->plan_is_const() &&
-        join->select_lex->master_unit() ==
+        join->select_lex->primary_unit() ==
         thd->lex->unit)             // The outer-most query block
       join->const_table_map|= RAND_TABLE_BIT;
   }
@@ -9106,7 +9106,7 @@ static bool make_join_select(JOIN *join, Item *cond)
           if (cond &&                                                // 1a
               (tab->keys() != tab->const_keys) &&                      // 1b
               (i > 0 ||                                              // 1c
-               (join->select_lex->master_unit()->item &&
+               (join->select_lex->primary_unit()->item &&
                 cond->used_tables() & OUTER_REF_TABLE_BIT)))
             recheck_reason= NOT_FIRST_TABLE;
           else if (!tab->const_keys.is_clear_all() &&                // 2a
@@ -10475,7 +10475,7 @@ bool JOIN::optimize_fts_query()
 
     while ((ifm= li++))
     {
-      if (!(ifm->used_tables() & tab->table_ref->map()) || ifm->master)
+      if (!(ifm->used_tables() & tab->table_ref->map()) || ifm->primary)
         continue;
 
       if (ifm != ft_func)
@@ -11039,7 +11039,7 @@ void JOIN::refine_best_rowcount()
     query block will not be evaluated during optimization.
   */
   if (best_rowcount <= 1 &&
-      select_lex->master_unit()->first_select()->linkage ==
+      select_lex->primary_unit()->first_select()->linkage ==
       DERIVED_TABLE_TYPE)
     best_rowcount= 2;
 

@@ -80,8 +80,8 @@ static const char* create_sql[] = {
 
 "create table repl ("
 "  id int auto_increment primary key,"
-"  master_id int not null,"
-"  slave_id int not null"
+"  primary_id int not null,"
+"  replica_id int not null"
 "  ) engine = myisam;",
 
 "create table command ("
@@ -451,24 +451,24 @@ static
 bool
 setup_repl(atrt_process* dst, atrt_process* src)
 {
-  if (!run_query(src, "STOP SLAVE"))
+  if (!run_query(src, "STOP REPLICA"))
   {
-    g_logger.error("Failed to stop slave: %s",
+    g_logger.error("Failed to stop replica: %s",
 		   mysql_error(&src->m_mysql));
     return false;
   }
 
-  if (!run_query(src, "RESET SLAVE"))
+  if (!run_query(src, "RESET REPLICA"))
   {
-    g_logger.error("Failed to reset slave: %s",
+    g_logger.error("Failed to reset replica: %s",
 		   mysql_error(&src->m_mysql));
     return false;
   }
   
   BaseString tmp;
-  tmp.assfmt("CHANGE MASTER TO   "
-	     " MASTER_HOST='%s', "
-	     " MASTER_PORT=%u    ",
+  tmp.assfmt("CHANGE PRIMARY TO   "
+	     " PRIMARY_HOST='%s', "
+	     " PRIMARY_PORT=%u    ",
 	     dst->m_host->m_hostname.c_str(),
 	     atoi(find(dst, "--port=")));
   
@@ -481,9 +481,9 @@ setup_repl(atrt_process* dst, atrt_process* src)
     return false;
   }
 
-  if (!run_query(src, "START SLAVE"))
+  if (!run_query(src, "START REPLICA"))
   {
-    g_logger.error("Failed to start slave: %s",
+    g_logger.error("Failed to start replica: %s",
 		   mysql_error(&src->m_mysql));
     return false;
   }

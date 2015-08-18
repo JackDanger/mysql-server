@@ -31,8 +31,8 @@
 #include "rpl_msr.h"
 #include "rpl_info.h" /*CHANNEL_NAME_LENGTH*/
 
-class Slave_worker;
-class Master_info;
+class Replica_worker;
+class Primary_info;
 
 /**
   @addtogroup Performance_schema_tables
@@ -57,7 +57,7 @@ struct st_row_worker {
   char channel_name[CHANNEL_NAME_LENGTH];
   uint channel_name_length;
   /*
-    worker_id is added to the table because thread is killed at STOP SLAVE
+    worker_id is added to the table because thread is killed at STOP REPLICA
     but the status needs to show up, so worker_id is used as a permanent
     identifier.
   */
@@ -68,7 +68,7 @@ struct st_row_worker {
   char last_seen_transaction[Gtid::MAX_TEXT_LENGTH+1];
   uint last_seen_transaction_length;
   uint last_error_number;
-  char last_error_message[MAX_SLAVE_ERRMSG];
+  char last_error_message[MAX_REPLICA_ERRMSG];
   uint last_error_message_length;
   ulonglong last_error_timestamp;
 };
@@ -105,7 +105,7 @@ struct workers_per_channel
 class table_replication_applier_status_by_worker: public PFS_engine_table
 {
 private:
-  void make_row(Slave_worker *);
+  void make_row(Replica_worker *);
 
   /** Table share lock. */
   static THR_LOCK m_table_lock;

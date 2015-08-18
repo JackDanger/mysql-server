@@ -73,16 +73,16 @@ SET @@collation_connection = @collation_connection_saved||
 -- Insert patterns that should always be suppressed
 --
 INSERT INTO global_suppressions VALUES
- (".SELECT UNIX_TIMESTAMP... failed on master"),
+ (".SELECT UNIX_TIMESTAMP... failed on primary"),
  ("Aborted connection"),
- ("Client requested master to start replication from position"),
+ ("Client requested primary to start replication from position"),
  ("Could not find first log file name in binary log"),
  ("Enabling keys got errno"),
- ("Error reading master configuration"),
+ ("Error reading primary configuration"),
  ("Error reading packet"),
  ("Event Scheduler"),
  ("Failed to open log"),
- ("Failed to open the existing master info file"),
+ ("Failed to open the existing primary info file"),
  ("Forcing shutdown of [0-9]* plugins"),
  ("Forcing close of thread"),
 
@@ -100,7 +100,7 @@ INSERT INTO global_suppressions VALUES
  ("InnoDB: Warning: we did not need to do crash recovery"),
  ("Invalid \\(old\\?\\) table or database name"),
  ("Lock wait timeout exceeded"),
- ("Log entry on master is longer than max_allowed_packet"),
+ ("Log entry on primary is longer than max_allowed_packet"),
  ("unknown option '--loose-"),
  ("unknown variable 'loose-"),
  ("You have forced lower_case_table_names to 0 through a command-line option"),
@@ -110,25 +110,25 @@ INSERT INTO global_suppressions VALUES
  ("NDB: only row based binary logging"),
  ("Neither --relay-log nor --relay-log-index were used"),
  ("Query partially completed"),
- ("Slave I.O thread aborted while waiting for relay log"),
- ("Slave SQL thread is stopped because UNTIL condition"),
- ("Slave SQL thread retried transaction"),
- ("Slave \\(additional info\\)"),
- ("Slave: .*Duplicate column name"),
- ("Slave: .*master may suffer from"),
- ("Slave: According to the master's version"),
- ("Slave: Column [0-9]* type mismatch"),
- ("Slave: Error .* doesn't exist"),
- ("Slave: Error .*Unknown table"),
- ("Slave: Error in Write_rows event: "),
- ("Slave: Field .* of table .* has no default value"),
- ("Slave: Field .* doesn't have a default value"),
- ("Slave: Query caused different errors on master and slave"),
- ("Slave: Table .* doesn't exist"),
- ("Slave: Table width mismatch"),
- ("Slave: The incident LOST_EVENTS occured on the master"),
- ("Slave: Unknown error.* 1105"),
- ("Slave: Can't drop database.* database doesn't exist"),
+ ("Replica I.O thread aborted while waiting for relay log"),
+ ("Replica SQL thread is stopped because UNTIL condition"),
+ ("Replica SQL thread retried transaction"),
+ ("Replica \\(additional info\\)"),
+ ("Replica: .*Duplicate column name"),
+ ("Replica: .*primary may suffer from"),
+ ("Replica: According to the primary's version"),
+ ("Replica: Column [0-9]* type mismatch"),
+ ("Replica: Error .* doesn't exist"),
+ ("Replica: Error .*Unknown table"),
+ ("Replica: Error in Write_rows event: "),
+ ("Replica: Field .* of table .* has no default value"),
+ ("Replica: Field .* doesn't have a default value"),
+ ("Replica: Query caused different errors on primary and replica"),
+ ("Replica: Table .* doesn't exist"),
+ ("Replica: Table width mismatch"),
+ ("Replica: The incident LOST_EVENTS occured on the primary"),
+ ("Replica: Unknown error.* 1105"),
+ ("Replica: Can't drop database.* database doesn't exist"),
  ("Sort aborted"),
  ("Time-out in NDB"),
  ("Warning:\s+One can only use the --user.*root"),
@@ -137,12 +137,12 @@ INSERT INTO global_suppressions VALUES
  ("deprecated"),
  ("description of time zone"),
  ("equal MySQL server ids"),
- ("error .*connecting to master"),
+ ("error .*connecting to primary"),
  ("error reading log entry"),
  ("lower_case_table_names is set"),
  ("skip-name-resolve mode"),
- ("slave SQL thread aborted"),
- ("Slave: .*Duplicate entry"),
+ ("replica SQL thread aborted"),
+ ("Replica: .*Duplicate entry"),
 
  ("Statement may not be safe to log in statement format"),
 
@@ -157,7 +157,7 @@ INSERT INTO global_suppressions VALUES
   */
  ("setrlimit could not change the size of core files to 'infinity'"),
 
- ("The slave I.O thread stops because a fatal error is encountered when it tries to get the value of SERVER_UUID variable from master.*"),
+ ("The replica I.O thread stops because a fatal error is encountered when it tries to get the value of SERVER_UUID variable from primary.*"),
  ("The initialization command '.*' failed with the following error.*"),
 
  /*It will print a warning if a new UUID of server is generated.*/
@@ -175,9 +175,9 @@ INSERT INTO global_suppressions VALUES
  ("Restore: Operation aborted"),
  ("Restore: The grant .* was skipped because the user does not exist"),
  ("The path specified for the variable .* is not a directory or cannot be written:"),
- ("Master server does not support or not configured semi-sync replication, fallback to asynchronous"),
+ ("Primary server does not support or not configured semi-sync replication, fallback to asynchronous"),
  (": The MySQL server is running with the --secure-backup-file-priv option so it cannot execute this statement"),
- ("Slave: Unknown table 'test.t1' Error_code: 1051"),
+ ("Replica: Unknown table 'test.t1' Error_code: 1051"),
 
  /* Messages from valgrind */
  ("==[0-9]*== Memcheck,"),
@@ -198,14 +198,14 @@ INSERT INTO global_suppressions VALUES
    Transient network failures that cause warnings on reconnect.
    BUG#47743 and BUG#47983.
  */
- ("Slave I/O: Get master SERVER_UUID failed with error:.*"),
- ("Slave I/O: Get master SERVER_ID failed with error:.*"),
- ("Slave I/O: Get master clock failed with error:.*"),
- ("Slave I/O: Get master COLLATION_SERVER failed with error:.*"),
- ("Slave I/O: Get master TIME_ZONE failed with error:.*"),
- ("Slave I/O: The slave I/O thread stops because a fatal error is encountered when it tried to SET @master_binlog_checksum on master.*"),
- ("Slave I/O: Get master BINLOG_CHECKSUM failed with error.*"),
- ("Slave I/O: Notifying master by SET @master_binlog_checksum= @@global.binlog_checksum failed with error.*"),
+ ("Replica I/O: Get primary SERVER_UUID failed with error:.*"),
+ ("Replica I/O: Get primary SERVER_ID failed with error:.*"),
+ ("Replica I/O: Get primary clock failed with error:.*"),
+ ("Replica I/O: Get primary COLLATION_SERVER failed with error:.*"),
+ ("Replica I/O: Get primary TIME_ZONE failed with error:.*"),
+ ("Replica I/O: The replica I/O thread stops because a fatal error is encountered when it tried to SET @primary_binlog_checksum on primary.*"),
+ ("Replica I/O: Get primary BINLOG_CHECKSUM failed with error.*"),
+ ("Replica I/O: Notifying primary by SET @primary_binlog_checksum= @@global.binlog_checksum failed with error.*"),
  /*
    BUG#42147 - Concurrent DML and LOCK TABLE ... READ for InnoDB 
    table cause warnings in errlog
@@ -215,7 +215,7 @@ INSERT INTO global_suppressions VALUES
  ("Found lock of type 6 that is write and read locked"),
 
  /*
-   Warning message is printed out whenever a slave is started with
+   Warning message is printed out whenever a replica is started with
    a configuration that is not crash-safe.
  */
  (".*If a crash happens this configuration does not guarantee.*"),
@@ -223,14 +223,14 @@ INSERT INTO global_suppressions VALUES
  /*
    Warning messages introduced in the context of the WL#4143.
  */
- ("Storing MySQL user name or password information in the master.info repository is not secure.*"),
+ ("Storing MySQL user name or password information in the primary.info repository is not secure.*"),
  ("Sending passwords in plain text without SSL/TLS is extremely insecure."),
 
  /*
-  In MTS if the user issues a stop slave sql while it is scheduling a group
+  In MTS if the user issues a stop replica sql while it is scheduling a group
   of events, this warning is emitted.
   */
- ("Slave SQL: Coordinator thread of multi-threaded slave is being stopped in the middle of assigning a group of events.*"),
+ ("Replica SQL: Coordinator thread of multi-threaded replica is being stopped in the middle of assigning a group of events.*"),
  
  ("Changed limits: max_open_files: *"),
  ("Changed limits: max_connections: *"),

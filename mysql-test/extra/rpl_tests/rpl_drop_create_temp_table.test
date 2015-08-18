@@ -83,7 +83,7 @@ SET @commands= 'configure';
 --echo #########################################################################
 --echo #           1 - Tables dropped by "DROP TEMPORARY TABLE"
 --echo #########################################################################
-connection master;
+connection primary;
 
 --echo
 --echo #
@@ -283,7 +283,7 @@ SET @commands= 'B T Drop-Temp-NN-Temp N Drop-Temp-NN-Temp NeT-trig R';
 --echo #########################################################################
 --echo #                   2 - Tables dropped by "DROP TABLE"
 --echo #########################################################################
-connection master;
+connection primary;
 
 --echo
 --echo #
@@ -374,7 +374,7 @@ SET @commands= 'B T Drop-TN-Temp';
 --echo #########################################################################
 --echo #                      3 - CREATE TEMPORARY TABLE
 --echo #########################################################################
-connection master;
+connection primary;
 
 --echo
 --echo #
@@ -427,7 +427,7 @@ SET @commands= 'B Drop-Temp-T-Temp Create-T-Temp Drop-Temp-T-Temp Drop-Temp-T-Te
 --echo #########################################################################
 --echo #                     4 -  CHANGING TEMPORARY TABLES
 --echo #########################################################################
-connection master;
+connection primary;
 
 --echo
 --echo #
@@ -483,16 +483,16 @@ SET @commands= 'B N N-Temp T-SELECT-T-Temp N-Temp NeT-trig R';
 --echo ###################################################################################
 --echo #                               CHECK CONSISTENCY
 --echo ###################################################################################
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
 let $MYSQLD_DATADIR= `SELECT @@datadir`;
 
 if (`select @@session.binlog_format != 'STATEMENT'`)
 {
-  --exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLD_DATADIR/test-temporary-master.sql
-  --exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLD_DATADIR/test-temporary-slave.sql
-  --diff_files $MYSQLD_DATADIR/test-temporary-master.sql $MYSQLD_DATADIR/test-temporary-slave.sql
+  --exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLD_DATADIR/test-temporary-primary.sql
+  --exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test > $MYSQLD_DATADIR/test-temporary-replica.sql
+  --diff_files $MYSQLD_DATADIR/test-temporary-primary.sql $MYSQLD_DATADIR/test-temporary-replica.sql
 }
 
 --echo #########################################################################

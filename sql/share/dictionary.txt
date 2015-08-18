@@ -86,7 +86,7 @@ jennifer
 jonathan
 love
 marina
-master
+primary
 missy
 monday
 monkey
@@ -595,7 +595,7 @@ mariposa
 marlboro
 martin1
 marty
-master1
+primary1
 mensuck
 mercedes
 metal
@@ -2600,7 +2600,7 @@ Fisher
 Jeanne
 Killer
 Knight
-Master
+Primary
 Pepper
 Sierra
 Tennis
@@ -3220,7 +3220,7 @@ volcano
 walden
 waldo
 walleye
-webmaster
+webprimary
 wedge
 whale1
 whit

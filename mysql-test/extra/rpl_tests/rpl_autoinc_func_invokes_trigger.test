@@ -3,10 +3,10 @@
 # function which invokes a 'after/before insert action' trigger 
 # that inserts more than one values into a table with autoinc 
 # column will make the autoinc values become inconsistent on 
-# master and slave.
+# primary and replica.
 #
 
-connection master;
+connection primary;
 create table t1(a int) engine=innodb;
 create table t2(i1 int not null auto_increment, a int, primary key(i1)) engine=innodb;
 create table t3(i1 int not null auto_increment, a int, primary key(i1)) engine=innodb;
@@ -23,33 +23,33 @@ eval create trigger tr11 $insert_action on t2 for each row begin
 end |
 delimiter ;|
 begin;
-let $binlog_start= query_get_value("SHOW MASTER STATUS", Position, 1);
+let $binlog_start= query_get_value("SHOW PRIMARY STATUS", Position, 1);
 insert into t1(a) values(f1_two_inserts_trigger());
 
-connection master1;
+connection primary1;
 #The default autocommit is set to 1, so the statement is auto committed
 insert into t2(a) values(4),(5);
 
-connection master;
+connection primary;
 commit;
 insert into t1(a) values(f1_two_inserts_trigger());
 --echo # To verify if insert/update in an autoinc column causes statement to be logged in row format
 source include/show_binlog_events.inc;
 commit;
 
-connection master;
---source include/sync_slave_sql_with_master.inc
---echo #Test if the results are consistent on master and slave
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
+--echo #Test if the results are consistent on primary and replica
 --echo #for 'CALLS A FUNCTION which INVOKES A TRIGGER with $insert_action action'
-let $diff_tables= master:t2, slave:t2;
+let $diff_tables= primary:t2, replica:t2;
 source include/diff_tables.inc;
-let $diff_tables= master:t3, slave:t3;
+let $diff_tables= primary:t3, replica:t3;
 source include/diff_tables.inc;
 
-connection master;
+connection primary;
 drop table t1;
 drop table t2;
 drop table t3;
 drop function f1_two_inserts_trigger;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 

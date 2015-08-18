@@ -4,9 +4,9 @@
 -- source include/have_binlog_format_statement.inc
 -- source include/not_gtid_enabled.inc
 
-RESET MASTER;
+RESET PRIMARY;
 
-let $binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1);
+let $binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1);
 CREATE TABLE t1 (c1 char(50)) ENGINE=MyISAM;
 LOAD DATA INFILE '../../std_data/words.dat' INTO TABLE t1;
 LOAD DATA CONCURRENT INFILE '../../std_data/words.dat' INTO TABLE t1;

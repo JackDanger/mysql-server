@@ -5,9 +5,9 @@
 # Requirements: 
 #########################################
 
---echo ==========MASTER==========
+--echo ==========PRIMARY==========
 SHOW DATABASES LIKE 'test_rpl%';
-sync_slave_with_master;
---echo ==========SLAVE===========
+sync_replica_with_primary;
+--echo ==========REPLICA===========
 SHOW DATABASES LIKE 'test_rpl%';
-connection master;
+connection primary;

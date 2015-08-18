@@ -129,8 +129,8 @@ static const ErrStruct errArray[] =
    /* DIH */
    {NDBD_EXIT_MAX_CRASHED_REPLICAS, XFL,
     "Too many crashed replicas (8 consecutive node restart failures)"},
-   {NDBD_EXIT_MASTER_FAILURE_DURING_NR, XRE,
-    "Unhandled master failure during node restart"},
+   {NDBD_EXIT_PRIMARY_FAILURE_DURING_NR, XRE,
+    "Unhandled primary failure during node restart"},
    {NDBD_EXIT_LOST_NODE_GROUP, XAE,
     "All nodes in a node group are unavailable"},
    {NDBD_EXIT_NO_RESTORABLE_REPLICA, XFI,

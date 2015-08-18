@@ -3797,7 +3797,7 @@ define(["./_base/kernel", "require", "./has", "./_base/array", "./_base/lang", "
 			{},
 
 		nlsRe=
-			// regexp for reconstructing the master bundle name from parts of the regexp match
+			// regexp for reconstructing the primary bundle name from parts of the regexp match
 			// nlsRe.exec("foo/bar/baz/nls/en-ca/foo") gives:
 			// ["foo/bar/baz/nls/en-ca/foo", "foo/bar/baz/nls/", "/", "/", "en-ca", "foo"]
 			// nlsRe.exec("foo/bar/baz/nls/foo") gives:
@@ -7305,7 +7305,7 @@ var _TextBoxMixin = declare("dijit.form._TextBoxMixin", null, {
 		//
 		//		For `dijit.form.MappedTextBox` subclasses, which have both
 		//		a "displayed value" and a separate "submit value",
-		//		This treats the "displayed value" as the master value, computing the
+		//		This treats the "displayed value" as the primary value, computing the
 		//		submit value from it via this.parse().
 		return this.parse(this.get('displayedValue'), this.constraints);
 	},
@@ -10805,10 +10805,10 @@ define([
 	// module:
 	//		dijit/Tooltip
 	// summary:
-	//		Defines dijit.Tooltip widget (to display a tooltip), showTooltip()/hideTooltip(), and _MasterTooltip
+	//		Defines dijit.Tooltip widget (to display a tooltip), showTooltip()/hideTooltip(), and _PrimaryTooltip
 
 
-	var MasterTooltip = declare("dijit._MasterTooltip", [_Widget, _TemplatedMixin], {
+	var PrimaryTooltip = declare("dijit._PrimaryTooltip", [_Widget, _TemplatedMixin], {
 		// summary:
 		//		Internal widget that holds the actual tooltip markup,
 		//		which occurs once per page.
@@ -11049,14 +11049,14 @@ define([
 		//		means "rtl"; specifies GUI direction, not text direction.
 		// textDir: String?
 		//		Corresponds to `WidgetBase.textdir` attribute; specifies direction of text.
-		if(!Tooltip._masterTT){ dijit._masterTT = Tooltip._masterTT = new MasterTooltip(); }
-		return Tooltip._masterTT.show(innerHTML, aroundNode, position, rtl, textDir);
+		if(!Tooltip._primaryTT){ dijit._primaryTT = Tooltip._primaryTT = new PrimaryTooltip(); }
+		return Tooltip._primaryTT.show(innerHTML, aroundNode, position, rtl, textDir);
 	};
 
 	dijit.hideTooltip = function(aroundNode){
 		// summary:
 		//		Static method to hide the tooltip displayed via showTooltip()
-		return Tooltip._masterTT && Tooltip._masterTT.hide(aroundNode);
+		return Tooltip._primaryTT && Tooltip._primaryTT.hide(aroundNode);
 	};
 
 	var Tooltip = declare("dijit.Tooltip", _Widget, {
@@ -11235,7 +11235,7 @@ define([
 		}
 	});
 
-	Tooltip._MasterTooltip = MasterTooltip;		// for monkey patching
+	Tooltip._PrimaryTooltip = PrimaryTooltip;		// for monkey patching
 	Tooltip.show = dijit.showTooltip;		// export function through module return value
 	Tooltip.hide = dijit.hideTooltip;		// export function through module return value
 

@@ -7,16 +7,16 @@
 # the binary log and then a rotation would happen, after EOF was
 # detected and before the check for active was performed. In this
 # case, the end of the binary log would not be read by the dump
-# thread, and this would cause the slave to lose updates.
+# thread, and this would cause the replica to lose updates.
 #
 # This test verifies that the problem has been fixed. It waits
 # during this window while forcing a rotation in the binlog.
 #
 --source include/not_group_replication_plugin.inc
 --source include/have_debug.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---connection master
+--connection primary
 
 SET @debug_saved= @@GLOBAL.DEBUG;
 
@@ -36,14 +36,14 @@ FLUSH LOGS;
 
 SET DEBUG_SYNC= 'now SIGNAL signal.rotate_finished';
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# All the rows should be sent to the slave.
---let $diff_tables=master:t,slave:t
+# All the rows should be sent to the replica.
+--let $diff_tables=primary:t,replica:t
 --source include/diff_tables.inc
 
 ##Clean up
---connection master
+--connection primary
 
 SET @@GLOBAL.DEBUG= @debug_saved;
 SET DEBUG_SYNC= 'RESET';

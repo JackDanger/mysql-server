@@ -1,6 +1,6 @@
-############# mysql-test\t\slave_compressed_protocol_basic.test ###############
+############# mysql-test\t\replica_compressed_protocol_basic.test ###############
 #                                                                             #
-# Variable Name: slave_compressed_protocol                                    #
+# Variable Name: replica_compressed_protocol                                    #
 # Scope: GLOBAL                                                               #
 # Access Type: Dynamic                                                        #
 # Data Type: boolean                                                          #
@@ -11,7 +11,7 @@
 # Creation Date: 2008-02-07                                                   #
 # Author:  Rizwan                                                             #
 #                                                                             #
-# Description: Test Cases of Dynamic System Variable slave_compressed_protocol#
+# Description: Test Cases of Dynamic System Variable replica_compressed_protocol#
 #              that checks the behavior of this variable in the following ways#
 #              * Default Value                                                #
 #              * Valid & Invalid values                                       #
@@ -26,92 +26,92 @@
 --source include/not_embedded.inc
 --source include/load_sysvars.inc
 ######################################################################## 
-#                    START OF slave_compressed_protocol TESTS          #
+#                    START OF replica_compressed_protocol TESTS          #
 ######################################################################## 
 
 
 ############################################################################## 
-#  Saving initial value of slave_compressed_protocol in a temporary variable #
+#  Saving initial value of replica_compressed_protocol in a temporary variable #
 ############################################################################## 
 
-SET @global_start_value = @@global.slave_compressed_protocol;
+SET @global_start_value = @@global.replica_compressed_protocol;
 SELECT @global_start_value;
 
 --echo '#--------------------FN_DYNVARS_147_01------------------------#'
 ######################################################################## 
-#           Display the DEFAULT value of slave_compressed_protocol     #
+#           Display the DEFAULT value of replica_compressed_protocol     #
 ######################################################################## 
 
-SET @@global.slave_compressed_protocol = 1;
-SET @@global.slave_compressed_protocol = DEFAULT;
-SELECT @@global.slave_compressed_protocol;
+SET @@global.replica_compressed_protocol = 1;
+SET @@global.replica_compressed_protocol = DEFAULT;
+SELECT @@global.replica_compressed_protocol;
 
 --echo '#---------------------FN_DYNVARS_147_02-------------------------#'
 ###############################################################################
-# Check if slave_compressed_protocol can be accessed with and without @@ sign #
+# Check if replica_compressed_protocol can be accessed with and without @@ sign #
 ###############################################################################
 
 --Error ER_GLOBAL_VARIABLE
-SET slave_compressed_protocol = 1;
-SELECT @@slave_compressed_protocol;
+SET replica_compressed_protocol = 1;
+SELECT @@replica_compressed_protocol;
 --Error ER_UNKNOWN_TABLE
-SELECT global.slave_compressed_protocol;
+SELECT global.replica_compressed_protocol;
 
-SET global slave_compressed_protocol = 1;
-SELECT @@global.slave_compressed_protocol;
+SET global replica_compressed_protocol = 1;
+SELECT @@global.replica_compressed_protocol;
 
 
 --echo '#--------------------FN_DYNVARS_147_03------------------------#'
 ######################################################################## 
-#    Change the value of slave_compressed_protocol to a valid value    #
+#    Change the value of replica_compressed_protocol to a valid value    #
 ######################################################################## 
 
-SET @@global.slave_compressed_protocol = 0;
-SELECT @@global.slave_compressed_protocol;
-SET @@global.slave_compressed_protocol = 1;
-SELECT @@global.slave_compressed_protocol;
+SET @@global.replica_compressed_protocol = 0;
+SELECT @@global.replica_compressed_protocol;
+SET @@global.replica_compressed_protocol = 1;
+SELECT @@global.replica_compressed_protocol;
 
 
 --echo '#--------------------FN_DYNVARS_147_04-------------------------#'
 ########################################################################### 
-#   Change the value of slave_compressed_protocol to invalid value        #
+#   Change the value of replica_compressed_protocol to invalid value        #
 ########################################################################### 
 
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = -1;
+SET @@global.replica_compressed_protocol = -1;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = 2;
+SET @@global.replica_compressed_protocol = 2;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = "1.00";
+SET @@global.replica_compressed_protocol = "1.00";
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = "Y";
+SET @@global.replica_compressed_protocol = "Y";
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = YES;
+SET @@global.replica_compressed_protocol = YES;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = ONN;
+SET @@global.replica_compressed_protocol = ONN;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = 0FF;
+SET @@global.replica_compressed_protocol = 0FF;
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = ' 1';
+SET @@global.replica_compressed_protocol = ' 1';
 --Error ER_WRONG_VALUE_FOR_VAR
-SET @@global.slave_compressed_protocol = NO;
+SET @@global.replica_compressed_protocol = NO;
 
 
 --echo '#-------------------FN_DYNVARS_147_05----------------------------#'
 ########################################################################### 
-#    Test if accessing session slave_compressed_protocol gives error      #
+#    Test if accessing session replica_compressed_protocol gives error      #
 ########################################################################### 
 
 --Error ER_GLOBAL_VARIABLE
-SET @@session.slave_compressed_protocol = 0;
+SET @@session.replica_compressed_protocol = 0;
 --Error ER_GLOBAL_VARIABLE
-SET @@slave_compressed_protocol = 0;
+SET @@replica_compressed_protocol = 0;
 --Error ER_GLOBAL_VARIABLE
-SET @@local.slave_compressed_protocol = 0;
+SET @@local.replica_compressed_protocol = 0;
 --Error ER_INCORRECT_GLOBAL_LOCAL_VAR
-SELECT @@session.slave_compressed_protocol;
+SELECT @@session.replica_compressed_protocol;
 --Error ER_INCORRECT_GLOBAL_LOCAL_VAR
-SELECT @@local.slave_compressed_protocol;
+SELECT @@local.replica_compressed_protocol;
 
 --echo '#----------------------FN_DYNVARS_147_06------------------------#'
 ######################################################################### 
@@ -121,7 +121,7 @@ SELECT @@local.slave_compressed_protocol;
 --disable_warnings
 SELECT count(VARIABLE_VALUE)
 FROM INFORMATION_SCHEMA.SESSION_VARIABLES 
-WHERE VARIABLE_NAME='slave_compressed_protocol';
+WHERE VARIABLE_NAME='replica_compressed_protocol';
 --enable_warnings
 
 --echo '#----------------------FN_DYNVARS_147_07------------------------#'
@@ -130,15 +130,15 @@ WHERE VARIABLE_NAME='slave_compressed_protocol';
 #########################################################################
 
 --disable_warnings
-SELECT IF(@@global.slave_compressed_protocol, "ON", "OFF") = VARIABLE_VALUE 
+SELECT IF(@@global.replica_compressed_protocol, "ON", "OFF") = VARIABLE_VALUE 
 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES 
-WHERE VARIABLE_NAME='slave_compressed_protocol';
+WHERE VARIABLE_NAME='replica_compressed_protocol';
 --enable_warnings
-SELECT @@global.slave_compressed_protocol;
+SELECT @@global.replica_compressed_protocol;
 --disable_warnings
 SELECT VARIABLE_VALUE 
 FROM INFORMATION_SCHEMA.GLOBAL_VARIABLES 
-WHERE VARIABLE_NAME='slave_compressed_protocol';
+WHERE VARIABLE_NAME='replica_compressed_protocol';
 --enable_warnings
 
 --echo '#---------------------FN_DYNVARS_147_08-------------------------#'
@@ -146,28 +146,28 @@ WHERE VARIABLE_NAME='slave_compressed_protocol';
 #        Check if ON and OFF values can be used on variable       #
 ################################################################### 
 
-SET @@global.slave_compressed_protocol = OFF;
-SELECT @@global.slave_compressed_protocol;
-SET @@global.slave_compressed_protocol = ON;
-SELECT @@global.slave_compressed_protocol;
+SET @@global.replica_compressed_protocol = OFF;
+SELECT @@global.replica_compressed_protocol;
+SET @@global.replica_compressed_protocol = ON;
+SELECT @@global.replica_compressed_protocol;
 
 --echo '#---------------------FN_DYNVARS_147_09----------------------#'
 ################################################################### 
 #      Check if TRUE and FALSE values can be used on variable     #
 ################################################################### 
 
-SET @@global.slave_compressed_protocol = TRUE;
-SELECT @@global.slave_compressed_protocol;
-SET @@global.slave_compressed_protocol = FALSE;
-SELECT @@global.slave_compressed_protocol;
+SET @@global.replica_compressed_protocol = TRUE;
+SELECT @@global.replica_compressed_protocol;
+SET @@global.replica_compressed_protocol = FALSE;
+SELECT @@global.replica_compressed_protocol;
 
 ##############################  
 #   Restore initial value    #
 ##############################
 
-SET @@global.slave_compressed_protocol = @global_start_value;
-SELECT @@global.slave_compressed_protocol;
+SET @@global.replica_compressed_protocol = @global_start_value;
+SELECT @@global.replica_compressed_protocol;
 
 ###############################################################
-#                    END OF slave_compressed_protocol TESTS   #
+#                    END OF replica_compressed_protocol TESTS   #
 ############################################################### 

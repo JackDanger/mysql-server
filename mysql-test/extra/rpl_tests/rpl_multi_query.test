@@ -6,7 +6,7 @@
 
 # PS doesn't support multi-statements
 --disable_ps_protocol
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 create database mysqltest;
 
 delimiter /;
@@ -17,9 +17,9 @@ insert into mysqltest.t1 values(3);
 insert into mysqltest.t1 values(4);
 insert into mysqltest.t1 values(5)/
 delimiter ;/
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from mysqltest.t1;
-connection master;
+connection primary;
 source include/show_binlog_events.inc;
 drop database mysqltest;
 

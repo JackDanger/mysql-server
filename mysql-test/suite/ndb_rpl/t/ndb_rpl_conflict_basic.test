@@ -9,10 +9,10 @@
 #
 --source include/have_multi_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 --disable_query_log
---connection master
+--connection primary
 CREATE TABLE mysql.ndb_replication
   (db VARBINARY(63),
    table_name VARBINARY(63),
@@ -30,78 +30,78 @@ insert into mysql.ndb_replication values ("test", "t1_max_delete_win", 0, 7, "ND
 
 create table `t1_old$EX`
   (server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
-   primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+   primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 
 create table `t1_max$EX`
   (server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
-   primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+   primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 
 create table `t1_max_delete_win$EX`
   (server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
-   primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+   primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 
 create table t1_old (a int primary key, b varchar(32), X int unsigned) engine = ndb;
 create table t1_max (a int primary key, b varchar(32), X int unsigned) engine = ndb;
 create table t1_max_delete_win (a int primary key, b varchar(32), X int unsigned) engine = ndb;
---sync_slave_with_master
+--sync_replica_with_primary
 
 ###############
 --echo "Test 1"
 
---connection master
+--connection primary
 insert into t1_old values (1, 'Initial X=1', 1);
 insert into t1_max values (1, 'Initial X=1', 1);
 insert into t1_max_delete_win values (1, 'Initial X=1', 1);
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
-update t1_old set X = 2, b='Slave X=2';
-update t1_max set X = 2, b='Slave X=2';
-update t1_max_delete_win set X = 2, b='Slave X=2';
+--connection replica
+update t1_old set X = 2, b='Replica X=2';
+update t1_max set X = 2, b='Replica X=2';
+update t1_max_delete_win set X = 2, b='Replica X=2';
 
---connection master
-update t1_old set X = 3, b='Master X=3';
-update t1_max set X = 3, b='Master X=3';
-update t1_max_delete_win set X = 3, b='Master X=3';
---sync_slave_with_master
+--connection primary
+update t1_old set X = 3, b='Primary X=3';
+update t1_max set X = 3, b='Primary X=3';
+update t1_max_delete_win set X = 3, b='Primary X=3';
+--sync_replica_with_primary
 
---connection slave
---echo "Expect t1_old to contain slave row, and t1_max* to contain master row"
+--connection replica
+--echo "Expect t1_old to contain replica row, and t1_max* to contain primary row"
 select * from t1_old;
 select * from t1_max;
 select * from t1_max_delete_win;
 
 # syncronize
-update t1_old set X = 3, b='Master X=3';
+update t1_old set X = 3, b='Primary X=3';
 
 ###############
 --echo "Test 2"
 
---connection slave
-update t1_old set X = 4, b='Slave X=4';
-update t1_max set X = 4, b='Slave X=4';
-update t1_max_delete_win set X = 4, b='Slave X=4';
+--connection replica
+update t1_old set X = 4, b='Replica X=4';
+update t1_max set X = 4, b='Replica X=4';
+update t1_max_delete_win set X = 4, b='Replica X=4';
 
---connection master
+--connection primary
 delete from t1_old;
 delete from t1_max;
 delete from t1_max_delete_win;
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
---echo "Expect t1_old and t1_max to contain slave row, and t1_max_delete_win to be empty(as master)"
+--connection replica
+--echo "Expect t1_old and t1_max to contain replica row, and t1_max_delete_win to be empty(as primary)"
 select * from t1_old;
 select * from t1_max;
 select * from t1_max_delete_win;
@@ -110,7 +110,7 @@ select * from t1_max_delete_win;
 delete from t1_old;
 delete from t1_max;
 
---connection master
+--connection primary
 
 # Now test with Blobs
 drop table t1_old, t1_max, t1_max_delete_win;
@@ -118,83 +118,83 @@ delete from t1_old$EX;
 delete from t1_max$EX;
 delete from t1_max_delete_win$EX;
 
---sync_slave_with_master
---connection slave
-# Delete on slave, as $EX table ops don't replicate
+--sync_replica_with_primary
+--connection replica
+# Delete on replica, as $EX table ops don't replicate
 delete from t1_old$EX;
 delete from t1_max$EX;
 delete from t1_max_delete_win$EX;
 
---connection master
+--connection primary
 
 create table t1_old (a int primary key, b longtext, X int unsigned) engine = ndb;
 create table t1_max (a int primary key, b longtext, X int unsigned) engine = ndb;
 create table t1_max_delete_win (a int primary key, b longtext, X int unsigned) engine = ndb;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
 ###############
 --echo "Test 3"
 
---connection master
+--connection primary
 insert into t1_old values (1, repeat('Initial X=1',1000), 1);
 insert into t1_max values (1, repeat('Initial X=1',1000), 1);
 insert into t1_max_delete_win values (1, repeat('Initial X=1',1000), 1);
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
-update t1_old set X = 2, b=repeat('Slave X=2',1001);
-update t1_max set X = 2, b=repeat('Slave X=2',1001);
-update t1_max_delete_win set X = 2, b=repeat('Slave X=2',1001);
+--connection replica
+update t1_old set X = 2, b=repeat('Replica X=2',1001);
+update t1_max set X = 2, b=repeat('Replica X=2',1001);
+update t1_max_delete_win set X = 2, b=repeat('Replica X=2',1001);
 
---connection master
-update t1_old set X = 3, b=repeat('Master X=3',1002);
-update t1_max set X = 3, b=repeat('Master X=3',1002);
-update t1_max_delete_win set X = 3, b=repeat('Master X=3',1002);
---sync_slave_with_master
+--connection primary
+update t1_old set X = 3, b=repeat('Primary X=3',1002);
+update t1_max set X = 3, b=repeat('Primary X=3',1002);
+update t1_max_delete_win set X = 3, b=repeat('Primary X=3',1002);
+--sync_replica_with_primary
 
---connection slave
---echo "Expect t1_old to contain slave row, and t1_max* to contain master row"
+--connection replica
+--echo "Expect t1_old to contain replica row, and t1_max* to contain primary row"
 select a, left(b, 20), length(b), X from t1_old;
 select a, left(b, 20), length(b), X from t1_max;
 select a, left(b, 20), length(b), X from t1_max_delete_win;
 
 --echo Expect t1_old to have 1 entry, and t1_max* to have no entries
-select server_id, master_server_id, count, a from t1_old$EX order by count;
-select server_id, master_server_id, count, a from t1_max$EX order by count;
-select server_id, master_server_id, count, a from t1_max_delete_win$EX order by count;
+select server_id, primary_server_id, count, a from t1_old$EX order by count;
+select server_id, primary_server_id, count, a from t1_max$EX order by count;
+select server_id, primary_server_id, count, a from t1_max_delete_win$EX order by count;
 
 delete from t1_max$EX;
 delete from t1_max_delete_win$EX;
 delete from t1_old$EX;
 
 # syncronize
-update t1_old set X = 3, b=repeat('Master X=3', 1002);
+update t1_old set X = 3, b=repeat('Primary X=3', 1002);
 
 ###############
 --echo "Test 4"
 
---connection slave
-update t1_old set X = 4, b=repeat('Slave X=4',2000);
-update t1_max set X = 4, b=repeat('Slave X=4',2000);
-update t1_max_delete_win set X = 4, b=repeat('Slave X=4',2000);
+--connection replica
+update t1_old set X = 4, b=repeat('Replica X=4',2000);
+update t1_max set X = 4, b=repeat('Replica X=4',2000);
+update t1_max_delete_win set X = 4, b=repeat('Replica X=4',2000);
 
---connection master
+--connection primary
 delete from t1_old;
 delete from t1_max;
 delete from t1_max_delete_win;
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
---echo "Expect t1_old and t1_max to contain slave row, and t1_max_delete_win to be empty(as master)"
+--connection replica
+--echo "Expect t1_old and t1_max to contain replica row, and t1_max_delete_win to be empty(as primary)"
 select a, left(b, 20), length(b), X from t1_old;
 select a, left(b, 20), length(b), X from t1_max;
 select a, left(b, 20), length(b), X from t1_max_delete_win;
 
 --echo Expect t1_old and t1_max to contain 1 entry, and t1_max_delete_win to be empty
-select server_id, master_server_id, count, a from t1_old$EX order by count;
-select server_id, master_server_id, count, a from t1_max$EX order by count;
-select server_id, master_server_id, count, a from t1_max_delete_win$EX order by count;
+select server_id, primary_server_id, count, a from t1_old$EX order by count;
+select server_id, primary_server_id, count, a from t1_max$EX order by count;
+select server_id, primary_server_id, count, a from t1_max_delete_win$EX order by count;
 
 delete from t1_max$EX;
 delete from t1_max_delete_win$EX;
@@ -204,7 +204,7 @@ delete from t1_old;
 delete from t1_max;
 delete from t1_max_delete_win;
 
---connection master
+--connection primary
 delete from t1_old;
 delete from t1_max;
 delete from t1_max_delete_win;
@@ -213,59 +213,59 @@ delete from t1_max_delete_win;
 --echo "Test 5"
 
 --echo Test that Updates affecting Blobs are rejected
---echo correctly on the slave
+--echo correctly on the replica
 drop table t1_max;
 create table t1_max (a int primary key, b int, c longtext, d longtext, X int unsigned) engine = ndb;
 
 insert into t1_max values (1, 1, repeat("B", 10000), repeat("E", 10001), 1);
 insert into t1_max values (2, 2, repeat("A", 10002), repeat("T", 10003), 1);
 
---sync_slave_with_master
---connection slave
+--sync_replica_with_primary
+--connection replica
 
 # Bump up tuple versions
 update t1_max set X=20;
 
---echo Initial values on Slave
+--echo Initial values on Replica
 select a,b,SHA1(c),length(c), SHA1(d), length(d), X from t1_max order by a;
 
---connection master
+--connection primary
 --echo Originate update which will be rejected
 update t1_max set c=repeat("Z", 10006), d=repeat("I", 10005), X=2 where a=1;
 
---sync_slave_with_master
---connection slave
---echo Check slave has rejected due to lower version
+--sync_replica_with_primary
+--connection replica
+--echo Check replica has rejected due to lower version
 select a,b,SHA1(c),length(c), SHA1(d), length(d), X from t1_max order by a;
 
---connection master
+--connection primary
 --echo Originate delete which will be rejected (due to NDB-OLD) algorith
 delete from t1_max where a=1;
 
---sync_slave_with_master
---connection slave
---echo Check slave has rejected due to before image mismatch
+--sync_replica_with_primary
+--connection replica
+--echo Check replica has rejected due to before image mismatch
 select a,b,SHA1(c),length(c), SHA1(d), length(d), X from t1_max order by a;
 
---connection master
+--connection primary
 --echo Originate insert which will be rejected (as row exists)
 insert into t1_max values (1, 1, repeat("R", 10004), repeat("A", 10007), 1);
 
---sync_slave_with_master
---connection slave
---echo Check slave has rejected due to row existing already
+--sync_replica_with_primary
+--connection replica
+--echo Check replica has rejected due to row existing already
 select a,b,SHA1(c),length(c), SHA1(d), length(d), X from t1_max order by a;
 
 --echo Expect t1_max to have 3 entries
-select server_id, master_server_id, count, a from t1_old$EX order by count;
-select server_id, master_server_id, count, a from t1_max$EX order by count;
-select server_id, master_server_id, count, a from t1_max_delete_win$EX order by count;
+select server_id, primary_server_id, count, a from t1_old$EX order by count;
+select server_id, primary_server_id, count, a from t1_max$EX order by count;
+select server_id, primary_server_id, count, a from t1_max_delete_win$EX order by count;
 
 delete from t1_max$EX;
 delete from t1_max_delete_win$EX;
 delete from t1_old$EX;
 
---connection master
+--connection primary
 
 #######
 --echo Test 6
@@ -276,19 +276,19 @@ insert into mysql.ndb_replication values ("test", "t2_max", 0, 7, "NDB$MAX(X)");
 
 create table `t2_max$EX`
   (server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
-   primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+   primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 
 create table t2_max (a int primary key, b int, X bigint unsigned) engine=ndb;
 
 insert into t2_max values (1,1,10), (2,2,10), (3,3,10), (4,4,10), (5,5,10);
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection master
+--connection primary
 --echo Now issue a transaction with a successful Blob op, and unsuccessful
 --echo non-Blob op.  Check that the Blob op succeeds, and the unsuccessful
 --echo non-Blob op is handled as expected.
@@ -298,19 +298,19 @@ update t2_max set b=b+1, X=1 where a=3; # conflicts
 update t1_max set c=repeat("R", 10008), d=repeat("A", 10009), X = 21 where a=1; # ok
 commit;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
---echo Contents on Slave
+--connection replica
+--echo Contents on Replica
 --echo Expect Blob data applied to t1_max, no update applied to t2_max
 select a,b,left(c,1), length(c), left(d,1), length(d), X from t1_max where a=1;
 select * from t2_max order by a;
 
 --echo Expect No conflict in t1_max, 1 conflict in t2_max$EX
-select server_id, master_server_id, count, a from t1_max$EX order by count;
-select server_id, master_server_id, count, a from t2_max$EX order by count;
+select server_id, primary_server_id, count, a from t1_max$EX order by count;
+select server_id, primary_server_id, count, a from t2_max$EX order by count;
 
---connection master
+--connection primary
 drop table t2_max, t2_max$EX;
 drop table t1_old, `t1_old$EX`, t1_max, `t1_max$EX`, t1_max_delete_win, `t1_max_delete_win$EX`;
 delete from mysql.ndb_replication;
@@ -335,19 +335,19 @@ insert into mysql.ndb_replication values ("test", "t3oneex", 3, 7, "NDB$EPOCH()"
 # Create exception tables
 create table t2diffex$EX (
    server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
-   primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+   primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 
 create table t3oneex$EX (
    server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
-   primary key(server_id, master_server_id, master_epoch, count)) engine ndb;
+   primary key(server_id, primary_server_id, primary_epoch, count)) engine ndb;
 
 # Now create actual tables on this server (id 1)
 create table t1allsame(a int primary key, b varchar(200), X int unsigned) engine=ndb;
@@ -358,24 +358,24 @@ create table t3oneex(a int primary key, b varchar(200)) engine=ndb;
 # exceptions tables were setup as expected
 show variables like 'server_id';
 --let $server_num=1.1
---let $pattern=%NDB Slave%
+--let $pattern=%NDB Replica%
 --let $limit=4
 --source suite/ndb_rpl/t/show_mysqld_warnings.inc
 
 
 --connection server2
 --disable_query_log
-call mtr.add_suppression("NDB Slave: .* No extra row author bits in table.*");
+call mtr.add_suppression("NDB Replica: .* No extra row author bits in table.*");
 --enable_query_log
 
 show variables like 'server_id';
 --let $server_num=2.1
---let $pattern=%NDB Slave%
+--let $pattern=%NDB Replica%
 --let $limit=6
 
 --source suite/ndb_rpl/t/show_mysqld_warnings.inc
 
---connection master
+--connection primary
 drop table t3oneex, t2diffex, t1allsame, t3oneex$EX, t2diffex$EX;
 
 delete from mysql.ndb_replication;
@@ -395,31 +395,31 @@ insert into mysql.ndb_replication values ("test", "t1", 0, 7, "NDB$MAX(X)");
 
 create table test.t1$EX(
    server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
    b int not null,
    c int not null,
-   primary key (server_id, master_server_id, master_epoch, count)) engine=ndb;
+   primary key (server_id, primary_server_id, primary_epoch, count)) engine=ndb;
 
 create table test.t1 (a int, b int, c int, d int, e int, X int unsigned,
                       primary key(a,b,c)) engine=ndb;
 
---echo Generate a conflict on the slave
+--echo Generate a conflict on the replica
 
 insert into test.t1 values (1,1,1,1,1,1);
---sync_slave_with_master slave
---connection master
+--sync_replica_with_primary replica
+--connection primary
 update test.t1 set X=0 where a=1 and b=1 and c=1;
---sync_slave_with_master slave
---connection slave
+--sync_replica_with_primary replica
+--connection replica
 
 --echo Check that conflict has been recorded.
 --replace_column 3 <epoch_num>
 select * from test.t1$EX;
 
---connection master
+--connection primary
 drop table test.t1;
 drop table test.t1$EX;
 
@@ -429,8 +429,8 @@ drop table test.t1$EX;
 
 create table test.t1$EX(
    server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
    a int not null,
    b int not null,
@@ -438,25 +438,25 @@ create table test.t1$EX(
    d int,                     # Same name as main table, but user defined
    lilljeholmen varchar(50) default 'Slussen',
                               # Separate, user defined
-   primary key (server_id, master_server_id, master_epoch, count)) engine=ndb;
+   primary key (server_id, primary_server_id, primary_epoch, count)) engine=ndb;
 
 create table test.t1 (a int, b int, c int, d int, e int, X int unsigned,
                       primary key(a,b,c)) engine=ndb;
 
---echo Generate a conflict on the slave
+--echo Generate a conflict on the replica
 
 insert into test.t1 values (1,1,1,1,1,1);
---sync_slave_with_master slave
---connection master
+--sync_replica_with_primary replica
+--connection primary
 update test.t1 set X=0 where a=1 and b=1 and c=1;
---sync_slave_with_master slave
---connection slave
+--sync_replica_with_primary replica
+--connection replica
 
 --echo Check that conflict has been recorded.
 --replace_column 3 <epoch_num>
 select * from test.t1$EX;
 
---connection master
+--connection primary
 drop table test.t1;
 drop table test.t1$EX;
 
@@ -480,20 +480,20 @@ create table test.t1$EX(
 create table test.t1 (a int, b int, c int, d int, e int, X int unsigned,
                       primary key(a,b,c)) engine=ndb;
 
---echo Generate a conflict on the slave
+--echo Generate a conflict on the replica
 
 insert into test.t1 values (1,1,1,1,1,1);
---sync_slave_with_master slave
---connection master
+--sync_replica_with_primary replica
+--connection primary
 update test.t1 set X=0 where a=1 and b=1 and c=1;
---sync_slave_with_master slave
---connection slave
+--sync_replica_with_primary replica
+--connection replica
 
 --echo Check that conflict has been recorded.
 --replace_column 3 <epoch_num>
 select * from test.t1$EX;
 
---connection master
+--connection primary
 drop table test.t1;
 drop table test.t1$EX;
 
@@ -508,8 +508,8 @@ create table test.t1$EX(
    plenipotentiary bigint unsigned,
    mountebank int unsigned,
    server_id int unsigned not null,
-   master_server_id int unsigned not null,
-   master_epoch bigint unsigned not null,
+   primary_server_id int unsigned not null,
+   primary_epoch bigint unsigned not null,
    count int unsigned not null,
    d int,                     # Same name as main table, but user defined
    lilljeholmen varchar(50) default 'Slussen',
@@ -517,37 +517,37 @@ create table test.t1$EX(
    primary key (monteverdi, asparagi, plenipotentiary, mountebank)) engine=ndb;
 
 create table test.t1 (server_id int unsigned,
-                      master_server_id int unsigned,
-                      master_epoch bigint unsigned,
+                      primary_server_id int unsigned,
+                      primary_epoch bigint unsigned,
                       count int unsigned,
                       d int, e int, X int unsigned,
-                      primary key(server_id, master_server_id,
-                                  master_epoch, count)) engine=ndb;
+                      primary key(server_id, primary_server_id,
+                                  primary_epoch, count)) engine=ndb;
 
---echo Generate a conflict on the slave
+--echo Generate a conflict on the replica
 
 insert into test.t1 values (1,1,1,1,1,1,1);
---sync_slave_with_master slave
---connection master
-update test.t1 set X=0 where server_id=1 and master_server_id=1 and master_epoch=1 and count=1;
---sync_slave_with_master slave
---connection slave
+--sync_replica_with_primary replica
+--connection primary
+update test.t1 set X=0 where server_id=1 and primary_server_id=1 and primary_epoch=1 and count=1;
+--sync_replica_with_primary replica
+--connection replica
 
 --echo Check that conflict has been recorded.
 --replace_column 3 <epoch_num>
 select * from test.t1$EX;
 
---connection master
+--connection primary
 drop table test.t1;
 drop table test.t1$EX;
 
 --connection server1
-call mtr.add_suppression("NDB Slave: exceptions table .* has wrong definition .*");
+call mtr.add_suppression("NDB Replica: exceptions table .* has wrong definition .*");
 --connection server2
-call mtr.add_suppression("NDB Slave: exceptions table .* has wrong definition .*");
---connection slave
-call mtr.add_suppression("NDB Slave: exceptions table .* has wrong definition .*");
---connection master
+call mtr.add_suppression("NDB Replica: exceptions table .* has wrong definition .*");
+--connection replica
+call mtr.add_suppression("NDB Replica: exceptions table .* has wrong definition .*");
+--connection primary
 
 --echo And some bad exceptions table schemata
 --echo   Keys in wrong positions
@@ -559,17 +559,17 @@ create table test.t1$EX(
    lilljeholmen varchar(50) default 'Slussen',
                               # Separate, user defined
    server_id int unsigned,
-   master_server_id int unsigned,
-   master_epoch bigint unsigned,
+   primary_server_id int unsigned,
+   primary_epoch bigint unsigned,
    count int unsigned,
-   primary key (server_id, master_server_id, master_epoch, count)) engine=ndb;
+   primary key (server_id, primary_server_id, primary_epoch, count)) engine=ndb;
 
 create table test.t1 (a int, b int, c int, d int, e int, X int unsigned,
                       primary key(a,b,c)) engine=ndb;
 show warnings;
 
 --let $server_num=1.1
---let $pattern=%NDB Slave%
+--let $pattern=%NDB Replica%
 --let $limit=2
 
 --source suite/ndb_rpl/t/show_mysqld_warnings.inc
@@ -581,16 +581,16 @@ drop table test.t1$EX;
 --echo exceptions tables and verify that conflict functions are not
 --echo set up for exceptions tables. 
 
---connection master
+--connection primary
 insert into mysql.ndb_replication values ("test", "t2%", 1, 7, "NDB$EPOCH()");  
 
 create table test.t2$EX (
 server_id int unsigned NOT NULL,
-master_server_id int unsigned NOT NULL,
-master_epoch bigint unsigned NOT NULL,
+primary_server_id int unsigned NOT NULL,
+primary_epoch bigint unsigned NOT NULL,
 count int unsigned NOT NULL,
 a int NOT NULL,
-PRIMARY KEY (server_id,master_server_id,master_epoch,count)
+PRIMARY KEY (server_id,primary_server_id,primary_epoch,count)
 ) ENGINE=ndbcluster;
 
 create table test.t2 (
@@ -601,9 +601,9 @@ b varchar(100)) engine=ndb;
 --source ndb_rpl_get_server_error_log.inc
 --disable_query_log 
 # t2$EX is exceptions table, conflict function should not be used 
-select count(*) from test.server_error_log where line like '%Ndb Slave%t2$EX is exceptions table: not using conflict function%';
+select count(*) from test.server_error_log where line like '%Ndb Replica%t2$EX is exceptions table: not using conflict function%';
 # normal table test.t2 is not exceptions table, should have conflict function 
-select count(*) from test.server_error_log where line like '%Ndb Slave%test.t2 using conflict_fn NDB$EPOCH%';
+select count(*) from test.server_error_log where line like '%Ndb Replica%test.t2 using conflict_fn NDB$EPOCH%';
 --enable_query_log
 
 drop table test.server_error_log;
@@ -613,8 +613,8 @@ drop table test.t2$EX;
 ###############
 --echo "Cleanup"
 
---connection master
+--connection primary
 drop table mysql.ndb_replication;
---sync_slave_with_master
+--sync_replica_with_primary
 
 --source include/rpl_end.inc

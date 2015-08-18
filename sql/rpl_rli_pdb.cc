@@ -16,7 +16,7 @@
 #include "rpl_rli_pdb.h"
 
 #include "log.h"                            // sql_print_error
-#include "rpl_slave_commit_order_manager.h" // Commit_order_manager
+#include "rpl_replica_commit_order_manager.h" // Commit_order_manager
 
 #include "pfs_file_provider.h"
 #include "mysql/psi/mysql_file.h"
@@ -49,8 +49,8 @@ using std::max;
 
    @return true if STOP command gets accepted otherwise false is returned.
 */
-bool handle_slave_worker_stop(Slave_worker *worker,
-                              Slave_job_item *job_item)
+bool handle_replica_worker_stop(Replica_worker *worker,
+                              Replica_job_item *job_item)
 {
   ulonglong group_index= 0;
   Relay_log_info *rli= worker->c_rli;
@@ -71,7 +71,7 @@ bool handle_slave_worker_stop(Slave_worker *worker,
   */
   if (!worker->exit_incremented)
   {
-    if (rli->exit_counter < rli->slave_parallel_workers)
+    if (rli->exit_counter < rli->replica_parallel_workers)
       rli->max_updated_index = max(rli->max_updated_index, group_index);
 
     ++rli->exit_counter;
@@ -86,21 +86,21 @@ bool handle_slave_worker_stop(Slave_worker *worker,
   /*
     Now let's decide about the deferred exit to consider
     the empty queue and the counter value reached
-    slave_parallel_workers.
+    replica_parallel_workers.
   */
   if (!job_item->data)
   {
-    worker->running_status= Slave_worker::STOP_ACCEPTED;
+    worker->running_status= Replica_worker::STOP_ACCEPTED;
     mysql_cond_signal(&worker->jobs_cond);
     mysql_mutex_unlock(&rli->exit_count_lock);
     return(true);
   }
-  else if (rli->exit_counter == rli->slave_parallel_workers)
+  else if (rli->exit_counter == rli->replica_parallel_workers)
   {
     //over steppers should exit with accepting STOP
     if (group_index > rli->max_updated_index)
     {
-      worker->running_status= Slave_worker::STOP_ACCEPTED;
+      worker->running_status= Replica_worker::STOP_ACCEPTED;
       mysql_cond_signal(&worker->jobs_cond);
       mysql_mutex_unlock(&rli->exit_count_lock);
       return(true);
@@ -119,35 +119,35 @@ bool handle_slave_worker_stop(Slave_worker *worker,
 
    @return true if STOP command gets accepted otherwise false is returned.
 */
-bool set_max_updated_index_on_stop(Slave_worker *worker,
-                                   Slave_job_item *job_item)
+bool set_max_updated_index_on_stop(Replica_worker *worker,
+                                   Replica_job_item *job_item)
 {
   head_queue(&worker->jobs, job_item);
-  if (worker->running_status == Slave_worker::STOP)
+  if (worker->running_status == Replica_worker::STOP)
   {
-    if (handle_slave_worker_stop(worker, job_item))
+    if (handle_replica_worker_stop(worker, job_item))
       return true;
   }
   return false;
 }
 
 /*
-  Please every time you add a new field to the worker slave info, update
+  Please every time you add a new field to the worker replica info, update
   what follows. For now, this is just used to get the number of fields.
 */
-const char *info_slave_worker_fields []=
+const char *info_replica_worker_fields []=
 {
   "id",
   /*
     These positions identify what has been executed. Notice that they are
-    redudant and only the group_master_log_name and group_master_log_pos
+    redudant and only the group_primary_log_name and group_primary_log_pos
     are really necessary. However, the additional information is kept to
     ease debugging.
   */
   "group_relay_log_name",
   "group_relay_log_pos",
-  "group_master_log_name",
-  "group_master_log_pos",
+  "group_primary_log_name",
+  "group_primary_log_pos",
 
   /*
     These positions identify what a worker knew about the coordinator at
@@ -156,8 +156,8 @@ const char *info_slave_worker_fields []=
   */
   "checkpoint_relay_log_name",
   "checkpoint_relay_log_pos",
-  "checkpoint_master_log_name",
-  "checkpoint_master_log_pos",
+  "checkpoint_primary_log_name",
+  "checkpoint_primary_log_pos",
 
   /*
     Identify the greatest job, i.e. group, processed by a worker.
@@ -185,7 +185,7 @@ const char *info_slave_worker_fields []=
 */
 const ulong mts_partition_hash_soft_max= 16;
 
-Slave_worker::Slave_worker(Relay_log_info *rli
+Replica_worker::Replica_worker(Relay_log_info *rli
 #ifdef HAVE_PSI_INTERFACE
                            ,PSI_mutex_key *param_key_info_run_lock,
                            PSI_mutex_key *param_key_info_data_lock,
@@ -210,7 +210,7 @@ Slave_worker::Slave_worker(Relay_log_info *rli
     c_rli(rli),
     curr_group_exec_parts(key_memory_db_worker_hash_entry),
     id(param_id),
-    checkpoint_relay_log_pos(0), checkpoint_master_log_pos(0),
+    checkpoint_relay_log_pos(0), checkpoint_primary_log_pos(0),
     checkpoint_seqno(0), running_status(NOT_RUNNING), exit_incremented(false)
 {
   /*
@@ -219,15 +219,15 @@ Slave_worker::Slave_worker(Relay_log_info *rli
   */
   DBUG_ASSERT(internal_id == id + 1);
   checkpoint_relay_log_name[0]= 0;
-  checkpoint_master_log_name[0]= 0;
+  checkpoint_primary_log_name[0]= 0;
 
-  mysql_mutex_init(key_mutex_slave_parallel_worker, &jobs_lock,
+  mysql_mutex_init(key_mutex_replica_parallel_worker, &jobs_lock,
                    MY_MUTEX_INIT_FAST);
-  mysql_cond_init(key_cond_slave_parallel_worker, &jobs_cond);
+  mysql_cond_init(key_cond_replica_parallel_worker, &jobs_cond);
   mysql_cond_init(key_cond_mts_gaq, &logical_clock_cond);
 }
 
-Slave_worker::~Slave_worker()
+Replica_worker::~Replica_worker()
 {
   end_info();
   if (jobs.inited_queue)
@@ -254,12 +254,12 @@ Slave_worker::~Slave_worker()
    @return 0          success
            non-zero   failure
 */
-int Slave_worker::init_worker(Relay_log_info * rli, ulong i)
+int Replica_worker::init_worker(Relay_log_info * rli, ulong i)
 {
-  DBUG_ENTER("Slave_worker::init_worker");
+  DBUG_ENTER("Replica_worker::init_worker");
   DBUG_ASSERT(!rli->info_thd->is_error());
 
-  Slave_job_item empty= Slave_job_item();
+  Replica_job_item empty= Replica_job_item();
 
   c_rli= rli;
   set_commit_order_manager(c_rli->get_commit_order_manager());
@@ -272,7 +272,7 @@ int Slave_worker::init_worker(Relay_log_info * rli, ulong i)
   curr_group_exec_parts.clear();
   relay_log_change_notified= FALSE; // the 1st group to contain relaylog name
   checkpoint_notified= FALSE;       // the same as above
-  master_log_change_notified= false;// W learns master log during 1st group exec
+  primary_log_change_notified= false;// W learns primary log during 1st group exec
   bitmap_shifted= 0;
   workers= c_rli->workers; // shallow copying is sufficient
   wq_empty_waits= wq_size_waits_cnt= groups_done= events_done= curr_jobs= 0;
@@ -283,9 +283,9 @@ int Slave_worker::init_worker(Relay_log_info * rli, ulong i)
   DBUG_ASSERT(!jobs.inited_queue);
   jobs.avail= 0;
   jobs.len= 0;
-  jobs.overfill= FALSE;    //  todo: move into Slave_jobs_queue constructor
+  jobs.overfill= FALSE;    //  todo: move into Replica_jobs_queue constructor
   jobs.waited_overfill= 0;
-  jobs.entry= jobs.size= c_rli->mts_slave_worker_queue_len_max;
+  jobs.entry= jobs.size= c_rli->mts_replica_worker_queue_len_max;
   jobs.inited_queue= true;
   curr_group_seen_begin= curr_group_seen_gtid= false;
 #ifndef DBUG_OFF
@@ -310,7 +310,7 @@ int Slave_worker::init_worker(Relay_log_info * rli, ulong i)
 }
 
 /**
-   A part of Slave worker iitializer that provides a
+   A part of Replica worker iitializer that provides a
    minimum context for MTS recovery.
 
    @param is_gaps_collecting_phase
@@ -320,20 +320,20 @@ int Slave_worker::init_worker(Relay_log_info * rli, ulong i)
           that is @c mts_recovery_groups() and Worker should
           restore the last session time info which is processed
           to collect gaps that is not executed transactions (groups).
-          Such recovery Slave_worker intance is destroyed at the end of
+          Such recovery Replica_worker intance is destroyed at the end of
           @c mts_recovery_groups().
-          Whet it's @c false Slave_worker is initialized for the run time
+          Whet it's @c false Replica_worker is initialized for the run time
           nad should not read the last session time stale info.
           Its info will be ultimately reset once all gaps are executed
           to finish off recovery.
 
    @return 0 on success, non-zero for a failure
 */
-int Slave_worker::rli_init_info(bool is_gaps_collecting_phase)
+int Replica_worker::rli_init_info(bool is_gaps_collecting_phase)
 {
   enum_return_check return_check= ERROR_CHECKING_REPOSITORY;
 
-  DBUG_ENTER("Slave_worker::rli_init_info");
+  DBUG_ENTER("Replica_worker::rli_init_info");
 
   if (inited)
     DBUG_RETURN(0);
@@ -362,7 +362,7 @@ int Slave_worker::rli_init_info(bool is_gaps_collecting_phase)
   bitmap_init(&group_shifted, NULL, num_bits, FALSE);
 
   if (is_gaps_collecting_phase &&
-      (DBUG_EVALUATE_IF("mts_slave_worker_init_at_gaps_fails", true, false) ||
+      (DBUG_EVALUATE_IF("mts_replica_worker_init_at_gaps_fails", true, false) ||
        read_info(handler)))
   {
     bitmap_free(&group_executed);
@@ -376,13 +376,13 @@ int Slave_worker::rli_init_info(bool is_gaps_collecting_phase)
 err:
   // todo: handler->end_info(uidx, nidx);
   inited= 0;
-  sql_print_error("Error reading slave worker configuration");
+  sql_print_error("Error reading replica worker configuration");
   DBUG_RETURN(1);
 }
 
-void Slave_worker::end_info()
+void Replica_worker::end_info()
 {
-  DBUG_ENTER("Slave_worker::end_info");
+  DBUG_ENTER("Replica_worker::end_info");
 
   if (!inited)
     DBUG_VOID_RETURN;
@@ -400,16 +400,16 @@ void Slave_worker::end_info()
   DBUG_VOID_RETURN;
 }
 
-int Slave_worker::flush_info(const bool force)
+int Replica_worker::flush_info(const bool force)
 {
-  DBUG_ENTER("Slave_worker::flush_info");
+  DBUG_ENTER("Replica_worker::flush_info");
 
   if (!inited)
     DBUG_RETURN(0);
 
   /*
     We update the sync_period at this point because only here we
-    now that we are handling a Slave_worker. This needs to be
+    now that we are handling a Replica_worker. This needs to be
     update every time we call flush because the option may be
     dinamically set.
   */
@@ -424,18 +424,18 @@ int Slave_worker::flush_info(const bool force)
   DBUG_RETURN(0);
 
 err:
-  sql_print_error("Error writing slave worker configuration");
+  sql_print_error("Error writing replica worker configuration");
   DBUG_RETURN(1);
 }
 
-bool Slave_worker::read_info(Rpl_info_handler *from)
+bool Replica_worker::read_info(Rpl_info_handler *from)
 {
-  DBUG_ENTER("Slave_worker::read_info");
+  DBUG_ENTER("Replica_worker::read_info");
 
   ulong temp_group_relay_log_pos= 0;
-  ulong temp_group_master_log_pos= 0;
+  ulong temp_group_primary_log_pos= 0;
   ulong temp_checkpoint_relay_log_pos= 0;
-  ulong temp_checkpoint_master_log_pos= 0;
+  ulong temp_checkpoint_primary_log_pos= 0;
   ulong temp_checkpoint_seqno= 0;
   ulong nbytes= 0;
   uchar *buffer= (uchar *) group_executed.bitmap;
@@ -450,20 +450,20 @@ bool Slave_worker::read_info(Rpl_info_handler *from)
                      (char *) "") ||
       from->get_info(&temp_group_relay_log_pos,
                      0UL) ||
-      from->get_info(group_master_log_name,
-                     sizeof(group_master_log_name),
+      from->get_info(group_primary_log_name,
+                     sizeof(group_primary_log_name),
                      (char *) "") ||
-      from->get_info(&temp_group_master_log_pos,
+      from->get_info(&temp_group_primary_log_pos,
                      0UL) ||
       from->get_info(checkpoint_relay_log_name,
                      sizeof(checkpoint_relay_log_name),
                      (char *) "") ||
       from->get_info(&temp_checkpoint_relay_log_pos,
                      0UL) ||
-      from->get_info(checkpoint_master_log_name,
-                     sizeof(checkpoint_master_log_name),
+      from->get_info(checkpoint_primary_log_name,
+                     sizeof(checkpoint_primary_log_name),
                      (char *) "") ||
-      from->get_info(&temp_checkpoint_master_log_pos,
+      from->get_info(&temp_checkpoint_primary_log_pos,
                      0UL) ||
       from->get_info(&temp_checkpoint_seqno,
                      0UL) ||
@@ -478,9 +478,9 @@ bool Slave_worker::read_info(Rpl_info_handler *from)
 
   internal_id=(uint) temp_internal_id;
   group_relay_log_pos=  temp_group_relay_log_pos;
-  group_master_log_pos= temp_group_master_log_pos;
+  group_primary_log_pos= temp_group_primary_log_pos;
   checkpoint_relay_log_pos=  temp_checkpoint_relay_log_pos;
-  checkpoint_master_log_pos= temp_checkpoint_master_log_pos;
+  checkpoint_primary_log_pos= temp_checkpoint_primary_log_pos;
   checkpoint_seqno= temp_checkpoint_seqno;
 
   DBUG_RETURN(FALSE);
@@ -488,11 +488,11 @@ bool Slave_worker::read_info(Rpl_info_handler *from)
 
 /*
   This function is used to make a copy of the worker object before we
-  destroy it while STOP SLAVE. This new object is then used to report the
-  worker status until next START SLAVE following which the new worker objetcs
+  destroy it while STOP REPLICA. This new object is then used to report the
+  worker status until next START REPLICA following which the new worker objetcs
   will be used.
 */
-void Slave_worker::copy_values_for_PFS(ulong worker_id,
+void Replica_worker::copy_values_for_PFS(ulong worker_id,
                                        en_running_state thd_running_status,
                                        THD *worker_thd,
                                        const Error &last_error,
@@ -505,9 +505,9 @@ void Slave_worker::copy_values_for_PFS(ulong worker_id,
   currently_executing_gtid= gtid;
 }
 
-bool Slave_worker::set_info_search_keys(Rpl_info_handler *to)
+bool Replica_worker::set_info_search_keys(Rpl_info_handler *to)
 {
-  DBUG_ENTER("Slave_worker::set_info_search_keys");
+  DBUG_ENTER("Replica_worker::set_info_search_keys");
 
   /* primary keys are Id and channel_name */
   if(to->set_info(0, (int)internal_id ) || to->set_info(LINE_FOR_CHANNEL, channel))
@@ -516,9 +516,9 @@ bool Slave_worker::set_info_search_keys(Rpl_info_handler *to)
   DBUG_RETURN(FALSE);
 }
 
-bool Slave_worker::write_info(Rpl_info_handler *to)
+bool Replica_worker::write_info(Rpl_info_handler *to)
 {
-  DBUG_ENTER("Master_info::write_info");
+  DBUG_ENTER("Primary_info::write_info");
 
   ulong nbytes= (ulong) no_bytes_in_map(&group_executed);
   uchar *buffer= (uchar*) group_executed.bitmap;
@@ -528,12 +528,12 @@ bool Slave_worker::write_info(Rpl_info_handler *to)
       to->set_info((int) internal_id) ||
       to->set_info(group_relay_log_name) ||
       to->set_info((ulong) group_relay_log_pos) ||
-      to->set_info(group_master_log_name) ||
-      to->set_info((ulong) group_master_log_pos) ||
+      to->set_info(group_primary_log_name) ||
+      to->set_info((ulong) group_primary_log_pos) ||
       to->set_info(checkpoint_relay_log_name) ||
       to->set_info((ulong) checkpoint_relay_log_pos) ||
-      to->set_info(checkpoint_master_log_name) ||
-      to->set_info((ulong) checkpoint_master_log_pos) ||
+      to->set_info(checkpoint_primary_log_name) ||
+      to->set_info((ulong) checkpoint_primary_log_pos) ||
       to->set_info((ulong) checkpoint_seqno) ||
       to->set_info(nbytes) ||
       to->set_info(buffer, (size_t) nbytes)||
@@ -547,62 +547,62 @@ bool Slave_worker::write_info(Rpl_info_handler *to)
    Clean up a part of Worker info table that is regarded in
    in gaps collecting at recovery.
    This worker won't contribute to recovery bitmap at future
-   slave restart (see @c mts_recovery_groups).
+   replica restart (see @c mts_recovery_groups).
 
    @retrun FALSE as success TRUE as failure
 */
-bool Slave_worker::reset_recovery_info()
+bool Replica_worker::reset_recovery_info()
 {
-  DBUG_ENTER("Slave_worker::reset_recovery_info");
+  DBUG_ENTER("Replica_worker::reset_recovery_info");
 
-  set_group_master_log_name("");
-  set_group_master_log_pos(0);
+  set_group_primary_log_name("");
+  set_group_primary_log_pos(0);
 
   DBUG_RETURN(flush_info(true));
 }
 
-size_t Slave_worker::get_number_worker_fields()
+size_t Replica_worker::get_number_worker_fields()
 {
-  return sizeof(info_slave_worker_fields)/sizeof(info_slave_worker_fields[0]);
+  return sizeof(info_replica_worker_fields)/sizeof(info_replica_worker_fields[0]);
 }
 
-const char* Slave_worker::get_master_log_name()
+const char* Replica_worker::get_primary_log_name()
 {
-  Slave_job_group* ptr_g= c_rli->gaq->get_job_group(gaq_index);
+  Replica_job_group* ptr_g= c_rli->gaq->get_job_group(gaq_index);
 
   return (ptr_g->checkpoint_log_name != NULL) ?
-    ptr_g->checkpoint_log_name : checkpoint_master_log_name;
+    ptr_g->checkpoint_log_name : checkpoint_primary_log_name;
 }
 
-bool Slave_worker::commit_positions(Log_event *ev, Slave_job_group* ptr_g, bool force)
+bool Replica_worker::commit_positions(Log_event *ev, Replica_job_group* ptr_g, bool force)
 {
-  DBUG_ENTER("Slave_worker::checkpoint_positions");
+  DBUG_ENTER("Replica_worker::checkpoint_positions");
 
   /*
-    Initial value of checkpoint_master_log_name is learned from
-    group_master_log_name. The latter can be passed to Worker
-    at rare event of master binlog rotation.
+    Initial value of checkpoint_primary_log_name is learned from
+    group_primary_log_name. The latter can be passed to Worker
+    at rare event of primary binlog rotation.
     This initialization is needed to provide to Worker info
     on physical coordiates during execution of the very first group
     after a rotation.
   */
-  if (ptr_g->group_master_log_name != NULL)
+  if (ptr_g->group_primary_log_name != NULL)
   {
-    strmake(group_master_log_name, ptr_g->group_master_log_name,
-            sizeof(group_master_log_name) - 1);
-    my_free(ptr_g->group_master_log_name);
-    ptr_g->group_master_log_name= NULL;
-    strmake(checkpoint_master_log_name, group_master_log_name,
-            sizeof(checkpoint_master_log_name) - 1);
+    strmake(group_primary_log_name, ptr_g->group_primary_log_name,
+            sizeof(group_primary_log_name) - 1);
+    my_free(ptr_g->group_primary_log_name);
+    ptr_g->group_primary_log_name= NULL;
+    strmake(checkpoint_primary_log_name, group_primary_log_name,
+            sizeof(checkpoint_primary_log_name) - 1);
   }
   if (ptr_g->checkpoint_log_name != NULL)
   {
     strmake(checkpoint_relay_log_name, ptr_g->checkpoint_relay_log_name,
             sizeof(checkpoint_relay_log_name) - 1);
     checkpoint_relay_log_pos= ptr_g->checkpoint_relay_log_pos;
-    strmake(checkpoint_master_log_name, ptr_g->checkpoint_log_name,
-            sizeof(checkpoint_master_log_name) - 1);
-    checkpoint_master_log_pos= ptr_g->checkpoint_log_pos;
+    strmake(checkpoint_primary_log_name, ptr_g->checkpoint_log_name,
+            sizeof(checkpoint_primary_log_name) - 1);
+    checkpoint_primary_log_pos= ptr_g->checkpoint_log_pos;
 
     my_free(ptr_g->checkpoint_log_name);
     ptr_g->checkpoint_log_name= NULL;
@@ -633,19 +633,19 @@ bool Slave_worker::commit_positions(Log_event *ev, Slave_job_group* ptr_g, bool 
   bitmap_set_bit(&group_executed, ptr_g->checkpoint_seqno);
   checkpoint_seqno= ptr_g->checkpoint_seqno;
   group_relay_log_pos= ev->future_event_relay_log_pos;
-  group_master_log_pos= ev->common_header->log_pos;
+  group_primary_log_pos= ev->common_header->log_pos;
 
   /*
-    Directly accessing c_rli->get_group_master_log_name() does not
+    Directly accessing c_rli->get_group_primary_log_name() does not
     represent a concurrency issue because the current code places
-    a synchronization point when master rotates.
+    a synchronization point when primary rotates.
   */
-  strmake(group_master_log_name, c_rli->get_group_master_log_name(),
-          sizeof(group_master_log_name)-1);
+  strmake(group_primary_log_name, c_rli->get_group_primary_log_name(),
+          sizeof(group_primary_log_name)-1);
 
-  DBUG_PRINT("mts", ("Committing worker-id %lu group master log pos %llu "
-             "group master log name %s checkpoint sequence number %lu.",
-             id, group_master_log_pos, group_master_log_name, checkpoint_seqno));
+  DBUG_PRINT("mts", ("Committing worker-id %lu group primary log pos %llu "
+             "group primary log name %s checkpoint sequence number %lu.",
+             id, group_primary_log_pos, group_primary_log_name, checkpoint_seqno));
 
   DBUG_EXECUTE_IF("mts_debug_concurrent_access",
     {
@@ -656,7 +656,7 @@ bool Slave_worker::commit_positions(Log_event *ev, Slave_job_group* ptr_g, bool 
   DBUG_RETURN(flush_info(force));
 }
 
-void Slave_worker::rollback_positions(Slave_job_group* ptr_g)
+void Replica_worker::rollback_positions(Replica_job_group* ptr_g)
 {
   if (!is_transactional())
   {
@@ -687,14 +687,14 @@ static void free_entry(db_worker_hash_entry *entry)
 
   DBUG_PRINT("info", ("free_entry %s, %zu", entry->db, strlen(entry->db)));
 
-  DBUG_ASSERT(c_thd->system_thread == SYSTEM_THREAD_SLAVE_SQL);
+  DBUG_ASSERT(c_thd->system_thread == SYSTEM_THREAD_REPLICA_SQL);
 
   /*
     Although assert is correct valgrind senses entry->worker can be freed.
 
     DBUG_ASSERT(entry->usage == 0 ||
                 !entry->worker    ||  // last entry owner could have errored out
-                entry->worker->running_status != Slave_worker::RUNNING);
+                entry->worker->running_status != Replica_worker::RUNNING);
   */
 
   mts_move_temp_tables_to_thd(c_thd, entry->temporary_tables);
@@ -717,9 +717,9 @@ bool init_hash_workers(Relay_log_info *rli)
                  key_memory_db_worker_hash_entry) == 0);
   if (rli->inited_hash_workers)
   {
-    mysql_mutex_init(key_mutex_slave_worker_hash, &rli->slave_worker_hash_lock,
+    mysql_mutex_init(key_mutex_replica_worker_hash, &rli->replica_worker_hash_lock,
                      MY_MUTEX_INIT_FAST);
-    mysql_cond_init(key_cond_slave_worker_hash, &rli->slave_worker_hash_cond);
+    mysql_cond_init(key_cond_replica_worker_hash, &rli->replica_worker_hash_cond);
   }
 
   DBUG_RETURN (!rli->inited_hash_workers);
@@ -731,8 +731,8 @@ void destroy_hash_workers(Relay_log_info *rli)
   if (rli->inited_hash_workers)
   {
     my_hash_free(&rli->mapping_db_to_worker);
-    mysql_mutex_destroy(&rli->slave_worker_hash_lock);
-    mysql_cond_destroy(&rli->slave_worker_hash_cond);
+    mysql_mutex_destroy(&rli->replica_worker_hash_lock);
+    mysql_cond_destroy(&rli->replica_worker_hash_cond);
     rli->inited_hash_workers= false;
   }
 
@@ -898,11 +898,11 @@ static void move_temp_tables_to_entry(THD* thd, db_worker_hash_entry* entry)
 
    @return the pointer to a Worker struct
 */
-Slave_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
+Replica_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
                                db_worker_hash_entry **ptr_entry,
-                               bool need_temp_tables, Slave_worker *last_worker)
+                               bool need_temp_tables, Replica_worker *last_worker)
 {
-  Slave_worker_array *workers= &rli->workers;
+  Replica_worker_array *workers= &rli->workers;
 
   THD *thd= rli->info_thd;
 
@@ -940,7 +940,7 @@ Slave_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
   hash_value= my_calc_hash(&rli->mapping_db_to_worker, (uchar*) dbname,
                            dblength);
 
-  mysql_mutex_lock(&rli->slave_worker_hash_lock);
+  mysql_mutex_lock(&rli->replica_worker_hash_lock);
 
   entry= (db_worker_hash_entry *)
     my_hash_search_using_hash_value(&rli->mapping_db_to_worker, hash_value,
@@ -956,7 +956,7 @@ Slave_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
     my_bool ret;
     char *db= NULL;
 
-    mysql_mutex_unlock(&rli->slave_worker_hash_lock);
+    mysql_mutex_unlock(&rli->replica_worker_hash_lock);
 
     DBUG_PRINT("info", ("Inserting %s, %zu", dbname, dblength));
     /*
@@ -982,7 +982,7 @@ Slave_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
       Unless \exists the last assigned Worker, get a free worker based
       on a policy described in the function get_least_occupied_worker().
     */
-    mysql_mutex_lock(&rli->slave_worker_hash_lock);
+    mysql_mutex_lock(&rli->replica_worker_hash_lock);
 
     entry->worker= (!last_worker) ?
       get_least_occupied_worker(rli, workers, NULL) : last_worker;
@@ -1070,21 +1070,21 @@ Slave_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
       // loop while a user thread is stopping Coordinator gracefully
       do
       {
-        thd->ENTER_COND(&rli->slave_worker_hash_cond,
-                                   &rli->slave_worker_hash_lock,
-                                   &stage_slave_waiting_worker_to_release_partition,
+        thd->ENTER_COND(&rli->replica_worker_hash_cond,
+                                   &rli->replica_worker_hash_lock,
+                                   &stage_replica_waiting_worker_to_release_partition,
                                    &old_stage);
-        mysql_cond_wait(&rli->slave_worker_hash_cond, &rli->slave_worker_hash_lock);
+        mysql_cond_wait(&rli->replica_worker_hash_cond, &rli->replica_worker_hash_lock);
       } while (entry->usage != 0 && !thd->killed);
 
-      mysql_mutex_unlock(&rli->slave_worker_hash_lock);
+      mysql_mutex_unlock(&rli->replica_worker_hash_lock);
       thd->EXIT_COND(&old_stage);
       if (thd->killed)
       {
         entry= NULL;
         goto err;
       }
-      mysql_mutex_lock(&rli->slave_worker_hash_lock);
+      mysql_mutex_lock(&rli->replica_worker_hash_lock);
       entry->usage= 1;
       entry->worker->usage_partition++;
     }
@@ -1119,7 +1119,7 @@ Slave_worker *map_db_to_worker(const char *dbname, Relay_log_info *rli,
     }
 #endif
   }
-  mysql_mutex_unlock(&rli->slave_worker_hash_lock);
+  mysql_mutex_unlock(&rli->replica_worker_hash_lock);
 
   DBUG_ASSERT(entry);
 
@@ -1137,12 +1137,12 @@ err:
 /**
    Get the least occupied worker.
 
-   @param ws  dynarray of pointers to Slave_worker
-   @return a pointer to chosen Slave_worker instance
+   @param ws  dynarray of pointers to Replica_worker
+   @return a pointer to chosen Replica_worker instance
 
 */
-Slave_worker *get_least_occupied_worker(Relay_log_info *rli,
-                                        Slave_worker_array *ws,
+Replica_worker *get_least_occupied_worker(Relay_log_info *rli,
+                                        Replica_worker_array *ws,
                                         Log_event* ev)
 {
   return rli->current_mts_submode->get_least_occupied_worker(rli, ws, ev);
@@ -1159,10 +1159,10 @@ Slave_worker *get_least_occupied_worker(Relay_log_info *rli,
    @param ev     a pointer to Log_event
    @param error  error code after processing the event by caller.
 */
-void Slave_worker::slave_worker_ends_group(Log_event* ev, int error)
+void Replica_worker::replica_worker_ends_group(Log_event* ev, int error)
 {
-  DBUG_ENTER("Slave_worker::slave_worker_ends_group");
-  Slave_job_group *ptr_g= NULL;
+  DBUG_ENTER("Replica_worker::replica_worker_ends_group");
+  Replica_job_group *ptr_g= NULL;
 
   if (!error)
   {
@@ -1192,7 +1192,7 @@ void Slave_worker::slave_worker_ends_group(Log_event* ev, int error)
       );
     }
 
-    ptr_g->group_master_log_pos= group_master_log_pos;
+    ptr_g->group_primary_log_pos= group_primary_log_pos;
     ptr_g->group_relay_log_pos= group_relay_log_pos;
     my_atomic_store32(&ptr_g->done, 1);
     last_group_done_index= gaq_index;
@@ -1230,7 +1230,7 @@ void Slave_worker::slave_worker_ends_group(Log_event* ev, int error)
   {
     db_worker_hash_entry *entry= curr_group_exec_parts[i];
 
-    mysql_mutex_lock(&c_rli->slave_worker_hash_lock);
+    mysql_mutex_lock(&c_rli->replica_worker_hash_lock);
 
     DBUG_ASSERT(entry);
 
@@ -1259,13 +1259,13 @@ void Slave_worker::slave_worker_ends_group(Log_event* ev, int error)
         DBUG_PRINT("info",
                    ("Notifying entry %p release by worker %lu", entry, this->id));
 
-        mysql_cond_signal(&c_rli->slave_worker_hash_cond);
+        mysql_cond_signal(&c_rli->replica_worker_hash_cond);
       }
     }
     else
       DBUG_ASSERT(usage_partition != 0);
 
-    mysql_mutex_unlock(&c_rli->slave_worker_hash_lock);
+    mysql_mutex_unlock(&c_rli->replica_worker_hash_lock);
   }
 
   curr_group_exec_parts.clear();
@@ -1274,9 +1274,9 @@ void Slave_worker::slave_worker_ends_group(Log_event* ev, int error)
   if (error)
   {
     // Awakening Coordinator that could be waiting for entry release
-    mysql_mutex_lock(&c_rli->slave_worker_hash_lock);
-    mysql_cond_signal(&c_rli->slave_worker_hash_cond);
-    mysql_mutex_unlock(&c_rli->slave_worker_hash_lock);
+    mysql_mutex_lock(&c_rli->replica_worker_hash_lock);
+    mysql_cond_signal(&c_rli->replica_worker_hash_cond);
+    mysql_mutex_unlock(&c_rli->replica_worker_hash_lock);
   }
   }
   else // not DB-type scheduler
@@ -1436,13 +1436,13 @@ bool circular_buffer_queue<Element_type>::gt(ulong i, ulong k)
 }
 
 #ifndef DBUG_OFF
-bool Slave_committed_queue::count_done(Relay_log_info* rli)
+bool Replica_committed_queue::count_done(Relay_log_info* rli)
 {
   ulong i, k, cnt= 0;
 
   for (i= entry, k= 0; k < len; i= (i + 1) % size, k++)
   {
-    Slave_job_group *ptr_g;
+    Replica_job_group *ptr_g;
 
     ptr_g= &m_Q[i];
 
@@ -1453,10 +1453,10 @@ bool Slave_committed_queue::count_done(Relay_log_info* rli)
   DBUG_ASSERT(cnt <= size);
 
   DBUG_PRINT("mts", ("Checking if it can simulate a crash:"
-             " mts_checkpoint_group %u counter %lu parallel slaves %lu\n",
-             opt_mts_checkpoint_group, cnt, rli->slave_parallel_workers));
+             " mts_checkpoint_group %u counter %lu parallel replicas %lu\n",
+             opt_mts_checkpoint_group, cnt, rli->replica_parallel_workers));
 
-  return (cnt == (rli->slave_parallel_workers * opt_mts_checkpoint_group));
+  return (cnt == (rli->replica_parallel_workers * opt_mts_checkpoint_group));
 }
 #endif
 
@@ -1477,24 +1477,24 @@ bool Slave_committed_queue::count_done(Relay_log_info* rli)
    @c last_done is updated with the latest total_seqno for each Worker
    that was met during GAQ parse.
 
-   @note dyn-allocated members of Slave_job_group such as
+   @note dyn-allocated members of Replica_job_group such as
          group_relay_log_name as freed here.
 
    @return number of discarded items
 */
-ulong Slave_committed_queue::move_queue_head(Slave_worker_array *ws)
+ulong Replica_committed_queue::move_queue_head(Replica_worker_array *ws)
 {
-  DBUG_ENTER("Slave_committed_queue::move_queue_head");
+  DBUG_ENTER("Replica_committed_queue::move_queue_head");
   ulong i, cnt= 0;
 
   for (i= entry; i != avail && !empty(); cnt++, i= (i + 1) % size)
   {
-    Slave_worker *w_i;
-    Slave_job_group *ptr_g;
+    Replica_worker *w_i;
+    Replica_job_group *ptr_g;
     char grl_name[FN_REFLEN];
 
 #ifndef DBUG_OFF
-    if (DBUG_EVALUATE_IF("check_slave_debug_group", 1, 0) &&
+    if (DBUG_EVALUATE_IF("check_replica_debug_group", 1, 0) &&
         cnt == opt_mts_checkpoint_period)
       DBUG_RETURN(cnt);
 #endif
@@ -1531,7 +1531,7 @@ ulong Slave_committed_queue::move_queue_head(Slave_worker_array *ws)
     /*
       Removes the job from the (G)lobal (A)ssigned (Q)ueue.
     */
-    Slave_job_group g= Slave_job_group();
+    Replica_job_group g= Replica_job_group();
 #ifndef DBUG_OFF
     ulong ind=
 #endif
@@ -1584,7 +1584,7 @@ ulong Slave_committed_queue::move_queue_head(Slave_worker_array *ws)
    A mutex protecting from concurrent LWM change by
    move_queue_head() (by Coordinator) should be taken by the caller.
 
-   @param arg_g [out]  a double pointer to Slave job descriptor item
+   @param arg_g [out]  a double pointer to Replica job descriptor item
                        last marked with done-as-true boolean.
    @param start_index  a GAQ index to start/resume searching.
                        Caller is to make sure the index points into
@@ -1592,10 +1592,10 @@ ulong Slave_committed_queue::move_queue_head(Slave_worker_array *ws)
    @return             GAQ index of the last consecutive done job, or the GAQ
                        size when none is found.
 */
-ulong Slave_committed_queue::find_lwm(Slave_job_group** arg_g,
+ulong Replica_committed_queue::find_lwm(Replica_job_group** arg_g,
                                       ulong start_index)
 {
-  Slave_job_group *ptr_g= NULL;
+  Replica_job_group *ptr_g= NULL;
   ulong i, k, cnt;
 
   DBUG_ASSERT(start_index <= size);
@@ -1631,16 +1631,16 @@ ulong Slave_committed_queue::find_lwm(Slave_job_group** arg_g,
 }
 
 /**
-   Method should be executed at slave system stop to
+   Method should be executed at replica system stop to
    cleanup dynamically allocated items that remained as unprocessed
    by Coordinator and Workers in their regular execution course.
 */
-void Slave_committed_queue::free_dynamic_items()
+void Replica_committed_queue::free_dynamic_items()
 {
   ulong i, k;
   for (i= entry, k= 0; k < len; i= (i + 1) % size, k++)
   {
-    Slave_job_group *ptr_g= &m_Q[i];
+    Replica_job_group *ptr_g= &m_Q[i];
     if (ptr_g->group_relay_log_name)
     {
       my_free(ptr_g->group_relay_log_name);
@@ -1653,9 +1653,9 @@ void Slave_committed_queue::free_dynamic_items()
     {
       my_free(ptr_g->checkpoint_relay_log_name);
     }
-    if (ptr_g->group_master_log_name)
+    if (ptr_g->group_primary_log_name)
     {
-      my_free(ptr_g->group_master_log_name);
+      my_free(ptr_g->group_primary_log_name);
     }
   }
   DBUG_ASSERT((avail == size /* full */ || entry == size /* empty */) ||
@@ -1663,13 +1663,13 @@ void Slave_committed_queue::free_dynamic_items()
 }
 
 
-void Slave_worker::do_report(loglevel level, int err_code, const char *msg,
+void Replica_worker::do_report(loglevel level, int err_code, const char *msg,
                              va_list args) const
 {
-  char buff_coord[MAX_SLAVE_ERRMSG];
+  char buff_coord[MAX_REPLICA_ERRMSG];
   char buff_gtid[Gtid::MAX_TEXT_LENGTH + 1];
-  const char* log_name= const_cast<Slave_worker*>(this)->get_master_log_name();
-  ulonglong log_pos= const_cast<Slave_worker*>(this)->get_master_log_pos();
+  const char* log_name= const_cast<Replica_worker*>(this)->get_primary_log_name();
+  ulonglong log_pos= const_cast<Replica_worker*>(this)->get_primary_log_pos();
   const Gtid_specification *gtid_next= &info_thd->variables.gtid_next;
   THD *thd= info_thd;
 
@@ -1678,12 +1678,12 @@ void Slave_worker::do_report(loglevel level, int err_code, const char *msg,
   if (level == ERROR_LEVEL && (!has_temporary_error(thd, err_code) ||
       thd->get_transaction()->cannot_safely_rollback(Transaction_ctx::SESSION)))
   {
-    char coordinator_errmsg[MAX_SLAVE_ERRMSG];
+    char coordinator_errmsg[MAX_REPLICA_ERRMSG];
 
     sprintf(coordinator_errmsg,
             "Coordinator stopped because there were error(s) in the worker(s). "
             "The most recent failure being: Worker %lu failed executing "
-            "transaction '%s' at master log %s, end_log_pos %llu. "
+            "transaction '%s' at primary log %s, end_log_pos %llu. "
             "See error log and/or "
             "performance_schema.replication_applier_status_by_worker table for "
             "more details about this failure or others, if any.",
@@ -1702,7 +1702,7 @@ void Slave_worker::do_report(loglevel level, int err_code, const char *msg,
 
   my_snprintf(buff_coord, sizeof(buff_coord),
           "Worker %lu failed executing transaction '%s' at "
-          "master log %s, end_log_pos %llu",
+          "primary log %s, end_log_pos %llu",
           id, buff_gtid, log_name, log_pos);
 
   /*
@@ -1781,13 +1781,13 @@ static int64 get_sequence_number(Log_event *ev)
   @return 0 success
          -1 got killed or an error happened during appying
 */
-int Slave_worker::slave_worker_exec_event(Log_event *ev)
+int Replica_worker::replica_worker_exec_event(Log_event *ev)
 {
   Relay_log_info *rli= c_rli;
   THD *thd= info_thd;
   int ret= 0;
 
-  DBUG_ENTER("slave_worker_exec_event");
+  DBUG_ENTER("replica_worker_exec_event");
 
   thd->server_id = ev->server_id;
   thd->set_time();
@@ -1867,7 +1867,7 @@ int Slave_worker::slave_worker_exec_event(Log_event *ev)
   }
 
   set_future_event_relay_log_pos(ev->future_event_relay_log_pos);
-  set_master_log_pos(static_cast<ulong>(ev->common_header->log_pos));
+  set_primary_log_pos(static_cast<ulong>(ev->common_header->log_pos));
   set_gaq_index(ev->mts_group_idx);
   ret= ev->do_apply_event_worker(this);
   DBUG_RETURN(ret);
@@ -1881,7 +1881,7 @@ int Slave_worker::slave_worker_exec_event(Log_event *ev)
   @retval True if the thread has been killed, false otherwise.
 */
 
-bool Slave_worker::worker_sleep(ulong seconds)
+bool Replica_worker::worker_sleep(ulong seconds)
 {
   bool ret= false;
   struct timespec abstime;
@@ -1910,7 +1910,7 @@ bool Slave_worker::worker_sleep(ulong seconds)
   It is called after an error happens. It checks if that is an temporary
   error and if the situation is allow to retry the transaction. Then it will
   retry the transaction if it is allowed. Retry policy and logic is similar to
-  single-threaded slave.
+  single-threaded replica.
 
   @param[in] start_relay_number The extension number of the relay log which
                includes the first event of the transaction.
@@ -1922,7 +1922,7 @@ bool Slave_worker::worker_sleep(ulong seconds)
 
   @return false if succeeds, otherwise returns true.
 */
-bool Slave_worker::retry_transaction(uint start_relay_number,
+bool Replica_worker::retry_transaction(uint start_relay_number,
                                      my_off_t start_relay_pos,
                                      uint end_relay_number,
                                      my_off_t end_relay_pos)
@@ -1930,9 +1930,9 @@ bool Slave_worker::retry_transaction(uint start_relay_number,
   THD *thd= info_thd;
   bool silent= false;
 
-  DBUG_ENTER("Slave_worker::retry_transaction");
+  DBUG_ENTER("Replica_worker::retry_transaction");
 
-  if (slave_trans_retries == 0)
+  if (replica_trans_retries == 0)
     DBUG_RETURN(true);
 
   do
@@ -1947,13 +1947,13 @@ bool Slave_worker::retry_transaction(uint start_relay_number,
         thd->get_transaction()->cannot_safely_rollback(Transaction_ctx::SESSION))
       DBUG_RETURN(true);
 
-    if (trans_retries >= slave_trans_retries)
+    if (trans_retries >= replica_trans_retries)
     {
       thd->is_fatal_error= 1;
       c_rli->report(ERROR_LEVEL, thd->get_stmt_da()->mysql_errno(),
                     "worker thread retried transaction %lu time(s) "
                     "in vain, giving up. Consider raising the value of "
-                    "the slave_transaction_retries variable.", trans_retries);
+                    "the replica_transaction_retries variable.", trans_retries);
       DBUG_RETURN(true);
     }
 
@@ -1966,7 +1966,7 @@ bool Slave_worker::retry_transaction(uint start_relay_number,
 
     cleanup_context(thd, 1);
     reset_order_commit_deadlock();
-    worker_sleep(min<ulong>(trans_retries, MAX_SLAVE_RETRY_PAUSE));
+    worker_sleep(min<ulong>(trans_retries, MAX_REPLICA_RETRY_PAUSE));
 
   } while (read_and_apply_events(start_relay_number, start_relay_pos,
                                  end_relay_number, end_relay_pos));
@@ -1986,12 +1986,12 @@ bool Slave_worker::retry_transaction(uint start_relay_number,
 
   @return false if succeeds, otherwise returns true.
 */
-bool Slave_worker::read_and_apply_events(uint start_relay_number,
+bool Replica_worker::read_and_apply_events(uint start_relay_number,
                                          my_off_t start_relay_pos,
                                          uint end_relay_number,
                                          my_off_t end_relay_pos)
 {
-  DBUG_ENTER("Slave_worker::read_and_apply_events");
+  DBUG_ENTER("Replica_worker::read_and_apply_events");
 
   Relay_log_info *rli= c_rli;
   IO_CACHE relay_io;
@@ -2029,7 +2029,7 @@ bool Slave_worker::read_and_apply_events(uint start_relay_number,
 
     ev= Log_event::read_log_event(&relay_io, NULL,
                                   rli->get_rli_description_event(),
-                                  opt_slave_sql_verify_checksum);
+                                  opt_replica_sql_verify_checksum);
     if (ev != NULL)
     {
       /* It is a event belongs to the transaction */
@@ -2044,7 +2044,7 @@ bool Slave_worker::read_and_apply_events(uint start_relay_number,
         if (is_mts_db_partitioned(rli) && ev->contains_partition_info(true))
           assign_partition_db(ev);
 
-        ret= slave_worker_exec_event(ev);
+        ret= replica_worker_exec_event(ev);
         if (ev->worker != NULL)
         {
           delete ev;
@@ -2116,13 +2116,13 @@ static db_worker_hash_entry *find_entry_from_db_map(const char *dbname,
   hash_value= my_calc_hash(&rli->mapping_db_to_worker, (const uchar*) dbname,
                            dblength);
 
-  mysql_mutex_lock(&rli->slave_worker_hash_lock);
+  mysql_mutex_lock(&rli->replica_worker_hash_lock);
 
   entry= (db_worker_hash_entry *)
     my_hash_search_using_hash_value(&rli->mapping_db_to_worker, hash_value,
                                     (uchar*) dbname, dblength);
 
-  mysql_mutex_unlock(&rli->slave_worker_hash_lock);
+  mysql_mutex_unlock(&rli->replica_worker_hash_lock);
   return entry;
 }
 
@@ -2130,7 +2130,7 @@ static db_worker_hash_entry *find_entry_from_db_map(const char *dbname,
   Initialize Log_event::mts_assigned_partitions array. It is for transaction
   retry and is only called when retrying a transaction by workers.
 */
-void Slave_worker::assign_partition_db(Log_event *ev)
+void Replica_worker::assign_partition_db(Log_event *ev)
 {
   Mts_db_names mts_dbs;
   int i;
@@ -2146,7 +2146,7 @@ void Slave_worker::assign_partition_db(Log_event *ev)
 }
 
 // returns the next available! (TODO: incompatible to circurla_buff method!!!)
-static int en_queue(Slave_jobs_queue *jobs, Slave_job_item *item)
+static int en_queue(Replica_jobs_queue *jobs, Replica_job_item *item)
 {
   if (jobs->avail == jobs->size)
   {
@@ -2177,7 +2177,7 @@ static int en_queue(Slave_jobs_queue *jobs, Slave_job_item *item)
 /**
    return the value of @c data member of the head of the queue.
 */
-void * head_queue(Slave_jobs_queue *jobs, Slave_job_item *ret)
+void * head_queue(Replica_jobs_queue *jobs, Replica_job_item *ret)
 {
   if (jobs->entry == jobs->size)
   {
@@ -2196,7 +2196,7 @@ void * head_queue(Slave_jobs_queue *jobs, Slave_job_item *ret)
 /**
    return a job item through a struct which point is supplied via argument.
 */
-Slave_job_item * de_queue(Slave_jobs_queue *jobs, Slave_job_item *ret)
+Replica_job_item * de_queue(Replica_jobs_queue *jobs, Replica_job_item *ret)
 {
   if (jobs->entry == jobs->size)
   {
@@ -2234,8 +2234,8 @@ Slave_job_item * de_queue(Slave_jobs_queue *jobs, Slave_job_item *ret)
            true  Thread killed or worker stopped while waiting for
                  successful enqueue.
 */
-bool append_item_to_jobs(slave_job_item *job_item,
-                         Slave_worker *worker, Relay_log_info *rli)
+bool append_item_to_jobs(replica_job_item *job_item,
+                         Replica_worker *worker, Relay_log_info *rli)
 {
   THD *thd= rli->info_thd;
   int ret= -1;
@@ -2254,7 +2254,7 @@ bool append_item_to_jobs(slave_job_item *job_item,
              job_item->data->get_type_str(),
              rli->get_event_relay_log_name(), llbuff, ev_size,
              rli->mts_pending_jobs_size_max);
-    /* Waiting in slave_stop_workers() avoidance */
+    /* Waiting in replica_stop_workers() avoidance */
     rli->mts_group_status= Relay_log_info::MTS_KILLED_GROUP;
     return ret;
   }
@@ -2267,15 +2267,15 @@ bool append_item_to_jobs(slave_job_item *job_item,
     rli->mts_wq_oversize= TRUE;
     rli->wq_size_waits_cnt++; // waiting due to the total size
     thd->ENTER_COND(&rli->pending_jobs_cond, &rli->pending_jobs_lock,
-                    &stage_slave_waiting_worker_to_free_events, &old_stage);
+                    &stage_replica_waiting_worker_to_free_events, &old_stage);
     mysql_cond_wait(&rli->pending_jobs_cond, &rli->pending_jobs_lock);
     mysql_mutex_unlock(&rli->pending_jobs_lock);
     thd->EXIT_COND(&old_stage);
     if (thd->killed)
       return true;
     if (rli->wq_size_waits_cnt % 10 == 1)
-      sql_print_information("Multi-threaded slave: Coordinator has waited "
-                            "%lu times hitting slave_pending_jobs_size_max; "
+      sql_print_information("Multi-threaded replica: Coordinator has waited "
+                            "%lu times hitting replica_pending_jobs_size_max; "
                             "current event size = %zu.",
                             rli->wq_size_waits_cnt, ev_size);
     mysql_mutex_lock(&rli->pending_jobs_lock);
@@ -2321,11 +2321,11 @@ bool append_item_to_jobs(slave_job_item *job_item,
   mysql_mutex_lock(&worker->jobs_lock);
 
   // possible WQ overfill
-  while (worker->running_status == Slave_worker::RUNNING && !thd->killed &&
+  while (worker->running_status == Replica_worker::RUNNING && !thd->killed &&
          (ret= en_queue(&worker->jobs, job_item)) == -1)
   {
     thd->ENTER_COND(&worker->jobs_cond, &worker->jobs_lock,
-                    &stage_slave_waiting_worker_queue, &old_stage);
+                    &stage_replica_waiting_worker_queue, &old_stage);
     worker->jobs.overfill= TRUE;
     worker->jobs.waited_overfill++;
     rli->mts_wq_overfill_cnt++;
@@ -2362,10 +2362,10 @@ bool append_item_to_jobs(slave_job_item *job_item,
 
   param[in] job_item The job item will be removed
   param[in] worker   The worker which job_item belongs to.
-  param[in] rli      slave's relay log info object.
+  param[in] rli      replica's relay log info object.
  */
-static void remove_item_from_jobs(slave_job_item *job_item,
-                                  Slave_worker *worker, Relay_log_info *rli)
+static void remove_item_from_jobs(replica_job_item *job_item,
+                                  Replica_worker *worker, Relay_log_info *rli)
 {
   Log_event *ev= job_item->data;
 
@@ -2465,8 +2465,8 @@ static void remove_item_from_jobs(slave_job_item *job_item,
    @return NULL failure or
            a-pointer to an item.
 */
-struct slave_job_item* pop_jobs_item(Slave_worker *worker,
-                                     Slave_job_item *job_item)
+struct replica_job_item* pop_jobs_item(Replica_worker *worker,
+                                     Replica_job_item *job_item)
 {
   THD *thd= worker->info_thd;
 
@@ -2474,8 +2474,8 @@ struct slave_job_item* pop_jobs_item(Slave_worker *worker,
 
   job_item->data= NULL;
   while (!job_item->data && !thd->killed &&
-         (worker->running_status == Slave_worker::RUNNING ||
-          worker->running_status == Slave_worker::STOP))
+         (worker->running_status == Replica_worker::RUNNING ||
+          worker->running_status == Replica_worker::STOP))
   {
     PSI_stage_info old_stage;
 
@@ -2485,7 +2485,7 @@ struct slave_job_item* pop_jobs_item(Slave_worker *worker,
     {
       worker->wq_empty_waits++;
       thd->ENTER_COND(&worker->jobs_cond, &worker->jobs_lock,
-                               &stage_slave_waiting_event_from_coordinator,
+                               &stage_replica_waiting_event_from_coordinator,
                                &old_stage);
       mysql_cond_wait(&worker->jobs_cond, &worker->jobs_lock);
       mysql_mutex_unlock(&worker->jobs_lock);
@@ -2506,18 +2506,18 @@ struct slave_job_item* pop_jobs_item(Slave_worker *worker,
   apply one job group.
 
   @note the function maintains worker's CGEP and modifies APH, updates
-        the current group item in GAQ via @c slave_worker_ends_group().
+        the current group item in GAQ via @c replica_worker_ends_group().
 
   param[in] worker the worker which calls it.
-  param[in] rli    slave's relay log info object.
+  param[in] rli    replica's relay log info object.
 
   return returns 0 if the group of jobs are applied successfully, otherwise
          returns an error code.
  */
-int slave_worker_exec_job_group(Slave_worker *worker, Relay_log_info *rli)
+int replica_worker_exec_job_group(Replica_worker *worker, Relay_log_info *rli)
 {
-  struct slave_job_item item= {NULL, 0, 0};
-  struct slave_job_item *job_item= &item;
+  struct replica_job_item item= {NULL, 0, 0};
+  struct replica_job_item *job_item= &item;
   THD *thd= worker->info_thd;
   bool seen_gtid= false;
   bool seen_begin= false;
@@ -2526,7 +2526,7 @@ int slave_worker_exec_job_group(Slave_worker *worker, Relay_log_info *rli)
   uint start_relay_number;
   my_off_t start_relay_pos;
 
-  DBUG_ENTER("slave_worker_exec_job_group");
+  DBUG_ENTER("replica_worker_exec_job_group");
 
   if (unlikely(worker->trans_retries > 0))
     worker->trans_retries= 0;
@@ -2537,9 +2537,9 @@ int slave_worker_exec_job_group(Slave_worker *worker, Relay_log_info *rli)
 
   while (1)
   {
-    if (unlikely(thd->killed || worker->running_status == Slave_worker::STOP_ACCEPTED))
+    if (unlikely(thd->killed || worker->running_status == Replica_worker::STOP_ACCEPTED))
     {
-      DBUG_ASSERT(worker->running_status != Slave_worker::ERROR_LEAVING);
+      DBUG_ASSERT(worker->running_status != Replica_worker::ERROR_LEAVING);
       // de-queueing and decrement counters is in the caller's exit branch
       error= -1;
       goto err;
@@ -2560,7 +2560,7 @@ int slave_worker_exec_job_group(Slave_worker *worker, Relay_log_info *rli)
     worker->stats_read_time += diff_timespec(&worker->ts_exec[0],
                                              &worker->ts_exec[1]);
 
-    error= worker->slave_worker_exec_event(ev);
+    error= worker->replica_worker_exec_event(ev);
 
     set_timespec_nsec(&worker->ts_exec[1], 0); // pre-exec
     worker->stats_exec_time += diff_timespec(&worker->ts_exec[1],
@@ -2603,15 +2603,15 @@ int slave_worker_exec_job_group(Slave_worker *worker, Relay_log_info *rli)
   DBUG_PRINT("info", (" commits GAQ index %lu, last committed  %lu",
                       ev->mts_group_idx, worker->last_group_done_index));
   /* The group is applied successfully, so error should be 0 */
-  worker->slave_worker_ends_group(ev, 0);
+  worker->replica_worker_ends_group(ev, 0);
 
 #ifndef DBUG_OFF
-  DBUG_PRINT("mts", ("Check_slave_debug_group worker %lu mts_checkpoint_group"
+  DBUG_PRINT("mts", ("Check_replica_debug_group worker %lu mts_checkpoint_group"
                      " %u processed %lu debug %d\n", worker->id, opt_mts_checkpoint_group,
                      worker->groups_done,
-                     DBUG_EVALUATE_IF("check_slave_debug_group", 1, 0)));
+                     DBUG_EVALUATE_IF("check_replica_debug_group", 1, 0)));
 
-  if (DBUG_EVALUATE_IF("check_slave_debug_group", 1, 0) &&
+  if (DBUG_EVALUATE_IF("check_replica_debug_group", 1, 0) &&
       opt_mts_checkpoint_group == worker->groups_done)
   {
     DBUG_PRINT("mts", ("Putting worker %lu in busy wait.", worker->id));
@@ -2630,12 +2630,12 @@ err:
                         "running_status %d",
                         worker->id, thd->killed, thd->is_error(),
                         worker->running_status));
-    worker->slave_worker_ends_group(ev, error); /* last done sets post exec */
+    worker->replica_worker_ends_group(ev, error); /* last done sets post exec */
   }
   DBUG_RETURN(error);
 }
 
-const char* Slave_worker::get_for_channel_str(bool upper_case) const
+const char* Replica_worker::get_for_channel_str(bool upper_case) const
 {
   return c_rli->get_for_channel_str(upper_case);
 }

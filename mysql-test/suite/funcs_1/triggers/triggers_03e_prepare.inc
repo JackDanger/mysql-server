@@ -32,7 +32,7 @@ let $message= #### Testcase for trigger privilege on execution time ########;
 	revoke ALL PRIVILEGES, GRANT OPTION FROM test_yesprivs@localhost;
         revoke ALL PRIVILEGES, GRANT OPTION FROM test_useprivs@localhost;
 
-	connect (yes_privs,localhost,test_yesprivs,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+	connect (yes_privs,localhost,test_yesprivs,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 
 	connection default;
         select current_user;
@@ -56,7 +56,7 @@ let $message= #### Testcase for trigger privilege on execution time ########;
 	select f1 from t1 order by f1;
         prepare ins1 from 'insert into t1 (f1) values (''insert2-no'')';
 
-        connect (use_privs,localhost,test_useprivs,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+        connect (use_privs,localhost,test_useprivs,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 	select current_user;
 	use priv_db;
         prepare ins1 from 'insert into t1 (f1) values (''insert3-no'')';

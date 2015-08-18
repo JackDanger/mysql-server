@@ -119,7 +119,7 @@
 #       - "--disable_query_log", "--disable_result_log"
 #       - successful passed subtests.
 #    4. Alternative:
-#       Have a look into VARDIR/master-data/mysql/general_log.CSV
+#       Have a look into VARDIR/primary-data/mysql/general_log.CSV
 #       and construct a new testcase from that.
 #    5. If the problem is not deterministic, please try the following
 #       - increase $runtime (important), $loop_size (most probably

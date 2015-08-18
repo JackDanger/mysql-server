@@ -2,8 +2,8 @@
 # BUG#48321 CURRENT_USER() incorrectly replicated for DROP/RENAME USER,
 # REVOKE, GRANT, ALTER EVENT
 #
-# Calling CURRENT_USER() results into inconsistency between slave and master,
-# as the slave SQL thread has different user with common users.
+# Calling CURRENT_USER() results into inconsistency between replica and primary,
+# as the replica SQL thread has different user with common users.
 #
 # After the patch for bug#48321, session's user will be written into query log
 # event if CURRENT_USER() is called in 'DROP/RENAME USER', 'REVOKE', 'GRANT',
@@ -17,11 +17,11 @@ source include/have_binlog_format_statement.inc;
 --let $rpl_topology= 1->2->3
 --source include/rpl_init.inc
 
---let $rpl_connection_name= master
+--let $rpl_connection_name= primary
 --let $rpl_server_number= 1
 --source include/rpl_connect.inc
 
---let $rpl_connection_name= slave
+--let $rpl_connection_name= replica
 --let $rpl_server_number= 2
 --source include/rpl_connect.inc
 
@@ -34,7 +34,7 @@ call mtr.add_suppression("Unsafe statement written to the binary log using state
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.*");
 --enable_query_log
 
---connection master
+--connection primary
 
 CREATE TABLE t1(c1 char(100));
 CREATE VIEW test.v_user AS SELECT * FROM mysql.user WHERE User LIKE 'bug48321%';
@@ -58,7 +58,7 @@ GRANT CREATE USER ON *.* TO '012345678901234567890123456789012'@'fakehost';
 GRANT CREATE USER ON *.* TO 'fakename'@'0123456789012345678901234567890123456789012345678901234567890';
 
 --echo
---echo # User 'bug48321_1-01234' connects to master by conn1
+--echo # User 'bug48321_1-01234' connects to primary by conn1
 connect (conn1, 127.0.0.1, 'bug48321_1-01234'@'localhost',,);
 connection conn1;
 --echo # [On conn1]
@@ -139,7 +139,7 @@ disconnect conn1;
 
 --echo 
 --echo # Verify 'DROP USER ...' statement
-connection master;
+connection primary;
 GRANT CREATE USER ON *.* TO 'bug48321_2'@'localhost';
 connect (conn1, 127.0.0.1, 'bug48321_2'@'localhost',,);
 connection conn1;
@@ -150,7 +150,7 @@ source include/diff_tables.inc;
 
 --echo 
 --echo # Verify 'ALTER EVENT...' statement
-connection master;
+connection primary;
 CREATE EVENT e1 ON SCHEDULE EVERY 1 DAY DO SELECT * FROM t1;
 
 --echo # Explicitly assign CURRENT_USER() to definer
@@ -170,47 +170,47 @@ source include/diff_tables.inc;
 --echo
 --echo # Verify that this patch does not affect the calling of CURRENT_USER() 
 --echo # in the other statements
-connection master;
---echo # [On master]
+connection primary;
+--echo # [On primary]
 INSERT INTO t1 VALUES(CURRENT_USER()), ('1234');
 SELECT * FROM t1;
---source include/sync_slave_sql_with_master.inc
---connection slave
---echo # [On slave]
+--source include/sync_replica_sql_with_primary.inc
+--connection replica
+--echo # [On replica]
 SELECT * FROM t1;
 --echo # [On server_3]
---let $sync_slave_connection= server_3
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= server_3
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1;
 
-connection master;
---echo # [On master]
+connection primary;
+--echo # [On primary]
 UPDATE t1 SET c1=CURRENT_USER() WHERE c1='1234';
 SELECT * FROM t1;
---source include/sync_slave_sql_with_master.inc
---connection slave
---echo # [On slave]
+--source include/sync_replica_sql_with_primary.inc
+--connection replica
+--echo # [On replica]
 SELECT * FROM t1;
---let $sync_slave_connection= server_3
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= server_3
+--source include/sync_replica_sql_with_primary.inc
 --echo # [On server_3]
 SELECT * FROM t1;
 
-connection master;
---echo # [On master]
+connection primary;
+--echo # [On primary]
 DELETE FROM t1 WHERE c1=CURRENT_USER();
 SELECT * FROM t1;
---source include/sync_slave_sql_with_master.inc
---connection slave
---echo # [On slave]
+--source include/sync_replica_sql_with_primary.inc
+--connection replica
+--echo # [On replica]
 SELECT * FROM t1;
---let $sync_slave_connection= server_3
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= server_3
+--source include/sync_replica_sql_with_primary.inc
 --echo # [On server_3]
 SELECT * FROM t1;
 
-connection master;
---echo # [On master]
+connection primary;
+--echo # [On primary]
 CREATE TABLE t2(c1 char(100));
 
 DELIMITER |;
@@ -225,20 +225,20 @@ DELIMITER ;|
 INSERT INTO t1 VALUES(my_user());
 SELECT * FROM t1;
 SELECT * FROM t2;
---source include/sync_slave_sql_with_master.inc
---connection slave
---echo # [On slave]
+--source include/sync_replica_sql_with_primary.inc
+--connection replica
+--echo # [On replica]
 SELECT * FROM t1;
 SELECT * FROM t2;
---let $sync_slave_connection= server_3
---source include/sync_slave_sql_with_master.inc
+--let $sync_replica_connection= server_3
+--source include/sync_replica_sql_with_primary.inc
 --echo # [On server_3]
 SELECT * FROM t1;
 SELECT * FROM t2;
 
 --echo
 --echo # END
-connection master;
+connection primary;
 DROP TABLE t1, t2;
 DROP VIEW v_user, v_tables_priv, v_procs_priv, v_event; 
 DROP PROCEDURE p1;

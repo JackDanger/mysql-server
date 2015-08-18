@@ -14,7 +14,7 @@ define("dojo/i18n", ["./_base/kernel", "require", "./has", "./_base/array", "./_
 			{},
 
 		nlsRe=
-			// regexp for reconstructing the master bundle name from parts of the regexp match
+			// regexp for reconstructing the primary bundle name from parts of the regexp match
 			// nlsRe.exec("foo/bar/baz/nls/en-ca/foo") gives:
 			// ["foo/bar/baz/nls/en-ca/foo", "foo/bar/baz/nls/", "/", "/", "en-ca", "foo"]
 			// nlsRe.exec("foo/bar/baz/nls/foo") gives:

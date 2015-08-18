@@ -416,7 +416,7 @@ FILE*	srv_misc_tmpfile;
 ulint	srv_main_thread_process_no	= 0;
 ulint	srv_main_thread_id		= 0;
 
-/* The following counts are used by the srv_master_thread. */
+/* The following counts are used by the srv_primary_thread. */
 
 /** Iterations of the loop bounded by 'srv_active' label. */
 static ulint		srv_main_active_loops		= 0;
@@ -427,23 +427,23 @@ static ulint		srv_main_shutdown_loops		= 0;
 /** Log writes involving flush. */
 static ulint		srv_log_writes_and_flush	= 0;
 
-/* This is only ever touched by the master thread. It records the
-time when the last flush of log file has happened. The master
+/* This is only ever touched by the primary thread. It records the
+time when the last flush of log file has happened. The primary
 thread ensures that we flush the log files at least once per
 second. */
 static time_t	srv_last_log_flush_time;
 
 /* Interval in seconds at which various tasks are performed by the
-master thread when server is active. In order to balance the workload,
+primary thread when server is active. In order to balance the workload,
 we should try to keep intervals such that they are not multiple of
 each other. For example, if we have intervals for various tasks
 defined as 5, 10, 15, 60 then all tasks will be performed when
 current_time % 60 == 0 and no tasks will be performed when
 current_time % 5 != 0. */
 
-# define	SRV_MASTER_CHECKPOINT_INTERVAL		(7)
-# define	SRV_MASTER_PURGE_INTERVAL		(10)
-# define	SRV_MASTER_DICT_LRU_INTERVAL		(47)
+# define	SRV_PRIMARY_CHECKPOINT_INTERVAL		(7)
+# define	SRV_PRIMARY_PURGE_INTERVAL		(10)
+# define	SRV_PRIMARY_DICT_LRU_INTERVAL		(47)
 
 /** Acquire the system_mutex. */
 #define srv_sys_mutex_enter() do {			\
@@ -489,17 +489,17 @@ reserved		--	process executing in user mode;
 
 The server has several backgroind threads all running at the same
 priority as user threads. It periodically checks if here is anything
-happening in the server which requires intervention of the master
+happening in the server which requires intervention of the primary
 thread. Such situations may be, for example, when flushing of dirty
 blocks is needed in the buffer pool or old version of database rows
 have to be cleaned away (purged). The user can configure a separate
-dedicated purge thread(s) too, in which case the master thread does not
+dedicated purge thread(s) too, in which case the primary thread does not
 do any purging.
 
 The threads which we call user threads serve the queries of the MySQL
 server. They run at normal priority.
 
-When there is no activity in the system, also the master thread
+When there is no activity in the system, also the primary thread
 suspends itself to wait for an event making the server totally silent.
 
 There is still one complication in our server design. If a
@@ -532,7 +532,7 @@ them more fine grained.
 
 The thread table contains information of the current status of each
 thread existing in the system, and also the event semaphores used in
-suspending the master thread and utility threads when they have nothing
+suspending the primary thread and utility threads when they have nothing
 to do.  The thread table can be seen as an analogue to the process table
 in a traditional Unix implementation. */
 
@@ -550,7 +550,7 @@ struct srv_sys_t{
 
 	srv_slot_t*	sys_threads;		/*!< server thread table */
 
-	ulint		n_threads_active[SRV_MASTER + 1];
+	ulint		n_threads_active[SRV_PRIMARY + 1];
 						/*!< number of threads active
 						in a thread class */
 
@@ -584,8 +584,8 @@ char	srv_buffer_pool_load_at_startup = TRUE;
 /** Slot index in the srv_sys->sys_threads array for the purge thread. */
 static const ulint	SRV_PURGE_SLOT	= 1;
 
-/** Slot index in the srv_sys->sys_threads array for the master thread. */
-static const ulint	SRV_MASTER_SLOT = 0;
+/** Slot index in the srv_sys->sys_threads array for the primary thread. */
+static const ulint	SRV_PRIMARY_SLOT = 0;
 
 #ifdef HAVE_PSI_STAGE_INTERFACE
 /** Performance schema stage event for monitoring ALTER TABLE progress
@@ -629,19 +629,19 @@ PSI_stage_info	srv_stage_buffer_pool_load
 #endif /* HAVE_PSI_STAGE_INTERFACE */
 
 /*********************************************************************//**
-Prints counters for work done by srv_master_thread. */
+Prints counters for work done by srv_primary_thread. */
 static
 void
-srv_print_master_thread_info(
+srv_print_primary_thread_info(
 /*=========================*/
 	FILE  *file)    /* in: output stream */
 {
-	fprintf(file, "srv_master_thread loops: %lu srv_active,"
+	fprintf(file, "srv_primary_thread loops: %lu srv_active,"
 		" %lu srv_shutdown, %lu srv_idle\n",
 		srv_main_active_loops,
 		srv_main_shutdown_loops,
 		srv_main_idle_loops);
-	fprintf(file, "srv_master_thread log flush and writes: %lu\n",
+	fprintf(file, "srv_primary_thread log flush and writes: %lu\n",
 		srv_log_writes_and_flush);
 }
 
@@ -685,7 +685,7 @@ srv_thread_type_validate(
 		break;
 	case SRV_WORKER:
 	case SRV_PURGE:
-	case SRV_MASTER:
+	case SRV_PRIMARY:
 		return(TRUE);
 	}
 	ut_error;
@@ -723,8 +723,8 @@ srv_reserve_slot(
 	ut_ad(srv_thread_type_validate(type));
 
 	switch (type) {
-	case SRV_MASTER:
-		slot = &srv_sys->sys_threads[SRV_MASTER_SLOT];
+	case SRV_PRIMARY:
+		slot = &srv_sys->sys_threads[SRV_PRIMARY_SLOT];
 		break;
 
 	case SRV_PURGE:
@@ -732,7 +732,7 @@ srv_reserve_slot(
 		break;
 
 	case SRV_WORKER:
-		/* Find an empty slot, skip the master and purge slots. */
+		/* Find an empty slot, skip the primary and purge slots. */
 		for (slot = &srv_sys->sys_threads[2];
 		     slot->in_use;
 		     ++slot) {
@@ -782,8 +782,8 @@ srv_suspend_thread_low(
 	case SRV_NONE:
 		ut_error;
 
-	case SRV_MASTER:
-		/* We have only one master thread and it
+	case SRV_PRIMARY:
+		/* We have only one primary thread and it
 		should be the first entry always. */
 		ut_a(srv_sys->n_threads_active[type] == 1);
 		break;
@@ -860,11 +860,11 @@ srv_release_threads(
 			case SRV_NONE:
 				ut_error;
 
-			case SRV_MASTER:
-				/* We have only one master thread and it
+			case SRV_PRIMARY:
+				/* We have only one primary thread and it
 				should be the first entry always. */
 				ut_a(n == 1);
-				ut_a(i == SRV_MASTER_SLOT);
+				ut_a(i == SRV_PRIMARY_SLOT);
 				ut_a(srv_sys->n_threads_active[type] == 0);
 				break;
 
@@ -936,7 +936,7 @@ srv_init(void)
 
 	if (!srv_read_only_mode) {
 
-		/* Number of purge threads + master thread */
+		/* Number of purge threads + primary thread */
 		n_sys_threads = srv_n_purge_threads + 1;
 
 		srv_sys_sz += n_sys_threads * sizeof(*srv_sys->sys_threads);
@@ -1161,7 +1161,7 @@ srv_printf_innodb_monitor(
 	fputs("-----------------\n"
 	      "BACKGROUND THREAD\n"
 	      "-----------------\n", file);
-	srv_print_master_thread_info(file);
+	srv_print_primary_thread_info(file);
 
 	fputs("----------\n"
 	      "SEMAPHORES\n"
@@ -1744,7 +1744,7 @@ srv_get_active_thread_type(void)
 
 	srv_sys_mutex_enter();
 
-	for (ulint i = SRV_WORKER; i <= SRV_MASTER; ++i) {
+	for (ulint i = SRV_WORKER; i <= SRV_PRIMARY; ++i) {
 		if (srv_sys->n_threads_active[i] != 0) {
 			ret = static_cast<srv_thread_type>(i);
 			break;
@@ -1807,12 +1807,12 @@ srv_any_background_threads_are_active(void)
 
 /*******************************************************************//**
 Tells the InnoDB server that there has been activity in the database
-and wakes up the master thread if it is suspended (not sleeping). Used
-in the MySQL interface. Note that there is a small chance that the master
+and wakes up the primary thread if it is suspended (not sleeping). Used
+in the MySQL interface. Note that there is a small chance that the primary
 thread stays suspended (we do not protect our operation with the
 srv_sys_t->mutex, for performance reasons). */
 void
-srv_active_wake_master_thread_low()
+srv_active_wake_primary_thread_low()
 /*===============================*/
 {
 	ut_ad(!srv_read_only_mode);
@@ -1820,23 +1820,23 @@ srv_active_wake_master_thread_low()
 
 	srv_inc_activity_count();
 
-	if (srv_sys->n_threads_active[SRV_MASTER] == 0) {
+	if (srv_sys->n_threads_active[SRV_PRIMARY] == 0) {
 		srv_slot_t*	slot;
 
 		srv_sys_mutex_enter();
 
-		slot = &srv_sys->sys_threads[SRV_MASTER_SLOT];
+		slot = &srv_sys->sys_threads[SRV_PRIMARY_SLOT];
 
-		/* Only if the master thread has been started. */
+		/* Only if the primary thread has been started. */
 
 		if (slot->in_use) {
-			ut_a(srv_slot_get_type(slot) == SRV_MASTER);
+			ut_a(srv_slot_get_type(slot) == SRV_PRIMARY);
 
 			if (slot->suspended) {
 
 				slot->suspended = FALSE;
 
-				++srv_sys->n_threads_active[SRV_MASTER];
+				++srv_sys->n_threads_active[SRV_PRIMARY];
 
 				os_event_set(slot->event);
 			}
@@ -1866,16 +1866,16 @@ srv_wake_purge_thread_if_not_active(void)
 }
 
 /*******************************************************************//**
-Wakes up the master thread if it is suspended or being suspended. */
+Wakes up the primary thread if it is suspended or being suspended. */
 void
-srv_wake_master_thread(void)
+srv_wake_primary_thread(void)
 /*========================*/
 {
 	ut_ad(!srv_sys_mutex_own());
 
 	srv_inc_activity_count();
 
-	srv_release_threads(SRV_MASTER, 1);
+	srv_release_threads(SRV_PRIMARY, 1);
 }
 
 /*******************************************************************//**
@@ -1901,7 +1901,7 @@ srv_check_activity(
 }
 
 /********************************************************************//**
-The master thread is tasked to ensure that flush of log file happens
+The primary thread is tasked to ensure that flush of log file happens
 once every second in the background. This is to ensure that not more
 than one second of trxs are lost in case of crash when
 innodb_flush_logs_at_trx_commit != 1 */
@@ -1926,7 +1926,7 @@ Make room in the table cache by evicting an unused table.
 @return number of tables evicted. */
 static
 ulint
-srv_master_evict_from_table_cache(
+srv_primary_evict_from_table_cache(
 /*==============================*/
 	ulint	pct_check)	/*!< in: max percent to check */
 {
@@ -1948,10 +1948,10 @@ srv_master_evict_from_table_cache(
 
 /*********************************************************************//**
 This function prints progress message every 60 seconds during server
-shutdown, for any activities that master thread is pending on. */
+shutdown, for any activities that primary thread is pending on. */
 static
 void
-srv_shutdown_print_master_pending(
+srv_shutdown_print_primary_pending(
 /*==============================*/
 	ib_time_t*	last_print_time,	/*!< last time the function
 						print the message */
@@ -1985,7 +1985,7 @@ srv_shutdown_print_master_pending(
 }
 
 /*********************************************************************//**
-Perform the tasks that the master thread is supposed to do when the
+Perform the tasks that the primary thread is supposed to do when the
 server is active. There are two types of tasks. The first category is
 of such tasks which are performed at each inovcation of this function.
 We assume that this function is called roughly every second when the
@@ -1993,7 +1993,7 @@ server is active. The second category is of such tasks which are
 performed at some interval e.g.: purge, dict_LRU cleanup etc. */
 static
 void
-srv_master_do_active_tasks(void)
+srv_primary_do_active_tasks(void)
 /*============================*/
 {
 	ib_time_t	cur_time = ut_time();
@@ -2004,7 +2004,7 @@ srv_master_do_active_tasks(void)
 
 	++srv_main_active_loops;
 
-	MONITOR_INC(MONITOR_MASTER_ACTIVE_LOOPS);
+	MONITOR_INC(MONITOR_PRIMARY_ACTIVE_LOOPS);
 
 	/* ALTER TABLE in MySQL requires on Unix that the table handler
 	can drop tables lazily after there no longer are SELECT
@@ -2047,9 +2047,9 @@ srv_master_do_active_tasks(void)
 		return;
 	}
 
-	if (cur_time % SRV_MASTER_DICT_LRU_INTERVAL == 0) {
+	if (cur_time % SRV_PRIMARY_DICT_LRU_INTERVAL == 0) {
 		srv_main_thread_op_info = "enforcing dict cache limit";
-		srv_master_evict_from_table_cache(50);
+		srv_primary_evict_from_table_cache(50);
 		MONITOR_INC_TIME_IN_MICRO_SECS(
 			MONITOR_SRV_DICT_LRU_MICROSECOND, counter_time);
 	}
@@ -2059,7 +2059,7 @@ srv_master_do_active_tasks(void)
 	}
 
 	/* Make a new checkpoint */
-	if (cur_time % SRV_MASTER_CHECKPOINT_INTERVAL == 0) {
+	if (cur_time % SRV_PRIMARY_CHECKPOINT_INTERVAL == 0) {
 		srv_main_thread_op_info = "making checkpoint";
 		log_checkpoint(TRUE, FALSE);
 		MONITOR_INC_TIME_IN_MICRO_SECS(
@@ -2068,7 +2068,7 @@ srv_master_do_active_tasks(void)
 }
 
 /*********************************************************************//**
-Perform the tasks that the master thread is supposed to do whenever the
+Perform the tasks that the primary thread is supposed to do whenever the
 server is idle. We do check for the server state during this function
 and if the server has entered the shutdown phase we may return from
 the function without completing the required tasks.
@@ -2077,14 +2077,14 @@ function but we don't check for that as we are suppose to perform more
 or less same tasks when server is active. */
 static
 void
-srv_master_do_idle_tasks(void)
+srv_primary_do_idle_tasks(void)
 /*==========================*/
 {
 	uintmax_t	counter_time;
 
 	++srv_main_idle_loops;
 
-	MONITOR_INC(MONITOR_MASTER_IDLE_LOOPS);
+	MONITOR_INC(MONITOR_PRIMARY_IDLE_LOOPS);
 
 
 	/* ALTER TABLE in MySQL requires on Unix that the table handler
@@ -2118,7 +2118,7 @@ srv_master_do_idle_tasks(void)
 	}
 
 	srv_main_thread_op_info = "enforcing dict cache limit";
-	srv_master_evict_from_table_cache(100);
+	srv_primary_evict_from_table_cache(100);
 	MONITOR_INC_TIME_IN_MICRO_SECS(
 		MONITOR_SRV_DICT_LRU_MICROSECOND, counter_time);
 
@@ -2148,7 +2148,7 @@ merge
 @return TRUE if some work was done. FALSE otherwise */
 static
 ibool
-srv_master_do_shutdown_tasks(
+srv_primary_do_shutdown_tasks(
 /*=========================*/
 	ib_time_t*	last_print_time)/*!< last time the function
 					print the message */
@@ -2197,7 +2197,7 @@ func_exit:
 
 	/* Print progress message every 60 seconds during shutdown */
 	if (srv_shutdown_state > 0 && srv_print_verbose_log) {
-		srv_shutdown_print_master_pending(
+		srv_shutdown_print_primary_pending(
 			last_print_time, n_tables_to_drop, n_bytes_merged);
 	}
 
@@ -2205,12 +2205,12 @@ func_exit:
 }
 
 /*********************************************************************//**
-Puts master thread to sleep. At this point we are using polling to
-service various activities. Master thread sleeps for one second before
+Puts primary thread to sleep. At this point we are using polling to
+service various activities. Primary thread sleeps for one second before
 checking the state of the server again */
 static
 void
-srv_master_sleep(void)
+srv_primary_sleep(void)
 /*==================*/
 {
 	srv_main_thread_op_info = "sleeping";
@@ -2219,18 +2219,18 @@ srv_master_sleep(void)
 }
 
 /*********************************************************************//**
-The master thread controlling the server.
+The primary thread controlling the server.
 @return a dummy parameter */
 extern "C"
 os_thread_ret_t
-DECLARE_THREAD(srv_master_thread)(
+DECLARE_THREAD(srv_primary_thread)(
 /*==============================*/
 	void*	arg __attribute__((unused)))
 			/*!< in: a dummy parameter required by
 			os_thread_create */
 {
 	my_thread_init();
-	DBUG_ENTER("srv_master_thread");
+	DBUG_ENTER("srv_primary_thread");
 
 	srv_slot_t*	slot;
 	ulint		old_activity_count = srv_get_activity_count();
@@ -2239,18 +2239,18 @@ DECLARE_THREAD(srv_master_thread)(
 	ut_ad(!srv_read_only_mode);
 
 #ifdef UNIV_DEBUG_THREAD_CREATION
-	ib::info() << "Master thread starts, id "
+	ib::info() << "Primary thread starts, id "
 		<< os_thread_pf(os_thread_get_curr_id());
 #endif /* UNIV_DEBUG_THREAD_CREATION */
 
 #ifdef UNIV_PFS_THREAD
-	pfs_register_thread(srv_master_thread_key);
+	pfs_register_thread(srv_primary_thread_key);
 #endif /* UNIV_PFS_THREAD */
 
 	srv_main_thread_process_no = os_proc_get_number();
 	srv_main_thread_id = os_thread_pf(os_thread_get_curr_id());
 
-	slot = srv_reserve_slot(SRV_MASTER);
+	slot = srv_reserve_slot(SRV_PRIMARY);
 	ut_a(slot == srv_sys->sys_threads);
 
 	last_print_time = ut_time();
@@ -2261,20 +2261,20 @@ loop:
 
 	while (srv_shutdown_state == SRV_SHUTDOWN_NONE) {
 
-		srv_master_sleep();
+		srv_primary_sleep();
 
-		MONITOR_INC(MONITOR_MASTER_THREAD_SLEEP);
+		MONITOR_INC(MONITOR_PRIMARY_THREAD_SLEEP);
 
 		if (srv_check_activity(old_activity_count)) {
 			old_activity_count = srv_get_activity_count();
-			srv_master_do_active_tasks();
+			srv_primary_do_active_tasks();
 		} else {
-			srv_master_do_idle_tasks();
+			srv_primary_do_idle_tasks();
 		}
 	}
 
 	while (srv_shutdown_state != SRV_SHUTDOWN_EXIT_THREADS
-	       && srv_master_do_shutdown_tasks(&last_print_time)) {
+	       && srv_primary_do_shutdown_tasks(&last_print_time)) {
 
 		/* Shouldn't loop here in case of very fast shutdown */
 		ut_ad(srv_fast_shutdown < 2);

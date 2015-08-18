@@ -572,9 +572,9 @@ select make_set();
 select make_set(1);
 
 -- error ER_WRONG_PARAMCOUNT_TO_NATIVE_FCT
-select master_pos_wait();
+select primary_pos_wait();
 -- error ER_WRONG_PARAMCOUNT_TO_NATIVE_FCT
-select master_pos_wait(1);
+select primary_pos_wait(1);
 
 -- error ER_WRONG_PARAMCOUNT_TO_NATIVE_FCT
 select rand(1, 2, 3);
@@ -808,15 +808,15 @@ CREATE TABLE t (id INT PRIMARY KEY);
 DROP TABLE t;
 
 --echo #
---echo # Bug#13819100 BROKEN SYNTAX ACCEPTED FOR START SLAVE, STOP SLAVE
+--echo # Bug#13819100 BROKEN SYNTAX ACCEPTED FOR START REPLICA, STOP REPLICA
 --echo #
 
 --error ER_PARSE_ERROR
-STOP SLAVE ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, ;
+STOP REPLICA ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, ;
 --error ER_PARSE_ERROR
-STOP SLAVE ,,,,,,,,,,,,, sql_thread, ,,,,,,,,,,,,,,,,,,, ;
+STOP REPLICA ,,,,,,,,,,,,, sql_thread, ,,,,,,,,,,,,,,,,,,, ;
 --error ER_PARSE_ERROR
-STOP SLAVE ,,,,,,,,,,,,, io_thread, ,,,,,,,,,,,,,,,,,,, ;
+STOP REPLICA ,,,,,,,,,,,,, io_thread, ,,,,,,,,,,,,,,,,,,, ;
 
 --echo #
 --echo # Bug#13819132 BROKEN SYNTAX ACCEPTED FOR START TRANSACTION

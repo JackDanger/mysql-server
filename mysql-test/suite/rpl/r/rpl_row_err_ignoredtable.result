@@ -1,15 +1,15 @@
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
+start replica;
 create table t1 (a int primary key);
 insert into t1 values (1),(1);
 ERROR 23000: Duplicate entry '1' for key 1
-show slave status;
-Slave_IO_State	Master_Host	Master_User	Master_Port	Connect_Retry	Master_Log_File	Read_Master_Log_Pos	Relay_Log_File	Relay_Log_Pos	Relay_Master_Log_File	Slave_IO_Running	Slave_SQL_Running	Replicate_Do_DB	Replicate_Ignore_DB	Replicate_Do_Table	Replicate_Ignore_Table	Replicate_Wild_Do_Table	Replicate_Wild_Ignore_Table	Last_Errno	Last_Error	Skip_Counter	Exec_Master_Log_Pos	Relay_Log_Space	Until_Condition	Until_Log_File	Until_Log_Pos	Master_SSL_Allowed	Master_SSL_CA_File	Master_SSL_CA_Path	Master_SSL_Cert	Master_SSL_Cipher	Master_SSL_Key	Seconds_Behind_Master
-#	127.0.0.1	root	MASTER_PORT	1	master-bin.000001	269	#	#	master-bin.000001	Yes	Yes							0		0	269	#	None		0	No						#
+show replica status;
+Replica_IO_State	Primary_Host	Primary_User	Primary_Port	Connect_Retry	Primary_Log_File	Read_Primary_Log_Pos	Relay_Log_File	Relay_Log_Pos	Relay_Primary_Log_File	Replica_IO_Running	Replica_SQL_Running	Replicate_Do_DB	Replicate_Ignore_DB	Replicate_Do_Table	Replicate_Ignore_Table	Replicate_Wild_Do_Table	Replicate_Wild_Ignore_Table	Last_Errno	Last_Error	Skip_Counter	Exec_Primary_Log_Pos	Relay_Log_Space	Until_Condition	Until_Log_File	Until_Log_Pos	Primary_SSL_Allowed	Primary_SSL_CA_File	Primary_SSL_CA_Path	Primary_SSL_Cert	Primary_SSL_Cipher	Primary_SSL_Key	Seconds_Behind_Primary
+#	127.0.0.1	root	PRIMARY_PORT	1	primary-bin.000001	269	#	#	primary-bin.000001	Yes	Yes							0		0	269	#	None		0	No						#
 show tables like 't1';
 Tables_in_test (t1)
 t1
@@ -29,16 +29,16 @@ kill @id;
 drop table t2,t3;
 show binlog events from 102;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	1	#	#
-master-bin.000001	#	Table_map	1	#	#
-master-bin.000001	#	Write_rows	1	#	#
-master-bin.000001	#	Query	1	#	#
-master-bin.000001	#	Query	1	#	#
-master-bin.000001	#	Table_map	1	#	#
-master-bin.000001	#	Write_rows	1	#	#
-master-bin.000001	#	Query	1	#	#
-master-bin.000001	#	Table_map	1	#	#
-master-bin.000001	#	Write_rows	1	#	#
-master-bin.000001	#	Table_map	1	#	#
-master-bin.000001	#	Update_rows	1	#	#
-master-bin.000001	#	Query	1	#	#
+primary-bin.000001	#	Query	1	#	#
+primary-bin.000001	#	Table_map	1	#	#
+primary-bin.000001	#	Write_rows	1	#	#
+primary-bin.000001	#	Query	1	#	#
+primary-bin.000001	#	Query	1	#	#
+primary-bin.000001	#	Table_map	1	#	#
+primary-bin.000001	#	Write_rows	1	#	#
+primary-bin.000001	#	Query	1	#	#
+primary-bin.000001	#	Table_map	1	#	#
+primary-bin.000001	#	Write_rows	1	#	#
+primary-bin.000001	#	Table_map	1	#	#
+primary-bin.000001	#	Update_rows	1	#	#
+primary-bin.000001	#	Query	1	#	#

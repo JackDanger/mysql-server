@@ -24,7 +24,7 @@ dojo.provide("dojox.drawing.Drawing");
 		//
 		//The files are laid out as such:
 		//		- Drawing
-		//			The master class. More than one instance of a Drawing can be placed
+		//			The primary class. More than one instance of a Drawing can be placed
 		//			on a page at one time (although this has not yet been tested). Plugins
 		//			can be added in markup.
 		// 	- Toolbar
@@ -106,7 +106,7 @@ dojo.provide("dojox.drawing.Drawing");
 		//
 		constructor: function(/* Object */props, /* HTMLNode */node){
 			// summary:
-			//		Drawing is not a Dijit. This is the master method.
+			//		Drawing is not a Dijit. This is the primary method.
 			//		NOTE:
 			// 			props is always null since this is not a real widget
 			//			Will change when Drawing can be created programmatically.

@@ -1,89 +1,89 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+[connection primary]
 CREATE TABLE t1 (a INT) ENGINE = InnoDB;
-include/sync_slave_sql_with_master.inc
-[connection slave]
+include/sync_replica_sql_with_primary.inc
+[connection replica]
 FLUSH BINARY LOGS;
 #
-# Verify the transactions are ordered correctly on slave
+# Verify the transactions are ordered correctly on replica
 #
-[connection master]
+[connection primary]
 SET @save_debug = @@GLOBAL.debug;
 SET GLOBAL debug = "d,set_commit_parent_100";
-[connection slave]
+[connection replica]
 LOCK TABLE t1 WRITE;
-[connection master]
+[connection primary]
 INSERT INTO t1(a) VALUES (1);
-include/save_master_pos.inc
-[connection slave]
+include/save_primary_pos.inc
+[connection replica]
 UNLOCK TABLES;
-include/sync_slave_sql.inc
+include/sync_replica_sql.inc
 SET DEBUG_SYNC = 'RESET';
-[connection slave]
+[connection replica]
 LOCK TABLE t1 WRITE;
-[connection master]
+[connection primary]
 INSERT INTO t1(a) VALUES (2);
 INSERT INTO t1(a) VALUES (3);
-include/save_master_pos.inc
-[connection slave]
+include/save_primary_pos.inc
+[connection replica]
 UNLOCK TABLES;
-include/sync_slave_sql.inc
+include/sync_replica_sql.inc
 SET DEBUG_SYNC = 'RESET';
-[connection slave]
+[connection replica]
 LOCK TABLE t1 WRITE;
-[connection master]
+[connection primary]
 INSERT INTO t1(a) VALUES (4);
 INSERT INTO t1(a) VALUES (5);
 INSERT INTO t1(a) VALUES (6);
-include/save_master_pos.inc
-[connection slave]
+include/save_primary_pos.inc
+[connection replica]
 UNLOCK TABLES;
-include/sync_slave_sql.inc
+include/sync_replica_sql.inc
 SET DEBUG_SYNC = 'RESET';
-[connection slave]
+[connection replica]
 LOCK TABLE t1 WRITE;
-[connection master]
+[connection primary]
 INSERT INTO t1(a) VALUES (7);
 INSERT INTO t1(a) VALUES (8);
 INSERT INTO t1(a) VALUES (9);
 INSERT INTO t1(a) VALUES (10);
-include/save_master_pos.inc
-[connection slave]
+include/save_primary_pos.inc
+[connection replica]
 UNLOCK TABLES;
-include/sync_slave_sql.inc
+include/sync_replica_sql.inc
 SET DEBUG_SYNC = 'RESET';
-[connection slave]
+[connection replica]
 LOCK TABLE t1 WRITE;
-[connection master]
+[connection primary]
 INSERT INTO t1(a) VALUES (11);
 INSERT INTO t1(a) VALUES (12);
 INSERT INTO t1(a) VALUES (13);
 INSERT INTO t1(a) VALUES (14);
 INSERT INTO t1(a) VALUES (15);
-include/save_master_pos.inc
-[connection slave]
+include/save_primary_pos.inc
+[connection replica]
 UNLOCK TABLES;
-include/sync_slave_sql.inc
+include/sync_replica_sql.inc
 SET DEBUG_SYNC = 'RESET';
-[connection slave]
+[connection replica]
 LOCK TABLE t1 WRITE;
-[connection master]
+[connection primary]
 INSERT INTO t1(a) VALUES (16);
 INSERT INTO t1(a) VALUES (17);
 INSERT INTO t1(a) VALUES (18);
 INSERT INTO t1(a) VALUES (19);
 INSERT INTO t1(a) VALUES (20);
 INSERT INTO t1(a) VALUES (21);
-include/save_master_pos.inc
-[connection slave]
+include/save_primary_pos.inc
+[connection replica]
 UNLOCK TABLES;
-include/sync_slave_sql.inc
+include/sync_replica_sql.inc
 SET DEBUG_SYNC = 'RESET';
-[connection slave]
+[connection replica]
 DROP TABLE t1;
 CREATE TABLE t1 (a INT, id INT AUTO_INCREMENT KEY) ENGINE = InnoDB;
 SELECT * FROM t1 WHERE id <> a;
@@ -91,17 +91,17 @@ a	id
 include/assert.inc ['There are no mismatched rows']
 include/assert.inc ['There are no row which is null']
 include/assert.inc ['There are 21 rows']
-[connection master]
+[connection primary]
 SET GLOBAL debug = @save_debug;
 DROP TABLE t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 #
-# Verify that it will generate a warning if slave-preserve-commit is
+# Verify that it will generate a warning if replica-preserve-commit is
 # used with DB PARTITIONED MTS together
 #
-include/stop_slave_sql.inc
-SET GLOBAL slave_parallel_type = 'DATABASE';
-START SLAVE SQL_THREAD;
-ERROR HY000: slave_preserve_commit_order is not supported when slave_parallel_type is DATABASE.
-SET GLOBAL slave_parallel_type = 'LOGICAL_CLOCK';
+include/stop_replica_sql.inc
+SET GLOBAL replica_parallel_type = 'DATABASE';
+START REPLICA SQL_THREAD;
+ERROR HY000: replica_preserve_commit_order is not supported when replica_parallel_type is DATABASE.
+SET GLOBAL replica_parallel_type = 'LOGICAL_CLOCK';
 include/rpl_end.inc

@@ -1,10 +1,10 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 ==== Initialize ====
-**** On Master ****
+**** On Primary ****
 CREATE TABLE t1 (a INT);
 CREATE TABLE logtbl (sect INT, test INT, count INT);
 INSERT INTO t1 VALUES (1),(2),(3);
@@ -15,41 +15,41 @@ INSERT INTO t1 SELECT 2*a+3 FROM t1;
 INSERT INTO t1 SELECT 2*a+3 FROM t1;
 INSERT INTO t1 SELECT 2*a+3 FROM t1;
 ==== Checking a procedure ====
-**** On Master ****
+**** On Primary ****
 CREATE PROCEDURE just_log(sect INT, test INT) BEGIN
 INSERT INTO logtbl VALUES (sect,test,FOUND_ROWS());
 END $$
-include/sync_slave_sql_with_master.inc
-**** On Master 1 ****
+include/sync_replica_sql_with_primary.inc
+**** On Primary 1 ****
 SELECT SQL_CALC_FOUND_ROWS * FROM t1 WHERE a > 5 ORDER BY a LIMIT 1;
 a
 7
 CALL just_log(1,1);
-**** On Master ****
+**** On Primary ****
 SELECT SQL_CALC_FOUND_ROWS * FROM t1 WHERE a > 5 ORDER BY a LIMIT 1;
 a
 7
 CALL just_log(1,2);
-**** On Master 1 ****
+**** On Primary 1 ****
 SELECT SQL_CALC_FOUND_ROWS * FROM t1 WHERE a < 5 ORDER BY a LIMIT 1;
 a
 1
 CALL just_log(1,3);
-include/sync_slave_sql_with_master.inc
-**** On Master ****
+include/sync_replica_sql_with_primary.inc
+**** On Primary ****
 SELECT SQL_CALC_FOUND_ROWS * FROM t1 WHERE a > 5 ORDER BY a LIMIT 1;
 a
 7
 CALL just_log(1,4);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM logtbl WHERE sect = 1 ORDER BY sect,test;
 sect	test	count
 1	1	183
 1	2	183
 1	3	3
 1	4	183
-**** On Slave ****
-include/sync_slave_sql_with_master.inc
+**** On Replica ****
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM logtbl WHERE sect = 1 ORDER BY sect,test;
 sect	test	count
 1	1	183
@@ -57,7 +57,7 @@ sect	test	count
 1	3	3
 1	4	183
 ==== Checking a stored function ====
-**** On Master ****
+**** On Primary ****
 CREATE FUNCTION log_rows(sect INT, test INT)
 RETURNS INT
 BEGIN
@@ -122,7 +122,7 @@ sect	test	count
 2	6	0
 2	6	183
 2	7	0
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM logtbl WHERE sect = 2 ORDER BY sect,test;
 sect	test	count
 2	1	3
@@ -140,5 +140,5 @@ DROP PROCEDURE just_log;
 DROP PROCEDURE log_me;
 DROP PROCEDURE log_me_inner;
 DROP FUNCTION log_rows;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

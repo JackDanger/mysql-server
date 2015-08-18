@@ -95,9 +95,9 @@ user3	*6C8989366EAF75BB670AD8EA7A7FC1176A95CEF4
 select User,Table_priv from mysql.tables_priv ORDER BY User;
 User	Table_priv
 user	
-connect(127.0.0.1,magnus,,test,MASTER_PORT,MASTER_SOCKET);
+connect(127.0.0.1,magnus,,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'magnus'@'localhost' (using password: NO)
-connect(127.0.0.1,magnus,,test,MASTER_PORT1,MASTER_SOCKET);
+connect(127.0.0.1,magnus,,test,PRIMARY_PORT1,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'magnus'@'localhost' (using password: NO)
 CREATE USER 'billy1'@'127.0.0.1' IDENTIFIED by 'mypass';
 SELECT USER();
@@ -108,9 +108,9 @@ pk	a
 0	0
 1	1
 2	2
-connect(127.0.0.1,billy1,,test,MASTER_PORT1,MASTER_SOCKET);
+connect(127.0.0.1,billy1,,test,PRIMARY_PORT1,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'billy1'@'localhost' (using password: NO)
-connect(127.0.0.1,billy1,wrongpass,test,MASTER_PORT1,MASTER_SOCKET);
+connect(127.0.0.1,billy1,wrongpass,test,PRIMARY_PORT1,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'billy1'@'localhost' (using password: YES)
 BEGIN;
 UPDATE mysql.user SET Authentication_string = ''

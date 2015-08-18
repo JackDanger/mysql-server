@@ -25,7 +25,7 @@
 
 #include <list>
 
-class Master_info;
+class Primary_info;
 class String;
 struct Binlog_relay_IO_observer;
 struct Binlog_relay_IO_param;
@@ -270,7 +270,7 @@ public:
   int after_send_event(THD *thd, ushort flags,
                        String *packet, const char *skipped_log_file,
                        my_off_t skipped_log_pos);
-  int after_reset_master(THD *thd, ushort flags);
+  int after_reset_primary(THD *thd, ushort flags);
 };
 
 #ifdef HAVE_PSI_INTERFACE
@@ -290,19 +290,19 @@ public:
   {}
 
   typedef Binlog_relay_IO_observer Observer;
-  int thread_start(THD *thd, Master_info *mi);
-  int thread_stop(THD *thd, Master_info *mi);
-  int applier_stop(THD *thd, Master_info *mi, bool aborted);
-  int before_request_transmit(THD *thd, Master_info *mi, ushort flags);
-  int after_read_event(THD *thd, Master_info *mi,
+  int thread_start(THD *thd, Primary_info *mi);
+  int thread_stop(THD *thd, Primary_info *mi);
+  int applier_stop(THD *thd, Primary_info *mi, bool aborted);
+  int before_request_transmit(THD *thd, Primary_info *mi, ushort flags);
+  int after_read_event(THD *thd, Primary_info *mi,
                        const char *packet, ulong len,
                        const char **event_buf, ulong *event_len);
-  int after_queue_event(THD *thd, Master_info *mi,
+  int after_queue_event(THD *thd, Primary_info *mi,
                         const char *event_buf, ulong event_len,
                         bool synced);
-  int after_reset_slave(THD *thd, Master_info *mi);
+  int after_reset_replica(THD *thd, Primary_info *mi);
 private:
-  void init_param(Binlog_relay_IO_param *param, Master_info *mi);
+  void init_param(Binlog_relay_IO_param *param, Primary_info *mi);
 };
 #endif /* HAVE_REPLICATION */
 

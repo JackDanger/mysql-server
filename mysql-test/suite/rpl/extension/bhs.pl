@@ -24,7 +24,7 @@ use strict;
 
 # Constants
 my $case_header= "###############################################################################\n" 
- . "# Note! The test case updated for running under blackhole slave configuration #\n"
+ . "# Note! The test case updated for running under blackhole replica configuration #\n"
  . "###############################################################################\n\n";
 my $before_replace= "# *** BHS ***\n";
 my $after_replace= "# *** /BHS ***\n";
@@ -89,7 +89,7 @@ foreach my $cur_dir (keys %copy_dirs)
 # Copy server config files
 print "  configuration files\n";
 copy(File::Spec->catdir($ext_dir, "bhs", "my.cnf"), $suite_rpl_bhs_dir);
-copy(File::Spec->catdir($ext_dir, "bhs", "rpl_1slave_base.cnf"), $suite_rpl_bhs_dir);
+copy(File::Spec->catdir($ext_dir, "bhs", "rpl_1replica_base.cnf"), $suite_rpl_bhs_dir);
 
 # Add BHS disabled.def
 print "updating disabled.def\n";

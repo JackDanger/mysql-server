@@ -222,12 +222,12 @@ int runRestartOneInitial(NDBT_Context* ctx, NDBT_Step* step){
   if (restarter.getNumDbNodes() < 2)
     return NDBT_OK;
 
-  /* We don't restart the Master as we need to know a
+  /* We don't restart the Primary as we need to know a
    * non-restarted node to reliably get the restartGci
    * afterwards!
-   * Should be no real reason not to restart the master.
+   * Should be no real reason not to restart the primary.
    */
-  int node = restarter.getRandomNotMasterNodeId(rand());
+  int node = restarter.getRandomNotPrimaryNodeId(rand());
   ndbout_c("Restarting node %u initial", node);
 
   if (restarter.restartOneDbNode(node,

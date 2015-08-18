@@ -29,7 +29,7 @@
 
 --source include/not_group_replication_plugin.inc
 source include/not_gtid_enabled.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 disable_warnings;
 DROP DATABASE IF EXISTS mysqltest;
@@ -42,15 +42,15 @@ CREATE TABLE IF NOT EXISTS t2 SELECT * FROM t;
 CREATE EVENT IF NOT EXISTS e 
 ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR 
 DO SELECT now();
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
-#DROP database from slave.
-#The database and all tables can be recreated in slave 
-#if binlog of the second CREATE command is recorded and sent from master to slave.
+connection replica;
+#DROP database from replica.
+#The database and all tables can be recreated in replica 
+#if binlog of the second CREATE command is recorded and sent from primary to replica.
 DROP DATABASE mysqltest;
 
-connection master;
+connection primary;
 CREATE DATABASE IF NOT EXISTS mysqltest;
 USE mysqltest;
 CREATE TABLE IF NOT EXISTS t(c1 int);
@@ -59,16 +59,16 @@ CREATE TABLE IF NOT EXISTS t2 SELECT * FROM t;
 CREATE EVENT IF NOT EXISTS e 
 ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR 
 DO SELECT now(); 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
+connection replica;
 SHOW TABLES in mysqltest;
 #Execution time changes in each run. So we disregard it by calling replace_column.
 replace_column 6 #;
 SHOW EVENTS in mysqltest;
 
 
-connection master;
+connection primary;
 DROP DATABASE IF EXISTS mysqltest;
 
 #
@@ -86,7 +86,7 @@ DROP DATABASE IF EXISTS mysqltest;
 #
 
 echo -------------BUG#47418-------------;
-connection master;
+connection primary;
 USE test;
 DROP TABLE IF EXISTS t3;
 --enable_warnings
@@ -105,14 +105,14 @@ CREATE TABLE t2(c1 INTEGER) SELECT c1 FROM t3;
 # value '1' in them.  The records of t2 are not inserted into them.  
 SELECT * FROM t1; 
 SELECT * FROM t2; 
---source include/sync_slave_sql_with_master.inc 
+--source include/sync_replica_sql_with_primary.inc 
 
 # In these two statements, t1 and t2 are the base table. The recoreds of t2
 # are inserted into it when CREATE TABLE ...  SELECT was executed.  
 SELECT * FROM t1;
 SELECT * FROM t2;
 
-connection master; 
+connection primary; 
 DROP TEMPORARY TABLE t1; 
 DROP TEMPORARY TABLE t2; 
 #In these two statements, t1 and t2 are the base table.
@@ -132,7 +132,7 @@ DROP TABLE t3;
 
 --echo
 --echo # Case 1: BUG#47132
-connection master;
+connection primary;
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.*");
 
 CREATE TABLE t1 (id int);
@@ -141,7 +141,7 @@ INSERT INTO t1 VALUES (1), (1);
 INSERT INTO t2 VALUES (2), (2);
 
 CREATE VIEW v1 AS SELECT id FROM t2;
---let binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 CREATE TABLE IF NOT EXISTS v1(a int, b int) SELECT id, id FROM t1;
 --source include/show_binlog_events.inc
 
@@ -155,7 +155,7 @@ DROP VIEW v1;
 CREATE TEMPORARY TABLE tt1 AS SELECT id FROM t2;
 --enable_warnings
 
---let binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 CREATE TEMPORARY TABLE IF NOT EXISTS tt1(a int, b int) SELECT id, id FROM t1;
 --source include/show_binlog_events.inc
 SELECT * FROM t2;
@@ -166,12 +166,12 @@ DROP TEMPORARY TABLE tt1;
 --echo # Case 1: BUG#47132
 --echo # RBR breaks on CREATE TABLE IF EXISTS <existing VIEW> AS SELECT
 CREATE VIEW v1 AS SELECT 1 as a;
---let binlog_start= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let binlog_start= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 CREATE TABLE IF NOT EXISTS v1 SELECT 2 as a;
 --source include/show_binlog_events.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection master;
+connection primary;
 DROP VIEW v1;
 
 DROP TABLE t1, t2;
@@ -189,8 +189,8 @@ CREATE TABLE IF NOT EXISTS t2 LIKE t1;
 CREATE TABLE IF NOT EXISTS t2 LIKE t1;
 --echo # Clean-up.
 DROP TABLE t1, t2;
---source include/sync_slave_sql_with_master.inc
-connection master;
+--source include/sync_replica_sql_with_primary.inc
+connection primary;
 
 
 --source include/rpl_end.inc

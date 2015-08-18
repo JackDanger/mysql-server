@@ -17,7 +17,7 @@
 
 
 # We only need to execute this test once. Also, we rely on 'DELETE
-# FROM t1' to remove rows in slave tables that don't exist in master
+# FROM t1' to remove rows in replica tables that don't exist in primary
 # tables (see include/rpl_test_framework.inc for details).
 --source include/have_binlog_format_statement.inc
 
@@ -47,43 +47,43 @@ CREATE TABLE t1 (a INT);
 --let $rpl_server_count= 3
 
 --let $rpl_topology= 1 -> 2
---let $masters= 1,3
+--let $primarys= 1,3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 2 -> 3
---let $masters= 1,2
+--let $primarys= 1,2
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= none
---let $masters= 1,2,3
+--let $primarys= 1,2,3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 1->2, 2->1
---let $masters= 1,3
+--let $primarys= 1,3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 1->2->1
---let $masters= 2,3
+--let $primarys= 2,3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 2->1->2
---let $masters= 1,3
+--let $primarys= 1,3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 1->2->3
---let $masters= 1
+--let $primarys= 1
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 2->3->2->1
---let $masters= 3
+--let $primarys= 3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 1->2,2->3,3->1
---let $masters= 3
+--let $primarys= 3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 1->3->2->1
---let $masters= 3
+--let $primarys= 3
 --source extra/rpl_tests/rpl_test_framework.inc
 
 
@@ -92,19 +92,19 @@ CREATE TABLE t1 (a INT);
 --let $rpl_server_count= 6
 
 --let $rpl_topology= 1->2->3->4->1->5->6
---let $masters= 1
+--let $primarys= 1
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 3->4->5->6->3->1->2
---let $masters= 4
+--let $primarys= 4
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 6->5->4->3->2->1
---let $masters= 6
+--let $primarys= 6
 --source extra/rpl_tests/rpl_test_framework.inc
 
 --let $rpl_topology= 1->2->3->1,4->5->6
---let $masters= 3,4
+--let $primarys= 3,4
 --source extra/rpl_tests/rpl_test_framework.inc
 
 
@@ -113,7 +113,7 @@ CREATE TABLE t1 (a INT);
 --let $rpl_server_count= 9
 
 --let $rpl_topology= 1->2, 2->3, 3->4, 4->5, 5->1, 1->6, 6->7, 6->8, 8->9
---let $masters= 2
+--let $primarys= 2
 --source extra/rpl_tests/rpl_test_framework.inc
 
 if ($mtr_supports_more_than_10_servers) {
@@ -122,12 +122,12 @@ if ($mtr_supports_more_than_10_servers) {
 --let $rpl_server_count= 15
 
 --let $rpl_topology= 1->2->3->4->5->6->7->8->9->10->11->12->13->14->15->1
---let $masters= 2
+--let $primarys= 2
 --source extra/rpl_tests/rpl_test_framework.inc
 
 # This is a binary tree
 --let $rpl_topology= 1->2->4->8,1->3->6->12,2->5->10,3->7->14,4->9,5->11,6->13,7->15
---let $masters= 1
+--let $primarys= 1
 --source extra/rpl_tests/rpl_test_framework.inc
 }
 

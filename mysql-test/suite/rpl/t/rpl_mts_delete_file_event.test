@@ -19,7 +19,7 @@
 
 --source include/have_myisam.inc
 --source include/have_binlog_format_statement.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 # Creates a non-transactional table
 CREATE TABLE t1 (c1 INT KEY) ENGINE=MyISAM;

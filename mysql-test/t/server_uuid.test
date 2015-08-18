@@ -14,7 +14,7 @@
 ##############################################################################
 source include/not_embedded.inc;
 
-CALL mtr.add_suppression("Master's UUID has changed, its old UUID is");
+CALL mtr.add_suppression("Primary's UUID has changed, its old UUID is");
 
 --let $uuid_file= auto.cnf
 --let $original_server_uuid= query_get_value(SELECT @@SERVER_UUID, @@SERVER_UUID, 1)

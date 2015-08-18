@@ -70,7 +70,7 @@ struct DropNodegroupRef {
   enum ErrorCode {
     NoError = 0,
     Busy = 701,
-    NotMaster = 702,
+    NotPrimary = 702,
     SingleUser = 299,
     NoSuchNodegroup = -1,
     NodegroupInUse = -2
@@ -78,7 +78,7 @@ struct DropNodegroupRef {
 
   Uint32 senderData;
   Uint32 senderRef;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;

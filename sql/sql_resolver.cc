@@ -101,7 +101,7 @@ bool SELECT_LEX::prepare(THD *thd)
   DBUG_ASSERT(this == thd->lex->current_select());
   DBUG_ASSERT(join == NULL);
 
-  SELECT_LEX_UNIT *const unit= master_unit();
+  SELECT_LEX_UNIT *const unit= primary_unit();
 
   if (top_join_list.elements > 0)
     propagate_nullability(&top_join_list, false);
@@ -158,7 +158,7 @@ bool SELECT_LEX::prepare(THD *thd)
     subqueries inside a derived table.
   */
   const bool check_privs= !thd->derived_tables_processing ||
-                          master_unit()->item != NULL;
+                          primary_unit()->item != NULL;
   thd->mark_used_columns= check_privs ? MARK_COLUMNS_READ : MARK_COLUMNS_NONE;
   ulonglong want_privilege_saved= thd->want_privilege;
   thd->want_privilege= check_privs ? SELECT_ACL : 0;
@@ -527,7 +527,7 @@ bool subquery_allows_materialization(Item_in_subselect *predicate,
     // Subquery must be a single query specification clause (not a UNION)
     cause= "in UNION";
   }
-  else if (!select_lex->master_unit()->first_select()->leaf_tables)
+  else if (!select_lex->primary_unit()->first_select()->leaf_tables)
   {
     // Subquery has no tables, hence no point in materializing.
     cause= "no inner tables";
@@ -947,7 +947,7 @@ bool SELECT_LEX::resolve_subquery(THD *thd)
     exec_method in class Item_subselect and exit immediately if unequal to
     EXEC_UNSPECIFIED.
   */
-  Item_subselect *subq_predicate= master_unit()->item;
+  Item_subselect *subq_predicate= primary_unit()->item;
   DBUG_ASSERT(subq_predicate);
   /**
     @note
@@ -1084,7 +1084,7 @@ bool SELECT_LEX::setup_wild(THD *thd)
     {
       const uint elem= fields_list.elements;
       const bool any_privileges= item_field->any_privileges;
-      Item_subselect *subsel= master_unit()->item;
+      Item_subselect *subsel= primary_unit()->item;
       if (subsel && subsel->substype() == Item_subselect::EXISTS_SUBS)
       {
         /*
@@ -2139,7 +2139,7 @@ SELECT_LEX::convert_subquery_to_semijoin(Item_exists_subselect *subq_pred)
   }
 
   // Unlink the subquery's query expression:
-  subq_select->master_unit()->exclude_level();
+  subq_select->primary_unit()->exclude_level();
 
   /*
     Add Name res objects belonging to subquery to parent query block.
@@ -2234,7 +2234,7 @@ bool SELECT_LEX::merge_derived(THD *thd, TABLE_LIST *derived_table)
   LEX *const lex= parent_lex;
 
   // Check whether the outer query allows merged views
-  if ((master_unit() == lex->unit &&
+  if ((primary_unit() == lex->unit &&
        !lex->can_use_merged()) ||
       lex->can_not_use_merged())
     DBUG_RETURN(false);
@@ -2424,7 +2424,7 @@ bool SELECT_LEX::merge_derived(THD *thd, TABLE_LIST *derived_table)
     if ((lex->sql_command == SQLCOM_SELECT ||
          lex->sql_command == SQLCOM_UPDATE ||
          lex->sql_command == SQLCOM_DELETE) &&
-        !(master_unit()->is_union() ||
+        !(primary_unit()->is_union() ||
           is_grouped() ||
           is_distinct() ||
           is_ordered() ||
@@ -2922,7 +2922,7 @@ void SELECT_LEX::remove_redundant_subquery_clauses(THD *thd,
                                                    int hidden_group_field_count,
                                                    int hidden_order_field_count)
 {
-  Item_subselect *subq_predicate= master_unit()->item;
+  Item_subselect *subq_predicate= primary_unit()->item;
   /*
     The removal should happen for IN, ALL, ANY and EXISTS subqueries,
     which means all but single row subqueries. Example single row
@@ -3261,8 +3261,8 @@ bool setup_order(THD *thd, Ref_ptr_array ref_pointer_array, TABLE_LIST *tables,
 
   thd->where="order clause";
 
-  const bool for_union= select->master_unit()->is_union() &&
-                        select == select->master_unit()->fake_select_lex;
+  const bool for_union= select->primary_unit()->is_union() &&
+                        select == select->primary_unit()->fake_select_lex;
   const bool is_aggregated= select->is_grouped();
 
   for (uint number= 1; order; order=order->next, number++)
@@ -3366,8 +3366,8 @@ bool SELECT_LEX::setup_order_final(THD *thd, int hidden_order_field_count)
     return false;
   }
 
-  if ((master_unit()->is_union() || master_unit()->fake_select_lex) &&
-      this != master_unit()->fake_select_lex &&
+  if ((primary_unit()->is_union() || primary_unit()->fake_select_lex) &&
+      this != primary_unit()->fake_select_lex &&
       !(braces && explicit_limit))
   {
     // Part of UNION which requires global ordering may skip local order

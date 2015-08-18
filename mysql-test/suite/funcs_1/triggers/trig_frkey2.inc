@@ -2,7 +2,7 @@
 # This file inclde tests that address the foreign key cases of
 # the following requirements since they are specific to innodb.
 # Other test cases for these requirements are included in the
-# triggers_master.test file.
+# triggers_primary.test file.
 #################################################################
 
 --disable_abort_on_error

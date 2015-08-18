@@ -1,7 +1,7 @@
 # ==== Purpose ====
 #
-# This test will make slave to replicate a partial GTID transaction
-# followed by an ANONYMOUS transaction to make sure that the slave
+# This test will make replica to replicate a partial GTID transaction
+# followed by an ANONYMOUS transaction to make sure that the replica
 # I/O thread won't add the GTID of the partial transaction to the
 # Retrieved_Gtid_Set.
 #
@@ -9,12 +9,12 @@
 # the Retrieved_Gtid_Set nor execute the partial GTID transaction.
 #
 # The test case will transform a single XID event into an ignorable
-# unknown event that will not be written to the slave relay log.
-# Because of this, the slave will assume it doesn't
+# unknown event that will not be written to the replica relay log.
+# Because of this, the replica will assume it doesn't
 # fully retrieved the transaction and will not count on its GTID.
 #
 # As before WL#7083 a GTID enabled server cannot apply ANONYMOUS
-# transactions, we will let the SQL thread stopped at the slave.
+# transactions, we will let the SQL thread stopped at the replica.
 #
 # TODO: To enable the SQL thread after WL#7083.
 #
@@ -33,71 +33,71 @@
 
 --let $rpl_gtid_utils= 1
 --source include/have_gtid.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-# Disable slave's auto_positioning
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
-CHANGE MASTER TO MASTER_AUTO_POSITION=0;
+# Disable replica's auto_positioning
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION=0;
 SET GLOBAL GTID_MODE = ON_PERMISSIVE;
 --let $use_gtids= 0
 call mtr.add_suppression("An unexpected event sequence was detected by the IO thread");
 call mtr.add_suppression("GTID_LOG_EVENT .* is not expected in an event stream");
---source include/start_slave_io.inc
+--source include/start_replica_io.inc
 # Reset the GTID counter for assertion
 --source include/gtid_step_reset_on_retrieved.inc
-# Set slave to stop after Xid event, transforming it in an
+# Set replica to stop after Xid event, transforming it in an
 # ignorable unknown event.
 --let $debug_point= stop_io_after_reading_unknown_event
 --source include/add_debug_point.inc
 --let $debug_point= simulate_unknown_ignorable_log_event_with_xid
 --source include/add_debug_point.inc
 
-# Create a table at the master using GTID
---source include/rpl_connection_master.inc
---echo # This should be MASTER_UUID:1
+# Create a table at the primary using GTID
+--source include/rpl_connection_primary.inc
+--echo # This should be PRIMARY_UUID:1
 CREATE TABLE t1 (c1 INT) ENGINE= InnoDB;
---source include/sync_slave_io_with_master.inc
+--source include/sync_replica_io_with_primary.inc
 
 # Inserting some data
---source include/rpl_connection_master.inc
---echo # This should be MASTER_UUID:2,
---echo # but it will not be fully retrieved nor applied on slave
+--source include/rpl_connection_primary.inc
+--echo # This should be PRIMARY_UUID:2,
+--echo # but it will not be fully retrieved nor applied on replica
 INSERT INTO t1 VALUES (1);
 
-# Wait the slave IO thread to stop
---source include/rpl_connection_slave.inc
---source include/wait_for_slave_io_to_stop.inc
+# Wait the replica IO thread to stop
+--source include/rpl_connection_replica.inc
+--source include/wait_for_replica_io_to_stop.inc
 --source include/remove_debug_point.inc
 --let $debug_point= stop_io_after_reading_unknown_event
 --source include/remove_debug_point.inc
 
-# Restart the master without GTIDS
---source include/rpl_connection_master.inc
+# Restart the primary without GTIDS
+--source include/rpl_connection_primary.inc
 --let $rpl_server_number= 1
 --let $rpl_start_with_gtids= 0
 --source include/rpl_restart_server.inc
 
-# Insert more data on master
+# Insert more data on primary
 --echo # This should be ANONYMOUS
 INSERT INTO t1 VALUES (2);
 
-# Restart the master with GTIDS again
---source include/rpl_connection_master.inc
+# Restart the primary with GTIDS again
+--source include/rpl_connection_primary.inc
 --let $rpl_server_number= 1
 --let $rpl_start_with_gtids= 1
 --source include/rpl_restart_server.inc
 SET GLOBAL GTID_MODE = ON_PERMISSIVE;
 
-# Insert more data on master
---echo # This should be MASTER_UUID:3
+# Insert more data on primary
+--echo # This should be PRIMARY_UUID:3
 INSERT INTO t1 VALUES (3);
 
---source include/rpl_connection_slave.inc
-# Start slave IO thread and sync slave with master
---source include/start_slave_io.inc
---source include/rpl_connection_master.inc
---source include/sync_slave_io_with_master.inc
+--source include/rpl_connection_replica.inc
+# Start replica IO thread and sync replica with primary
+--source include/start_replica_io.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_io_with_primary.inc
 
 # Assert that only two GTIDs were added to the Retrieved_Gtid_Set
 --let $gtid_step_count= 2
@@ -106,20 +106,20 @@ INSERT INTO t1 VALUES (3);
 
 # Cleanup
 
-# Restore the slave
---source include/stop_slave_io.inc
+# Restore the replica
+--source include/stop_replica_io.inc
 SET GLOBAL GTID_MODE = ON;
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_AUTO_POSITION= 1;
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 1;
 --let $use_gtids= 1
 
-# Cleanup the master
---source include/rpl_connection_master.inc
+# Cleanup the primary
+--source include/rpl_connection_primary.inc
 SET GLOBAL GTID_MODE = ON;
 DROP TABLE t1;
-RESET MASTER;
---source include/rpl_connection_slave.inc
---source include/start_slave.inc
+RESET PRIMARY;
+--source include/rpl_connection_replica.inc
+--source include/start_replica.inc
 
 --source include/rpl_end.inc

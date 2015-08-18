@@ -11,13 +11,13 @@
 
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 --error 1
---exec $MYSQL_BINLOG -#d,simulate_result_file_write_error_for_FD_event --raw --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT -r$MYSQLTEST_VARDIR/tmp/ master-bin.000001 2>&1
+--exec $MYSQL_BINLOG -#d,simulate_result_file_write_error_for_FD_event --raw --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT -r$MYSQLTEST_VARDIR/tmp/ primary-bin.000001 2>&1
 
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 --error 1
---exec $MYSQL_BINLOG -#d,simulate_result_file_write_error --raw --read-from-remote-server --user=root --host=127.0.0.1 --port=$MASTER_MYPORT -r$MYSQLTEST_VARDIR/tmp/ master-bin.000001 2>&1
+--exec $MYSQL_BINLOG -#d,simulate_result_file_write_error --raw --read-from-remote-server --user=root --host=127.0.0.1 --port=$PRIMARY_MYPORT -r$MYSQLTEST_VARDIR/tmp/ primary-bin.000001 2>&1
 # Cleanup
---remove_file $MYSQLTEST_VARDIR/tmp/master-bin.000001
+--remove_file $MYSQLTEST_VARDIR/tmp/primary-bin.000001
 
 --echo
 --echo End of tests

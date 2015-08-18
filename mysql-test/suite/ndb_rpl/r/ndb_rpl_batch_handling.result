@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE mysql.ndb_replication
 (db VARBINARY(63),
 table_name VARBINARY(63),
@@ -13,7 +13,7 @@ PRIMARY KEY USING HASH (db,table_name,server_id))
 ENGINE=NDB PARTITION BY KEY(db,table_name);
 Log update-as-update
 insert into mysql.ndb_replication values ("test", "t1", 0, 7, NULL);
-Create table with one row missing on slave
+Create table with one row missing on replica
 create table test.t1 (a int primary key, b int) engine=ndb;
 insert into test.t1 values (3,3), (4,4);
 select * from test.t1 order by a;
@@ -24,7 +24,7 @@ delete from test.t1 where a=4;
 select * from test.t1 order by a;
 a	b
 3	3
-Now create epoch transaction at master with 1 applicable and
+Now create epoch transaction at primary with 1 applicable and
 n unapplicable operations
 We hope that at least some of the unapplicable operations
 will run in the same batch as the applicable one (so attempting

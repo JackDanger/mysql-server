@@ -30,7 +30,7 @@
 #include "item_strfunc.h"        // Item_func_geohash
 #include <mysql/service_thd_wait.h>
 #include "parse_tree_helpers.h"  // PT_item_list
-#include "rpl_mi.h"              // Master_info
+#include "rpl_mi.h"              // Primary_info
 #include "rpl_msr.h"             // msr_map
 #include "rpl_rli.h"             // Relay_log_info
 #include "sp.h"                  // sp_find_routine
@@ -3294,10 +3294,10 @@ bool Item_func_rand::itemize(Parse_context *pc, Item **res)
     return true;
   /*
     When RAND() is binlogged, the seed is binlogged too.  So the
-    sequence of random numbers is the same on a replication slave as
-    on the master.  However, if several RAND() values are inserted
+    sequence of random numbers is the same on a replication replica as
+    on the primary.  However, if several RAND() values are inserted
     into a table, the order in which the rows are modified may differ
-    between master and slave, because the order is undefined.  Hence,
+    between primary and replica, because the order is undefined.  Hence,
     the statement is unsafe to log in statement format.
   */
   pc->thd->lex->set_stmt_unsafe(LEX::BINLOG_STMT_UNSAFE_SYSTEM_FUNCTION);
@@ -3350,7 +3350,7 @@ bool Item_func_rand::fix_fields(THD *thd,Item **ref)
     /*
       Save the seed only the first time RAND() is used in the query
       Once events are forwarded rather than recreated,
-      the following can be skipped if inside the slave thread
+      the following can be skipped if inside the replica thread
     */
     if (!thd->rand_used)
     {
@@ -4705,7 +4705,7 @@ bool udf_handler::get_arguments() { return 0; }
 #endif /* HAVE_DLOPEN */
 
 
-bool Item_master_pos_wait::itemize(Parse_context *pc, Item **res)
+bool Item_primary_pos_wait::itemize(Parse_context *pc, Item **res)
 {
   if (skip_itemize(res))
     return false;
@@ -4718,11 +4718,11 @@ bool Item_master_pos_wait::itemize(Parse_context *pc, Item **res)
 
 
 /**
-  Wait until we are at or past the given position in the master binlog
-  on the slave.
+  Wait until we are at or past the given position in the primary binlog
+  on the replica.
 */
 
-longlong Item_master_pos_wait::val_int()
+longlong Item_primary_pos_wait::val_int()
 {
   DBUG_ASSERT(fixed == 1);
   THD* thd = current_thd;
@@ -4730,13 +4730,13 @@ longlong Item_master_pos_wait::val_int()
   int event_count= 0;
 
   null_value=0;
-  if (thd->slave_thread || !log_name || !log_name->length())
+  if (thd->replica_thread || !log_name || !log_name->length())
   {
     null_value = 1;
     return 0;
   }
 #ifdef HAVE_REPLICATION
-  Master_info *mi;
+  Primary_info *mi;
   longlong pos = (ulong)args[1]->val_int();
   longlong timeout = (arg_count>=3) ? args[2]->val_int() : 0 ;
 
@@ -4759,7 +4759,7 @@ longlong Item_master_pos_wait::val_int()
     if (msr_map.get_num_instances() > 1)
     {
       mi = NULL;
-      my_error(ER_SLAVE_MULTIPLE_CHANNELS_CMD, MYF(0));
+      my_error(ER_REPLICA_MULTIPLE_CHANNELS_CMD, MYF(0));
     }
     else
       mi= msr_map.get_mi(msr_map.get_default_channel());
@@ -4795,7 +4795,7 @@ bool Item_wait_for_executed_gtid_set::itemize(Parse_context *pc, Item **res)
 
 /**
   Wait until the given gtid_set is found in the executed gtid_set independent
-  of the slave threads.
+  of the replica threads.
 */
 longlong Item_wait_for_executed_gtid_set::val_int()
 {
@@ -4812,9 +4812,9 @@ longlong Item_wait_for_executed_gtid_set::val_int()
     return 0;
   }
 
-  // Since the function is independent of the slave threads we need to return
+  // Since the function is independent of the replica threads we need to return
   // with null value being set to 1.
-  if (thd->slave_thread)
+  if (thd->replica_thread)
   {
     null_value= 1;
     return 0;
@@ -4840,7 +4840,7 @@ longlong Item_wait_for_executed_gtid_set::val_int()
   return result;
 }
 
-bool Item_master_gtid_set_wait::itemize(Parse_context *pc, Item **res)
+bool Item_primary_gtid_set_wait::itemize(Parse_context *pc, Item **res)
 {
   if (skip_itemize(res))
     return false;
@@ -4852,10 +4852,10 @@ bool Item_master_gtid_set_wait::itemize(Parse_context *pc, Item **res)
 }
 
 
-longlong Item_master_gtid_set_wait::val_int()
+longlong Item_primary_gtid_set_wait::val_int()
 {
   DBUG_ASSERT(fixed == 1);
-  DBUG_ENTER("Item_master_gtid_set_wait::val_int");
+  DBUG_ENTER("Item_primary_gtid_set_wait::val_int");
   int event_count= 0;
 
   null_value=0;
@@ -4863,10 +4863,10 @@ longlong Item_master_gtid_set_wait::val_int()
 #if defined(HAVE_REPLICATION)
   String *gtid= args[0]->val_str(&value);
   THD* thd = current_thd;
-  Master_info *mi= NULL;
+  Primary_info *mi= NULL;
   longlong timeout = (arg_count>= 2) ? args[1]->val_int() : 0;
 
-  if (thd->slave_thread || !gtid)
+  if (thd->replica_thread || !gtid)
   {
     null_value = 1;
     DBUG_RETURN(0);
@@ -4892,7 +4892,7 @@ longlong Item_master_gtid_set_wait::val_int()
     {
       mysql_mutex_unlock(&LOCK_msr_map);
       mi = NULL;
-      my_error(ER_SLAVE_MULTIPLE_CHANNELS_CMD, MYF(0));
+      my_error(ER_REPLICA_MULTIPLE_CHANNELS_CMD, MYF(0));
       DBUG_RETURN(0);
     }
     else
@@ -5290,13 +5290,13 @@ longlong Item_func_get_lock::val_int()
 
   null_value= TRUE;
   /*
-    In slave thread no need to get locks, everything is serialized. Anyway
-    there is no way to make GET_LOCK() work on slave like it did on master
+    In replica thread no need to get locks, everything is serialized. Anyway
+    there is no way to make GET_LOCK() work on replica like it did on primary
     (i.e. make it return exactly the same value) because we don't have the
     same other concurrent threads environment. No matter what we return here,
-    it's not guaranteed to be same as on master. So we always return 1.
+    it's not guaranteed to be same as on primary. So we always return 1.
   */
-  if (thd->slave_thread)
+  if (thd->replica_thread)
   {
     null_value= FALSE;
     DBUG_RETURN(1);
@@ -6727,7 +6727,7 @@ get_var_with_binlog(THD *thd, enum_sql_command sql_command,
   {
     /*
       If the variable does not exist, it's NULL, but we want to create it so
-      that it gets into the binlog (if it didn't, the slave could be
+      that it gets into the binlog (if it didn't, the replica could be
       influenced by a variable of the same name previously set by another
       thread).
       We create it like if it had been explicitly set with SET before.
@@ -7526,7 +7526,7 @@ bool Item_func_match::init_search(THD *thd)
 
   TABLE *const table= table_ref->table;
   /* Check if init_search() has been called before */
-  if (ft_handler && !master)
+  if (ft_handler && !primary)
   {
     /*
       We should reset ft_handler as it is cleaned up
@@ -7558,12 +7558,12 @@ bool Item_func_match::init_search(THD *thd)
     concat_ws->quick_fix_field();
   }
 
-  if (master)
+  if (primary)
   {
-    if (master->init_search(thd))
+    if (primary->init_search(thd))
       DBUG_RETURN(true);
 
-    ft_handler=master->ft_handler;
+    ft_handler=primary->ft_handler;
     DBUG_RETURN(false);
   }
 
@@ -7590,7 +7590,7 @@ bool Item_func_match::init_search(THD *thd)
      DBUG_RETURN(true);
   }
 
-  DBUG_ASSERT(master == NULL);
+  DBUG_ASSERT(primary == NULL);
   ft_handler= table->file->ft_init_ext_with_hints(key, ft_tmp, get_hints());
   if (thd->is_error())
     DBUG_RETURN(true);
@@ -7745,7 +7745,7 @@ bool Item_func_match::fix_fields(THD *thd, Item **ref)
 
   table->fulltext_searched=1;
 
-  if (!master)
+  if (!primary)
   {
     hints= new Ft_hints(flags);
     if (!hints)
@@ -7887,11 +7887,11 @@ double Item_func_match::val_real()
   if (key != NO_SUCH_KEY && table->null_row) /* NULL row from an outer join */
     DBUG_RETURN(0.0);
 
-  if (get_master()->join_key)
+  if (get_primary()->join_key)
   {
     if (table->file->ft_handler)
       DBUG_RETURN(ft_handler->please->get_relevance(ft_handler));
-    get_master()->join_key= 0;
+    get_primary()->join_key= 0;
   }
 
   if (key == NO_SUCH_KEY)
@@ -7933,7 +7933,7 @@ void Item_func_match::print(String *str, enum_query_type query_type)
 void Item_func_match::set_hints(JOIN *join, uint ft_flag,
                                 ha_rows ft_limit, bool no_cond)
 {
-  DBUG_ASSERT(!master);
+  DBUG_ASSERT(!primary);
 
   if (!join)  // used for count() optimization
   {

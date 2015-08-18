@@ -9,7 +9,7 @@
 --source include/not_embedded.inc
 --source include/have_binlog_format_mixed.inc
 
-RESET MASTER;
+RESET PRIMARY;
 
 # replace_regex should replace output of SHOW BINLOG EVENTS
 

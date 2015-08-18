@@ -8,30 +8,30 @@
 # counterpart rpl_sequential.test.
 # Both tests leave mysqld.2/data/test/delta.out file
 # that contains a row with two columns.
-#  1. the duration (in seconds) of execution on the master
-#  2. the duration of execution on the slave
+#  1. the duration (in seconds) of execution on the primary
+#  2. the duration of execution on the replica
 #  The 2nd column of the rpl_parallel can be compared with the 2nd of rpl_sequential.test.
 #
 #  The duration recorded in the file accounts the SQL thread/workers work.
-#  That is benchmarking on the slave side is effectively started with
-#  `start slave sql_thread'.
+#  That is benchmarking on the replica side is effectively started with
+#  `start replica sql_thread'.
 # Example of usage.
 # To gather a collection of figures:
-#  mysql-test$ export slave;
-#  mysql-test$ slave=parallel; for n in `seq 1 10`; 
-#  do ./mtr  --vardir=/dev/shm/var1 --mtr-build-thread=765 rpl_$slave 
+#  mysql-test$ export replica;
+#  mysql-test$ replica=parallel; for n in `seq 1 10`; 
+#  do ./mtr  --vardir=/dev/shm/var1 --mtr-build-thread=765 rpl_$replica 
 #             --mysqld=--binlog-format=statement; 
-#     find /dev/shm/var1 -name delta.out -exec cat {} \; | cat >> delta.$slave.log; 
+#     find /dev/shm/var1 -name delta.out -exec cat {} \; | cat >> delta.$replica.log; 
 #  done
 #
-# mysql-test$ slave=sequential; ...
+# mysql-test$ replica=sequential; ...
 #
 # In the end there will be mysql-test/delta.{parallel,sequential}.log files.
 #
 --source include/not_group_replication_plugin.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-connection master;
+connection primary;
 source extra/rpl_tests/rpl_parallel_load.test;
 
 --source include/rpl_end.inc

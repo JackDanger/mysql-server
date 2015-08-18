@@ -1,27 +1,27 @@
 #
-# Similar to sync_slave_with_master but supports a configurable timeout
-#  let $slave_sync_timeout =  300;
-#  source include/wait_for_slave_to_sync_with_master;
+# Similar to sync_replica_with_primary but supports a configurable timeout
+#  let $replica_sync_timeout =  300;
+#  source include/wait_for_replica_to_sync_with_primary;
 #
 
-connection slave;
-stop slave;
-start slave;
+connection replica;
+stop replica;
+start replica;
 
-connection master;
+connection primary;
 
-let $file = query_get_value(SHOW MASTER STATUS, File, 1);
-let $pos = query_get_value(SHOW MASTER STATUS, Position, 1);
+let $file = query_get_value(SHOW PRIMARY STATUS, File, 1);
+let $pos = query_get_value(SHOW PRIMARY STATUS, Position, 1);
 
-connection slave;
+connection replica;
 --disable_result_log
 --disable_query_log
-eval select master_pos_wait("$file", $pos, $slave_sync_timeout);
+eval select primary_pos_wait("$file", $pos, $replica_sync_timeout);
 --enable_result_log
 --enable_query_log
 
-connection master;
-sync_slave_with_master;
+connection primary;
+sync_replica_with_primary;
 
-connection master;
+connection primary;
 

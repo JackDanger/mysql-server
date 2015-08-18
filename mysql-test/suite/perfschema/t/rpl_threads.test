@@ -3,12 +3,12 @@
 --source include/have_log_bin.inc
 --source include/not_embedded.inc
 --source include/have_perfschema.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --disable_warnings
 drop table if exists test.t1;
---sync_slave_with_master
-reset master;
+--sync_replica_with_primary
+reset primary;
 --enable_warnings
 
 create table test.t1(a int);
@@ -24,56 +24,56 @@ drop table test.t1;
 # visible in the INFORMATION_SCHEMA.PROCESSLIST table,
 # the same PROCESSLIST_ID should be visible in table performance_schema.threads
 
-connection master;
--- echo "============ Performance schema on master ============"
+connection primary;
+-- echo "============ Performance schema on primary ============"
 
 # Read the ID of the binlog dump connection,
 # as exposed in PROCESSLIST.
 select ID from INFORMATION_SCHEMA.PROCESSLIST
   where COMMAND = "Binlog Dump"
-  into @master_dump_pid;
+  into @primary_dump_pid;
 
 select COMMAND, STATE
   from INFORMATION_SCHEMA.PROCESSLIST
-  where ID = @master_dump_pid;
+  where ID = @primary_dump_pid;
 
 # Make sure the performance schema also knows this PROCESSLIST_ID
 select NAME, TYPE, PROCESSLIST_COMMAND, PROCESSLIST_STATE
   from performance_schema.threads
-  where PROCESSLIST_ID = @master_dump_pid;
+  where PROCESSLIST_ID = @primary_dump_pid;
 
-sync_slave_with_master;
--- echo "============ Performance schema on slave ============"
+sync_replica_with_primary;
+-- echo "============ Performance schema on replica ============"
 
-# Read the ID of the SLAVE IO thread,
+# Read the ID of the REPLICA IO thread,
 # as exposed in PROCESSLIST.
 select ID from INFORMATION_SCHEMA.PROCESSLIST
-  where STATE like "Waiting for master to send event%"
-  into @slave_io_pid;
+  where STATE like "Waiting for primary to send event%"
+  into @replica_io_pid;
 
 select COMMAND, STATE
   from INFORMATION_SCHEMA.PROCESSLIST
-  where ID = @slave_io_pid;
+  where ID = @replica_io_pid;
 
 # Make sure the performance schema also knows this PROCESSLIST_ID
 select NAME, TYPE, PROCESSLIST_COMMAND, PROCESSLIST_STATE
   from performance_schema.threads
-  where PROCESSLIST_ID = @slave_io_pid;
+  where PROCESSLIST_ID = @replica_io_pid;
 
-# Read the ID of the SLAVE SQL thread,
+# Read the ID of the REPLICA SQL thread,
 # as exposed in PROCESSLIST.
 select ID from INFORMATION_SCHEMA.PROCESSLIST
-  where STATE like "Slave has read all relay log%"
-  into @slave_sql_pid;
+  where STATE like "Replica has read all relay log%"
+  into @replica_sql_pid;
 
 select COMMAND, STATE
   from INFORMATION_SCHEMA.PROCESSLIST
-  where ID = @slave_sql_pid;
+  where ID = @replica_sql_pid;
 
 # Make sure the performance schema also knows this PROCESSLIST_ID
 select NAME, TYPE, PROCESSLIST_COMMAND, PROCESSLIST_STATE
   from performance_schema.threads
-  where PROCESSLIST_ID = @slave_sql_pid;
+  where PROCESSLIST_ID = @replica_sql_pid;
 
 --source include/rpl_end.inc
 

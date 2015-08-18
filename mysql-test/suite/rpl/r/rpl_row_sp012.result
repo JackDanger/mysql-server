@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 DROP PROCEDURE IF EXISTS test.p1;
 DROP PROCEDURE IF EXISTS test.p2;
 DROP PROCEDURE IF EXISTS test.p3;
@@ -23,9 +23,9 @@ CREATE PROCEDURE test.p3 () SQL SECURITY INVOKER CALL test.p1();
 GRANT EXECUTE ON PROCEDURE p1 TO user1@localhost;
 GRANT EXECUTE ON PROCEDURE p2 TO user1@localhost;
 GRANT EXECUTE ON PROCEDURE p3 TO user1@localhost;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 
-<********  Master user1 p3 & p2 calls *******>
+<********  Primary user1 p3 & p2 calls *******>
 ----------------------------------------------
 SELECT CURRENT_USER();
 CURRENT_USER()
@@ -40,7 +40,7 @@ CALL test.p2();
 CURRENT_USER()	USER()
 root@localhost	user1@localhost
 
-<********  Slave user1 p3 & p2 calls *******>
+<********  Replica user1 p3 & p2 calls *******>
 ---------------------------------------------
 SELECT CURRENT_USER();
 CURRENT_USER()
@@ -60,5 +60,5 @@ DROP PROCEDURE IF EXISTS test.p2;
 DROP TABLE IF EXISTS test.t1;
 DROP TABLE IF EXISTS test.t2;
 DROP USER user1@localhost;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

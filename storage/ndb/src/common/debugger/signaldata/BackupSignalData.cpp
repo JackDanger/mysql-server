@@ -32,11 +32,11 @@ printBACKUP_REQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 bno){
 bool 
 printBACKUP_DATA(FILE * output, const Uint32 * theData, Uint32 len, Uint16 bno){
   BackupData * sig = (BackupData*)theData;
-  if(sig->requestType == BackupData::ClientToMaster){
-    fprintf(output, " ClientToMaster: senderData: %d backupId: %d\n",
+  if(sig->requestType == BackupData::ClientToPrimary){
+    fprintf(output, " ClientToPrimary: senderData: %d backupId: %d\n",
 	    sig->senderData, sig->backupId);
-  } else if(sig->requestType == BackupData::MasterToSlave){
-    fprintf(output, " MasterToSlave: backupPtr: %d backupId: %d\n",
+  } else if(sig->requestType == BackupData::PrimaryToReplica){
+    fprintf(output, " PrimaryToReplica: backupPtr: %d backupId: %d\n",
 	    sig->backupPtr, sig->backupId);
   }
   return false;
@@ -46,10 +46,10 @@ bool
 printBACKUP_REF(FILE * output, const Uint32 * theData, Uint32 len, Uint16 bno){
 
   BackupRef* sig = (BackupRef*)theData;
-  fprintf(output, " senderData: %d errorCode: %d masterRef: %d\n",
+  fprintf(output, " senderData: %d errorCode: %d primaryRef: %d\n",
 	  sig->senderData,
 	  sig->errorCode,
-	  sig->masterRef);
+	  sig->primaryRef);
   return true;
 }
 

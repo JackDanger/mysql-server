@@ -56,7 +56,7 @@ class JOIN :public Sql_alloc
 public:
   JOIN(THD *thd_arg, SELECT_LEX *select)
     : select_lex(select),
-      unit(select->master_unit()),
+      unit(select->primary_unit()),
       thd(thd_arg),
       join_tab(NULL),
       qep_tab(NULL),

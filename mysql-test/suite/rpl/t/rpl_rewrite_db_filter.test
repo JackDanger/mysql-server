@@ -5,15 +5,15 @@
 # when setting lower_case_table_name > 0
 #
 
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 -- source include/have_binlog_format_statement.inc
-connection slave;
+connection replica;
 CREATE DATABASE rewrite;
 
-connection master;
+connection primary;
 -- source extra/rpl_tests/rpl_filters.test
 
-connection slave;
+connection replica;
 DROP DATABASE rewrite;
 
 --source include/rpl_end.inc

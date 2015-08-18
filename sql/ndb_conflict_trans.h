@@ -28,13 +28,13 @@
 /*
    This file defines structures for detecting dependencies between
    transactions based on the rows they update.
-   It is used when applying row updates as part of the MySQLD slave.
+   It is used when applying row updates as part of the MySQLD replica.
 */
 
 /**
  * st_row_event_key_info
  *
- * This struct describes a row event applied by the Slave, based
+ * This struct describes a row event applied by the Replica, based
  * on its table, key and transaction id.
  * Instances of this struct are placed in a hash structure where
  * the {table, key} are the key, and the transaction id is the

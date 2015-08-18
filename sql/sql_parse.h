@@ -70,7 +70,7 @@ bool check_string_char_length(const LEX_CSTRING &str, const char *err_msg,
 const CHARSET_INFO* merge_charset_and_collation(const CHARSET_INFO *cs,
                                                 const CHARSET_INFO *cl);
 bool check_host_name(const LEX_CSTRING &str);
-bool mysql_test_parse_for_slave(THD *thd);
+bool mysql_test_parse_for_replica(THD *thd);
 bool is_update_query(enum enum_sql_command command);
 bool is_explainable_query(enum enum_sql_command command);
 bool is_log_table_write_query(enum enum_sql_command command);

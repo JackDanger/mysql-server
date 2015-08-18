@@ -1,7 +1,7 @@
 
 Event creation
 
-USER                      DICT(Master)            UTIL                   SUMA
+USER                      DICT(Primary)            UTIL                   SUMA
 ================================================================================
 CREATE_EVENT_REQ::create
 -------------------------->
@@ -22,7 +22,7 @@ CREATE_EVENT_CONF
 
 Event dropping
 
-USER                      DICT(Master)     (Slaves)         UTIL         SUMA
+USER                      DICT(Primary)     (Replicas)         UTIL         SUMA
 ================================================================================
 DROP_EVENT_REQ
 -------------------------->
@@ -54,7 +54,7 @@ DROP_EVENT_CONF
 
 create NdbEventOperation
 
-USER                      DICT(Master)         (Slaves)           UTIL
+USER                      DICT(Primary)         (Replicas)           UTIL
 =======================================================================
 CREATE_EVENT_REQ::get
 -------------------------->
@@ -81,7 +81,7 @@ CREATE_EVENT_CONF
 
 
 
-USER                      DICT(Master)         (Slaves)           SUMA
+USER                      DICT(Primary)         (Replicas)           SUMA
 =======================================================================
 SUB_START_REQ
 -------------------------->

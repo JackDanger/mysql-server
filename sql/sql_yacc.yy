@@ -40,7 +40,7 @@ Note: YYTHD is passed as an argument to yyparse(), and subsequently to yylex().
 #include "auth_common.h"                      /* *_ACL */
 #include "password.h"       /* my_make_scrambled_password_323, my_make_scrambled_password */
 #include "sql_class.h"      /* Key_part_spec, enum_filetype */
-#include "rpl_slave.h"
+#include "rpl_replica.h"
 #include "rpl_msr.h"       /* multisource replication */
 #include "rpl_filter.h"
 #include "log_event.h"
@@ -66,7 +66,7 @@ Note: YYTHD is passed as an argument to yyparse(), and subsequently to yylex().
 #include "set_var.h"
 #include "opt_explain_traditional.h"
 #include "opt_explain_json.h"
-#include "rpl_slave.h"                       // Sql_cmd_change_repl_filter
+#include "rpl_replica.h"                       // Sql_cmd_change_repl_filter
 #include "sql_show_status.h"                 // build_show_session_status, ...
 #include "parse_location.h"
 #include "parse_tree_helpers.h"
@@ -224,7 +224,7 @@ void turn_parser_debug_on()
      - Running a test :
        mysql-test-run.pl --mysqld="--debug=d,parser_debug" ...
 
-     The result will be in the process stderr (var/log/master.err)
+     The result will be in the process stderr (var/log/primary.err)
    */
 
   extern int yydebug;
@@ -764,29 +764,29 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
 %token  LOOP_SYM
 %token  LOW_PRIORITY
 %token  LT                            /* OPERATOR */
-%token  MASTER_AUTO_POSITION_SYM
-%token  MASTER_BIND_SYM
-%token  MASTER_CONNECT_RETRY_SYM
-%token  MASTER_DELAY_SYM
-%token  MASTER_HOST_SYM
-%token  MASTER_LOG_FILE_SYM
-%token  MASTER_LOG_POS_SYM
-%token  MASTER_PASSWORD_SYM
-%token  MASTER_PORT_SYM
-%token  MASTER_RETRY_COUNT_SYM
-%token  MASTER_SERVER_ID_SYM
-%token  MASTER_SSL_CAPATH_SYM
-%token  MASTER_SSL_CA_SYM
-%token  MASTER_SSL_CERT_SYM
-%token  MASTER_SSL_CIPHER_SYM
-%token  MASTER_SSL_CRL_SYM
-%token  MASTER_SSL_CRLPATH_SYM
-%token  MASTER_SSL_KEY_SYM
-%token  MASTER_SSL_SYM
-%token  MASTER_SSL_VERIFY_SERVER_CERT_SYM
-%token  MASTER_SYM
-%token  MASTER_USER_SYM
-%token  MASTER_HEARTBEAT_PERIOD_SYM
+%token  PRIMARY_AUTO_POSITION_SYM
+%token  PRIMARY_BIND_SYM
+%token  PRIMARY_CONNECT_RETRY_SYM
+%token  PRIMARY_DELAY_SYM
+%token  PRIMARY_HOST_SYM
+%token  PRIMARY_LOG_FILE_SYM
+%token  PRIMARY_LOG_POS_SYM
+%token  PRIMARY_PASSWORD_SYM
+%token  PRIMARY_PORT_SYM
+%token  PRIMARY_RETRY_COUNT_SYM
+%token  PRIMARY_SERVER_ID_SYM
+%token  PRIMARY_SSL_CAPATH_SYM
+%token  PRIMARY_SSL_CA_SYM
+%token  PRIMARY_SSL_CERT_SYM
+%token  PRIMARY_SSL_CIPHER_SYM
+%token  PRIMARY_SSL_CRL_SYM
+%token  PRIMARY_SSL_CRLPATH_SYM
+%token  PRIMARY_SSL_KEY_SYM
+%token  PRIMARY_SSL_SYM
+%token  PRIMARY_SSL_VERIFY_SERVER_CERT_SYM
+%token  PRIMARY_SYM
+%token  PRIMARY_USER_SYM
+%token  PRIMARY_HEARTBEAT_PERIOD_SYM
 %token  MATCH                         /* SQL-2003-R */
 %token  MAX_CONNECTIONS_PER_HOUR
 %token  MAX_QUERIES_PER_HOUR
@@ -978,7 +978,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
 %token  SIGNAL_SYM                    /* SQL-2003-R */
 %token  SIGNED_SYM
 %token  SIMPLE_SYM                    /* SQL-2003-N */
-%token  SLAVE
+%token  REPLICA
 %token  SLOW
 %token  SMALLINT                      /* SQL-2003-R */
 %token  SNAPSHOT_SYM
@@ -1304,7 +1304,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
         truncate rename
         show describe load alter optimize keycache preload flush
         reset purge begin commit rollback savepoint release
-        slave master_def master_defs master_file_def slave_until_opts
+        replica primary_def primary_defs primary_file_def replica_until_opts
         repair analyze check start checksum filter_def filter_defs
         field_list field_list_item field_spec kill column_def key_def
         keycache_list keycache_list_or_parts assign_to_keycache
@@ -1401,11 +1401,11 @@ END_OF_INPUT
 %type<NONE> SHOW DESC DESCRIBE describe_command
 
 /*
-  A bit field of SLAVE_IO, SLAVE_SQL flags.
+  A bit field of REPLICA_IO, REPLICA_SQL flags.
 */
-%type <num> opt_slave_thread_option_list
-%type <num> slave_thread_option_list
-%type <num> slave_thread_option
+%type <num> opt_replica_thread_option_list
+%type <num> replica_thread_option_list
+%type <num> replica_thread_option
 
 %type <key_usage_element> key_usage_element
 
@@ -1678,7 +1678,7 @@ statement:
         | set                   { CONTEXTUALIZE($1); }
         | signal_stmt
         | show
-        | slave
+        | replica
         | start
         | truncate
         | uninstall
@@ -1791,21 +1791,21 @@ help:
           }
         ;
 
-/* change master */
+/* change primary */
 
 change:
-          CHANGE MASTER_SYM TO_SYM
+          CHANGE PRIMARY_SYM TO_SYM
           {
             LEX *lex = Lex;
-            lex->sql_command = SQLCOM_CHANGE_MASTER;
+            lex->sql_command = SQLCOM_CHANGE_PRIMARY;
             /*
-              Clear LEX_MASTER_INFO struct. repl_ignore_server_ids is cleared
+              Clear LEX_PRIMARY_INFO struct. repl_ignore_server_ids is cleared
               in THD::cleanup_after_query. So it is guaranteed to be empty here.
             */
             DBUG_ASSERT(Lex->mi.repl_ignore_server_ids.empty());
             lex->mi.set_unspecified();
           }
-          master_defs opt_channel
+          primary_defs opt_channel
           {}
         | CHANGE REPLICATION FILTER_SYM
           {
@@ -2023,143 +2023,143 @@ filter_string:
           }
         ;
 
-master_defs:
-          master_def
-        | master_defs ',' master_def
+primary_defs:
+          primary_def
+        | primary_defs ',' primary_def
         ;
 
-master_def:
-          MASTER_HOST_SYM EQ TEXT_STRING_sys_nonewline
+primary_def:
+          PRIMARY_HOST_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.host = $3.str;
           }
-        | MASTER_BIND_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_BIND_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.bind_addr = $3.str;
           }
-        | MASTER_USER_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_USER_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.user = $3.str;
           }
-        | MASTER_PASSWORD_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_PASSWORD_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.password = $3.str;
             if (strlen($3.str) > 32)
             {
-              my_error(ER_CHANGE_MASTER_PASSWORD_LENGTH, MYF(0));
+              my_error(ER_CHANGE_PRIMARY_PASSWORD_LENGTH, MYF(0));
               MYSQL_YYABORT;
             }
             Lex->contains_plaintext_password= true;
           }
-        | MASTER_PORT_SYM EQ ulong_num
+        | PRIMARY_PORT_SYM EQ ulong_num
           {
             Lex->mi.port = $3;
           }
-        | MASTER_CONNECT_RETRY_SYM EQ ulong_num
+        | PRIMARY_CONNECT_RETRY_SYM EQ ulong_num
           {
             Lex->mi.connect_retry = $3;
           }
-        | MASTER_RETRY_COUNT_SYM EQ ulong_num
+        | PRIMARY_RETRY_COUNT_SYM EQ ulong_num
           {
             Lex->mi.retry_count= $3;
-            Lex->mi.retry_count_opt= LEX_MASTER_INFO::LEX_MI_ENABLE;
+            Lex->mi.retry_count_opt= LEX_PRIMARY_INFO::LEX_MI_ENABLE;
           }
-        | MASTER_DELAY_SYM EQ ulong_num
+        | PRIMARY_DELAY_SYM EQ ulong_num
           {
-            if ($3 > MASTER_DELAY_MAX)
+            if ($3 > PRIMARY_DELAY_MAX)
             {
               const char *msg= YYTHD->strmake(@3.cpp.start, @3.cpp.end - @3.cpp.start);
-              my_error(ER_MASTER_DELAY_VALUE_OUT_OF_RANGE, MYF(0),
-                       msg, MASTER_DELAY_MAX);
+              my_error(ER_PRIMARY_DELAY_VALUE_OUT_OF_RANGE, MYF(0),
+                       msg, PRIMARY_DELAY_MAX);
             }
             else
               Lex->mi.sql_delay = $3;
           }
-        | MASTER_SSL_SYM EQ ulong_num
+        | PRIMARY_SSL_SYM EQ ulong_num
           {
             Lex->mi.ssl= $3 ?
-              LEX_MASTER_INFO::LEX_MI_ENABLE : LEX_MASTER_INFO::LEX_MI_DISABLE;
+              LEX_PRIMARY_INFO::LEX_MI_ENABLE : LEX_PRIMARY_INFO::LEX_MI_DISABLE;
           }
-        | MASTER_SSL_CA_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_SSL_CA_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.ssl_ca= $3.str;
           }
-        | MASTER_SSL_CAPATH_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_SSL_CAPATH_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.ssl_capath= $3.str;
           }
-        | MASTER_SSL_CERT_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_SSL_CERT_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.ssl_cert= $3.str;
           }
-        | MASTER_SSL_CIPHER_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_SSL_CIPHER_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.ssl_cipher= $3.str;
           }
-        | MASTER_SSL_KEY_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_SSL_KEY_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.ssl_key= $3.str;
           }
-        | MASTER_SSL_VERIFY_SERVER_CERT_SYM EQ ulong_num
+        | PRIMARY_SSL_VERIFY_SERVER_CERT_SYM EQ ulong_num
           {
             Lex->mi.ssl_verify_server_cert= $3 ?
-              LEX_MASTER_INFO::LEX_MI_ENABLE : LEX_MASTER_INFO::LEX_MI_DISABLE;
+              LEX_PRIMARY_INFO::LEX_MI_ENABLE : LEX_PRIMARY_INFO::LEX_MI_DISABLE;
           }
-        | MASTER_SSL_CRL_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_SSL_CRL_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.ssl_crl= $3.str;
           }
-        | MASTER_SSL_CRLPATH_SYM EQ TEXT_STRING_sys_nonewline
+        | PRIMARY_SSL_CRLPATH_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.ssl_crlpath= $3.str;
           }
 
-        | MASTER_HEARTBEAT_PERIOD_SYM EQ NUM_literal
+        | PRIMARY_HEARTBEAT_PERIOD_SYM EQ NUM_literal
           {
             ITEMIZE($3, &$3);
 
             Lex->mi.heartbeat_period= (float) $3->val_real();
-            if (Lex->mi.heartbeat_period > SLAVE_MAX_HEARTBEAT_PERIOD ||
+            if (Lex->mi.heartbeat_period > REPLICA_MAX_HEARTBEAT_PERIOD ||
                 Lex->mi.heartbeat_period < 0.0)
             {
                const char format[]= "%d";
-               char buf[4*sizeof(SLAVE_MAX_HEARTBEAT_PERIOD) + sizeof(format)];
-               sprintf(buf, format, SLAVE_MAX_HEARTBEAT_PERIOD);
-               my_error(ER_SLAVE_HEARTBEAT_VALUE_OUT_OF_RANGE, MYF(0), buf);
+               char buf[4*sizeof(REPLICA_MAX_HEARTBEAT_PERIOD) + sizeof(format)];
+               sprintf(buf, format, REPLICA_MAX_HEARTBEAT_PERIOD);
+               my_error(ER_REPLICA_HEARTBEAT_VALUE_OUT_OF_RANGE, MYF(0), buf);
                MYSQL_YYABORT;
             }
-            if (Lex->mi.heartbeat_period > slave_net_timeout)
+            if (Lex->mi.heartbeat_period > replica_net_timeout)
             {
               push_warning(YYTHD, Sql_condition::SL_WARNING,
-                           ER_SLAVE_HEARTBEAT_VALUE_OUT_OF_RANGE_MAX,
-                           ER(ER_SLAVE_HEARTBEAT_VALUE_OUT_OF_RANGE_MAX));
+                           ER_REPLICA_HEARTBEAT_VALUE_OUT_OF_RANGE_MAX,
+                           ER(ER_REPLICA_HEARTBEAT_VALUE_OUT_OF_RANGE_MAX));
             }
             if (Lex->mi.heartbeat_period < 0.001)
             {
               if (Lex->mi.heartbeat_period != 0.0)
               {
                 push_warning(YYTHD, Sql_condition::SL_WARNING,
-                             ER_SLAVE_HEARTBEAT_VALUE_OUT_OF_RANGE_MIN,
-                             ER(ER_SLAVE_HEARTBEAT_VALUE_OUT_OF_RANGE_MIN));
+                             ER_REPLICA_HEARTBEAT_VALUE_OUT_OF_RANGE_MIN,
+                             ER(ER_REPLICA_HEARTBEAT_VALUE_OUT_OF_RANGE_MIN));
                 Lex->mi.heartbeat_period= 0.0;
               }
-              Lex->mi.heartbeat_opt=  LEX_MASTER_INFO::LEX_MI_DISABLE;
+              Lex->mi.heartbeat_opt=  LEX_PRIMARY_INFO::LEX_MI_DISABLE;
             }
-            Lex->mi.heartbeat_opt=  LEX_MASTER_INFO::LEX_MI_ENABLE;
+            Lex->mi.heartbeat_opt=  LEX_PRIMARY_INFO::LEX_MI_ENABLE;
           }
         | IGNORE_SERVER_IDS_SYM EQ '(' ignore_server_id_list ')'
           {
-            Lex->mi.repl_ignore_server_ids_opt= LEX_MASTER_INFO::LEX_MI_ENABLE;
+            Lex->mi.repl_ignore_server_ids_opt= LEX_PRIMARY_INFO::LEX_MI_ENABLE;
            }
         |
-        MASTER_AUTO_POSITION_SYM EQ ulong_num
+        PRIMARY_AUTO_POSITION_SYM EQ ulong_num
           {
             Lex->mi.auto_position= $3 ?
-              LEX_MASTER_INFO::LEX_MI_ENABLE :
-              LEX_MASTER_INFO::LEX_MI_DISABLE;
+              LEX_PRIMARY_INFO::LEX_MI_ENABLE :
+              LEX_PRIMARY_INFO::LEX_MI_DISABLE;
           }
         |
-        master_file_def
+        primary_file_def
         ;
 
 ignore_server_id_list:
@@ -2174,21 +2174,21 @@ ignore_server_id:
             Lex->mi.repl_ignore_server_ids.push_back($1);
           }
 
-master_file_def:
-          MASTER_LOG_FILE_SYM EQ TEXT_STRING_sys_nonewline
+primary_file_def:
+          PRIMARY_LOG_FILE_SYM EQ TEXT_STRING_sys_nonewline
           {
             Lex->mi.log_file_name = $3.str;
           }
-        | MASTER_LOG_POS_SYM EQ ulonglong_num
+        | PRIMARY_LOG_POS_SYM EQ ulonglong_num
           {
             Lex->mi.pos = $3;
             /*
                If the user specified a value < BIN_LOG_HEADER_SIZE, adjust it
                instead of causing subsequent errors.
                We need to do it in this file, because only there we know that
-               MASTER_LOG_POS has been explicitely specified. On the contrary
-               in change_master() (sql_repl.cc) we cannot distinguish between 0
-               (MASTER_LOG_POS explicitely specified as 0) and 0 (unspecified),
+               PRIMARY_LOG_POS has been explicitely specified. On the contrary
+               in change_primary() (sql_repl.cc) we cannot distinguish between 0
+               (PRIMARY_LOG_POS explicitely specified as 0) and 0 (unspecified),
                whereas we want to distinguish (specified 0 means "read the binlog
                from 0" (4 in fact), unspecified means "don't change the position
                (keep the preceding value)").
@@ -2451,9 +2451,9 @@ opt_ev_status:
             Lex->event_parse_data->status_changed= true;
             $$= 1;
           }
-        | DISABLE_SYM ON SLAVE
+        | DISABLE_SYM ON REPLICA
           {
-            Lex->event_parse_data->status= Event_parse_data::SLAVESIDE_DISABLED;
+            Lex->event_parse_data->status= Event_parse_data::REPLICASIDE_DISABLED;
             Lex->event_parse_data->status_changed= true;
             $$= 1;
           }
@@ -8382,47 +8382,47 @@ group_replication:
                  }
                ;
 
-slave:
-        slave_start start_slave_opts{}
-      | STOP_SYM SLAVE opt_slave_thread_option_list opt_channel
+replica:
+        replica_start start_replica_opts{}
+      | STOP_SYM REPLICA opt_replica_thread_option_list opt_channel
         {
           LEX *lex=Lex;
-          lex->sql_command = SQLCOM_SLAVE_STOP;
+          lex->sql_command = SQLCOM_REPLICA_STOP;
           lex->type = 0;
-          lex->slave_thd_opt= $3;
+          lex->replica_thd_opt= $3;
         }
       ;
 
-slave_start:
-          START_SYM SLAVE opt_slave_thread_option_list
+replica_start:
+          START_SYM REPLICA opt_replica_thread_option_list
           {
             LEX *lex=Lex;
-            /* Clean previous slave connection values */
-            lex->slave_connection.reset();
-            lex->sql_command = SQLCOM_SLAVE_START;
+            /* Clean previous replica connection values */
+            lex->replica_connection.reset();
+            lex->sql_command = SQLCOM_REPLICA_START;
             lex->type = 0;
             /* We'll use mi structure for UNTIL options */
             lex->mi.set_unspecified();
-            lex->slave_thd_opt= $3;
+            lex->replica_thd_opt= $3;
           }
          ;
 
-start_slave_opts:
-          slave_until
-          slave_connection_opts
+start_replica_opts:
+          replica_until
+          replica_connection_opts
           {
             /*
               It is not possible to set user's information when
               one is trying to start the SQL Thread.
             */
-            if ((Lex->slave_thd_opt & SLAVE_SQL) == SLAVE_SQL &&
-                (Lex->slave_thd_opt & SLAVE_IO) != SLAVE_IO &&
-                (Lex->slave_connection.user ||
-                 Lex->slave_connection.password ||
-                 Lex->slave_connection.plugin_auth ||
-                 Lex->slave_connection.plugin_dir))
+            if ((Lex->replica_thd_opt & REPLICA_SQL) == REPLICA_SQL &&
+                (Lex->replica_thd_opt & REPLICA_IO) != REPLICA_IO &&
+                (Lex->replica_connection.user ||
+                 Lex->replica_connection.password ||
+                 Lex->replica_connection.plugin_auth ||
+                 Lex->replica_connection.plugin_dir))
             {
-              my_error(ER_SQLTHREAD_WITH_SECURE_SLAVE, MYF(0));
+              my_error(ER_SQLTHREAD_WITH_SECURE_REPLICA, MYF(0));
               MYSQL_YYABORT;
             }
           }
@@ -8482,91 +8482,91 @@ start_transaction_option:
           }
         ;
 
-slave_connection_opts:
-          slave_user_name_opt slave_user_pass_opt
-          slave_plugin_auth_opt slave_plugin_dir_opt
+replica_connection_opts:
+          replica_user_name_opt replica_user_pass_opt
+          replica_plugin_auth_opt replica_plugin_dir_opt
         ;
 
-slave_user_name_opt:
+replica_user_name_opt:
           {
             /* empty */
           }
         | USER EQ TEXT_STRING_sys
           {
-            Lex->slave_connection.user= $3.str;
+            Lex->replica_connection.user= $3.str;
           }
         ;
 
-slave_user_pass_opt:
+replica_user_pass_opt:
           {
             /* empty */
           }
         | PASSWORD EQ TEXT_STRING_sys
           {
-            Lex->slave_connection.password= $3.str;
+            Lex->replica_connection.password= $3.str;
             Lex->contains_plaintext_password= true;
           }
 
-slave_plugin_auth_opt:
+replica_plugin_auth_opt:
           {
             /* empty */
           }
         | DEFAULT_AUTH_SYM EQ TEXT_STRING_sys
           {
-            Lex->slave_connection.plugin_auth= $3.str;
+            Lex->replica_connection.plugin_auth= $3.str;
           }
         ;
 
-slave_plugin_dir_opt:
+replica_plugin_dir_opt:
           {
             /* empty */
           }
         | PLUGIN_DIR_SYM EQ TEXT_STRING_sys
           {
-            Lex->slave_connection.plugin_dir= $3.str;
+            Lex->replica_connection.plugin_dir= $3.str;
           }
         ;
 
-opt_slave_thread_option_list:
+opt_replica_thread_option_list:
           /* empty */
           {
             $$= 0;
           }
-        | slave_thread_option_list
+        | replica_thread_option_list
           {
             $$= $1;
           }
         ;
 
-slave_thread_option_list:
-          slave_thread_option
+replica_thread_option_list:
+          replica_thread_option
           {
             $$= $1;
           }
-        | slave_thread_option_list ',' slave_thread_option
+        | replica_thread_option_list ',' replica_thread_option
           {
             $$= $1 | $3;
           }
         ;
 
-slave_thread_option:
+replica_thread_option:
           SQL_THREAD
           {
-            $$= SLAVE_SQL;
+            $$= REPLICA_SQL;
           }
         | RELAY_THREAD
           {
-            $$= SLAVE_IO;
+            $$= REPLICA_IO;
           }
         ;
 
-slave_until:
+replica_until:
           /*empty*/
           {
             LEX *lex= Lex;
-            lex->mi.slave_until= false;
+            lex->mi.replica_until= false;
           }
-        | UNTIL_SYM slave_until_opts
+        | UNTIL_SYM replica_until_opts
           {
             LEX *lex=Lex;
             if (((lex->mi.log_file_name || lex->mi.pos) &&
@@ -8583,26 +8583,26 @@ slave_until:
                   || lex->mi.relay_log_pos || lex->mi.gtid)
                  && lex->mi.until_after_gaps))
             {
-               my_message(ER_BAD_SLAVE_UNTIL_COND,
-                          ER(ER_BAD_SLAVE_UNTIL_COND), MYF(0));
+               my_message(ER_BAD_REPLICA_UNTIL_COND,
+                          ER(ER_BAD_REPLICA_UNTIL_COND), MYF(0));
                MYSQL_YYABORT;
             }
-            lex->mi.slave_until= true;
+            lex->mi.replica_until= true;
           }
         ;
 
-slave_until_opts:
-          master_file_def
-        | slave_until_opts ',' master_file_def
+replica_until_opts:
+          primary_file_def
+        | replica_until_opts ',' primary_file_def
         | SQL_BEFORE_GTIDS EQ TEXT_STRING_sys
           {
             Lex->mi.gtid= $3.str;
-            Lex->mi.gtid_until_condition= LEX_MASTER_INFO::UNTIL_SQL_BEFORE_GTIDS;
+            Lex->mi.gtid_until_condition= LEX_PRIMARY_INFO::UNTIL_SQL_BEFORE_GTIDS;
           }
         | SQL_AFTER_GTIDS EQ TEXT_STRING_sys
           {
             Lex->mi.gtid= $3.str;
-            Lex->mi.gtid_until_condition= LEX_MASTER_INFO::UNTIL_SQL_AFTER_GTIDS;
+            Lex->mi.gtid_until_condition= LEX_PRIMARY_INFO::UNTIL_SQL_AFTER_GTIDS;
           }
         | SQL_AFTER_MTS_GAPS
           {
@@ -11782,13 +11782,13 @@ show_param:
             if (prepare_schema_table(YYTHD, lex, $4, SCH_COLUMNS))
               MYSQL_YYABORT;
           }
-        | master_or_binary LOGS_SYM
+        | primary_or_binary LOGS_SYM
           {
             Lex->sql_command = SQLCOM_SHOW_BINLOGS;
           }
-        | SLAVE HOSTS_SYM
+        | REPLICA HOSTS_SYM
           {
-            Lex->sql_command = SQLCOM_SHOW_SLAVE_HOSTS;
+            Lex->sql_command = SQLCOM_SHOW_REPLICA_HOSTS;
           }
         | BINLOG_SYM EVENTS_SYM binlog_in binlog_from
           {
@@ -12003,13 +12003,13 @@ show_param:
               MYSQL_YYABORT;
             lex->only_view= 1;
           }
-        | MASTER_SYM STATUS_SYM
+        | PRIMARY_SYM STATUS_SYM
           {
-            Lex->sql_command = SQLCOM_SHOW_MASTER_STAT;
+            Lex->sql_command = SQLCOM_SHOW_PRIMARY_STAT;
           }
-        | SLAVE STATUS_SYM opt_channel
+        | REPLICA STATUS_SYM opt_channel
           {
-            Lex->sql_command = SQLCOM_SHOW_SLAVE_STAT;
+            Lex->sql_command = SQLCOM_SHOW_REPLICA_STAT;
           }
         | CREATE PROCEDURE_SYM sp_name
           {
@@ -12077,8 +12077,8 @@ show_engine_param:
           { Lex->sql_command= SQLCOM_SHOW_ENGINE_LOGS; }
         ;
 
-master_or_binary:
-          MASTER_SYM
+primary_or_binary:
+          PRIMARY_SYM
         | BINARY
         ;
 
@@ -12388,15 +12388,15 @@ reset_options:
         ;
 
 reset_option:
-          SLAVE               { Lex->type|= REFRESH_SLAVE; }
-          slave_reset_options opt_channel
-        | MASTER_SYM          { Lex->type|= REFRESH_MASTER; }
+          REPLICA               { Lex->type|= REFRESH_REPLICA; }
+          replica_reset_options opt_channel
+        | PRIMARY_SYM          { Lex->type|= REFRESH_PRIMARY; }
         | QUERY_SYM CACHE_SYM { Lex->type|= REFRESH_QUERY_CACHE;}
         ;
 
-slave_reset_options:
-          /* empty */ { Lex->reset_slave_info.all= false; }
-        | ALL         { Lex->reset_slave_info.all= true; }
+replica_reset_options:
+          /* empty */ { Lex->reset_replica_info.all= false; }
+        | ALL         { Lex->reset_replica_info.all= true; }
         ;
 
 purge:
@@ -12411,7 +12411,7 @@ purge:
         ;
 
 purge_options:
-          master_or_binary LOGS_SYM purge_option
+          primary_or_binary LOGS_SYM purge_option
         ;
 
 purge_option:
@@ -13236,7 +13236,7 @@ keyword:
         | SERVER_SYM            {}
         | SIGNED_SYM            {}
         | SOCKET_SYM            {}
-        | SLAVE                 {}
+        | REPLICA                 {}
         | SONAME_SYM            {}
         | START_SYM             {}
         | STOP_SYM              {}
@@ -13384,27 +13384,27 @@ keyword_sp:
         | LOGFILE_SYM              {}
         | LOGS_SYM                 {}
         | MAX_ROWS                 {}
-        | MASTER_SYM               {}
-        | MASTER_HEARTBEAT_PERIOD_SYM {}
-        | MASTER_HOST_SYM          {}
-        | MASTER_PORT_SYM          {}
-        | MASTER_LOG_FILE_SYM      {}
-        | MASTER_LOG_POS_SYM       {}
-        | MASTER_USER_SYM          {}
-        | MASTER_PASSWORD_SYM      {}
-        | MASTER_SERVER_ID_SYM     {}
-        | MASTER_CONNECT_RETRY_SYM {}
-        | MASTER_RETRY_COUNT_SYM   {}
-        | MASTER_DELAY_SYM         {}
-        | MASTER_SSL_SYM           {}
-        | MASTER_SSL_CA_SYM        {}
-        | MASTER_SSL_CAPATH_SYM    {}
-        | MASTER_SSL_CERT_SYM      {}
-        | MASTER_SSL_CIPHER_SYM    {}
-        | MASTER_SSL_CRL_SYM       {}
-        | MASTER_SSL_CRLPATH_SYM   {}
-        | MASTER_SSL_KEY_SYM       {}
-        | MASTER_AUTO_POSITION_SYM {}
+        | PRIMARY_SYM               {}
+        | PRIMARY_HEARTBEAT_PERIOD_SYM {}
+        | PRIMARY_HOST_SYM          {}
+        | PRIMARY_PORT_SYM          {}
+        | PRIMARY_LOG_FILE_SYM      {}
+        | PRIMARY_LOG_POS_SYM       {}
+        | PRIMARY_USER_SYM          {}
+        | PRIMARY_PASSWORD_SYM      {}
+        | PRIMARY_SERVER_ID_SYM     {}
+        | PRIMARY_CONNECT_RETRY_SYM {}
+        | PRIMARY_RETRY_COUNT_SYM   {}
+        | PRIMARY_DELAY_SYM         {}
+        | PRIMARY_SSL_SYM           {}
+        | PRIMARY_SSL_CA_SYM        {}
+        | PRIMARY_SSL_CAPATH_SYM    {}
+        | PRIMARY_SSL_CERT_SYM      {}
+        | PRIMARY_SSL_CIPHER_SYM    {}
+        | PRIMARY_SSL_CRL_SYM       {}
+        | PRIMARY_SSL_CRLPATH_SYM   {}
+        | PRIMARY_SSL_KEY_SYM       {}
+        | PRIMARY_AUTO_POSITION_SYM {}
         | MAX_CONNECTIONS_PER_HOUR {}
         | MAX_QUERIES_PER_HOUR     {}
         | MAX_SIZE_SYM             {}
@@ -14176,7 +14176,7 @@ object_privilege:
         | SUPER_SYM               { Lex->grant |= SUPER_ACL;}
         | CREATE TEMPORARY TABLES { Lex->grant |= CREATE_TMP_ACL;}
         | LOCK_SYM TABLES         { Lex->grant |= LOCK_TABLES_ACL; }
-        | REPLICATION SLAVE       { Lex->grant |= REPL_SLAVE_ACL; }
+        | REPLICATION REPLICA       { Lex->grant |= REPL_REPLICA_ACL; }
         | REPLICATION CLIENT_SYM  { Lex->grant |= REPL_CLIENT_ACL; }
         | CREATE VIEW_SYM         { Lex->grant |= CREATE_VIEW_ACL; }
         | SHOW VIEW_SYM           { Lex->grant |= SHOW_VIEW_ACL; }
@@ -14715,7 +14715,7 @@ no_definer:
               We have to distinguish missing DEFINER-clause from case when
               CURRENT_USER specified as definer explicitly in order to properly
               handle CREATE TRIGGER statements which come to replication thread
-              from older master servers (i.e. to create non-suid trigger in this
+              from older primary servers (i.e. to create non-suid trigger in this
               case).
             */
             YYTHD->lex->definer= 0;
@@ -14839,7 +14839,7 @@ view_select_aux:
               For statment as "CREATE VIEW v1 AS SELECT1 UNION SELECT2",
               parsing of Select query (SELECT1) is completed and UNION_CLAUSE
               is not yet parsed. So check for
-              Lex->current_select()->master_unit()->first_select()->braces
+              Lex->current_select()->primary_unit()->first_select()->braces
               (as its done in "PT_select_init2::contextualize()) is not
               done here.
             */

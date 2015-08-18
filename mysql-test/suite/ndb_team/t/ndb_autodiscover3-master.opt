@@ -1,1 +1,1 @@
---log-bin=master-bin --binlog-format=row
+--log-bin=primary-bin --binlog-format=row

@@ -121,7 +121,7 @@ let $my_select = SELECT * FROM information_schema.triggers
 WHERE trigger_name = 'trg1';
 let $my_show =   SHOW TRIGGERS FROM db_datadict;
 --echo # Establish connection testuser1 (user=testuser1)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser1, localhost, testuser1, , db_datadict);
 --replace_result $engine_type <engine_type>
 eval
@@ -138,7 +138,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser2 (user=testuser2)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser2, localhost, testuser2, , db_datadict);
 SHOW GRANTS FOR 'testuser2'@'localhost';
 --echo # No TRIGGER Privilege --> no result for query
@@ -148,7 +148,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser3 (user=testuser3)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser3, localhost, testuser3, , test);
 SHOW GRANTS FOR 'testuser3'@'localhost';
 --echo # TRIGGER Privilege + SELECT Privilege on t1 --> result for query
@@ -158,7 +158,7 @@ eval $my_select;
 eval $my_show;
 
 --echo # Establish connection testuser4 (user=testuser4)
---replace_result $MASTER_MYPORT MYSQL_PORT $MASTER_MYSOCK MYSQL_SOCK
+--replace_result $PRIMARY_MYPORT MYSQL_PORT $PRIMARY_MYSOCK MYSQL_SOCK
 connect (testuser4, localhost, testuser4, , test);
 SHOW GRANTS FOR 'testuser4'@'localhost';
 --echo # TRIGGER Privilege + no SELECT Privilege on t1 --> result for query

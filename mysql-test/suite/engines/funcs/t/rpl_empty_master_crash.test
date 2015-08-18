@@ -1,12 +1,12 @@
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 #
-# Load table should not succeed on the master as this is not a slave
+# Load table should not succeed on the primary as this is not a replica
 #
 --error 1218
-load table t1 from master;
-connection slave;
+load table t1 from primary;
+connection replica;
 --error 1188
-load table t1 from master;
+load table t1 from primary;
 
 # End of 4.1 tests

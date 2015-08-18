@@ -51,7 +51,7 @@
 /* Type of continue in CONTINUEB ----------------*/
 #define ZREGREQ_TIMELIMIT 0
 #define ZHB_HANDLING 1
-#define ZREGREQ_MASTER_TIMELIMIT 2
+#define ZREGREQ_PRIMARY_TIMELIMIT 2
 #define ZAPI_HB_HANDLING 3
 #define ZTIMER_HANDLING 4
 #define ZARBIT_HANDLING 5
@@ -423,7 +423,7 @@ private:
   void closeComConfLab(Signal* signal);
   void apiRegReqLab(Signal* signal);
   void regreqTimeLimitLab(Signal* signal);
-  void regreqTimeMasterLimitLab(Signal* signal);
+  void regreqTimePrimaryLimitLab(Signal* signal);
   void cmRegreq010Lab(Signal* signal);
   void cmRegconf010Lab(Signal* signal);
   void sttor010Lab(Signal* signal);

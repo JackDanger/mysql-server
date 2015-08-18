@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 set @old_global_binlog_format=  @@global.binlog_format;
 set @old_session_binlog_format=  @@session.binlog_format;
 SET GLOBAL binlog_format = 'ROW';
@@ -10,7 +10,7 @@ SET SESSION binlog_format = 'ROW';
 select @@global.binlog_format, @@session.binlog_format;
 @@global.binlog_format	ROW
 @@session.binlog_format	ROW
-[on slave]
+[on replica]
 set @old_global_binlog_format=  @@global.binlog_format;
 set @old_session_binlog_format=  @@session.binlog_format;
 SET GLOBAL binlog_format = 'ROW';
@@ -18,9 +18,9 @@ SET SESSION binlog_format = 'ROW';
 select @@global.binlog_format, @@session.binlog_format;
 @@global.binlog_format	ROW
 @@session.binlog_format	ROW
-include/stop_slave.inc
-include/start_slave.inc
-[on master]
+include/stop_replica.inc
+include/start_replica.inc
+[on primary]
 CREATE TABLE t1(id MEDIUMINT NOT NULL AUTO_INCREMENT,
 dt TIMESTAMP, user CHAR(255), uuidf LONGBLOB,
 fkid MEDIUMINT, filler VARCHAR(255),
@@ -111,14 +111,14 @@ SET del_count = del_count - 2;
 END WHILE;
 END|
 CALL p1();
-SELECT count(*) as "Master regular" FROM t1;
-Master regular	500
+SELECT count(*) as "Primary regular" FROM t1;
+Primary regular	500
 CALL p2();
-SELECT count(*) as "Master bykey" FROM t2;
-Master bykey	500
+SELECT count(*) as "Primary bykey" FROM t2;
+Primary bykey	500
 CALL p3();
-SELECT count(*) as "Master byrange" FROM t3;
-Master byrange	500
+SELECT count(*) as "Primary byrange" FROM t3;
+Primary byrange	500
 show create table t3;
 Table	t3
 Create Table	CREATE TABLE `t3` (
@@ -144,20 +144,20 @@ SUBPARTITIONS 2
  PARTITION pa9 VALUES LESS THAN (90) ENGINE = InnoDB,
  PARTITION pa10 VALUES LESS THAN (100) ENGINE = InnoDB,
  PARTITION pa11 VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */
-include/check_slave_is_running.inc
-SELECT count(*) "Slave norm" FROM t1;
-Slave norm	500
-SELECT count(*) "Slave bykey" FROM t2;
-Slave bykey	500
-SELECT count(*) "Slave byrange" FROM t3;
-Slave byrange	500
+include/check_replica_is_running.inc
+SELECT count(*) "Replica norm" FROM t1;
+Replica norm	500
+SELECT count(*) "Replica bykey" FROM t2;
+Replica bykey	500
+SELECT count(*) "Replica byrange" FROM t3;
+Replica byrange	500
 set @@global.binlog_format=  @old_global_binlog_format;
 set @@session.binlog_format=  @old_session_binlog_format;
 DROP TABLE t1, t2, t3;
 DROP PROCEDURE p1;
 DROP PROCEDURE p2;
 DROP PROCEDURE p3;
-[on slave]
+[on replica]
 set @@global.binlog_format=  @old_global_binlog_format;
 set @@session.binlog_format=  @old_session_binlog_format;
 include/rpl_end.inc

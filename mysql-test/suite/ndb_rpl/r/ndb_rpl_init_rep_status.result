@@ -1,62 +1,62 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-reset master;
-stop slave;
-Generate something in the Masters Binlog
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+reset primary;
+stop replica;
+Generate something in the Primarys Binlog
 use test;
 create table t1 (a int primary key, b int) engine=ndb;
 insert into t1 values (1,1);
 Initial state
 select * from mysql.ndb_apply_status;
 server_id	epoch	log_name	start_pos	end_pos
-Ndb_slave_max_replicated_epoch: 0
-select @slave_server_id:= @@server_id;
-@slave_server_id:= @@server_id
+Ndb_replica_max_replicated_epoch: 0
+select @replica_server_id:= @@server_id;
+@replica_server_id:= @@server_id
 2
 Default, no data, max replicated epoch will be 0.
-reset slave;
-start slave;
+reset replica;
+start replica;
 select server_id from mysql.ndb_apply_status order by server_id;
 server_id
 1
-Ndb_slave_max_replicated_epoch: 0
+Ndb_replica_max_replicated_epoch: 0
 Default, load of own serverid from ndb_apply_status, should be 111
 drop table test.t1;
-stop slave;
-reset slave;
-insert into mysql.ndb_apply_status values (@slave_server_id, 111, 'Fictional log', 222, 333);
-start slave;
+stop replica;
+reset replica;
+insert into mysql.ndb_apply_status values (@replica_server_id, 111, 'Fictional log', 222, 333);
+start replica;
 select server_id from mysql.ndb_apply_status order by server_id;
 server_id
 1
 2
-Ndb_slave_max_replicated_epoch: 111
+Ndb_replica_max_replicated_epoch: 111
 drop table test.t1;
-Check that reset slave resets Ndb_slave_max_replicated_epoch
-stop slave;
-Ndb_slave_max_replicated_epoch: 111
-reset slave;
-Ndb_slave_max_replicated_epoch: 0
+Check that reset replica resets Ndb_replica_max_replicated_epoch
+stop replica;
+Ndb_replica_max_replicated_epoch: 111
+reset replica;
+Ndb_replica_max_replicated_epoch: 0
 Multiple-channel, load highest of configured serverids, should be 222
-set @other_local_server_id=@slave_server_id+1;
-set @other_remote_server_id=@slave_server_id+2;
-insert into mysql.ndb_apply_status values (@slave_server_id, 111, 'Fictional log', 222, 333);
+set @other_local_server_id=@replica_server_id+1;
+set @other_remote_server_id=@replica_server_id+2;
+insert into mysql.ndb_apply_status values (@replica_server_id, 111, 'Fictional log', 222, 333);
 insert into mysql.ndb_apply_status values (@other_local_server_id, 222, 'Fictional log', 222, 333);
 insert into mysql.ndb_apply_status values (@other_remote_server_id, 444, 'Fictional log', 222, 333);
-CHANGE MASTER TO IGNORE_SERVER_IDS=(3);;
-start slave;
+CHANGE PRIMARY TO IGNORE_SERVER_IDS=(3);;
+start replica;
 select server_id from mysql.ndb_apply_status order by server_id;
 server_id
 1
 2
 3
 4
-Ndb_slave_max_replicated_epoch: 222
-stop slave;
-CHANGE MASTER TO IGNORE_SERVER_IDS= ();
-start slave;
+Ndb_replica_max_replicated_epoch: 222
+stop replica;
+CHANGE PRIMARY TO IGNORE_SERVER_IDS= ();
+start replica;
 drop table test.t1;
 include/rpl_end.inc

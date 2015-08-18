@@ -7,13 +7,13 @@
 # ==== Method ====
 #
 # The test simply does a lot of "INSERT INTO t1 VALUES (@@variable)"
-# and checks the result on the slave.
+# and checks the result on the replica.
 #
 # Statements referencing a variable only replicate correctly in mixed
 # and row mode: in row mode, the values inserted are replicated.  In
 # mixed mode, statements referencing a variable are marked as unsafe,
 # meaning they will be replicated by row.  In statement mode, the
-# slave's value will be used and replication will break. (Except in a
+# replica's value will be used and replication will break. (Except in a
 # small number of special cases: random seeds, insert_id, and
 # auto_increment are replicated).
 #
@@ -38,12 +38,12 @@
 #  - from a prepared statement
 #
 # For all variables where it is possible, we set the variable to one
-# value on slave, and insert it on the master with two distinct
+# value on replica, and insert it on the primary with two distinct
 # values.
 #
 # The same insertions are made in four different tables using direct
 # insert, stored procedure, stored function, or trigger.  Then all
-# eight resulting tables on master and slave are compared.
+# eight resulting tables on primary and replica are compared.
 #
 #
 # ==== Related bugs ====
@@ -61,39 +61,39 @@
 
 --source include/not_group_replication_plugin.inc
 source include/have_binlog_format_mixed_or_row.inc;
-source include/master-slave.inc;
+source include/primary-replica.inc;
 
 
 --echo ==== Initialization ====
 
 # Backup the values of global variables so that they can be restored
 # later.
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 SET @m_default_week_format=  @@global.default_week_format;
-SET @m_init_slave=           @@global.init_slave;
+SET @m_init_replica=           @@global.init_replica;
 SET @m_lc_time_names=        @@global.lc_time_names;
 SET @m_low_priority_updates= @@global.low_priority_updates;
 SET @m_relay_log_purge=      @@global.relay_log_purge;
-SET @m_slave_exec_mode=      @@global.slave_exec_mode;
+SET @m_replica_exec_mode=      @@global.replica_exec_mode;
 SET @m_sql_mode=             @@global.sql_mode;
 SET @m_sync_binlog=          @@global.sync_binlog;
 
---echo [on slave]
-connection slave;
+--echo [on replica]
+connection replica;
 SET @s_default_week_format=  @@global.default_week_format;
-SET @s_init_slave=           @@global.init_slave;
+SET @s_init_replica=           @@global.init_replica;
 SET @s_lc_time_names=        @@global.lc_time_names;
 SET @s_low_priority_updates= @@global.low_priority_updates;
 SET @s_relay_log_purge=      @@global.relay_log_purge;
-SET @s_slave_exec_mode=      @@global.slave_exec_mode;
+SET @s_replica_exec_mode=      @@global.replica_exec_mode;
 SET @s_sql_mode=             @@global.sql_mode;
 SET @s_sync_binlog=          @@global.sync_binlog;
 
-# Set global variables on slave to something different than on master.
+# Set global variables on replica to something different than on primary.
 SET @@global.relay_log_purge = OFF;
 SET @@global.sync_binlog = 1000000;
-SET @@global.slave_exec_mode = 'STRICT';
+SET @@global.replica_exec_mode = 'STRICT';
 SET @@sql_big_selects = OFF;
 SET @@last_insert_id = 10;
 SET @@global.low_priority_updates = OFF;
@@ -107,18 +107,18 @@ SET @@local.sql_mode = 'ANSI_QUOTES,HIGH_NOT_PRECEDENCE';
 SET @user_num = 10;
 SET @user_text = 'Alunda';
 
-# Stop slave so that we get a fresh sql thread, reading the slave's
+# Stop replica so that we get a fresh sql thread, reading the replica's
 # global values of variables into its local copies.
---source include/stop_slave.inc
---source include/start_slave.inc
+--source include/stop_replica.inc
+--source include/start_replica.inc
 
 # We would have wanted to set this together with the other variables
-# above, but can't because it affects how the slave works.
-SET @@global.init_slave = 'SELECT 1';
+# above, but can't because it affects how the replica works.
+SET @@global.init_replica = 'SELECT 1';
 
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 # checking values of read-only variables
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 query_vertical SELECT @@pid_file, @@datadir;
@@ -129,8 +129,8 @@ query_vertical SELECT @@relay_log, @@relay_log_index, @@relay_log_basename;
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 query_vertical SELECT @@log_bin, @@log_bin_index, @@log_bin_basename;
 
---echo [on slave]
-connection slave;
+--echo [on replica]
+connection replica;
 # checking values of read-only variables
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 query_vertical SELECT @@pid_file, @@datadir;
@@ -141,8 +141,8 @@ query_vertical SELECT @@relay_log, @@relay_log_index, @@relay_log_basename;
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 query_vertical SELECT @@log_bin, @@log_bin_index, @@log_bin_basename;
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 
 # Tables where everything happens.
 CREATE TABLE tstmt (id INT AUTO_INCREMENT PRIMARY KEY,
@@ -175,16 +175,16 @@ SET @@global.sync_binlog = 3000000;
 INSERT INTO tstmt(num) VALUES (@@global.sync_binlog);
 
 # string
-SET @@global.init_slave = 'SELECT 2';
-INSERT INTO tstmt(text) VALUES (@@global.init_slave);
-SET @@global.init_slave = 'SELECT 3';
-INSERT INTO tstmt(text) VALUES (@@global.init_slave);
+SET @@global.init_replica = 'SELECT 2';
+INSERT INTO tstmt(text) VALUES (@@global.init_replica);
+SET @@global.init_replica = 'SELECT 3';
+INSERT INTO tstmt(text) VALUES (@@global.init_replica);
 
 # enumeration
-SET @@global.slave_exec_mode = 'IDEMPOTENT';
-INSERT INTO tstmt(text) VALUES (@@global.slave_exec_mode);
-SET @@global.slave_exec_mode = 'STRICT';
-INSERT INTO tstmt(text) VALUES (@@global.slave_exec_mode);
+SET @@global.replica_exec_mode = 'IDEMPOTENT';
+INSERT INTO tstmt(text) VALUES (@@global.replica_exec_mode);
+SET @@global.replica_exec_mode = 'STRICT';
+INSERT INTO tstmt(text) VALUES (@@global.replica_exec_mode);
 
 
 --echo ---- session variables ----
@@ -279,16 +279,16 @@ BEGIN
   INSERT INTO tproc(num) VALUES (@@global.sync_binlog);
 
   # string
-  SET @@global.init_slave = 'SELECT 2';
-  INSERT INTO tproc(text) VALUES (@@global.init_slave);
-  SET @@global.init_slave = 'SELECT 3';
-  INSERT INTO tproc(text) VALUES (@@global.init_slave);
+  SET @@global.init_replica = 'SELECT 2';
+  INSERT INTO tproc(text) VALUES (@@global.init_replica);
+  SET @@global.init_replica = 'SELECT 3';
+  INSERT INTO tproc(text) VALUES (@@global.init_replica);
 
   # enumeration
-  SET @@global.slave_exec_mode = 'IDEMPOTENT';
-  INSERT INTO tproc(text) VALUES (@@global.slave_exec_mode);
-  SET @@global.slave_exec_mode = 'STRICT';
-  INSERT INTO tproc(text) VALUES (@@global.slave_exec_mode);
+  SET @@global.replica_exec_mode = 'IDEMPOTENT';
+  INSERT INTO tproc(text) VALUES (@@global.replica_exec_mode);
+  SET @@global.replica_exec_mode = 'STRICT';
+  INSERT INTO tproc(text) VALUES (@@global.replica_exec_mode);
 
   # SESSION
 
@@ -388,16 +388,16 @@ BEGIN
   INSERT INTO tfunc(num) VALUES (@@global.sync_binlog);
 
   # string
-  SET @@global.init_slave = 'SELECT 2';
-  INSERT INTO tfunc(text) VALUES (@@global.init_slave);
-  SET @@global.init_slave = 'SELECT 3';
-  INSERT INTO tfunc(text) VALUES (@@global.init_slave);
+  SET @@global.init_replica = 'SELECT 2';
+  INSERT INTO tfunc(text) VALUES (@@global.init_replica);
+  SET @@global.init_replica = 'SELECT 3';
+  INSERT INTO tfunc(text) VALUES (@@global.init_replica);
 
   # enumeration
-  SET @@global.slave_exec_mode = 'IDEMPOTENT';
-  INSERT INTO tfunc(text) VALUES (@@global.slave_exec_mode);
-  SET @@global.slave_exec_mode = 'STRICT';
-  INSERT INTO tfunc(text) VALUES (@@global.slave_exec_mode);
+  SET @@global.replica_exec_mode = 'IDEMPOTENT';
+  INSERT INTO tfunc(text) VALUES (@@global.replica_exec_mode);
+  SET @@global.replica_exec_mode = 'STRICT';
+  INSERT INTO tfunc(text) VALUES (@@global.replica_exec_mode);
 
   # SESSION
 
@@ -499,16 +499,16 @@ BEGIN
   INSERT INTO ttrig(num) VALUES (@@global.sync_binlog);
 
   # string
-  SET @@global.init_slave = 'SELECT 2';
-  INSERT INTO ttrig(text) VALUES (@@global.init_slave);
-  SET @@global.init_slave = 'SELECT 3';
-  INSERT INTO ttrig(text) VALUES (@@global.init_slave);
+  SET @@global.init_replica = 'SELECT 2';
+  INSERT INTO ttrig(text) VALUES (@@global.init_replica);
+  SET @@global.init_replica = 'SELECT 3';
+  INSERT INTO ttrig(text) VALUES (@@global.init_replica);
 
   # enumeration
-  SET @@global.slave_exec_mode = 'IDEMPOTENT';
-  INSERT INTO ttrig(text) VALUES (@@global.slave_exec_mode);
-  SET @@global.slave_exec_mode = 'STRICT';
-  INSERT INTO ttrig(text) VALUES (@@global.slave_exec_mode);
+  SET @@global.replica_exec_mode = 'IDEMPOTENT';
+  INSERT INTO ttrig(text) VALUES (@@global.replica_exec_mode);
+  SET @@global.replica_exec_mode = 'STRICT';
+  INSERT INTO ttrig(text) VALUES (@@global.replica_exec_mode);
 
   # SESSION
 
@@ -602,16 +602,16 @@ PREPARE p7 FROM 'SET @@global.sync_binlog = 3000000';
 PREPARE p8 FROM 'INSERT INTO tprep(num) VALUES (@@global.sync_binlog)';
 
 # string
-PREPARE p9 FROM 'SET @@global.init_slave = \'SELECT 2\'';
-PREPARE p10 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_slave)';
-PREPARE p11 FROM 'SET @@global.init_slave = \'SELECT 3\'';
-PREPARE p12 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_slave)';
+PREPARE p9 FROM 'SET @@global.init_replica = \'SELECT 2\'';
+PREPARE p10 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_replica)';
+PREPARE p11 FROM 'SET @@global.init_replica = \'SELECT 3\'';
+PREPARE p12 FROM 'INSERT INTO tprep(text) VALUES (@@global.init_replica)';
 
 # enumeration
-PREPARE p13 FROM 'SET @@global.slave_exec_mode = \'IDEMPOTENT\'';
-PREPARE p14 FROM 'INSERT INTO tprep(text) VALUES (@@global.slave_exec_mode)';
-PREPARE p15 FROM 'SET @@global.slave_exec_mode = \'STRICT\'';
-PREPARE p16 FROM 'INSERT INTO tprep(text) VALUES (@@global.slave_exec_mode)';
+PREPARE p13 FROM 'SET @@global.replica_exec_mode = \'IDEMPOTENT\'';
+PREPARE p14 FROM 'INSERT INTO tprep(text) VALUES (@@global.replica_exec_mode)';
+PREPARE p15 FROM 'SET @@global.replica_exec_mode = \'STRICT\'';
+PREPARE p16 FROM 'INSERT INTO tprep(text) VALUES (@@global.replica_exec_mode)';
 
 # SESSION
 
@@ -695,51 +695,51 @@ EXECUTE p49; EXECUTE p50; EXECUTE p51; EXECUTE p52; EXECUTE p53; EXECUTE p54;
 EXECUTE p55; EXECUTE p56; EXECUTE p57; EXECUTE p58; EXECUTE p59; EXECUTE p60;
 EXECUTE p61; EXECUTE p62; EXECUTE p63; EXECUTE p64;
 
---source include/sync_slave_sql_with_master.inc
---connection master
+--source include/sync_replica_sql_with_primary.inc
+--connection primary
 
 
 --echo ==== Results ====
 
-# Show the result in table test.tstmt on master...
+# Show the result in table test.tstmt on primary...
 SELECT * FROM tstmt ORDER BY id;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# ... then compare test.tstmt on master to the other tables on master and slave.
-let $diff_tables= master:tstmt, master:tproc, master:tfunc, master:ttrig, master:tprep,  slave:tstmt, slave:tproc, slave:tfunc, slave:ttrig, slave:tprep;
+# ... then compare test.tstmt on primary to the other tables on primary and replica.
+let $diff_tables= primary:tstmt, primary:tproc, primary:tfunc, primary:ttrig, primary:tprep,  replica:tstmt, replica:tproc, replica:tfunc, replica:ttrig, replica:tprep;
 source include/diff_tables.inc;
 
 
 --echo ==== Clean up ====
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 DROP PROCEDURE proc;
 DROP FUNCTION func;
 DROP TRIGGER trig;
 DROP TABLE tstmt, tproc, tfunc, ttrig, tprep, trigger_table;
 
 SET @@global.default_week_format=  @m_default_week_format;
-SET @@global.init_slave=           @m_init_slave;
+SET @@global.init_replica=           @m_init_replica;
 SET @@global.lc_time_names=        @m_lc_time_names;
 SET @@global.low_priority_updates= @m_low_priority_updates;
 SET @@global.relay_log_purge=      @m_relay_log_purge;
-SET @@global.slave_exec_mode=      @m_slave_exec_mode;
+SET @@global.replica_exec_mode=      @m_replica_exec_mode;
 SET @@global.sql_mode=             @m_sql_mode;
 SET @@global.sync_binlog=          @m_sync_binlog;
 
---echo [on slave]
-connection slave;
+--echo [on replica]
+connection replica;
 SET @@global.default_week_format=  @s_default_week_format;
-SET @@global.init_slave=           @s_init_slave;
+SET @@global.init_replica=           @s_init_replica;
 SET @@global.lc_time_names=        @s_lc_time_names;
 SET @@global.low_priority_updates= @s_low_priority_updates;
 SET @@global.relay_log_purge=      @s_relay_log_purge;
-SET @@global.slave_exec_mode=      @s_slave_exec_mode;
+SET @@global.replica_exec_mode=      @s_replica_exec_mode;
 SET @@global.sql_mode=             @s_sql_mode;
 SET @@global.sync_binlog=          @s_sync_binlog;
 
-connection master;
---source include/sync_slave_sql_with_master.inc
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
 --source include/rpl_end.inc

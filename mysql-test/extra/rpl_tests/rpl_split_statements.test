@@ -61,17 +61,17 @@
 #     GTID_MODE = ON.
 #
 # This test verifies that all these statements work, for all values of
-# GTID_MODE/GTID_NEXT, and both on a client connection and in a slave
+# GTID_MODE/GTID_NEXT, and both on a client connection and in a replica
 # connection.
 #
 # ==== Implementation ====
 #
 #  1. CALL. We execute a multi-transaction CALL:
 #
-#     - On master with GTID_MODE='AUTOMATIC';
-#     - On master with GTID_MODE!='AUTOMATIC' ('ANONYMOUS'/'UUID:NUMBER',
+#     - On primary with GTID_MODE='AUTOMATIC';
+#     - On primary with GTID_MODE!='AUTOMATIC' ('ANONYMOUS'/'UUID:NUMBER',
 #       depending on GTID_MODE)
-#     - Not on slave. Since CALL does not get logged as CALL, there is
+#     - Not on replica. Since CALL does not get logged as CALL, there is
 #       no way to get it in the binary log.
 #
 #  2. DROP TABLE. We drop all combinations of two or three tables,
@@ -79,17 +79,17 @@
 #     transactional, and temporary non-transactional.  This is done in
 #     three ways:
 #
-#     - On master with GTID_MODE='AUTOMATIC'
-#     - On master with GTID_MODE!='AUTOMATIC' ('ANONYMOUS'/'UUID:NUMBER',
+#     - On primary with GTID_MODE='AUTOMATIC'
+#     - On primary with GTID_MODE!='AUTOMATIC' ('ANONYMOUS'/'UUID:NUMBER',
 #       depending on GTID_MODE)
-#     - On slave. This can be done using different table definitions
-#       on master and slave. On master we use only non-temporary
+#     - On replica. This can be done using different table definitions
+#       on primary and replica. On primary we use only non-temporary
 #       tables, so that any DROP TABLE statement will succeed and make
 #       it to the binary log.  In order to make the tables temporary
-#       on slave, we first create the non-temporary table on master,
-#       then sync it to slave, then drop it on slave, and then use a
-#       stored procedure on master that creates a temporary table with
-#       the same name *only* when it executes on the slave.
+#       on replica, we first create the non-temporary table on primary,
+#       then sync it to replica, then drop it on replica, and then use a
+#       stored procedure on primary that creates a temporary table with
+#       the same name *only* when it executes on the replica.
 #
 #  3. DROP DATABASE. We try five different error scenarios:
 #
@@ -103,16 +103,16 @@
 #
 #     We run these five scenarios in three ways:
 #
-#     - On master with GTID_MODE='AUTOMATIC'
-#     - On master with GTID_MODE!='AUTOMATIC' ('ANONYMOUS'/'UUID:NUMBER',
+#     - On primary with GTID_MODE='AUTOMATIC'
+#     - On primary with GTID_MODE!='AUTOMATIC' ('ANONYMOUS'/'UUID:NUMBER',
 #       depending on GTID_MODE).
-#     - On slave.
+#     - On replica.
 #
 #     In scenarios 3.1-3.4, we create an extra file in the database
-#     directory to trigger the error: to trigger the error on master
-#     we create the file in master's database directory; to trigger on
-#     slave we create it in slave's database directory. In scenario
-#     3.5 we create the directory on master
+#     directory to trigger the error: to trigger the error on primary
+#     we create the file in primary's database directory; to trigger on
+#     replica we create it in replica's database directory. In scenario
+#     3.5 we create the directory on primary
 #
 #  4. CREATE TABLE ... SELECT.  This is tested in a different test
 #     (rpl_gtid_create_select.test), since the statement cannot be
@@ -127,7 +127,7 @@
 --source include/have_binlog_format_statement.inc
 
 --let $rpl_gtid_utils= 1
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 CALL mtr.add_suppression('Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.');
 if ($gtid_mode_on)
@@ -135,17 +135,17 @@ if ($gtid_mode_on)
   CALL mtr.add_suppression('Cannot execute statement because it needs to be written to the binary log as multiple statements');
   CALL mtr.add_suppression('DROP DATABASE failed; some tables may have been dropped but the database directory remains.');
 }
---connection slave
+--connection replica
 CALL mtr.add_suppression("Error dropping database");
 CALL mtr.add_suppression("Can't drop database '.*'; database doesn't exist");
-CALL mtr.add_suppression("Slave SQL for channel '': ... The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state. .* Error_code: 1756");
---connection master
+CALL mtr.add_suppression("Replica SQL for channel '': ... The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state. .* Error_code: 1756");
+--connection primary
 
 --let $gtid_step_gtid_mode_agnostic= 1
 
---echo ==== Case 1: CALL is split on master ====
+--echo ==== Case 1: CALL is split on primary ====
 
-# Note: CALL cannot be executed on a slave, since CALL statements are
+# Note: CALL cannot be executed on a replica, since CALL statements are
 # not written as CALL in the binary log.
 
 --echo ---- Initialize ----
@@ -182,7 +182,7 @@ DELETE FROM t;
 
 if ($gtid_mode_on)
 {
-  --replace_result $server_1_uuid MASTER_UUID
+  --replace_result $server_1_uuid PRIMARY_UUID
   --error ER_GTID_NEXT_TYPE_UNDEFINED_GROUP
   CALL proc();
 }
@@ -209,7 +209,7 @@ if (!$gtid_mode_on)
 DROP TABLE t;
 DROP PROCEDURE proc;
 
---echo ==== Case 2A: DROP TABLE is split on master ====
+--echo ==== Case 2A: DROP TABLE is split on primary ====
 
 --echo ---- Initialize ----
 
@@ -240,7 +240,7 @@ END|
 --let $automatic= 0
 --source extra/rpl_tests/rpl_drop_multiple_tables_in_multiple_ways.inc
 
---echo ==== Case 2B: DROP TABLE is split on slave ====
+--echo ==== Case 2B: DROP TABLE is split on replica ====
 
 --echo ---- Initialize ----
 
@@ -274,7 +274,7 @@ END|
 --let $automatic= 1
 if ($gtid_mode_on)
 {
-  --let $expect_slave_error= 1
+  --let $expect_replica_error= 1
 }
 --let $transaction_count= 1
 --source extra/rpl_tests/rpl_drop_multiple_tables_in_multiple_ways.inc
@@ -353,12 +353,12 @@ EOF
 --write_file $server_2_datadir/db12/file.txt
 EOF
 
---echo # db13, db14, db15: not a database. db15 is a database on master.
+--echo # db13, db14, db15: not a database. db15 is a database on primary.
 --mkdir $server_1_datadir/db15
 
 --source include/rpl_sync.inc
 
---echo ---- DROP DATABASE is split on master; GTID_NEXT=AUTOMATIC ----
+--echo ---- DROP DATABASE is split on primary; GTID_NEXT=AUTOMATIC ----
 
 --echo # db1: no table.
 --source include/save_binlog_position.inc
@@ -429,7 +429,7 @@ DROP DATABASE db13;
 --let $event_sequence= ()
 --source include/assert_binlog_events.inc
 
---echo ---- DROP DATABASE is split on master; GTID_NEXT=non-automatic ----
+--echo ---- DROP DATABASE is split on primary; GTID_NEXT=non-automatic ----
 
 --echo # db2: no table.
 --source include/save_binlog_position.inc
@@ -445,7 +445,7 @@ if (!$gtid_mode_on)
 }
 if ($gtid_mode_on)
 {
-  --replace_result $server_1_uuid MASTER_UUID \\ /
+  --replace_result $server_1_uuid PRIMARY_UUID \\ /
   --error ER_CANNOT_LOG_PARTIAL_DROP_DATABASE_WITH_GTID
   DROP DATABASE db2;
 
@@ -468,7 +468,7 @@ if (!$gtid_mode_on)
 }
 if ($gtid_mode_on)
 {
-  --replace_result $server_1_uuid MASTER_UUID \\ /
+  --replace_result $server_1_uuid PRIMARY_UUID \\ /
   --error ER_CANNOT_LOG_PARTIAL_DROP_DATABASE_WITH_GTID
   DROP DATABASE db5;
 
@@ -491,7 +491,7 @@ if (!$gtid_mode_on)
 }
 if ($gtid_mode_on)
 {
-  --replace_result $server_1_uuid MASTER_UUID \\ /
+  --replace_result $server_1_uuid PRIMARY_UUID \\ /
   --error ER_CANNOT_LOG_PARTIAL_DROP_DATABASE_WITH_GTID
   DROP DATABASE db8;
 
@@ -511,7 +511,7 @@ if (!$gtid_mode_on)
 }
 if ($gtid_mode_on)
 {
-  --replace_result $server_1_uuid MASTER_UUID \\ /
+  --replace_result $server_1_uuid PRIMARY_UUID \\ /
   --error ER_CANNOT_LOG_PARTIAL_DROP_DATABASE_WITH_GTID
   DROP DATABASE db11;
 }
@@ -528,58 +528,58 @@ DROP DATABASE db14;
 --source include/assert_binlog_events.inc
 SET GTID_NEXT = 'AUTOMATIC';
 
---echo ---- DROP DATABASE is split on slave ----
+--echo ---- DROP DATABASE is split on replica ----
 
 SET GTID_NEXT = 'AUTOMATIC';
 
 if (!$gtid_mode_on)
 {
-  --let $slave_sql_errno= convert_error(ER_DB_DROP_RMDIR)
+  --let $replica_sql_errno= convert_error(ER_DB_DROP_RMDIR)
 }
 if ($gtid_mode_on)
 {
-  --let $slave_sql_errno= convert_error(ER_CANNOT_LOG_PARTIAL_DROP_DATABASE_WITH_GTID)
+  --let $replica_sql_errno= convert_error(ER_CANNOT_LOG_PARTIAL_DROP_DATABASE_WITH_GTID)
 }
 
 --echo # db3: no table.
 DROP DATABASE db3;
---source include/sync_slave_io_with_master.inc
---source include/wait_for_slave_sql_error.inc
+--source include/sync_replica_io_with_primary.inc
+--source include/wait_for_replica_sql_error.inc
 --source include/rpl_skip_to_end_of_relay_log.inc
---let $rpl_connection_name= master
+--let $rpl_connection_name= primary
 --source include/rpl_connection.inc
 
 --echo # db6: one table.
 DROP DATABASE db6;
---source include/sync_slave_io_with_master.inc
---source include/wait_for_slave_sql_error.inc
+--source include/sync_replica_io_with_primary.inc
+--source include/wait_for_replica_sql_error.inc
 --source include/rpl_skip_to_end_of_relay_log.inc
---let $rpl_connection_name= master
+--let $rpl_connection_name= primary
 --source include/rpl_connection.inc
 
 --echo # db9: many tables with long names.
 DROP DATABASE db9;
---source include/sync_slave_io_with_master.inc
---source include/wait_for_slave_sql_error.inc
+--source include/sync_replica_io_with_primary.inc
+--source include/wait_for_replica_sql_error.inc
 --source include/rpl_skip_to_end_of_relay_log.inc
---let $rpl_connection_name= master
+--let $rpl_connection_name= primary
 --source include/rpl_connection.inc
 
 --echo # db12: not a database, but directory exists.
 DROP DATABASE db12;
---source include/sync_slave_io_with_master.inc
---source include/wait_for_slave_sql_error.inc
+--source include/sync_replica_io_with_primary.inc
+--source include/wait_for_replica_sql_error.inc
 --source include/rpl_skip_to_end_of_relay_log.inc
---let $rpl_connection_name= master
+--let $rpl_connection_name= primary
 --source include/rpl_connection.inc
 
---echo # db15: not a database (on slave).
---let $slave_sql_errno= convert_error(ER_DB_DROP_EXISTS)
+--echo # db15: not a database (on replica).
+--let $replica_sql_errno= convert_error(ER_DB_DROP_EXISTS)
 DROP DATABASE db15;
---source include/sync_slave_io_with_master.inc
---source include/wait_for_slave_sql_error.inc
+--source include/sync_replica_io_with_primary.inc
+--source include/wait_for_replica_sql_error.inc
 --source include/rpl_skip_to_end_of_relay_log.inc
---let $rpl_connection_name= master
+--let $rpl_connection_name= primary
 --source include/rpl_connection.inc
 
 --echo ---- Clean up ----

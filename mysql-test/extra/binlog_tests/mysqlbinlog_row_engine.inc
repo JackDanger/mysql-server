@@ -40,7 +40,7 @@ SET timestamp=1000000000;
 --echo #
 --echo # Delete all existing binary logs.
 --echo #
-RESET MASTER;
+RESET PRIMARY;
 
 --echo #
 --echo # Create a test table with all data types.
@@ -1649,7 +1649,7 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/primary-bin.000001
 --source include/mysqlbinlog.inc
 
 --echo #
@@ -1664,7 +1664,7 @@ DROP TABLE t1;
 --echo #
 --echo # Delete all existing binary logs.
 --echo #
-RESET MASTER;
+RESET PRIMARY;
 
 --echo #
 --echo # Create a test table with selected data types.
@@ -1728,7 +1728,7 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters=  --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters=  --base64-output=decode-rows -v -v $MYSQLD_DATADIR/primary-bin.000001
 --source include/mysqlbinlog.inc
 
 --echo #
@@ -1743,7 +1743,7 @@ DROP TABLE t1;
 --echo #
 --echo # Delete all existing binary logs.
 --echo #
-RESET MASTER;
+RESET PRIMARY;
 
 --echo #
 --echo # Create test tables with selected data types.
@@ -1854,7 +1854,7 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/primary-bin.000001
 --source include/mysqlbinlog.inc
 
 --echo #
@@ -1869,7 +1869,7 @@ DROP TABLE t1, t2, t3;
 --echo #
 --echo # Delete all existing binary logs.
 --echo #
-RESET MASTER;
+RESET PRIMARY;
 
 --echo #
 --echo # Create a test table with selected data types.
@@ -1911,7 +1911,7 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/primary-bin.000001
 --source include/mysqlbinlog.inc
 
 --echo #

@@ -1,11 +1,11 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 ==== Initialization ====
-[on master]
+[on primary]
 SET @m_auto_increment_increment= @@global.auto_increment_increment;
 SET @m_auto_increment_offset=    @@global.auto_increment_offset;
 SET @m_character_set_client=     @@global.character_set_client;
@@ -14,7 +14,7 @@ SET @m_collation_server=         @@global.collation_server;
 SET @m_time_zone=                @@global.time_zone;
 SET @m_lc_time_names=            @@global.lc_time_names;
 SET @m_collation_database=       @@global.collation_database;
-[on slave]
+[on replica]
 SET @s_auto_increment_increment= @@global.auto_increment_increment;
 SET @s_auto_increment_offset=    @@global.auto_increment_offset;
 SET @s_character_set_client=     @@global.character_set_client;
@@ -33,7 +33,7 @@ SET @@global.lc_time_names='sv_SE';
 SET @@global.collation_database='geostd8_bin';
 Warnings:
 Warning	1681	Updating 'collation_database' is deprecated. It will be made read-only in a future release.
-[on master]
+[on primary]
 CREATE TABLE tstmt (id INT AUTO_INCREMENT PRIMARY KEY,
 num INT,
 text VARCHAR(100)) ENGINE=INNODB;
@@ -497,9 +497,9 @@ id	num	text
 113	NULL	47124712
 114	NULL	1616
 115	NULL	1717
-include/diff_tables.inc [master:tstmt, master:tproc, master:tfunc, master:ttrig, master:tprep, slave:tstmt, slave:tproc, slave:tfunc, slave:ttrig, slave:tprep]
+include/diff_tables.inc [primary:tstmt, primary:tproc, primary:tfunc, primary:ttrig, primary:tprep, replica:tstmt, replica:tproc, replica:tfunc, replica:ttrig, replica:tprep]
 ==== Clean up ====
-[on master]
+[on primary]
 DROP PROCEDURE proc;
 DROP FUNCTION func;
 DROP TRIGGER trig;
@@ -514,7 +514,7 @@ SET @@global.lc_time_names=            @m_lc_time_names;
 SET @@global.collation_database=       @m_collation_database;
 Warnings:
 Warning	1681	Updating 'collation_database' is deprecated. It will be made read-only in a future release.
-[on slave]
+[on replica]
 SET @@global.auto_increment_increment= @s_auto_increment_increment;
 SET @@global.auto_increment_offset=    @s_auto_increment_offset;
 SET @@global.character_set_client=     @s_character_set_client;

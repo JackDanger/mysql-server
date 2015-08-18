@@ -13,7 +13,7 @@
 
 --echo --- Doing pre test cleanup --- 
 
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS t1;
 --enable_query_log
@@ -26,7 +26,7 @@ DROP TABLE IF EXISTS t1;
 # basice operations such at insert, update      #
 # delete between 2 different storage engines    #
 # Alter table and ensure table is handled       #
-# Correctly on the slave                        #
+# Correctly on the replica                        #
 #################################################
 
 CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255), 
@@ -34,16 +34,16 @@ CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255),
                  f FLOAT DEFAULT 0, total BIGINT UNSIGNED, 
                  y YEAR, t DATE,PRIMARY KEY(id));
 
---echo --- Show table on master ---
+--echo --- Show table on primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Show table on slave ---
+--echo --- Show table on replica ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -54,17 +54,17 @@ SHOW CREATE TABLE t1;
 ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY(id, total);
 ALTER TABLE t1 MODIFY vc TEXT;
 
---echo --- Show the new improved table on the master ---
+--echo --- Show the new improved table on the primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Make sure that our tables on slave are still same engine ---
+--echo --- Make sure that our tables on replica are still same engine ---
 --echo --- and that the alter statements replicated correctly ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly --- 
 
 --source include/rpl_multi_engine3.inc
@@ -86,7 +86,7 @@ DROP TABLE IF EXISTS t1;
 # basice operations such at insert, update      #
 # delete between 2 different storage engines    #
 # Alter table and ensure table is handled       #
-# Correctly on the slave                        #
+# Correctly on the replica                        #
 #################################################
 
 CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255), 
@@ -101,16 +101,16 @@ CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255),
                  PARTITION p4 VALUES LESS THAN (2005), 
                  PARTITION p5 VALUES LESS THAN MAXVALUE);
 
---echo --- Show table on master ---
+--echo --- Show table on primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Show table on slave --
+--echo --- Show table on replica --
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -120,17 +120,17 @@ SHOW CREATE TABLE t1;
 ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY(t, id);
 ALTER TABLE t1 MODIFY vc TEXT;
 
---echo --- Show the new improved table on the master ---
+--echo --- Show the new improved table on the primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Make sure that our tables on slave are still same engine ---
+--echo --- Make sure that our tables on replica are still same engine ---
 --echo --- and that the alter statements replicated correctly ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 --enable_query_log
 
@@ -152,7 +152,7 @@ DROP TABLE IF EXISTS t1;
 # basice operations such at insert, update      #
 # delete between 2 different storage engines    #
 # Alter table and ensure table is handled       #
-# Correctly on the slave                        #
+# Correctly on the replica                        #
 #################################################
 
 
@@ -168,16 +168,16 @@ CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255),
 
 ALTER TABLE t1 ADD PARTITION (PARTITION p2 VALUES IN (412));
 
---echo --- Show table on master ---
+--echo --- Show table on primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Show table on slave ---
+--echo --- Show table on replica ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -186,17 +186,17 @@ SHOW CREATE TABLE t1;
 
 ALTER TABLE t1 MODIFY vc TEXT;
 
---echo --- Show the new improved table on the master ---
+--echo --- Show the new improved table on the primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Make sure that our tables on slave are still same engine ---
+--echo --- Make sure that our tables on replica are still same engine ---
 --echo --- and that the alter statements replicated correctly ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -216,7 +216,7 @@ DROP TABLE IF EXISTS t1;
 # basice operations such at insert, update      #
 # delete between 2 different storage engines    #
 # Alter table and ensure table is handled       #
-# Correctly on the slave                        #
+# Correctly on the replica                        #
 #################################################
 
 
@@ -230,10 +230,10 @@ CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255),
 --echo --- show that tables have been created correctly ---
 
 SHOW CREATE TABLE t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -243,17 +243,17 @@ SHOW CREATE TABLE t1;
 ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY(t,id);
 ALTER TABLE t1 MODIFY vc TEXT;
 
---echo --- Show the new improved table on the master ---
+--echo --- Show the new improved table on the primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Make sure that our tables on slave are still same engine ---
+--echo --- Make sure that our tables on replica are still same engine ---
 --echo --- and that the alter statements replicated correctly ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -274,7 +274,7 @@ DROP TABLE IF EXISTS t1;
 # basice operations such at insert, update      #
 # delete between 2 different storage engines    #
 # Alter table and ensure table is handled       #
-# Correctly on the slave                        #
+# Correctly on the replica                        #
 #################################################
 
 CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255), 
@@ -284,16 +284,16 @@ CREATE TABLE t1 (id MEDIUMINT NOT NULL, b1 BIT(8), vc VARCHAR(255),
                  PARTITION BY KEY() 
                  PARTITIONS 4;
 
---echo --- Show that tables on master are ndbcluster tables ---
+--echo --- Show that tables on primary are ndbcluster tables ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Show that tables on slave ---
+--echo --- Show that tables on replica ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -303,17 +303,17 @@ SHOW CREATE TABLE t1;
 
 ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY(id, total);
 
---echo --- Show the new improved table on the master ---
+--echo --- Show the new improved table on the primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Make sure that our tables on slave are still right type ---
+--echo --- Make sure that our tables on replica are still right type ---
 --echo --- and that the alter statements replicated correctly ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -322,17 +322,17 @@ SHOW CREATE TABLE t1;
 
 ALTER TABLE t1 MODIFY vc TEXT;
 
---echo --- Show the new improved table on the master ---
+--echo --- Show the new improved table on the primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Make sure that our tables on slave are still same engine ---
+--echo --- Make sure that our tables on replica are still same engine ---
 --echo --- and that the alter statements replicated correctly ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
---echo --- Perform basic operation on master ---
+--echo --- Perform basic operation on primary ---
 --echo --- and ensure replicated correctly ---
 
 --source include/rpl_multi_engine3.inc
@@ -341,6 +341,6 @@ SHOW CREATE TABLE t1;
 --echo --- Do Cleanup ---
 
 DROP TABLE IF EXISTS t1;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 # End of 5.1 test case

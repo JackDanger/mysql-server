@@ -24,32 +24,32 @@
 
 #ifdef HAVE_NDB_BINLOG
 
-extern Master_info *active_mi;
+extern Primary_info *active_mi;
 
 
-uint32 ndb_mi_get_master_server_id()
+uint32 ndb_mi_get_primary_server_id()
 {
   DBUG_ASSERT (active_mi != NULL);
-  return (uint32) active_mi->master_id;
+  return (uint32) active_mi->primary_id;
 }
 
-const char* ndb_mi_get_group_master_log_name()
+const char* ndb_mi_get_group_primary_log_name()
 {
   DBUG_ASSERT (active_mi != NULL);
 #if MYSQL_VERSION_ID < 50600
-  return active_mi->rli.group_master_log_name;
+  return active_mi->rli.group_primary_log_name;
 #else
-  return active_mi->rli->get_group_master_log_name();
+  return active_mi->rli->get_group_primary_log_name();
 #endif
 }
 
-uint64 ndb_mi_get_group_master_log_pos()
+uint64 ndb_mi_get_group_primary_log_pos()
 {
   DBUG_ASSERT (active_mi != NULL);
 #if MYSQL_VERSION_ID < 50600
-  return (uint64) active_mi->rli.group_master_log_pos;
+  return (uint64) active_mi->rli.group_primary_log_pos;
 #else
-  return (uint64) active_mi->rli->get_group_master_log_pos();
+  return (uint64) active_mi->rli->get_group_primary_log_pos();
 #endif
 }
 
@@ -79,13 +79,13 @@ bool ndb_mi_get_ignore_server_id(uint32 server_id)
   return (active_mi->shall_ignore_server_id(server_id) != 0);
 }
 
-uint32 ndb_mi_get_slave_run_id()
+uint32 ndb_mi_get_replica_run_id()
 {
   DBUG_ASSERT (active_mi != NULL);
 #if MYSQL_VERSION_ID < 50600
-  return active_mi->rli.slave_run_id;
+  return active_mi->rli.replica_run_id;
 #else
-  return active_mi->rli->slave_run_id;
+  return active_mi->rli->replica_run_id;
 #endif
 }
 
@@ -109,9 +109,9 @@ void ndb_mi_set_relay_log_trans_retries(ulong number)
 #endif
 }
 
-bool ndb_mi_get_slave_sql_running()
+bool ndb_mi_get_replica_sql_running()
 {
-  return active_mi->rli->slave_running;
+  return active_mi->rli->replica_running;
 }
 
 /* #ifdef HAVE_NDB_BINLOG */

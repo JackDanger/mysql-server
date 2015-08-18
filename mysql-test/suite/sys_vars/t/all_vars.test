@@ -4,17 +4,17 @@
 # 2010-01-28 OBN Added support to load 'innodb' and 'semisync' if possible.
 # As we need to have there variables loaded if the components exist but do 
 # not want the test skiped if they are not, we cannot use the 'have_xxx' mecanizm.
-# Added an 'all_vars-master.opt' file that includes
+# Added an 'all_vars-primary.opt' file that includes
 # "$SEMISYNC_PLUGIN_OPT --loose-innodb" (see $SEMISYNC_PLUGIN_OPT setting in mysql-test-run.pl)
 # and logic similar to 'include/have_semisync_plugin.inc' that will load semisync plugin
-if (`SELECT @@have_dynamic_loading = 'YES' AND LENGTH('$SEMISYNC_MASTER_PLUGIN') > 0`)
+if (`SELECT @@have_dynamic_loading = 'YES' AND LENGTH('$SEMISYNC_PRIMARY_PLUGIN') > 0`)
 {
   --disable_query_log
   # The following is to prevent a mis-match on windows that has the name of of the lib ending with 'dll' 
   --replace_regex /\.dll/.so/
-  eval INSTALL PLUGIN rpl_semi_sync_master SONAME '$SEMISYNC_MASTER_PLUGIN';
+  eval INSTALL PLUGIN rpl_semi_sync_primary SONAME '$SEMISYNC_PRIMARY_PLUGIN';
   --replace_regex /\.dll/.so/
-  eval INSTALL PLUGIN rpl_semi_sync_slave SONAME '$SEMISYNC_SLAVE_PLUGIN';
+  eval INSTALL PLUGIN rpl_semi_sync_replica SONAME '$SEMISYNC_REPLICA_PLUGIN';
   --enable_query_log
 }
 
@@ -56,7 +56,7 @@ insert into t2 select variable_name from information_schema.session_variables;
 
 # Performance schema variables are too long for files named
 # 'mysql-test/suite/sys_vars/t/' ...
-# ... 'performance_schema_events_waits_history_long_size_basic-master.opt'
+# ... 'performance_schema_events_waits_history_long_size_basic-primary.opt'
 # to fit in the tar source distribution (limit in old tar)
 # Renaming the tests to aliases below.
 
@@ -77,10 +77,10 @@ drop table t1;
 drop table t2;
 
 # Unloading the semisync plugins in case they were loaded
-if (`SELECT @@have_dynamic_loading = 'YES' AND LENGTH('$SEMISYNC_MASTER_PLUGIN') > 0`)
+if (`SELECT @@have_dynamic_loading = 'YES' AND LENGTH('$SEMISYNC_PRIMARY_PLUGIN') > 0`)
 {
   --disable_query_log
-  UNINSTALL PLUGIN rpl_semi_sync_master;
-  UNINSTALL PLUGIN rpl_semi_sync_slave;
+  UNINSTALL PLUGIN rpl_semi_sync_primary;
+  UNINSTALL PLUGIN rpl_semi_sync_replica;
   --enable_query_log
 }

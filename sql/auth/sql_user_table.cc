@@ -355,7 +355,7 @@ void get_grantor(THD *thd, char *grantor)
   const char *host= thd->security_context()->host_or_ip().str;
 
 #if defined(HAVE_REPLICATION)
-  if (thd->slave_thread && thd->has_invoker())
+  if (thd->replica_thread && thd->has_invoker())
   {
     user= thd->get_invoker_user().str;
     host= thd->get_invoker_host().str;
@@ -1689,10 +1689,10 @@ int open_grant_tables(THD *thd, TABLE_LIST *tables, bool *transactional_tables)
 
 #ifdef HAVE_REPLICATION
   /*
-    GRANT and REVOKE are applied the slave in/exclusion rules as they are
+    GRANT and REVOKE are applied the replica in/exclusion rules as they are
     some kind of updates to the mysql.% tables.
   */
-  if (thd->slave_thread && rpl_filter->is_on())
+  if (thd->replica_thread && rpl_filter->is_on())
   {
     /*
       The tables must be marked "updating" so that tables_ok() takes them into

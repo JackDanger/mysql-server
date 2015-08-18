@@ -7,7 +7,7 @@
 # USAGE
 #
 #    let $wait_binlog_event= DROP;
-#    [let $wait_binlog_file= master-bin.000001;]
+#    [let $wait_binlog_file= primary-bin.000001;]
 #    --source include/wait_for_binlog_event.inc
 
 let $_loop_count= 300;

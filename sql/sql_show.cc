@@ -293,13 +293,13 @@ static struct show_privileges_st sys_privileges[]=
   {"Proxy", "Server Admin", "To make proxy user possible"},
   {"References", "Databases,Tables", "To have references on tables"},
   {"Reload", "Server Admin", "To reload or refresh tables, logs and privileges"},
-  {"Replication client","Server Admin","To ask where the slave or master servers are"},
-  {"Replication slave","Server Admin","To read binary log events from the master"},
+  {"Replication client","Server Admin","To ask where the replica or primary servers are"},
+  {"Replication replica","Server Admin","To read binary log events from the primary"},
   {"Select", "Tables",  "To retrieve rows from table"},
   {"Show databases","Server Admin","To see all databases with SHOW DATABASES"},
   {"Show view","Tables","To see views with SHOW CREATE VIEW"},
   {"Shutdown","Server Admin", "To shut down the server"},
-  {"Super","Server Admin","To use KILL thread, SET GLOBAL, CHANGE MASTER, etc."},
+  {"Super","Server Admin","To use KILL thread, SET GLOBAL, CHANGE PRIMARY, etc."},
   {"Trigger","Tables", "To use triggers"},
   {"Create tablespace", "Server Admin", "To create/alter/drop tablespaces"},
   {"Update", "Tables",  "To update existing rows"},
@@ -1009,7 +1009,7 @@ bool mysqld_show_create_db(THD *thd, char *dbname,
   else
     db_access= (acl_get(sctx->host().str, sctx->ip().str,
                         sctx->priv_user().str, dbname, 0) |
-                sctx->master_access());
+                sctx->primary_access());
   if (!(db_access & DB_ACLS) && check_grant_db(thd,dbname))
   {
     my_error(ER_DBACCESS_DENIED_ERROR, MYF(0),
@@ -6871,8 +6871,8 @@ copy_event_to_schema_table(THD *thd, TABLE *sch_table, TABLE *event_table)
     case Event_parse_data::ENABLED:
       sch_table->field[ISE_STATUS]->store(STRING_WITH_LEN("ENABLED"), scs);
       break;
-    case Event_parse_data::SLAVESIDE_DISABLED:
-      sch_table->field[ISE_STATUS]->store(STRING_WITH_LEN("SLAVESIDE_DISABLED"),
+    case Event_parse_data::REPLICASIDE_DISABLED:
+      sch_table->field[ISE_STATUS]->store(STRING_WITH_LEN("REPLICASIDE_DISABLED"),
                                           scs);
       break;
     case Event_parse_data::DISABLED:
@@ -7891,8 +7891,8 @@ bool get_schema_tables_result(JOIN *join,
     TABLE_LIST *const table_list= tab->table_ref;
     if (table_list->schema_table && thd->fill_information_schema_tables())
     {
-      bool is_subselect= join->select_lex->master_unit() &&
-                         join->select_lex->master_unit()->item;
+      bool is_subselect= join->select_lex->primary_unit() &&
+                         join->select_lex->primary_unit()->item;
 
       /* A value of 0 indicates a dummy implementation */
       if (table_list->schema_table->fill_table == 0)

@@ -4,16 +4,16 @@
 # ./mysql-test-run.pl --mysqld=--binlog-format=mixed
 #########################################
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 
-# Check MIXED on both master and slave
-connection master;
---echo ==========MASTER==========
+# Check MIXED on both primary and replica
+connection primary;
+--echo ==========PRIMARY==========
 --source suite/rpl/include/rpl_mixed_show_binlog_format.inc
-connection slave;
---echo ==========SLAVE===========
+connection replica;
+--echo ==========REPLICA===========
 --source suite/rpl/include/rpl_mixed_show_binlog_format.inc
-connection master;
+connection primary;
 
 
 CREATE DATABASE test_rpl;
@@ -325,19 +325,19 @@ DROP VIEW v2;
 --echo
 --echo ******************** SHOW BINLOG EVENTS ********************
 --source include/show_binlog_events.inc
-sync_slave_with_master;
+sync_replica_with_primary;
 # as we're using UUID we don't SELECT but use "diff" like in rpl_row_UUID
---exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test_rpl > $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_master.sql
---exec $MYSQL_DUMP_SLAVE --compact --order-by-primary --skip-extended-insert --no-create-info test_rpl > $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_slave.sql
+--exec $MYSQL_DUMP --compact --order-by-primary --skip-extended-insert --no-create-info test_rpl > $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_primary.sql
+--exec $MYSQL_DUMP_REPLICA --compact --order-by-primary --skip-extended-insert --no-create-info test_rpl > $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_replica.sql
 
-connection master;
+connection primary;
 drop database test_rpl;
-sync_slave_with_master;
+sync_replica_with_primary;
 
 # Let's compare. Note: If they match test will pass, if they do not match
 # the test will show that the diff statement failed and not reject file
 # will be created. You will need to go to the mysql-test dir and diff
 # the files your self to see what is not matching
 
---diff_files $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_master.sql $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_slave.sql
+--diff_files $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_primary.sql $MYSQLTEST_VARDIR/tmp/rpl_switch_stm_row_mixed_replica.sql
 --source include/rpl_end.inc

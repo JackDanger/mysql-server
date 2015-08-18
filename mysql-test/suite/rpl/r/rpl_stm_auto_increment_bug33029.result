@@ -1,15 +1,15 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.");
 DROP TABLE IF EXISTS t1, t2;
 DROP PROCEDURE IF EXISTS p1;
 DROP PROCEDURE IF EXISTS p2;
 DROP TRIGGER IF EXISTS tr1;
 DROP FUNCTION IF EXISTS f1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CREATE TABLE t1 (id INT AUTO_INCREMENT PRIMARY KEY);
 CREATE TABLE t2 (id INT AUTO_INCREMENT PRIMARY KEY);
 CREATE PROCEDURE p1()
@@ -47,61 +47,61 @@ Warnings:
 Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column. Inserted values cannot be logged correctly.
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=1
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=2
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=3
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=4
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=5
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=6
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=7
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=8
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=9
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=10
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=1
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = 1
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=2
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = 2
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 1
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 2
-master-bin.000001	#	Query	#	#	COMMIT
-# Result on master
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=1
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=2
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=3
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=4
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=5
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=6
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=7
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=8
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=9
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=10
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=1
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = 1
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=2
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = 2
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 1
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 2
+primary-bin.000001	#	Query	#	#	COMMIT
+# Result on primary
 SELECT * FROM t1;
 id
 3
@@ -114,8 +114,8 @@ id
 10
 SELECT * FROM t2;
 id
-include/sync_slave_sql_with_master.inc
-# Result on slave
+include/sync_replica_sql_with_primary.inc
+# Result on replica
 SELECT * FROM t1;
 id
 3
@@ -134,25 +134,25 @@ Warnings:
 Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column. Inserted values cannot be logged correctly.
 include/show_binlog_events.inc
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=11
-master-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=3
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = f1(3)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Intvar	#	#	INSERT_ID=12
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = f1(4)
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 3
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 4
-master-bin.000001	#	Query	#	#	COMMIT
-# Result on master
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=11
+primary-bin.000001	#	Query	#	#	use `test`; INSERT INTO t1 VALUES (NULL)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=3
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = f1(3)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Intvar	#	#	INSERT_ID=12
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t1 WHERE id = f1(4)
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 3
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; DELETE FROM t2 WHERE id = 4
+primary-bin.000001	#	Query	#	#	COMMIT
+# Result on primary
 SELECT * FROM t1;
 id
 5
@@ -179,8 +179,8 @@ id
 17
 18
 19
-include/sync_slave_sql_with_master.inc
-# Result on slave
+include/sync_replica_sql_with_primary.inc
+# Result on replica
 SELECT * FROM t1;
 id
 5
@@ -212,5 +212,5 @@ DROP PROCEDURE IF EXISTS p1;
 DROP PROCEDURE IF EXISTS p2;
 DROP FUNCTION IF EXISTS f1;
 DROP TRIGGER IF EXISTS tr1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

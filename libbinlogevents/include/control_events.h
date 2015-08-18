@@ -41,12 +41,12 @@ namespace binary_log
 
   When a binary log file exceeds a size limit, a ROTATE_EVENT is written
   at the end of the file that points to the next file in the squence.
-  This event is information for the slave to know the name of the next
+  This event is information for the replica to know the name of the next
   binary log it is going to receive.
 
   ROTATE_EVENT is generated locally and written to the binary log
-  on the master. It is written to the relay log on the slave when FLUSH LOGS
-  occurs, and when receiving a ROTATE_EVENT from the master.
+  on the primary. It is written to the relay log on the replica when FLUSH LOGS
+  occurs, and when receiving a ROTATE_EVENT from the primary.
   In the latter case, there will be two rotate events in total originating
   on different servers.
 
@@ -217,7 +217,7 @@ public:
     binary log) was created.  In the other case (i.e. this event is at
     the start of a binary log created by FLUSH LOGS or automatic
     rotation), 'created' should be 0.  This "trick" is used by MySQL
-    >=4.0.14 slaves to know whether they must drop stale temporary
+    >=4.0.14 replicas to know whether they must drop stale temporary
     tables and whether they should abort unfinished transaction.
 
     Note that when 'created'!=0, it is always equal to the event's
@@ -425,9 +425,9 @@ public:
   @class Stop_event
 
   A stop event is written to the log files under these circumstances:
-  - A master writes the event to the binary log when it shuts down.
-  - A slave writes the event to the relay log when it shuts down or
-    when a RESET SLAVE statement is executed.
+  - A primary writes the event to the binary log when it shuts down.
+  - A replica writes the event to the relay log when it shuts down or
+    when a RESET REPLICA statement is executed.
 
   @section Stop_event_binary_format Binary Format
 
@@ -449,9 +449,9 @@ public:
 
   /**
     A Stop_event is occurs under these circumstances:
-    -  A master writes the event to the binary log when it shuts down
-    -  A slave writes the event to the relay log when it shuts down or when a
-       RESET SLAVE statement is executed
+    -  A primary writes the event to the binary log when it shuts down
+    -  A replica writes the event to the relay log when it shuts down or when a
+       RESET REPLICA statement is executed
     @param buf                Contains the serialized event.
     @param description_event  An FDE event, used to get the
                               following information
@@ -479,10 +479,10 @@ public:
   @class Incident_event
 
    Class representing an incident, an occurance out of the ordinary,
-   that happened on the master.
+   that happened on the primary.
 
-   The event is used to inform the slave that something out of the
-   ordinary happened on the master that might cause the database to be
+   The event is used to inform the replica that something out of the
+   ordinary happened on the primary that might cause the database to be
    in an inconsistent state.
 
   @section Incident_event_binary_format Binary Format
@@ -711,7 +711,7 @@ protected:
   static const uint16_t ser_buf_size=
     8 + 2 * MY_XIDDATASIZE + 4 * sizeof(long) + 1;
   MY_XID my_xid;
-  void *xid; /* Master side only */
+  void *xid; /* Primary side only */
   bool one_phase;
 
 public:
@@ -753,11 +753,11 @@ public:
   @class Ignorable_event
 
   Base class for ignorable log events. Events deriving from
-  this class can be safely ignored by slaves that cannot
-  recognize them. Newer slaves, will be able to read and
+  this class can be safely ignored by replicas that cannot
+  recognize them. Newer replicas, will be able to read and
   handle them. This has been designed to be an open-ended
   architecture, so adding new derived events shall not harm
-  the old slaves that support ignorable log event mechanism
+  the old replicas that support ignorable log event mechanism
   (they will just ignore unrecognized ignorable events).
 
   @note The only thing that makes an event ignorable is that it has
@@ -931,9 +931,9 @@ struct Uuid
   The basic idea is to
      -  Associate an identifier, the Global Transaction IDentifier or GTID,
         to every transaction.
-     -  When a transaction is copied to a slave, re-executed on the slave,
-        and written to the slave's binary log, the GTID is preserved.
-     -  When a  slave connects to a master, the slave uses GTIDs instead of
+     -  When a transaction is copied to a replica, re-executed on the replica,
+        and written to the replica's binary log, the GTID is preserved.
+     -  When a  replica connects to a primary, the replica uses GTIDs instead of
         (file, offset)
 
   @section Gtid_event_binary_format Binary Format
@@ -1342,14 +1342,14 @@ protected:
 /**
   @class Heartbeat_event
 
-  Replication event to ensure to slave that master is alive.
-  The event is originated by master's dump thread and sent straight to
-  slave without being logged. Slave itself does not store it in relay log
+  Replication event to ensure to replica that primary is alive.
+  The event is originated by primary's dump thread and sent straight to
+  replica without being logged. Replica itself does not store it in relay log
   but rather uses a data for immediate checks and throws away the event.
 
   Two members of the class log_ident and Binary_log_event::log_pos comprise
   @see the rpl_event_coordinates instance. The coordinates that a heartbeat
-  instance carries correspond to the last event master has sent from
+  instance carries correspond to the last event primary has sent from
   its binlog.
 
   @section Heartbeat_event_binary_format Binary Format
@@ -1378,10 +1378,10 @@ class Heartbeat_event: public Binary_log_event
 public:
 
   /**
-    Sent by a master to a slave to let the slave know that the master is
+    Sent by a primary to a replica to let the replica know that the primary is
     still alive. Events of this type do not appear in the binary or relay logs.
-    They are generated on a master server by the thread that dumps events and
-    sent straight to the slave without ever being written to the binary log.
+    They are generated on a primary server by the thread that dumps events and
+    sent straight to the replica without ever being written to the binary log.
 
     @param buf                Contains the serialized event.
     @param event_len          Length of the serialized event.

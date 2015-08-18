@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 Replicate_Do_DB = 'initfiledb1,initfiledb2'
@@ -15,8 +15,8 @@ Replicate_Rewrite_DB = '(initfiledb1,initfiledb3)'
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 CHANGE REPLICATION FILTER REPLICATE_DO_DB=(db1,db2,`db32`, `db,3`);
-ERROR HY000: This operation cannot be performed with a running slave sql thread; run STOP SLAVE SQL_THREAD first
-include/stop_slave_sql.inc
+ERROR HY000: This operation cannot be performed with a running replica sql thread; run STOP REPLICA SQL_THREAD first
+include/stop_replica_sql.inc
 CHANGE REPLICATION FILTER REPLICATE_DO_DB=(db1,db2,`db32`, `db,3`);
 CHANGE REPLICATION FILTER REPLICATE_IGNORE_DB=(db3);
 CHANGE REPLICATION FILTER REPLICATE_DO_TABLE=(db3.`t`, db4.t6);
@@ -63,5 +63,5 @@ CREATE USER 'user7057' IDENTIFIED BY 'pass7057';
 mysql: [Warning] Using a password on the command line interface can be insecure.
 ERROR 1227 (42000) at line 1: Access denied; you need (at least one of) the SUPER privilege(s) for this operation
 DROP USER 'user7057';
-include/start_slave_sql.inc
+include/start_replica_sql.inc
 include/rpl_end.inc

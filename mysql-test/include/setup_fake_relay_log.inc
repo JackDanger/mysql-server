@@ -5,11 +5,11 @@
 #
 # ==== Usage ====
 #
-# Make sure the slave is not running and issue:
+# Make sure the replica is not running and issue:
 #
 #   let $fake_relay_log= /path/to/fake-relay-log-file.000001
 #   source include/setup_fake_relay_log.inc;
-#   START SLAVE SQL_THREAD; # setup_fake_relay_log doesn't start slave
+#   START REPLICA SQL_THREAD; # setup_fake_relay_log doesn't start replica
 #   ...
 #   source include/cleanup_fake_relay_log.inc
 #
@@ -18,10 +18,10 @@
 #
 # ==== Implementation ====
 #
-# First makes a sanity check, ensuring that the slave threads are not
+# First makes a sanity check, ensuring that the replica threads are not
 # running.  Then copies the $fake_relay_log to RELAY_BIN-fake.000001,
 # where RELAY_BIN is the basename of the relay log, and updates
-# RELAY_BIN.index. Finally issues CHANGE MASTER so that it uses the
+# RELAY_BIN.index. Finally issues CHANGE PRIMARY so that it uses the
 # given files.
 #
 # ==== Side effects ====
@@ -45,8 +45,8 @@ let $_fake_relay_log_printable= `SELECT REPLACE('$fake_relay_log', '$MYSQL_TEST_
 
 # Sanity check.
 let $running= 0;
-let $_sql_running= query_get_value(SHOW SLAVE STATUS, Slave_SQL_Running, 1);
-let $_io_running= query_get_value(SHOW SLAVE STATUS, Slave_IO_Running, 1);
+let $_sql_running= query_get_value(SHOW REPLICA STATUS, Replica_SQL_Running, 1);
+let $_io_running= query_get_value(SHOW REPLICA STATUS, Replica_IO_Running, 1);
 if ($_sql_running == Yes) {
   let $running= 1;
 }
@@ -54,9 +54,9 @@ if ($_io_running == Yes) {
   let $running= 1;
 }
 if ($running) {
-  --echo Error: Slave was running when test case sourced
+  --echo Error: Replica was running when test case sourced
   --echo include/setup_fake_replication.inc
-  --echo Slave_IO_Running = $_io_running; Slave_SQL_Running = $_sql_running
+  --echo Replica_IO_Running = $_io_running; Replica_SQL_Running = $_sql_running
   --source include/show_rpl_debug_info.inc
   --die
 }
@@ -70,18 +70,18 @@ if (!$_fake_filename) {
 let $_fake_relay_log= $_fake_datadir/$_fake_filename-fake.000001;
 let $_fake_relay_index= $_fake_datadir/$_fake_filename.index;
 # Need to restore relay_log_purge in cleanup_fake_relay_log.inc, since
-# CHANGE MASTER modifies it (see the manual for CHANGE MASTER).
+# CHANGE PRIMARY modifies it (see the manual for CHANGE PRIMARY).
 let $_fake_relay_log_purge= `SELECT @@global.relay_log_purge`;
 
-RESET SLAVE;
-let $_orphan_relay_file= query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1);
+RESET REPLICA;
+let $_orphan_relay_file= query_get_value(SHOW REPLICA STATUS, Relay_Log_File, 1);
 
 # Create relay log file.
 --copy_file $fake_relay_log $_fake_relay_log
 
 # Create relay log index.
 
-# After patch for BUG#12190, the filename used in CHANGE MASTER
+# After patch for BUG#12190, the filename used in CHANGE PRIMARY
 # RELAY_LOG_FILE will be automatically added the directory of the
 # relay log before comparison, thus we need to added the directory
 # part (./ on unix .\ on windows) when faking the relay-log-bin.index.
@@ -98,10 +98,10 @@ let $_orphan_relay_file= query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1);
 --source include/write_var_to_file.inc
 
 # Remember old settings.
---let $_fake_old_master_host= query_get_value(SHOW SLAVE STATUS, Master_Host, 1)
+--let $_fake_old_primary_host= query_get_value(SHOW REPLICA STATUS, Primary_Host, 1)
 
 # Setup replication from existing relay log.
-eval CHANGE MASTER TO MASTER_HOST='dummy.localdomain', RELAY_LOG_FILE='$_fake_filename-fake.000001', RELAY_LOG_POS=4;
+eval CHANGE PRIMARY TO PRIMARY_HOST='dummy.localdomain', RELAY_LOG_FILE='$_fake_filename-fake.000001', RELAY_LOG_POS=4;
 
 # remove the orphan log file (became spurious)
 -- remove_file $_fake_datadir/$_orphan_relay_file

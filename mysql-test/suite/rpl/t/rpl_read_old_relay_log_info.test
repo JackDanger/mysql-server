@@ -5,18 +5,18 @@
 
 --source include/not_gtid_enabled.inc
 --source include/not_group_replication_plugin.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/not_relay_log_info_table.inc
 
 CREATE TABLE t1 (a INT);
 INSERT INTO t1 VALUES (1);
 DROP TABLE t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --echo ==== Check that we still understand the old format of relay-log.info ====
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
-RESET SLAVE;
+RESET REPLICA;
 --let $MYSQLD_DATADIR= `select @@datadir`
 
 # the old version of relay_log.info comes in two versions: with path
@@ -27,17 +27,17 @@ if ($SYSTEM_PATH_SEPARATOR != /) {
 --copy_file $MYSQL_TEST_DIR/std_data/old-format-relay-log$file_suffix.info $MYSQLD_DATADIR/relay-log.info
 
 --echo # Read relay-log.info
-START SLAVE IO_THREAD;
---source include/wait_for_slave_io_to_start.inc
+START REPLICA IO_THREAD;
+--source include/wait_for_replica_io_to_start.inc
 --echo # Check that relay log coordinates are equal to those we saved in old-format_relay-log.info
---let $master_file= query_get_value(SHOW SLAVE STATUS, Relay_Master_Log_File, 1)
---let $master_pos= query_get_value(SHOW SLAVE STATUS, Exec_Master_Log_Pos, 1)
---let $relay_log_file= query_get_value(SHOW SLAVE STATUS, Relay_Log_File, 1)
---let $relay_log_pos= query_get_value(SHOW SLAVE STATUS, Relay_Log_Pos, 1)
---echo $master_file= $master_file, $master_pos, $relay_log_file, $relay_log_pos
-if (`SELECT "$master_file" != "" OR
-            "$master_pos" != "0" OR
-            "$relay_log_file" != "slave-relay-bin.000001" OR
+--let $primary_file= query_get_value(SHOW REPLICA STATUS, Relay_Primary_Log_File, 1)
+--let $primary_pos= query_get_value(SHOW REPLICA STATUS, Exec_Primary_Log_Pos, 1)
+--let $relay_log_file= query_get_value(SHOW REPLICA STATUS, Relay_Log_File, 1)
+--let $relay_log_pos= query_get_value(SHOW REPLICA STATUS, Relay_Log_Pos, 1)
+--echo $primary_file= $primary_file, $primary_pos, $relay_log_file, $relay_log_pos
+if (`SELECT "$primary_file" != "" OR
+            "$primary_pos" != "0" OR
+            "$relay_log_file" != "replica-relay-bin.000001" OR
             "$relay_log_pos" != "4"`) {
   --echo ERROR: log coordinates changed
   --die log coordinates changed

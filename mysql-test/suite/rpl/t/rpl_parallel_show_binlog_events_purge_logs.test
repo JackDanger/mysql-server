@@ -12,26 +12,26 @@
 # mysql_show_binlog_events function scope.
 #
 --source include/have_debug_sync.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---echo [connection slave]
---connection slave
+--echo [connection replica]
+--connection replica
 SET DEBUG_SYNC= 'after_show_binlog_events SIGNAL on_show_binlog_events WAIT_FOR end';
 --send SHOW BINLOG EVENTS
 
---connection slave1
---echo [connection slave1]
+--connection replica1
+--echo [connection replica1]
 SET DEBUG_SYNC= 'now WAIT_FOR on_show_binlog_events';
 FLUSH LOGS;
 SET DEBUG_SYNC= 'now SIGNAL end';
 SET DEBUG_SYNC= 'RESET';
 
---echo [connection slave]
---connection slave
+--echo [connection replica]
+--connection replica
 --disable_result_log
 --reap
 --enable_result_log
 SET DEBUG_SYNC= 'RESET';
 
---connection master
+--connection primary
 --source include/rpl_end.inc

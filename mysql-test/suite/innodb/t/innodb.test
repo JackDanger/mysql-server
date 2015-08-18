@@ -1259,7 +1259,7 @@ drop table t2;
 # Test error handling
 
 # Embedded server doesn't chdir to data directory
---replace_result $MYSQLTEST_VARDIR . master-data/ ''
+--replace_result $MYSQLTEST_VARDIR . primary-data/ ''
 --error ER_WRONG_FK_DEF
 create table t2 (id int(11) not null, id2 int(11) not null, constraint t1_id_fk foreign key (id2,id) references t1 (id)) engine = innodb;
 
@@ -1466,7 +1466,7 @@ set session old_alter_table=0;
 #
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 # Embedded server doesn't chdir to data directory
---replace_result $MYSQLTEST_VARDIR . master-data/ ''
+--replace_result $MYSQLTEST_VARDIR . primary-data/ ''
 SET GLOBAL innodb_large_prefix=OFF;
 create table t1 (v varchar(65530), key(v));
 SET GLOBAL innodb_large_prefix=default;
@@ -1777,7 +1777,7 @@ set foreign_key_checks=0;
 create table t2 (a varchar(10), foreign key (a) references t1(a)) engine = innodb DEFAULT CHARSET=latin1;
 create table t3(a varchar(10) primary key) engine = innodb DEFAULT CHARSET=utf8;
 # Embedded server doesn't chdir to data directory
---replace_result $MYSQLD_DATADIR ./ master-data/ ''
+--replace_result $MYSQLD_DATADIR ./ primary-data/ ''
 -- error 1025
 rename table t3 to t1;
 set foreign_key_checks=1;

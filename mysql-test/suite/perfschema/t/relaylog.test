@@ -3,12 +3,12 @@
 --source include/have_log_bin.inc
 --source include/not_embedded.inc
 --source include/have_perfschema.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --disable_warnings
 drop table if exists test.t1;
---sync_slave_with_master
-reset master;
+--sync_replica_with_primary
+reset primary;
 --enable_warnings
 
 create table test.t1(a int);
@@ -30,26 +30,26 @@ drop table test.t1;
 #   since this is too much dependent on execution.
 #
 
-connection master;
--- echo "============ Performance schema on master ============"
+connection primary;
+-- echo "============ Performance schema on primary ============"
 
 select
-  substring(file_name, locate("master-", file_name)) as FILE_NAME,
+  substring(file_name, locate("primary-", file_name)) as FILE_NAME,
   EVENT_NAME,
   if (count_read > 0, "MANY", "NONE") as COUNT_READ,
   if (count_write > 0,"MANY", "NONE") as COUNT_WRITE,
   if (sum_number_of_bytes_read > 0, "MANY", "NONE") as SUM_NUMBER_OF_BYTES_READ,
   if (sum_number_of_bytes_write > 0, "MANY", "NONE") as SUM_NUMBER_OF_BYTES_WRITE
   from performance_schema.file_summary_by_instance
-  where file_name like "%master-%" order by file_name;
+  where file_name like "%primary-%" order by file_name;
 
 select * from performance_schema.file_summary_by_instance
-  where file_name like "%slave-%" order by file_name;
+  where file_name like "%replica-%" order by file_name;
 
--- echo "Expect a master binlog + binlog_index"
+-- echo "Expect a primary binlog + binlog_index"
 
 select
-  substring(file_name, locate("master-", file_name)) as FILE_NAME,
+  substring(file_name, locate("primary-", file_name)) as FILE_NAME,
   EVENT_NAME,
   if (count_read > 0, "MANY", "NONE") as COUNT_READ,
   if (count_write > 0,"MANY", "NONE") as COUNT_WRITE,
@@ -75,7 +75,7 @@ select
   and event_name not like "%MYSQL_BIN_LOG::update_cond"
   order by event_name;
 
--- echo "Expect no slave relay log"
+-- echo "Expect no replica relay log"
 
 select * from performance_schema.file_summary_by_instance
   where event_name like "%relaylog%" order by file_name;
@@ -88,30 +88,30 @@ select * from performance_schema.events_waits_summary_global_by_event_name
   and event_name not like "%MYSQL_RELAY_LOG::update_cond"
   order by event_name;
 
-sync_slave_with_master;
--- echo "============ Performance schema on slave ============"
+sync_replica_with_primary;
+-- echo "============ Performance schema on replica ============"
 
 select * from performance_schema.file_summary_by_instance
-  where file_name like "%master-%" order by file_name;
+  where file_name like "%primary-%" order by file_name;
 
 select
-  substring(file_name, locate("slave-", file_name)) as FILE_NAME,
+  substring(file_name, locate("replica-", file_name)) as FILE_NAME,
   EVENT_NAME,
   if (count_read > 0, "MANY", "NONE") as COUNT_READ,
   if (count_write > 0,"MANY", "NONE") as COUNT_WRITE,
   if (sum_number_of_bytes_read > 0, "MANY", "NONE") as SUM_NUMBER_OF_BYTES_READ,
   if (sum_number_of_bytes_write > 0, "MANY", "NONE") as SUM_NUMBER_OF_BYTES_WRITE
   from performance_schema.file_summary_by_instance
-  where file_name like "%slave-%"
-  and (file_name not like "%slave-relay-bin.0%"
-       or file_name like "%slave-relay-bin.000001"
-       or file_name like "%slave-relay-bin.000002")
+  where file_name like "%replica-%"
+  and (file_name not like "%replica-relay-bin.0%"
+       or file_name like "%replica-relay-bin.000001"
+       or file_name like "%replica-relay-bin.000002")
   order by file_name;
 
--- echo "Expect a slave binlog + binlog_index"
+-- echo "Expect a replica binlog + binlog_index"
 
 select
-  substring(file_name, locate("slave-", file_name)) as FILE_NAME,
+  substring(file_name, locate("replica-", file_name)) as FILE_NAME,
   EVENT_NAME,
   if (count_read > 0, "MANY", "NONE") as COUNT_READ,
   if (count_write > 0,"MANY", "NONE") as COUNT_WRITE,
@@ -137,10 +137,10 @@ select
   and event_name not like "%MYSQL_BIN_LOG::update_cond"
   order by event_name;
 
--- echo "Expect a slave relay log"
+-- echo "Expect a replica relay log"
 
 select
-  substring(file_name, locate("slave-", file_name)) as FILE_NAME,
+  substring(file_name, locate("replica-", file_name)) as FILE_NAME,
   EVENT_NAME,
   if (count_read > 0, "MANY", "NONE") as COUNT_READ,
   if (count_write > 0,"MANY", "NONE") as COUNT_WRITE,
@@ -148,9 +148,9 @@ select
   if (sum_number_of_bytes_write > 0, "MANY", "NONE") as SUM_NUMBER_OF_BYTES_WRITE
   from performance_schema.file_summary_by_instance
   where event_name like "%relaylog%"
-  and (file_name not like "%slave-relay-bin.0%"
-       or file_name like "%slave-relay-bin.000001"
-       or file_name like "%slave-relay-bin.000002")
+  and (file_name not like "%replica-relay-bin.0%"
+       or file_name like "%replica-relay-bin.000001"
+       or file_name like "%replica-relay-bin.000002")
   order by file_name;
 
 select

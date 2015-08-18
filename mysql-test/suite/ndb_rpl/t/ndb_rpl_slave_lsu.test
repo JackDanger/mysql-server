@@ -5,23 +5,23 @@
 
 ###############################################################################
 # Description: Checks if DDL and DML statements are correctly logged by
-#              servers and slave servers according to log-slave-updates,
+#              servers and replica servers according to log-replica-updates,
 #              and independent of their settings on the particular MySQLD
-#              acting in the slave role
+#              acting in the replica role
 #
 # Testing scenario: Cluster 1 replicates to Cluster 2
-#   Key : BL = log-bin, LSU = log-slave-updates
+#   Key : BL = log-bin, LSU = log-replica-updates
 #
 #                       BL                        BL
-#  cluster 1 [  srv_master  srv_master1  srv_master2  ]
+#  cluster 1 [  srv_primary  srv_primary1  srv_primary2  ]
 #                   |----------+------------
 #                   v          v           v
-#  cluster 2 [  srv_slave  srv_slave1  srv_slave2 ]
+#  cluster 2 [  srv_replica  srv_replica1  srv_replica2 ]
 #                                  BL     BL LSU  
 #
-#  - First replicate via srv_slave and check all nodes' Binlog contents
-#  - Second replicate via srv_slave1 and check all nodes' Binlog contents
-#  - Third replicate via srv_slave2 and check all nodes' Binlog contents
+#  - First replicate via srv_replica and check all nodes' Binlog contents
+#  - Second replicate via srv_replica1 and check all nodes' Binlog contents
+#  - Third replicate via srv_replica2 and check all nodes' Binlog contents
 #
 # Makes use of suite/ndb_rpl/t/ndb_rpl_multi_binlog_update.inc
 # Originally motivated by bug#45756
@@ -37,190 +37,190 @@
 # setup _no_ replication to start with, but with all 6 servers included
 --let $rpl_topology= none
 --let $rpl_server_count= 6
---let $rpl_skip_reset_master_and_slave=1
+--let $rpl_skip_reset_primary_and_replica=1
 --source include/rpl_init.inc
---let $rpl_skip_reset_master_and_slave=0
+--let $rpl_skip_reset_primary_and_replica=0
 
 --echo *** Configuring connections ***
---let $rpl_connection_name= srv_master
+--let $rpl_connection_name= srv_primary
 --let $rpl_server_number= 1
 --source include/rpl_connect.inc
 
---let $rpl_connection_name= srv_master1
+--let $rpl_connection_name= srv_primary1
 --let $rpl_server_number= 2
 --source include/rpl_connect.inc
 
---let $rpl_connection_name= srv_master2
+--let $rpl_connection_name= srv_primary2
 --let $rpl_server_number= 3
 --source include/rpl_connect.inc
 
---let $rpl_connection_name= srv_slave
+--let $rpl_connection_name= srv_replica
 --let $rpl_server_number= 4
 --source include/rpl_connect.inc
 
---let $rpl_connection_name= srv_slave1
+--let $rpl_connection_name= srv_replica1
 --let $rpl_server_number= 5
 --source include/rpl_connect.inc
 
---let $rpl_connection_name= srv_slave2
+--let $rpl_connection_name= srv_replica2
 --let $rpl_server_number= 6
 --source include/rpl_connect.inc
 
 --echo *** Waiting for each cluster to startup ***
 
 # Check schema op binlogging enabled between servers on cluster1
---let $source_server=srv_master
---let $dest_server=srv_master2
+--let $source_server=srv_primary
+--let $dest_server=srv_primary2
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
---let $source_server=srv_master1
---let $dest_server=srv_master
+--let $source_server=srv_primary1
+--let $dest_server=srv_primary
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
---let $source_server=srv_master1
---let $dest_server=srv_master2
+--let $source_server=srv_primary1
+--let $dest_server=srv_primary2
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
---let $source_server=srv_master2
---let $dest_server=srv_master
+--let $source_server=srv_primary2
+--let $dest_server=srv_primary
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
 # Check schema op binlogging enabled between servers on cluster2
---let $source_server=srv_slave
---let $dest_server=srv_slave1
+--let $source_server=srv_replica
+--let $dest_server=srv_replica1
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
---let $source_server=srv_slave
---let $dest_server=srv_slave2
+--let $source_server=srv_replica
+--let $dest_server=srv_replica2
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
---let $source_server=srv_slave1
---let $dest_server=srv_slave2
+--let $source_server=srv_replica1
+--let $dest_server=srv_replica2
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
---let $source_server=srv_slave2
---let $dest_server=srv_slave1
+--let $source_server=srv_replica2
+--let $dest_server=srv_replica1
 source suite/ndb_rpl/t/wait_schema_logging.inc;
 
 # Reset state of all Binlogging nodes
 --disable_query_log
-connection srv_master;
+connection srv_primary;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_master2;
+connection srv_primary2;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_slave1;
+connection srv_replica1;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_slave2;
+connection srv_replica2;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 --enable_query_log
 
 
 
---echo *** Configuring replication via Slave ***
---let $rpl_connection_name= srv_slave
+--echo *** Configuring replication via Replica ***
+--let $rpl_connection_name= srv_replica
 --source include/rpl_connection.inc
 
 --let $rpl_topology= 1->4
 --source include/rpl_change_topology.inc
 
---source include/start_slave.inc
+--source include/start_replica.inc
 
 # Run the test script
---let $which_slave=srv_slave
+--let $which_replica=srv_replica
 --source suite/ndb_rpl/t/ndb_rpl_multi_binlog_update.inc
 
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
 # Reset state of all Binlogging nodes
 --disable_query_log
-connection srv_master;
+connection srv_primary;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_master2;
+connection srv_primary2;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_slave1;
+connection srv_replica1;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_slave2;
+connection srv_replica2;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 --enable_query_log
 
 
 
---echo *** Configuring replication via Slave1 ***
---let $rpl_connection_name= srv_slave1
+--echo *** Configuring replication via Replica1 ***
+--let $rpl_connection_name= srv_replica1
 --source include/rpl_connection.inc
 
 --let $rpl_topology= 1->4,1->5
 --source include/rpl_change_topology.inc
 
---source include/start_slave.inc
+--source include/start_replica.inc
 
 # Run the test script
---let $which_slave=srv_slave1
+--let $which_replica=srv_replica1
 --source suite/ndb_rpl/t/ndb_rpl_multi_binlog_update.inc
 
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
 # Reset state of all Binlogging nodes
 --disable_query_log
-connection srv_master;
+connection srv_primary;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_master2;
+connection srv_primary2;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_slave1;
+connection srv_replica1;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 
-connection srv_slave2;
+connection srv_replica2;
 --disable_warnings
-RESET MASTER;
+RESET PRIMARY;
 --enable_warnings
 --enable_query_log
 
 
 
---echo *** Configuring replication via Slave2 ***
---let $rpl_connection_name= srv_slave2
+--echo *** Configuring replication via Replica2 ***
+--let $rpl_connection_name= srv_replica2
 --source include/rpl_connection.inc
 
 --let $rpl_topology= 1->4,1->5,1->6
 --source include/rpl_change_topology.inc
 
---source include/start_slave.inc
+--source include/start_replica.inc
 
 # Run the test script
---let $which_slave=srv_slave2
+--let $which_replica=srv_replica2
 --source suite/ndb_rpl/t/ndb_rpl_multi_binlog_update.inc
 
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
 
 

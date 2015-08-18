@@ -37,7 +37,7 @@ LocalProxy::LocalProxy(BlockNumber blockNumber, Block_context& ctx) :
 
   c_anyWorkerCounter = 0;
   c_typeOfStart = NodeState::ST_ILLEGAL_TYPE;
-  c_masterNodeId = ZNIL;
+  c_primaryNodeId = ZNIL;
 
   // GSN_READ_CONFIG_REQ
   addRecSignal(GSN_READ_CONFIG_REQ, &LocalProxy::execREAD_CONFIG_REQ, true);
@@ -568,7 +568,7 @@ LocalProxy::execREAD_NODESCONF(Signal* signal)
 
   const ReadNodesConf* conf = (const ReadNodesConf*)signal->getDataPtr();
 
-  c_masterNodeId = conf->masterNodeId;
+  c_primaryNodeId = conf->primaryNodeId;
 
   switch (ss.m_gsn) {
   case GSN_STTOR:

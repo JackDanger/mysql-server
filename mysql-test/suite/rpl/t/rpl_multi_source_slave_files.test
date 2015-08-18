@@ -1,7 +1,7 @@
 #
-# Test that when all the slave options pertaining to slave files
+# Test that when all the replica options pertaining to replica files
 # are set in an MSR set up.
-# The test mainly tests slave config is properly set so that slave
+# The test mainly tests replica config is properly set so that replica
 # threads start and stop smoothly.
 #
 
@@ -9,45 +9,45 @@
 --source include/not_group_replication_plugin.inc
 
 --echo #
---echo # set up masters server_1 and server_3 with server_2 being a slave.
+--echo # set up primarys server_1 and server_3 with server_2 being a replica.
 --echo #.
 --let $rpl_topology= 1->2,3->2,4->2,5->2
 --let $rpl_multi_source= 1
---let $rpl_skip_start_slave=1
+--let $rpl_skip_start_replica=1
 --source include/rpl_init.inc
 
 --echo #
---echo # On slave, issue start slave/stop slave command. Slave should not
+--echo # On replica, issue start replica/stop replica command. Replica should not
 --echo # error out anywhere.
 --echo #
 --let $rpl_connection_name= server_2
 --source include/rpl_connection.inc
 
-START SLAVE SQL_THREAD;
+START REPLICA SQL_THREAD;
 #check till sql_thread returned Yes
---let $rpl_source_file= include/wait_for_slave_sql_to_start.inc
+--let $rpl_source_file= include/wait_for_replica_sql_to_start.inc
 --source include/rpl_for_each_connection.inc
 
-START SLAVE SQL_THREAD;
+START REPLICA SQL_THREAD;
 #check till sql_thread returned Yes
---let $rpl_source_file= include/wait_for_slave_sql_to_start.inc
+--let $rpl_source_file= include/wait_for_replica_sql_to_start.inc
 --source include/rpl_for_each_connection.inc
 
-START SLAVE IO_THREAD;
+START REPLICA IO_THREAD;
 #check till sql_thread returned Yes
---let $rpl_source_file= include/wait_for_slave_io_to_start.inc
+--let $rpl_source_file= include/wait_for_replica_io_to_start.inc
 --source include/rpl_for_each_connection.inc
 
-STOP SLAVE;
---let $rpl_source_file= include/wait_for_slave_io_to_stop.inc
+STOP REPLICA;
+--let $rpl_source_file= include/wait_for_replica_io_to_stop.inc
 --source include/rpl_for_each_connection.inc
---let $rpl_source_file= include/wait_for_slave_sql_to_stop.inc
+--let $rpl_source_file= include/wait_for_replica_sql_to_stop.inc
 --source include/rpl_for_each_connection.inc
 
-START SLAVE;
---let $rpl_source_file= include/wait_for_slave_io_to_start.inc
+START REPLICA;
+--let $rpl_source_file= include/wait_for_replica_io_to_start.inc
 --source include/rpl_for_each_connection.inc
---let $rpl_source_file= include/wait_for_slave_sql_to_start.inc
+--let $rpl_source_file= include/wait_for_replica_sql_to_start.inc
 --source include/rpl_for_each_connection.inc
 
 --let $rpl_skip_sync=1

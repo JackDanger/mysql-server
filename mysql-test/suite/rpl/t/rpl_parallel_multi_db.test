@@ -5,7 +5,7 @@
 # a DML Query modifies multiple databases.
 #
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_binlog_format_statement.inc
 --source include/no_valgrind_without_big.inc
 
@@ -14,12 +14,12 @@
 
 let $workers= 4;
 
-connection slave;
+connection replica;
 
-source include/stop_slave.inc;
-set @save.slave_parallel_workers= @@global.slave_parallel_workers;
-eval set @@global.slave_parallel_workers= $workers;
-source include/start_slave.inc;
+source include/stop_replica.inc;
+set @save.replica_parallel_workers= @@global.replica_parallel_workers;
+eval set @@global.replica_parallel_workers= $workers;
+source include/start_replica.inc;
 
 
 let $dbs= 8;
@@ -30,7 +30,7 @@ let $queries= `select $dbs*$tables * 4`;
 # 1. Case of multi-update
 #
 
-connection master;
+connection primary;
 
 --disable_query_log
 call mtr.add_suppression('.*Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT.*');
@@ -97,7 +97,7 @@ while ($k)
 --enable_warnings
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc 
+--source include/sync_replica_sql_with_primary.inc 
 
 #
 # 2. Case of invoked routines
@@ -111,7 +111,7 @@ let $n= $dbs;
 let $n1= $n;
 dec $n1;
 
-connection master;
+connection primary;
 
 --disable_query_log
 
@@ -163,11 +163,11 @@ while ($k)
 
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # B. Triggers
 
-connection master;
+connection primary;
 
 # create triggers & run load
 let $n= $dbs;
@@ -207,7 +207,7 @@ while ($k)
 --enable_query_log
 
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Consistency check
@@ -219,7 +219,7 @@ while($n)
   let $m= $tables;
   while ($m)
   {
-    let $diff_tables=master:d$n.t$m, slave:d$n.t$m;
+    let $diff_tables=primary:d$n.t$m, replica:d$n.t$m;
     source include/diff_tables.inc;
     dec $m;
   }
@@ -230,7 +230,7 @@ while($n)
 # Clean-up of the regular case tests
 #
 
-connection master;
+connection primary;
 
 --disable_query_log
 
@@ -243,7 +243,7 @@ while ($n)
 
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Over MAX_DBS_IN_QUERY_MTS
@@ -252,7 +252,7 @@ while ($n)
 let $dbs= 20;
 let $queries= `select $dbs* 4`;
 
-connection master;
+connection primary;
 
 let $n= $dbs;
 let $m= 1;
@@ -304,9 +304,9 @@ while ($k)
 --enable_warnings
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-# Todo: to impelement a stress test for sync_slave_with_master
+# Todo: to impelement a stress test for sync_replica_with_primary
 #       specifically in parallel mode.
 #       The following lines are left as extra reminder.
 #
@@ -324,7 +324,7 @@ let $n = $dbs;
 let $m= 1;
 while($n)
 {
-  let $diff_tables=master:d$n.t$m, slave:d$n.t$m;
+  let $diff_tables=primary:d$n.t$m, replica:d$n.t$m;
   source include/diff_tables.inc;
   dec $n;
 }
@@ -333,7 +333,7 @@ while($n)
 # The final clean-up
 #
 
-connection master;
+connection primary;
 
 --disable_query_log
 
@@ -346,10 +346,10 @@ while ($n)
 
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 
-set @@global.slave_parallel_workers= @save.slave_parallel_workers;
+set @@global.replica_parallel_workers= @save.replica_parallel_workers;
 
 --source include/rpl_end.inc
 

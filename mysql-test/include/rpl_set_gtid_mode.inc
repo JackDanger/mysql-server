@@ -33,7 +33,7 @@
 #     you want to switch on a specific subset of the servers.
 #
 #   $rpl_skip_sync
-#     By default, all slaves are synced using rpl_sync.inc. Set this
+#     By default, all replicas are synced using rpl_sync.inc. Set this
 #     option to 1 to disable this behavior (note that you must
 #     manually sync all servers in this case). Normally you want to
 #     sync, but you need to disable sync if you use multi-source.

@@ -59,7 +59,7 @@ uint32_t calc_field_size(unsigned char column_type, const unsigned char *field_p
    Compute the maximum display length of a field.
 
    @param sql_type Type of the field
-   @param metadata The metadata from the master for the field.
+   @param metadata The metadata from the primary for the field.
    @return Maximum length of the field in bytes.
  */
 unsigned int max_display_length_for_field(enum_field_types sql_type,

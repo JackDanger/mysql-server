@@ -331,7 +331,7 @@ DROP DATABASE b12688860_db;
 CREATE USER 'user_with_length_32_abcdefghijkl'@'localhost';
 GRANT ALL ON *.* TO 'user_with_length_32_abcdefghijkl'@'localhost';
 
---exec $MYSQL_CHECK --host=127.0.0.1 -P $MASTER_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP mysql user
+--exec $MYSQL_CHECK --host=127.0.0.1 -P $PRIMARY_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP mysql user
 
 DROP USER 'user_with_length_32_abcdefghijkl'@'localhost';
 

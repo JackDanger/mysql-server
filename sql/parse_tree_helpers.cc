@@ -92,8 +92,8 @@ bool setup_select_in_parentheses(SELECT_LEX *sel)
 {
   DBUG_ASSERT(sel->braces);
   if (sel->linkage == UNION_TYPE &&
-      !sel->master_unit()->first_select()->braces &&
-      sel->master_unit()->first_select()->linkage ==
+      !sel->primary_unit()->first_select()->braces &&
+      sel->primary_unit()->first_select()->linkage ==
       UNION_TYPE)
   {
     my_syntax_error(ER(ER_SYNTAX_ERROR));
@@ -101,7 +101,7 @@ bool setup_select_in_parentheses(SELECT_LEX *sel)
   }
   if (sel->linkage == UNION_TYPE &&
       sel->olap != UNSPECIFIED_OLAP_TYPE &&
-      sel->master_unit()->fake_select_lex)
+      sel->primary_unit()->fake_select_lex)
   {
     my_error(ER_WRONG_USAGE, MYF(0), "CUBE/ROLLUP", "ORDER BY");
     return true;

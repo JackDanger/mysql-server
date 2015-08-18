@@ -107,7 +107,7 @@ enum commands {
   ADMIN_DEBUG,            ADMIN_VARIABLES,       ADMIN_FLUSH_LOGS,
   ADMIN_FLUSH_HOSTS,      ADMIN_FLUSH_TABLES,    ADMIN_PASSWORD,
   ADMIN_PING,             ADMIN_EXTENDED_STATUS, ADMIN_FLUSH_STATUS,
-  ADMIN_FLUSH_PRIVILEGES, ADMIN_START_SLAVE,     ADMIN_STOP_SLAVE,
+  ADMIN_FLUSH_PRIVILEGES, ADMIN_START_REPLICA,     ADMIN_STOP_REPLICA,
   ADMIN_FLUSH_THREADS
 };
 static const char *command_names[]= {
@@ -117,7 +117,7 @@ static const char *command_names[]= {
   "debug",                "variables",           "flush-logs",
   "flush-hosts",          "flush-tables",        "password",
   "ping",                 "extended-status",     "flush-status",
-  "flush-privileges",     "start-slave",         "stop-slave",
+  "flush-privileges",     "start-replica",         "stop-replica",
   "flush-threads",
   NullS
 };
@@ -740,8 +740,8 @@ static int execute_commands(MYSQL *mysql,int argc, char **argv)
     case ADMIN_REFRESH:
       if (mysql_refresh(mysql,
 			(uint) ~(REFRESH_GRANT | REFRESH_STATUS |
-				 REFRESH_READ_LOCK | REFRESH_SLAVE |
-				 REFRESH_MASTER)))
+				 REFRESH_READ_LOCK | REFRESH_REPLICA |
+				 REFRESH_PRIMARY)))
       {
 	my_printf_error(0, "refresh failed; error: '%s'", error_flags,
 			mysql_error(mysql));
@@ -1147,25 +1147,25 @@ error:
       break;
     }
 
-    case ADMIN_START_SLAVE:
-      if (mysql_query(mysql, "START SLAVE"))
+    case ADMIN_START_REPLICA:
+      if (mysql_query(mysql, "START REPLICA"))
       {
-	my_printf_error(0, "Error starting slave: %s", error_flags,
+	my_printf_error(0, "Error starting replica: %s", error_flags,
 			mysql_error(mysql));
 	return -1;
       }
       else
-	puts("Slave started");
+	puts("Replica started");
       break;
-    case ADMIN_STOP_SLAVE:
-      if (mysql_query(mysql, "STOP SLAVE"))
+    case ADMIN_STOP_REPLICA:
+      if (mysql_query(mysql, "STOP REPLICA"))
       {
-	  my_printf_error(0, "Error stopping slave: %s", error_flags,
+	  my_printf_error(0, "Error stopping replica: %s", error_flags,
 			  mysql_error(mysql));
 	  return -1;
       }
       else
-	puts("Slave stopped");
+	puts("Replica stopped");
       break;
 
     case ADMIN_PING:
@@ -1294,8 +1294,8 @@ static void usage(void)
   refresh		Flush all tables and close and open logfiles\n\
   shutdown		Take server down\n\
   status		Gives a short status message from the server\n\
-  start-slave		Start slave\n\
-  stop-slave		Stop slave\n\
+  start-replica		Start replica\n\
+  stop-replica		Stop replica\n\
   variables             Prints variables available\n\
   version		Get version info from server");
 }

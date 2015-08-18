@@ -15,4 +15,4 @@ exit;
 USE test;
 --source suite/funcs_1/include/memory_tb4.inc
 
---source suite/funcs_1/bitdata/bitdata_master.test
+--source suite/funcs_1/bitdata/bitdata_primary.test

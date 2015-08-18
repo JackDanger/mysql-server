@@ -33,9 +33,9 @@ static bool load_options(int argc, char** argv, int type, atrt_options&);
 enum {
   PO_NDB = atrt_options::AO_NDBCLUSTER
   
-  ,PO_REP_SLAVE = 256
-  ,PO_REP_MASTER = 512
-  ,PO_REP = (atrt_options::AO_REPLICATION | PO_REP_SLAVE | PO_REP_MASTER)
+  ,PO_REP_REPLICA = 256
+  ,PO_REP_PRIMARY = 512
+  ,PO_REP = (atrt_options::AO_REPLICATION | PO_REP_REPLICA | PO_REP_PRIMARY)
 };
 
 struct proc_option
@@ -54,11 +54,11 @@ struct proc_option f_options[] = {
   ,{ "--port=",        atrt_process::AP_MYSQLD | atrt_process::AP_CLIENT, 0 }
   ,{ "--host=",        atrt_process::AP_CLIENT, 0 }
   ,{ "--server-id=",   atrt_process::AP_MYSQLD, PO_REP }
-  ,{ "--log-bin",      atrt_process::AP_MYSQLD, PO_REP_MASTER }
-  ,{ "--master-host=", atrt_process::AP_MYSQLD, PO_REP_SLAVE }
-  ,{ "--master-port=", atrt_process::AP_MYSQLD, PO_REP_SLAVE }
-  ,{ "--master-user=", atrt_process::AP_MYSQLD, PO_REP_SLAVE }
-  ,{ "--master-password=", atrt_process::AP_MYSQLD, PO_REP_SLAVE }
+  ,{ "--log-bin",      atrt_process::AP_MYSQLD, PO_REP_PRIMARY }
+  ,{ "--primary-host=", atrt_process::AP_MYSQLD, PO_REP_REPLICA }
+  ,{ "--primary-port=", atrt_process::AP_MYSQLD, PO_REP_REPLICA }
+  ,{ "--primary-user=", atrt_process::AP_MYSQLD, PO_REP_REPLICA }
+  ,{ "--primary-password=", atrt_process::AP_MYSQLD, PO_REP_REPLICA }
   ,{ "--ndb-connectstring=", atrt_process::AP_MYSQLD | atrt_process::AP_CLUSTER
      ,PO_NDB }
   ,{ "--ndbcluster", atrt_process::AP_MYSQLD, PO_NDB }
@@ -674,8 +674,8 @@ pr_check_replication(Properties& props, proc_rule_ctx& ctx, int)
       dst->m_rep_src = src;
       src->m_rep_dst.push_back(dst);
       
-      src->m_options.m_features |= PO_REP_MASTER;
-      dst->m_options.m_features |= PO_REP_SLAVE;
+      src->m_options.m_features |= PO_REP_PRIMARY;
+      dst->m_options.m_features |= PO_REP_REPLICA;
     }
   }
   return true;
@@ -847,14 +847,14 @@ generate(atrt_process& proc, const char * name, Properties& props)
     opts.m_generated.put(name, "");
     return true;
   }
-  else if (strcmp(name, "--master-host=") == 0)
+  else if (strcmp(name, "--primary-host=") == 0)
   {
     require(proc.m_rep_src != 0);
     opts.m_loaded.put(name, proc.m_rep_src->m_host->m_hostname.c_str());
     opts.m_generated.put(name, proc.m_rep_src->m_host->m_hostname.c_str());
     return true;
   }
-  else if (strcmp(name, "--master-port=") == 0)
+  else if (strcmp(name, "--primary-port=") == 0)
   {
     const char* val;
     require(proc.m_rep_src->m_options.m_loaded.get("--port=", &val));
@@ -862,13 +862,13 @@ generate(atrt_process& proc, const char * name, Properties& props)
     opts.m_generated.put(name, val);
     return true;
   }
-  else if (strcmp(name, "--master-user=") == 0)
+  else if (strcmp(name, "--primary-user=") == 0)
   {
     opts.m_loaded.put(name, "root");
     opts.m_generated.put(name, "root");
     return true;
   }
-  else if (strcmp(name, "--master-password=") == 0)
+  else if (strcmp(name, "--primary-password=") == 0)
   {
     opts.m_loaded.put(name, "\"\"");
     opts.m_generated.put(name, "\"\"");

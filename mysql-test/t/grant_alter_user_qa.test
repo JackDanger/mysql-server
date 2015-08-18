@@ -961,7 +961,7 @@ password_expired,password_lifetime FROM mysql.user where  user='user5';
 
 # Resetting password with a non-ssl connection using mysqladmin,it should throw warning.
 GRANT ALL ON *.* TO user4@localhost;
---exec $MYSQLADMIN -S $MASTER_MYSOCK -P $MASTER_MYPORT -uuser4 --password=auth_xyz password new_auth  2>&1
+--exec $MYSQLADMIN -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT -uuser4 --password=auth_xyz password new_auth  2>&1
 # Testing connection
 --connect(con1, localhost, user4, new_auth)
 SELECT USER();
@@ -969,7 +969,7 @@ connection default;
 disconnect con1;
 
 # With ssl connection
---exec $MYSQLADMIN -S $MASTER_MYSOCK -P $MASTER_MYPORT -uuser4 --password=new_auth password new_auth_ssl --ssl 2>&1
+--exec $MYSQLADMIN -S $PRIMARY_MYSOCK -P $PRIMARY_MYPORT -uuser4 --password=new_auth password new_auth_ssl --ssl 2>&1
 
 # Testing connection
 --connect(con1, localhost, user4, new_auth_ssl)
@@ -1067,7 +1067,7 @@ SHOW GLOBAL VARIABLES LIKE 'log_bin';
 
 # Get rid of previous tests binlog
 --disable_query_log
-reset master;
+reset primary;
 --enable_query_log
 
 CREATE USER u1 IDENTIFIED WITH 'mysql_native_password' BY 'azundris1';
@@ -1246,7 +1246,7 @@ SHOW GLOBAL VARIABLES LIKE 'log_bin';
 
 # Get rid of previous tests binlog
 --disable_query_log
-reset master;
+reset primary;
 --enable_query_log
 
 CREATE USER u1 IDENTIFIED WITH 'mysql_native_password' BY 'azundris1';
@@ -1438,14 +1438,14 @@ GRANT ALL PRIVILEGES ON db1.* TO bug20364862_dest@localhost WITH GRANT OPTION;
 # An unprivileged user trying to alter credentials through ALTER USER/GRANT should get error
 # if plugin puts restriction over who can alter credentials
 --error 1
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "ALTER USER USER() IDENTIFIED BY 'qa_test_2_dest';" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "ALTER USER USER() IDENTIFIED BY 'qa_test_2_dest';" 2>&1
 
 --error 1
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'qa_test_2_dest';" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'qa_test_2_dest';" 2>&1
 
 # SET PASSWORD does not make any sense if mysql.user.authentication_string is
 # not used as password store
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "SET PASSWORD = 'qa_test_2_dest'; SHOW WARNINGS;" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "SET PASSWORD = 'qa_test_2_dest'; SHOW WARNINGS;" 2>&1
 
 connection default;
 # Make sure that previous SET PASSWORD didn't modify anything
@@ -1456,12 +1456,12 @@ GRANT UPDATE ON mysql.* TO bug20364862_dest@localhost;
 FLUSH PRIVILEGES;
 
 # ALTER should work now
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "ALTER USER USER() IDENTIFIED BY 'qa_test_2_dest'; ALTER USER USER() IDENTIFIED BY 'bug20364862_dest';" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "ALTER USER USER() IDENTIFIED BY 'qa_test_2_dest'; ALTER USER USER() IDENTIFIED BY 'bug20364862_dest';" 2>&1
 # So should GRANT
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'qa_test_2_dest'; GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'bug20364862_dest';" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'qa_test_2_dest'; GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'bug20364862_dest';" 2>&1
 
 # SET PASSWORD should still show warning because we want to retain old behavior
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "SET PASSWORD = 'qa_test_2_dest'; SHOW WARNINGS;" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "SET PASSWORD = 'qa_test_2_dest'; SHOW WARNINGS;" 2>&1
 
 connection default;
 # Make sure that previous SET PASSWORD didn't modify anything
@@ -1473,12 +1473,12 @@ GRANT CREATE USER ON *.* TO bug20364862_dest@localhost;
 FLUSH PRIVILEGES;
 
 # ALTER should work now
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "ALTER USER USER() IDENTIFIED BY 'qa_test_2_dest'; ALTER USER USER() IDENTIFIED BY 'bug20364862_dest';" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "ALTER USER USER() IDENTIFIED BY 'qa_test_2_dest'; ALTER USER USER() IDENTIFIED BY 'bug20364862_dest';" 2>&1
 # So should GRANT
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'qa_test_2_dest'; GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'bug20364862_dest';" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'qa_test_2_dest'; GRANT USAGE ON db1.* TO bug20364862_user@localhost IDENTIFIED BY 'bug20364862_dest';" 2>&1
 
 # SET PASSWORD should still show warning because we want to retain old behavior
---exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $MASTER_MYPORT -u bug20364862_user --password=bug20364862_dest -e "SET PASSWORD = 'qa_test_2_dest'; SHOW WARNINGS;" 2>&1
+--exec $MYSQL $PLUGIN_AUTH_OPT -h localhost -P $PRIMARY_MYPORT -u bug20364862_user --password=bug20364862_dest -e "SET PASSWORD = 'qa_test_2_dest'; SHOW WARNINGS;" 2>&1
 
 connection default;
 # Make sure that previous SET PASSWORD didn't modify anything

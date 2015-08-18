@@ -1,57 +1,57 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-set @saved_slave_type_conversions = @@global.slave_type_conversions;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+set @saved_replica_type_conversions = @@global.replica_type_conversions;
 CREATE TABLE type_conversions (
 TestNo INT AUTO_INCREMENT PRIMARY KEY,
 Source TEXT,
 Target TEXT,
 Flags TEXT,
-On_Master TEXT,
-On_Slave TEXT,
+On_Primary TEXT,
+On_Replica TEXT,
 Expected TEXT,
 Compare INT,
 Error TEXT);
-SELECT @@global.slave_type_conversions;
-@@global.slave_type_conversions
+SELECT @@global.replica_type_conversions;
+@@global.replica_type_conversions
 
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='';
-SELECT @@global.slave_type_conversions;
-@@global.slave_type_conversions
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='';
+SELECT @@global.replica_type_conversions;
+@@global.replica_type_conversions
 
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_NON_LOSSY';
-SELECT @@global.slave_type_conversions;
-@@global.slave_type_conversions
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_NON_LOSSY';
+SELECT @@global.replica_type_conversions;
+@@global.replica_type_conversions
 ALL_NON_LOSSY
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY';
-SELECT @@global.slave_type_conversions;
-@@global.slave_type_conversions
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY';
+SELECT @@global.replica_type_conversions;
+@@global.replica_type_conversions
 ALL_LOSSY
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
-SELECT @@global.slave_type_conversions;
-@@global.slave_type_conversions
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
+SELECT @@global.replica_type_conversions;
+@@global.replica_type_conversions
 ALL_LOSSY,ALL_NON_LOSSY
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY,NONEXISTING_BIT';
-ERROR 42000: Variable 'slave_type_conversions' can't be set to the value of 'NONEXISTING_BIT'
-SELECT @@global.slave_type_conversions;
-@@global.slave_type_conversions
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY,NONEXISTING_BIT';
+ERROR 42000: Variable 'replica_type_conversions' can't be set to the value of 'NONEXISTING_BIT'
+SELECT @@global.replica_type_conversions;
+@@global.replica_type_conversions
 ALL_LOSSY,ALL_NON_LOSSY
 SET @@global.log_error_verbosity=1;
-include/stop_slave.inc
-include/start_slave.inc
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='';
-**** Running tests with @@SLAVE_TYPE_CONVERSIONS = '' ****
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_NON_LOSSY';
-**** Running tests with @@SLAVE_TYPE_CONVERSIONS = 'ALL_NON_LOSSY' ****
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY';
-**** Running tests with @@SLAVE_TYPE_CONVERSIONS = 'ALL_LOSSY' ****
-SET GLOBAL SLAVE_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
-**** Running tests with @@SLAVE_TYPE_CONVERSIONS = 'ALL_LOSSY,ALL_NON_LOSSY' ****
+include/stop_replica.inc
+include/start_replica.inc
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='';
+**** Running tests with @@REPLICA_TYPE_CONVERSIONS = '' ****
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_NON_LOSSY';
+**** Running tests with @@REPLICA_TYPE_CONVERSIONS = 'ALL_NON_LOSSY' ****
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY';
+**** Running tests with @@REPLICA_TYPE_CONVERSIONS = 'ALL_LOSSY' ****
+SET GLOBAL REPLICA_TYPE_CONVERSIONS='ALL_LOSSY,ALL_NON_LOSSY';
+**** Running tests with @@REPLICA_TYPE_CONVERSIONS = 'ALL_LOSSY,ALL_NON_LOSSY' ****
 SET @@global.log_error_verbosity= SAVED_LOG_ERROR_VERBOSITY;
 **** Result of conversions ****
-Source_Type	Target_Type	All_Type_Conversion_Flags	Value_On_Slave
+Source_Type	Target_Type	All_Type_Conversion_Flags	Value_On_Replica
 TINYBLOB       	TINYBLOB       	                         	<Correct value>
 TINYBLOB       	BLOB           	                         	<Correct error>
 TINYBLOB       	MEDIUMBLOB     	                         	<Correct error>
@@ -73,13 +73,13 @@ BLOB           	GEOMETRY       	                         	<Correct error>
 GEOMETRY       	GEOMETRY       	                         	<Correct value>
 BIT(1)         	BIT(1)         	                         	<Correct value>
 DATE           	DATE           	                         	<Correct value>
-ENUM('master','	ENUM('master','	                         	<Correct value>
-CHAR(10)       	ENUM('master','	                         	<Correct error>
-CHAR(10)       	SET('master','s	                         	<Correct error>
-ENUM('master','	CHAR(10)       	                         	<Correct error>
-SET('master','s	CHAR(10)       	                         	<Correct error>
-SET('master','s	SET('master','s	                         	<Correct value>
-SET('master','s	SET('master','s	                         	<Correct value>
+ENUM('primary','	ENUM('primary','	                         	<Correct value>
+CHAR(10)       	ENUM('primary','	                         	<Correct error>
+CHAR(10)       	SET('primary','s	                         	<Correct error>
+ENUM('primary','	CHAR(10)       	                         	<Correct error>
+SET('primary','s	CHAR(10)       	                         	<Correct error>
+SET('primary','s	SET('primary','s	                         	<Correct value>
+SET('primary','s	SET('primary','s	                         	<Correct value>
 SET('0','1','2'	SET('0','1','2'	                         	<Correct value>
 SET('0','1','2'	SET('0','1','2'	                         	<Correct error>
 SET('0','1','2'	SET('0','1','2'	                         	<Correct error>
@@ -194,13 +194,13 @@ BLOB           	GEOMETRY       	ALL_NON_LOSSY            	<Correct error>
 GEOMETRY       	GEOMETRY       	ALL_NON_LOSSY            	<Correct value>
 BIT(1)         	BIT(1)         	ALL_NON_LOSSY            	<Correct value>
 DATE           	DATE           	ALL_NON_LOSSY            	<Correct value>
-ENUM('master','	ENUM('master','	ALL_NON_LOSSY            	<Correct value>
-CHAR(10)       	ENUM('master','	ALL_NON_LOSSY            	<Correct error>
-CHAR(10)       	SET('master','s	ALL_NON_LOSSY            	<Correct error>
-ENUM('master','	CHAR(10)       	ALL_NON_LOSSY            	<Correct error>
-SET('master','s	CHAR(10)       	ALL_NON_LOSSY            	<Correct error>
-SET('master','s	SET('master','s	ALL_NON_LOSSY            	<Correct value>
-SET('master','s	SET('master','s	ALL_NON_LOSSY            	<Correct value>
+ENUM('primary','	ENUM('primary','	ALL_NON_LOSSY            	<Correct value>
+CHAR(10)       	ENUM('primary','	ALL_NON_LOSSY            	<Correct error>
+CHAR(10)       	SET('primary','s	ALL_NON_LOSSY            	<Correct error>
+ENUM('primary','	CHAR(10)       	ALL_NON_LOSSY            	<Correct error>
+SET('primary','s	CHAR(10)       	ALL_NON_LOSSY            	<Correct error>
+SET('primary','s	SET('primary','s	ALL_NON_LOSSY            	<Correct value>
+SET('primary','s	SET('primary','s	ALL_NON_LOSSY            	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_NON_LOSSY            	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_NON_LOSSY            	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_NON_LOSSY            	<Correct error>
@@ -315,13 +315,13 @@ BLOB           	GEOMETRY       	ALL_LOSSY                	<Correct error>
 GEOMETRY       	GEOMETRY       	ALL_LOSSY                	<Correct value>
 BIT(1)         	BIT(1)         	ALL_LOSSY                	<Correct value>
 DATE           	DATE           	ALL_LOSSY                	<Correct value>
-ENUM('master','	ENUM('master','	ALL_LOSSY                	<Correct value>
-CHAR(10)       	ENUM('master','	ALL_LOSSY                	<Correct error>
-CHAR(10)       	SET('master','s	ALL_LOSSY                	<Correct error>
-ENUM('master','	CHAR(10)       	ALL_LOSSY                	<Correct error>
-SET('master','s	CHAR(10)       	ALL_LOSSY                	<Correct error>
-SET('master','s	SET('master','s	ALL_LOSSY                	<Correct value>
-SET('master','s	SET('master','s	ALL_LOSSY                	<Correct value>
+ENUM('primary','	ENUM('primary','	ALL_LOSSY                	<Correct value>
+CHAR(10)       	ENUM('primary','	ALL_LOSSY                	<Correct error>
+CHAR(10)       	SET('primary','s	ALL_LOSSY                	<Correct error>
+ENUM('primary','	CHAR(10)       	ALL_LOSSY                	<Correct error>
+SET('primary','s	CHAR(10)       	ALL_LOSSY                	<Correct error>
+SET('primary','s	SET('primary','s	ALL_LOSSY                	<Correct value>
+SET('primary','s	SET('primary','s	ALL_LOSSY                	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_LOSSY                	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_LOSSY                	<Correct error>
 SET('0','1','2'	SET('0','1','2'	ALL_LOSSY                	<Correct value>
@@ -436,13 +436,13 @@ BLOB           	GEOMETRY       	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
 GEOMETRY       	GEOMETRY       	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 BIT(1)         	BIT(1)         	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 DATE           	DATE           	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
-ENUM('master','	ENUM('master','	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
-CHAR(10)       	ENUM('master','	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
-CHAR(10)       	SET('master','s	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
-ENUM('master','	CHAR(10)       	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
-SET('master','s	CHAR(10)       	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
-SET('master','s	SET('master','s	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
-SET('master','s	SET('master','s	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
+ENUM('primary','	ENUM('primary','	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
+CHAR(10)       	ENUM('primary','	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
+CHAR(10)       	SET('primary','s	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
+ENUM('primary','	CHAR(10)       	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
+SET('primary','s	CHAR(10)       	ALL_LOSSY,ALL_NON_LOSSY  	<Correct error>
+SET('primary','s	SET('primary','s	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
+SET('primary','s	SET('primary','s	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 SET('0','1','2'	SET('0','1','2'	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
@@ -537,9 +537,9 @@ BIT(6)         	BIT(5)         	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 BIT(5)         	BIT(12)        	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 BIT(12)        	BIT(5)         	ALL_LOSSY,ALL_NON_LOSSY  	<Correct value>
 DROP TABLE type_conversions;
-call mtr.add_suppression("Slave SQL.*Column 1 of table .test.t1. cannot be converted from type.* Error_code: 1677");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+call mtr.add_suppression("Replica SQL.*Column 1 of table .test.t1. cannot be converted from type.* Error_code: 1677");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 DROP TABLE t1;
-include/sync_slave_sql_with_master.inc
-set global slave_type_conversions = @saved_slave_type_conversions;
+include/sync_replica_sql_with_primary.inc
+set global replica_type_conversions = @saved_replica_type_conversions;
 include/rpl_end.inc

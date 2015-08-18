@@ -1667,7 +1667,7 @@ const char *status_string(ndb_mgm_node_status status)
 static void
 print_nodes(ndb_mgm_cluster_state *state, ndb_mgm_configuration_iterator *it,
 	    const char *proc_name, int no_proc, ndb_mgm_node_type type,
-	    int master_id)
+	    int primary_id)
 { 
   int i;
   ndbout << "[" << proc_name
@@ -1704,7 +1704,7 @@ print_nodes(ndb_mgm_cluster_state *state, ndb_mgm_configuration_iterator *it,
             ndbout << ", no nodegroup";
           }
           if (node_state->node_group >= 0 || node_state->node_group == (int)RNIL)
-	    if (master_id && node_state->dynamic_id == master_id)
+	    if (primary_id && node_state->dynamic_id == primary_id)
 	      ndbout << ", *";
         }
 	ndbout << ")" << endl;
@@ -1798,7 +1798,7 @@ CommandInterpreter::executeShow(char* parameters)
     NdbAutoPtr<ndb_mgm_configuration_iterator> ptr(it);
 
     int
-      master_id= 0,
+      primary_id= 0,
       ndb_nodes= 0,
       api_nodes= 0,
       mgm_nodes= 0;
@@ -1806,7 +1806,7 @@ CommandInterpreter::executeShow(char* parameters)
     for(i=0; i < state->no_of_nodes; i++) {
       if(state->node_states[i].node_type == NDB_MGM_NODE_TYPE_NDB &&
 	 state->node_states[i].version != 0){
-	master_id= state->node_states[i].dynamic_id;
+	primary_id= state->node_states[i].dynamic_id;
 	break;
       }
     }
@@ -1818,8 +1818,8 @@ CommandInterpreter::executeShow(char* parameters)
 	break;
       case NDB_MGM_NODE_TYPE_NDB:
 	if (state->node_states[i].dynamic_id &&
-	    state->node_states[i].dynamic_id < master_id)
-	  master_id= state->node_states[i].dynamic_id;
+	    state->node_states[i].dynamic_id < primary_id)
+	  primary_id= state->node_states[i].dynamic_id;
 	ndb_nodes++;
 	break;
       case NDB_MGM_NODE_TYPE_MGM:
@@ -1835,7 +1835,7 @@ CommandInterpreter::executeShow(char* parameters)
 
     ndbout << "Cluster Configuration" << endl
 	   << "---------------------" << endl;
-    print_nodes(state, it, "ndbd",     ndb_nodes, NDB_MGM_NODE_TYPE_NDB, master_id);
+    print_nodes(state, it, "ndbd",     ndb_nodes, NDB_MGM_NODE_TYPE_NDB, primary_id);
     print_nodes(state, it, "ndb_mgmd", mgm_nodes, NDB_MGM_NODE_TYPE_MGM, 0);
     print_nodes(state, it, "mysqld",   api_nodes, NDB_MGM_NODE_TYPE_API, 0);
     ndb_mgm_destroy_configuration(conf);

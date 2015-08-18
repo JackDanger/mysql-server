@@ -1,6 +1,6 @@
 source suite/federated/include/federated.inc;
 
-connection slave;
+connection replica;
 --disable_warnings
 DROP TABLE IF EXISTS federated.bug_13118_table;
 --enable_warnings
@@ -11,17 +11,17 @@ CREATE TABLE federated.bug_13118_table (
   );
 
 
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS federated.t1;
 --enable_warnings
 
---replace_result $SLAVE_MYPORT SLAVE_PORT
+--replace_result $REPLICA_MYPORT REPLICA_PORT
 eval CREATE TABLE federated.t1 (
     `foo` integer,
     `bar` integer
     ) ENGINE="FEDERATED"
-    CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/federated/bug_13118_table';
+    CONNECTION='mysql://root@127.0.0.1:$REPLICA_MYPORT/federated/bug_13118_table';
 
 SELECT * from federated.t1;
 
@@ -33,7 +33,7 @@ SELECT * FROM federated.t1;
 
 
 DROP TABLE federated.t1;
-connection slave;
+connection replica;
 DROP TABLE federated.bug_13118_table;
 
 

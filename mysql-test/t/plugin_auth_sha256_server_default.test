@@ -56,7 +56,7 @@ GRANT ALL ON *.* TO 'kristofer'@'33.33.33.33';
 set sql_mode= @orig_sql_mode;
 ALTER USER 'kristofer'@'33.33.33.33' IDENTIFIED BY '';
 --echo Connection should fail for localhost
---replace_result $MASTER_MYSOCK MASTER_MYSOCK
+--replace_result $PRIMARY_MYSOCK PRIMARY_MYSOCK
 --disable_query_log
 --error ER_ACCESS_DENIED_ERROR
 connect(con4,127.0.0.1,kristofer,,,);

@@ -31,7 +31,7 @@ begin;
 grant delete on mysqltest.* to mysqltest_1@localhost;
 commit;
 select * from mysql.user where user="mysqltest_1";
-Host	User	Password	Select_priv	Insert_priv	Update_priv	Delete_priv	Create_priv	Drop_priv	Reload_priv	Shutdown_priv	Process_priv	File_priv	Grant_priv	References_priv	Index_priv	Alter_priv	Show_db_priv	Super_priv	Create_tmp_table_priv	Lock_tables_priv	Execute_priv	Repl_slave_priv	Repl_client_priv	Create_view_priv	Show_view_priv	ssl_type	ssl_cipher	x509_issuer	x509_subject	max_questions	max_updates	max_connections
+Host	User	Password	Select_priv	Insert_priv	Update_priv	Delete_priv	Create_priv	Drop_priv	Reload_priv	Shutdown_priv	Process_priv	File_priv	Grant_priv	References_priv	Index_priv	Alter_priv	Show_db_priv	Super_priv	Create_tmp_table_priv	Lock_tables_priv	Execute_priv	Repl_replica_priv	Repl_client_priv	Create_view_priv	Show_view_priv	ssl_type	ssl_cipher	x509_issuer	x509_subject	max_questions	max_updates	max_connections
 localhost	mysqltest_1		N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N							0	0	0
 show grants for mysqltest_1@localhost;
 Grants for mysqltest_1@localhost
@@ -415,13 +415,13 @@ Lock tables	Databases	To use LOCK TABLES (together with SELECT privilege)
 Process	Server Admin	To view the plain text of currently executing queries
 References	Databases,Tables	To have references on tables
 Reload	Server Admin	To reload or refresh tables, logs and privileges
-Replication client	Server Admin	To ask where the slave or master servers are
-Replication slave	Server Admin	To read binary log events from the master
+Replication client	Server Admin	To ask where the replica or primary servers are
+Replication replica	Server Admin	To read binary log events from the primary
 Select	Tables	To retrieve rows from table
 Show databases	Server Admin	To see all databases with SHOW DATABASES
 Show view	Tables	To see views with SHOW CREATE VIEW
 Shutdown	Server Admin	To shut down the server
-Super	Server Admin	To use KILL thread, SET GLOBAL, CHANGE MASTER, etc.
+Super	Server Admin	To use KILL thread, SET GLOBAL, CHANGE PRIMARY, etc.
 Update	Tables	To update existing rows
 Usage	Server Admin	No privileges - allow connect only
 use mysql;

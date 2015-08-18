@@ -1,6 +1,6 @@
---slave-parallel-workers=4
---slave-parallel-type=logical_clock
---slave-transaction-retries=0
+--replica-parallel-workers=4
+--replica-parallel-type=logical_clock
+--replica-transaction-retries=0
 --relay-log-info-repository=FILE
---master-info-repository=FILE
+--primary-info-repository=FILE
 

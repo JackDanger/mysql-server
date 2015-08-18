@@ -14,8 +14,8 @@ Copyright (c) 2011-2014 Milo Yip (miloyip@gmail.com)
 
 [lin-badge]: https://travis-ci.org/miloyip/rapidjson.png "Travis build status"
 [lin-link]:  https://travis-ci.org/miloyip/rapidjson "Travis build status"
-[win-badge]: https://ci.appveyor.com/api/projects/status/u658dcuwxo14a8m9/branch/master?svg=true "AppVeyor build status"
-[win-link]:  https://ci.appveyor.com/project/miloyip/rapidjson/branch/master "AppVeyor build status"
+[win-badge]: https://ci.appveyor.com/api/projects/status/u658dcuwxo14a8m9/branch/primary?svg=true "AppVeyor build status"
+[win-link]:  https://ci.appveyor.com/project/miloyip/rapidjson/branch/primary "AppVeyor build status"
 
 ## Introduction
 
@@ -116,4 +116,4 @@ The following diagram shows the process.
 
 ![simpledom](doc/diagram/simpledom.png)
 
-More [examples](https://github.com/miloyip/rapidjson/tree/master/example) are available.
+More [examples](https://github.com/miloyip/rapidjson/tree/primary/example) are available.

@@ -1,6 +1,6 @@
 #
 # BUG#49100: RBR: Unexpected behavior when AI contains no usable data 
-#            for slave columns
+#            for replica columns
 
 -- connection server_1
 
@@ -23,7 +23,7 @@ SELECT * FROM t1;
 DROP TABLE t1;
 -- source include/rpl_sync.inc
 
--- echo #### case #2: AI: not empty but slave does not have usable data for its columns (INSERT)
+-- echo #### case #2: AI: not empty but replica does not have usable data for its columns (INSERT)
 
 -- connection server_3
 -- replace_result $engine ENGINE
@@ -53,7 +53,7 @@ SELECT * FROM t1;
 DROP TABLE t1;
 -- source include/rpl_sync.inc
 
--- echo #### case #3: BI: usable columns on the slave, AI: no usable columns on the slave
+-- echo #### case #3: BI: usable columns on the replica, AI: no usable columns on the replica
 
 -- connection server_3
 -- replace_result $engine ENGINE
@@ -92,7 +92,7 @@ SELECT * FROM t1;
 DROP TABLE t1;
 -- source include/rpl_sync.inc
 
--- echo #### case #4: AI, BI: no usable columns on the slave (NOOP UPDATE).
+-- echo #### case #4: AI, BI: no usable columns on the replica (NOOP UPDATE).
 -- echo ####          
 
 if ($verbose)
@@ -141,17 +141,17 @@ DROP TABLE t1;
 
 if ($verbose)
 {
-  # show that 2nd slave does not log the update (see: BUG#52473)
+  # show that 2nd replica does not log the update (see: BUG#52473)
   -- connection server_1
-  -- echo # Master events
+  -- echo # Primary events
   -- source include/show_binlog_events.inc
   -- connection server_2
-  -- echo # First slave events
+  -- echo # First replica events
   -- source include/show_binlog_events.inc
   -- connection server_1
 }
 
--- echo #### case #5: BI: no usable columns on the slave, AI: usable columns on the slave (slave must stop).
+-- echo #### case #5: BI: no usable columns on the replica, AI: usable columns on the replica (replica must stop).
 -- echo #### 
 
 
@@ -204,18 +204,18 @@ if ($lower_engine == ndb)
 }
 
 SET SQL_LOG_BIN=0;
-call mtr.add_suppression("Slave: Can\'t find record in \'t1\' Error_code: 1032");
-call mtr.add_suppression("Slave SQL for channel '': .*Could not execute Update_rows event on table test.t1; Can.t find record in .t1.* Error_code: 1032");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+call mtr.add_suppression("Replica: Can\'t find record in \'t1\' Error_code: 1032");
+call mtr.add_suppression("Replica SQL for channel '': .*Could not execute Update_rows event on table test.t1; Can.t find record in .t1.* Error_code: 1032");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
 SET SQL_LOG_BIN=1;
 
 # NOTE: Because of BUG#52473, when using NDB this will make the test
 #       wait forever.
 # 1032 = ER_KEY_NOT_FOUND
---let $slave_sql_errno= 1032
+--let $replica_sql_errno= 1032
 --let $not_switch_connection= 1
--- source include/wait_for_slave_sql_error_and_skip.inc
+-- source include/wait_for_replica_sql_error_and_skip.inc
 
 ## CLEAN UP
 

@@ -1,18 +1,18 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 create table t1(a int);
 select * into outfile 'MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile' from t1;
 truncate table t1;
 load data local infile 'MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile' into table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 select a,count(*) from t1 group by a;
 a	count(*)
 1	10000
 drop table t1;
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 create table t1(a int);
 insert into t1 values (1), (2), (2), (3);
 select * into outfile 'MYSQLD_DATADIR/rpl_loaddatalocal.select_outfile' from t1;
@@ -33,7 +33,7 @@ a
 3
 drop table t1;
 ==== Bug22504 Initialize ====
-[on master]
+[on primary]
 SET sql_mode='ignore_space';
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
@@ -48,8 +48,8 @@ a
 2
 3
 4
-[on slave]
-include/sync_slave_sql_with_master.inc
+[on replica]
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY a;
 a
 1
@@ -57,15 +57,15 @@ a
 3
 4
 ==== Clean up ====
-[on master]
+[on primary]
 DROP TABLE t1;
-[on slave]
-include/sync_slave_sql_with_master.inc
+[on replica]
+include/sync_replica_sql_with_primary.inc
 
 Bug #43746:
 "return wrong query string when parse 'load data infile' sql statement"
 
-[master]
+[primary]
 SELECT @@SESSION.sql_mode INTO @old_mode;
 SET sql_mode='ignore_space';
 CREATE TABLE t1(a int);
@@ -86,36 +86,36 @@ SET sql_mode='PIPES_AS_CONCAT,ANSI_QUOTES,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIE
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 LOAD DATA LOCAL INFILE 'MYSQLD_DATADIR/bug43746.sql' INTO TABLE t1;
-[slave]
-include/sync_slave_sql_with_master.inc
+[replica]
+include/sync_replica_sql_with_primary.inc
 
 Bug #59267:
-"LOAD DATA LOCAL INFILE not executed on slave with SBR"
+"LOAD DATA LOCAL INFILE not executed on replica with SBR"
 
-[master]
+[primary]
 SELECT * INTO OUTFILE 'MYSQLD_DATADIR/bug59267.sql' FROM t1;
 TRUNCATE TABLE t1;
 LOAD DATA LOCAL INFILE 'MYSQLD_DATADIR/bug59267.sql' INTO TABLE t1;
-SELECT 'Master', COUNT(*) FROM t1;
-Master	COUNT(*)
-Master	44
-[slave]
-include/sync_slave_sql_with_master.inc
-SELECT 'Slave', COUNT(*) FROM t1;
-Slave	COUNT(*)
-Slave	44
-[master]
+SELECT 'Primary', COUNT(*) FROM t1;
+Primary	COUNT(*)
+Primary	44
+[replica]
+include/sync_replica_sql_with_primary.inc
+SELECT 'Replica', COUNT(*) FROM t1;
+Replica	COUNT(*)
+Replica	44
+[primary]
 DROP TABLE t1;
 SET SESSION sql_mode=@old_mode;
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-[slave]
-include/sync_slave_sql_with_master.inc
+[replica]
+include/sync_replica_sql_with_primary.inc
 
 Bug #60580/#11902767:
-"statement improperly replicated crashes slave sql thread"
+"statement improperly replicated crashes replica sql thread"
 
-[master]
+[primary]
 CREATE TABLE t1(f1 INT, f2 INT);
 CREATE TABLE t2(f1 INT, f2 TIMESTAMP);
 INSERT INTO t2 VALUES(1, '2011-03-22 21:01:28');
@@ -129,15 +129,15 @@ LOAD DATA LOCAL INFILE 'MYSQLD_DATADIR/bug60580.csv' INTO TABLE t1 (@f1) SET f2 
 SELECT * FROM t1;
 f1	f2
 NULL	NULL
-[slave]
-include/sync_slave_sql_with_master.inc
+[replica]
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1;
 f1	f2
 NULL	NULL
-[master]
+[primary]
 DROP VIEW v1;
 DROP TABLE t1, t2, t3;
-[slave]
-include/sync_slave_sql_with_master.inc
+[replica]
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc
 # End of 5.1 tests

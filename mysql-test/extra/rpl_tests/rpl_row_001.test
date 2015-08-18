@@ -13,50 +13,50 @@ eval LOAD DATA INFILE '$LOAD_FILE' INTO TABLE t1;
 SELECT * FROM t1  ORDER BY word LIMIT 10;
 
 #
-# Test slave with wrong password
+# Test replica with wrong password
 #
-save_master_pos;
-connection slave;
-sync_with_master;
-STOP SLAVE;
-connection master;
+save_primary_pos;
+connection replica;
+sync_with_primary;
+STOP REPLICA;
+connection primary;
 SET PASSWORD FOR root@"localhost" = 'foo';
-connection slave;
-START SLAVE;
-connection master;
+connection replica;
+START REPLICA;
+connection primary;
 #
-# Give slave time to do at last one failed connect retry
-# This one must be short so that the slave will not stop retrying
+# Give replica time to do at last one failed connect retry
+# This one must be short so that the replica will not stop retrying
 real_sleep 2;
 SET PASSWORD FOR root@"localhost" = '';
-# Give slave time to connect (will retry every second)
+# Give replica time to connect (will retry every second)
 sleep 2;
 
 CREATE TABLE t3(n INT);
 INSERT INTO t3 VALUES(1),(2);
-sync_slave_with_master;
+sync_replica_with_primary;
 SELECT * FROM t3 ORDER BY n;
 SELECT SUM(LENGTH(word)) FROM t1;
-connection master;
+connection primary;
 DROP TABLE t1,t3;
-save_master_pos;
-connection slave;
-sync_with_master;
+save_primary_pos;
+connection replica;
+sync_with_primary;
 
-# Test if the slave SQL thread can be more than 16K behind the slave
+# Test if the replica SQL thread can be more than 16K behind the replica
 # I/O thread (> IO_SIZE)
 
-connection master;
-# we'll use table-level locking to delay slave SQL thread
+connection primary;
+# we'll use table-level locking to delay replica SQL thread
 eval CREATE TABLE t1 (n INT) ENGINE=$engine_type;
-sync_slave_with_master;
-connection master;
-RESET MASTER;
-connection slave;
-STOP SLAVE;
-RESET SLAVE;
+sync_replica_with_primary;
+connection primary;
+RESET PRIMARY;
+connection replica;
+STOP REPLICA;
+RESET REPLICA;
 
-connection master;
+connection primary;
 let $1=5000;
 # Generate 16K of relay log
 disable_query_log;
@@ -67,29 +67,29 @@ while ($1)
 }
 enable_query_log;
 SELECT COUNT(*) FROM t1;
-save_master_pos;
+save_primary_pos;
 
-# Try to cause a large relay log lag on the slave by locking t1
-connection slave;
-RESET MASTER;
+# Try to cause a large relay log lag on the replica by locking t1
+connection replica;
+RESET PRIMARY;
 LOCK TABLES t1 READ;
-START SLAVE;
+START REPLICA;
 UNLOCK TABLES;
-sync_with_master;
+sync_with_primary;
 SELECT COUNT(*) FROM t1;
 
-connection master;
+connection primary;
 DROP TABLE t1;
 CREATE TABLE t1 (n INT);
 INSERT INTO t1 VALUES(3456);
-sync_slave_with_master;
+sync_replica_with_primary;
 SELECT n FROM t1;
 
-connection master;
+connection primary;
 DROP TABLE t1;
 
 --disable_query_log ONCE
 --eval UPDATE mysql.user SET password_last_changed= '$date_to_restore'
 --echo # mysql.user table restored to original values.
 
-sync_slave_with_master;
+sync_replica_with_primary;

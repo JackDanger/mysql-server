@@ -1,5 +1,5 @@
 !include ../my.cnf
 
 [mysqld.1]
-master-info-repository=TABLE
+primary-info-repository=TABLE
 relay-log-info-repository=TABLE

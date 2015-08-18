@@ -89,13 +89,13 @@ enum enum_rbr_exec_mode { RBR_EXEC_MODE_STRICT,
                           RBR_EXEC_MODE_LAST_BIT };
 enum enum_transaction_write_set_hashing_algorithm { HASH_ALGORITHM_OFF= 0,
                                                     HASH_ALGORITHM_MURMUR32= 1 };
-enum enum_slave_type_conversions { SLAVE_TYPE_CONVERSIONS_ALL_LOSSY,
-                                   SLAVE_TYPE_CONVERSIONS_ALL_NON_LOSSY,
-                                   SLAVE_TYPE_CONVERSIONS_ALL_UNSIGNED,
-                                   SLAVE_TYPE_CONVERSIONS_ALL_SIGNED};
-enum enum_slave_rows_search_algorithms { SLAVE_ROWS_TABLE_SCAN = (1U << 0),
-                                         SLAVE_ROWS_INDEX_SCAN = (1U << 1),
-                                         SLAVE_ROWS_HASH_SCAN  = (1U << 2)};
+enum enum_replica_type_conversions { REPLICA_TYPE_CONVERSIONS_ALL_LOSSY,
+                                   REPLICA_TYPE_CONVERSIONS_ALL_NON_LOSSY,
+                                   REPLICA_TYPE_CONVERSIONS_ALL_UNSIGNED,
+                                   REPLICA_TYPE_CONVERSIONS_ALL_SIGNED};
+enum enum_replica_rows_search_algorithms { REPLICA_ROWS_TABLE_SCAN = (1U << 0),
+                                         REPLICA_ROWS_INDEX_SCAN = (1U << 1),
+                                         REPLICA_ROWS_HASH_SCAN  = (1U << 2)};
 enum enum_binlog_row_image {
   /** PKE in the before image and changed columns in the after image */
   BINLOG_ROW_IMAGE_MINIMAL= 0,
@@ -360,12 +360,12 @@ void thd_set_psi(THD *thd, PSI_thread *psi);
 
 /**
   the struct aggregates two paramenters that identify an event
-  uniquely in scope of communication of a particular master and slave couple.
-  I.e there can not be 2 events from the same staying connected master which
+  uniquely in scope of communication of a particular primary and replica couple.
+  I.e there can not be 2 events from the same staying connected primary which
   have the same coordinates.
   @note
-  Such identifier is not yet unique generally as the event originating master
-  is resetable. Also the crashed master can be replaced with some other.
+  Such identifier is not yet unique generally as the event originating primary
+  is resetable. Also the crashed primary can be replaced with some other.
 */
 typedef struct rpl_event_coordinates
 {
@@ -494,7 +494,7 @@ typedef struct system_variables
   ulong my_aes_mode;
 
   /**
-    In slave thread we need to know in behalf of which
+    In replica thread we need to know in behalf of which
     thread the query is being run to replicate temp tables properly
   */
   my_thread_id pseudo_thread_id;
@@ -544,7 +544,7 @@ typedef struct system_variables
 
   double long_query_time_double;
 
-  my_bool pseudo_slave_mode;
+  my_bool pseudo_replica_mode;
 
   Gtid_specification gtid_next;
   Gtid_set_or_null gtid_next_list;
@@ -1059,13 +1059,13 @@ public:
 enum enum_thread_type
 {
   NON_SYSTEM_THREAD= 0,
-  SYSTEM_THREAD_SLAVE_IO= 1,
-  SYSTEM_THREAD_SLAVE_SQL= 2,
+  SYSTEM_THREAD_REPLICA_IO= 1,
+  SYSTEM_THREAD_REPLICA_SQL= 2,
   SYSTEM_THREAD_NDBCLUSTER_BINLOG= 4,
   SYSTEM_THREAD_EVENT_SCHEDULER= 8,
   SYSTEM_THREAD_EVENT_WORKER= 16,
   SYSTEM_THREAD_INFO_REPOSITORY= 32,
-  SYSTEM_THREAD_SLAVE_WORKER= 64,
+  SYSTEM_THREAD_REPLICA_WORKER= 64,
   SYSTEM_THREAD_COMPRESS_GTID_TABLE= 128,
   SYSTEM_THREAD_BACKGROUND= 256
 };
@@ -1077,13 +1077,13 @@ show_system_thread(enum_thread_type thread)
   switch (thread) {
     static char buf[64];
     RETURN_NAME_AS_STRING(NON_SYSTEM_THREAD);
-    RETURN_NAME_AS_STRING(SYSTEM_THREAD_SLAVE_IO);
-    RETURN_NAME_AS_STRING(SYSTEM_THREAD_SLAVE_SQL);
+    RETURN_NAME_AS_STRING(SYSTEM_THREAD_REPLICA_IO);
+    RETURN_NAME_AS_STRING(SYSTEM_THREAD_REPLICA_SQL);
     RETURN_NAME_AS_STRING(SYSTEM_THREAD_NDBCLUSTER_BINLOG);
     RETURN_NAME_AS_STRING(SYSTEM_THREAD_EVENT_SCHEDULER);
     RETURN_NAME_AS_STRING(SYSTEM_THREAD_EVENT_WORKER);
     RETURN_NAME_AS_STRING(SYSTEM_THREAD_INFO_REPOSITORY);
-    RETURN_NAME_AS_STRING(SYSTEM_THREAD_SLAVE_WORKER);
+    RETURN_NAME_AS_STRING(SYSTEM_THREAD_REPLICA_WORKER);
     RETURN_NAME_AS_STRING(SYSTEM_THREAD_COMPRESS_GTID_TABLE);
     RETURN_NAME_AS_STRING(SYSTEM_THREAD_BACKGROUND);
   default:
@@ -1294,7 +1294,7 @@ struct Ha_data
     transactions. The released "native" transaction reference
     can be hold in the member until it is reconciled later.
     Lifetime: Depends on caller of @c hton::replace_native_transaction_in_thd.
-    For instance in the case of slave server applier handling XA transaction
+    For instance in the case of replica server applier handling XA transaction
     it is from XA START to XA PREPARE.
   */
   void *ha_ptr_backup;
@@ -1478,7 +1478,7 @@ private:
     0. In other words, "db", "db_length" must either be NULL, or contain a
     valid database name.
 
-    @note this attribute is set and alloced by the slave SQL thread (for
+    @note this attribute is set and alloced by the replica SQL thread (for
     the THD of that thread); that thread is (and must remain, for now) the
     only responsible for freeing this member.
   */
@@ -1505,8 +1505,8 @@ public:
 
   /* Used to execute base64 coded binlog events in MySQL server */
   Relay_log_info* rli_fake;
-  /* Slave applier execution context */
-  Relay_log_info* rli_slave;
+  /* Replica applier execution context */
+  Relay_log_info* rli_replica;
 
   void reset_for_next_command();
   /*
@@ -1618,14 +1618,14 @@ public:
   /**
     @note
     Some members of THD (currently 'Statement::db',
-    'catalog' and 'query')  are set and alloced by the slave SQL thread
+    'catalog' and 'query')  are set and alloced by the replica SQL thread
     (for the THD of that thread); that thread is (and must remain, for now)
     the only responsible for freeing these 3 members. If you add members
     here, and you add code to set them in replication, don't forget to
     free_them_and_set_them_to_0 in replication properly. For details see
-    the 'err:' label of the handle_slave_sql() in sql/slave.cc.
+    the 'err:' label of the handle_replica_sql() in sql/replica.cc.
 
-    @see handle_slave_sql
+    @see handle_replica_sql
   */
 
   Security_context m_main_security_ctx;
@@ -2025,7 +2025,7 @@ private:
     @see get_trans_pos
 
     @todo Similar information is kept in the patch for BUG#11762277
-    and by the master/slave heartbeat implementation.  We should merge
+    and by the primary/replica heartbeat implementation.  We should merge
     these positions instead of maintaining three different ones.
    */
   /**@{*/
@@ -2204,14 +2204,14 @@ public:
     functions/triggers with two auto_increment columns breaks.
     We however ensure that it works when there is 0 or 1 auto_increment
     column; our rules are
-    a) on master, while executing a top statement involving substatements,
+    a) on primary, while executing a top statement involving substatements,
     first top- or sub- statement to generate auto_increment values wins the
     exclusive right to see its values be written to binlog (the write
     will be done by the statement or its caller), and the losers won't see
     their values be written to binlog.
-    b) on slave, while replicating a top statement involving substatements,
+    b) on replica, while replicating a top statement involving substatements,
     first top- or sub- statement to need to read auto_increment values from
-    the master's binlog wins the exclusive right to read them (so the losers
+    the primary's binlog wins the exclusive right to read them (so the losers
     won't read their values from binlog but instead generate on their own).
     a) implies that we mustn't backup/restore
     auto_inc_intervals_in_cur_stmt_for_binlog.
@@ -2227,11 +2227,11 @@ public:
     INSERT INTO t1 (auto_inc) VALUES(NULL);
     where t1 has a trigger which inserts into an auto_inc column of t2, is
     that in binlog we'll store the interval of t1 and the interval of t2 (when
-    we store intervals, soon), then in slave, t1 will use both intervals, t2
-    will use none; if t1 inserts the same number of rows as on master,
+    we store intervals, soon), then in replica, t1 will use both intervals, t2
+    will use none; if t1 inserts the same number of rows as on primary,
     normally the 2nd interval will not be used by t1, which is fine. t2's
     values will be wrong if t2's internal auto_increment counter is different
-    from what it was on master (which is likely). In 5.1, in mixed binlogging
+    from what it was on primary (which is likely). In 5.1, in mixed binlogging
     mode, row-based binlogging is used for such cases where two
     auto_increment columns are inserted.
   */
@@ -2279,7 +2279,7 @@ public:
     Indicate if the gtid_executed table is being operated implicitly
     within current transaction. This happens because we are inserting
     a GTID specified through SET GTID_NEXT by user client or
-    slave SQL thread/workers.
+    replica SQL thread/workers.
   */
   bool is_operating_gtid_table_implicitly;
   /*
@@ -2292,7 +2292,7 @@ public:
     When it is true, the applier will not save the transaction owned
     gtid into mysql.gtid_executed table before transaction prepare, as
     it does when binlog is disabled, or binlog is enabled and
-    log_slave_updates is disabled.
+    log_replica_updates is disabled.
     Rpl_info_table::do_flush_info() uses this flag.
   */
   bool is_operating_substatement_implicitly;
@@ -2645,8 +2645,8 @@ public:
   /* scramble - random string sent to client on handshake */
   char	     scramble[SCRAMBLE_LENGTH+1];
 
-  /// @todo: slave_thread is completely redundant, we should use 'system_thread' instead /sven
-  bool       slave_thread;
+  /// @todo: replica_thread is completely redundant, we should use 'system_thread' instead /sven
+  bool       replica_thread;
   bool	     no_errors;
   uchar      password;
   /**
@@ -2681,12 +2681,12 @@ public:
   bool       substitute_null_with_insert_id;
   bool	     in_lock_tables;
   /**
-    True if a slave error. Causes the slave to stop. Not the same
+    True if a replica error. Causes the replica to stop. Not the same
     as the statement execution error (is_error()), since
     a statement may be expected to return an error, e.g. because
-    it returned an error on master, and this is OK on the slave.
+    it returned an error on primary, and this is OK on the replica.
   */
-  bool       is_slave_error;
+  bool       is_replica_error;
   bool       bootstrap;
 
   /**  is set if some thread specific value(s) used in a statement. */
@@ -2717,7 +2717,7 @@ public:
     each thread that is using LOG_INFO needs to adjust the pointer to it
   */
   LOG_INFO*  current_linfo;
-  NET*       slave_net;			// network connection from slave -> m.
+  NET*       replica_net;			// network connection from replica -> m.
   /* Used by the sys_var class to store temporary values */
   union
   {
@@ -3141,7 +3141,7 @@ public:
     DBUG_ENTER("clear_error");
     if (get_stmt_da()->is_error())
       get_stmt_da()->reset_diagnostics_area();
-    is_slave_error= false;
+    is_replica_error= false;
     DBUG_VOID_RETURN;
   }
 #ifndef EMBEDDED_LIBRARY
@@ -3153,7 +3153,7 @@ public:
   virtual bool is_connected()
   {
     /*
-      All system threads (e.g., the slave IO thread) are connected but
+      All system threads (e.g., the replica IO thread) are connected but
       not using vio. So this function always returns true for all
       system threads.
     */
@@ -3426,10 +3426,10 @@ public:
 #ifdef HAVE_REPLICATION
   /**
     Copies variables.gtid_next to
-    ((Slave_worker *)rli_slave)->currently_executing_gtid,
-    if this is a slave thread.
+    ((Replica_worker *)rli_replica)->currently_executing_gtid,
+    if this is a replica thread.
   */
-  void set_currently_executing_gtid_for_slave_thread();
+  void set_currently_executing_gtid_for_replica_thread();
 #endif
 
   /// Return the value of @@gtid_next_list: either a Gtid_set or NULL.
@@ -3474,14 +3474,14 @@ public:
       GTIDs are owned (using gtid_next_list).  This was one idea to
       make GTIDs work with NDB: due to the epoch concept, multiple
       transactions can be combined into one in NDB, and therefore a
-      single transaction on a slave can have multiple GTIDs.)
+      single transaction on a replica can have multiple GTIDs.)
 
     ==== Life cycle of ownership ====
 
     Generally, transaction ownership starts when the transaction is
     assigned its GTID and ends when the transaction commits or rolls
-    back.  On a master (GTID_NEXT=AUTOMATIC), the GTID is assigned
-    just before binlog flush; on a slave (GTID_NEXT=UUID:NUMBER or
+    back.  On a primary (GTID_NEXT=AUTOMATIC), the GTID is assigned
+    just before binlog flush; on a replica (GTID_NEXT=UUID:NUMBER or
     GTID_NEXT=ANONYMOUS) it is assigned before starting the
     transaction.
 
@@ -3504,8 +3504,8 @@ public:
 
         - In a client, the SET GTID_NEXT statement acquires ownership.
 
-        - The slave's analogy to a clients SET GTID_NEXT statement is
-          Gtid_log_event::do_apply_event.  So the slave acquires
+        - The replica's analogy to a clients SET GTID_NEXT statement is
+          Gtid_log_event::do_apply_event.  So the replica acquires
           ownership in this function.
 
         Note: if the GTID UUID:NUMBER is already included in
@@ -3517,7 +3517,7 @@ public:
 
         - In a client, the SET GTID_NEXT statement acquires ownership.
 
-        - In a slave thread, Gtid_log_event::do_apply_event acquires
+        - In a replica thread, Gtid_log_event::do_apply_event acquires
           ownership.
 
         - Contrary to the case of GTID_NEXT='UUID:NUMBER', it is
@@ -3531,9 +3531,9 @@ public:
           gtid_pre_statement_checks (usually called from
           mysql_execute_command).
 
-    A5. Slave applier threads start in a special mode, having
+    A5. Replica applier threads start in a special mode, having
         GTID_NEXT='NOT_YET_DETERMINED'.  This mode cannot be set in a
-        regular client.  When GTID_NEXT=NOT_YET_DETERMINED, the slave
+        regular client.  When GTID_NEXT=NOT_YET_DETERMINED, the replica
         thread is postponing the decision of the value of GTID_NEXT
         until it has more information.  There are three cases:
 
@@ -3546,10 +3546,10 @@ public:
           GTID_NEXT=ANONYMOUS and acquire anonymous ownership in
           Gtid_log_event::do_apply_event.
 
-        - If the relay log was received from a pre-5.7.6 master with
-          GTID_MODE=OFF (or a pre-5.6 master), then there are neither
+        - If the relay log was received from a pre-5.7.6 primary with
+          GTID_MODE=OFF (or a pre-5.6 primary), then there are neither
           Gtid_log_events nor Anonymous_log_events in the relay log.
-          In this case, the slave sets GTID_NEXT=ANONYMOUS and
+          In this case, the replica sets GTID_NEXT=ANONYMOUS and
           acquires anonymous ownership when executing a
           Query_log_event (Query_log_event::do_apply_event calls
           mysql_parse which calls gtid_pre_statement_checks which
@@ -3667,16 +3667,16 @@ public:
       - Statements that update both transactional and
         non-transactional tables are disallowed when GTID_MODE=ON, so
         this normally does not happen. However, it can happen if the
-        slave uses a different engine type than the master, so that a
-        statement that updates InnoDB+InnoDB on master updates
-        InnoDB+MyISAM on slave.  In this case the statement will be
+        replica uses a different engine type than the primary, so that a
+        statement that updates InnoDB+InnoDB on primary updates
+        InnoDB+MyISAM on replica.  In this case the statement will be
         forbidden in is_dml_gtid_compatible and will not be allowed to
         execute.
 
       - CALL: the second statement will generate an error because
         GTID_NEXT is 'undefined'.  Note that this situation can only
-        happen if user does it on purpose: A CALL on master is logged
-        as multiple statements, so a slave never executes CALL with
+        happen if user does it on purpose: A CALL on primary is logged
+        as multiple statements, so a replica never executes CALL with
         GTID_NEXT='UUID:NUMBER'.
 
     Finally, ownership release is suppressed in one more corner case:
@@ -4324,12 +4324,12 @@ public:
   void send_statement_status();
 
   /**
-    This is only used by master dump threads.
-    When the master receives a new connection from a slave with a UUID that
+    This is only used by primary dump threads.
+    When the primary receives a new connection from a replica with a UUID that
     is already connected, it will set this flag TRUE before killing the old
-    slave connection.
+    replica connection.
   */
-  bool duplicate_slave_uuid;
+  bool duplicate_replica_uuid;
 
   /**
     Claim all the memory used by the THD object.

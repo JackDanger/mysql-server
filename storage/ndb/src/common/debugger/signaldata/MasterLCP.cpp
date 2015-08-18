@@ -17,30 +17,30 @@
 */
 
 
-#include <signaldata/MasterLCP.hpp>
+#include <signaldata/PrimaryLCP.hpp>
 #include <RefConvert.hpp>
 
 static
 void
-print(char *buf, size_t buf_len, MasterLCPConf::State s){
+print(char *buf, size_t buf_len, PrimaryLCPConf::State s){
   switch(s){
-  case MasterLCPConf::LCP_STATUS_IDLE:
+  case PrimaryLCPConf::LCP_STATUS_IDLE:
     BaseString::snprintf(buf, buf_len, "LCP_STATUS_IDLE");
     break;
-  case MasterLCPConf::LCP_STATUS_ACTIVE:
+  case PrimaryLCPConf::LCP_STATUS_ACTIVE:
     BaseString::snprintf(buf, buf_len, "LCP_STATUS_ACTIVE");
     break;
-  case MasterLCPConf::LCP_TAB_COMPLETED:
+  case PrimaryLCPConf::LCP_TAB_COMPLETED:
     BaseString::snprintf(buf, buf_len, "LCP_TAB_COMPLETED");
     break;
-  case MasterLCPConf::LCP_TAB_SAVED:
+  case PrimaryLCPConf::LCP_TAB_SAVED:
     BaseString::snprintf(buf, buf_len, "LCP_TAB_SAVED");
     break;
   }
 }
 
 NdbOut &
-operator<<(NdbOut& out, const MasterLCPConf::State& s){
+operator<<(NdbOut& out, const PrimaryLCPConf::State& s){
   static char buf[255];
   print(buf, sizeof(buf), s);
   out << buf;
@@ -48,41 +48,41 @@ operator<<(NdbOut& out, const MasterLCPConf::State& s){
 }
 
 bool 
-printMASTER_LCP_CONF(FILE * output, 
+printPRIMARY_LCP_CONF(FILE * output, 
 		     const Uint32 * theData, 
 		     Uint32 len, 
 		     Uint16 recBlockNo){
   
-  MasterLCPConf * sig = (MasterLCPConf *)&theData[0];
+  PrimaryLCPConf * sig = (PrimaryLCPConf *)&theData[0];
   
   static char buf[255];
-  print(buf, sizeof(buf), (MasterLCPConf::State)sig->lcpState);
+  print(buf, sizeof(buf), (PrimaryLCPConf::State)sig->lcpState);
   fprintf(output, " senderNode=%d failedNode=%d SenderState=%s\n",
 	  sig->senderNodeId, sig->failedNodeId, buf);
   return true;
 }
 
 bool 
-printMASTER_LCP_REQ(FILE * output, 
+printPRIMARY_LCP_REQ(FILE * output, 
 		    const Uint32 * theData, 
 		    Uint32 len, 
 		    Uint16 recBlockNo){
   
-  MasterLCPReq * sig = (MasterLCPReq *)&theData[0];
+  PrimaryLCPReq * sig = (PrimaryLCPReq *)&theData[0];
   
-  fprintf(output, " masterRef=(node=%d, block=%d), failedNode=%d\n",
-	  refToNode(sig->masterRef), refToBlock(sig->masterRef),
+  fprintf(output, " primaryRef=(node=%d, block=%d), failedNode=%d\n",
+	  refToNode(sig->primaryRef), refToBlock(sig->primaryRef),
 	  sig->failedNodeId);
   return true;
 }
 
 bool 
-printMASTER_LCP_REF(FILE * output, 
+printPRIMARY_LCP_REF(FILE * output, 
 		    const Uint32 * theData, 
 		    Uint32 len, 
 		    Uint16 recBlockNo){
   
-  MasterLCPRef * sig = (MasterLCPRef *)&theData[0];  
+  PrimaryLCPRef * sig = (PrimaryLCPRef *)&theData[0];  
   fprintf(output, " senderNode=%d failedNode=%d\n",
 	  sig->senderNodeId, sig->failedNodeId);
   return true;

@@ -339,7 +339,7 @@ ErrorBundle ErrorCodes[] = {
   /*
    * Internal Temporary
    */
-  { 702,  DMEC, IT, "Request to non-master" },
+  { 702,  DMEC, IT, "Request to non-primary" },
   { 787,  DMEC, IT, "Schema transaction aborted" },
   
   /**
@@ -600,7 +600,7 @@ ErrorBundle ErrorCodes[] = {
    */ 
 
   { 1300, DMEC, IE, "Undefined error" },
-  { 1301, DMEC, IE, "Backup issued to not master (reissue command to master)" },
+  { 1301, DMEC, IE, "Backup issued to not primary (reissue command to primary)" },
   { 1302, DMEC, AE, "A backup is already running" },
   { 1303, DMEC, IS, "Out of resources" },
   { 1304, DMEC, IE, "Sequence failure" },

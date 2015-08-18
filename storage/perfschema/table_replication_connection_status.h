@@ -26,12 +26,12 @@
 #include "pfs_column_types.h"
 #include "pfs_engine_table.h"
 #include "rpl_mi.h"
-#include "rpl_reporting.h" /* MAX_SLAVE_ERRMSG */
+#include "rpl_reporting.h" /* MAX_REPLICA_ERRMSG */
 #include "mysql_com.h"
 #include "rpl_msr.h"
 #include "rpl_info.h"  /*CHANNEL_NAME_LENGTH */
 
-class Master_info;
+class Primary_info;
 
 /**
   @addtogroup Performance_schema_tables
@@ -71,7 +71,7 @@ struct st_row_connect_status {
   char* received_transaction_set;
   int received_transaction_set_length;
   uint last_error_number;
-  char last_error_message[MAX_SLAVE_ERRMSG];
+  char last_error_message[MAX_REPLICA_ERRMSG];
   uint last_error_message_length;
   ulonglong last_error_timestamp;
 
@@ -92,7 +92,7 @@ struct st_row_connect_status {
 class table_replication_connection_status: public PFS_engine_table
 {
 private:
-  void make_row(Master_info *mi);
+  void make_row(Primary_info *mi);
 
   /** Table share lock. */
   static THR_LOCK m_table_lock;

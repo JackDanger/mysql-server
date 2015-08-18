@@ -7,8 +7,8 @@ GRANT USAGE ON *.* TO test2@localhost;
 GRANT CREATE, DROP, INSERT, SELECT ON test.* TO test1@localhost;
 GRANT CREATE, DROP, ALTER, UPDATE, INSERT, SELECT ON test.* TO test2@localhost;
 
---echo connect (test1,localhost,test1,,test,MASTER_MYPORT,MASTER_MYSOCK);
-connect (test1,localhost,test1,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+--echo connect (test1,localhost,test1,,test,PRIMARY_MYPORT,PRIMARY_MYSOCK);
+connect (test1,localhost,test1,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 SELECT current_user();
 SHOW GRANTS FOR CURRENT_USER;
 --disable_result_log
@@ -22,8 +22,8 @@ ALTER TABLE tp EXCHANGE PARTITION p0 WITH TABLE t_10;
 disconnect test1;
 
 
---echo connect (test2,localhost,test2,,test,MASTER_MYPORT,MASTER_MYSOCK);
-connect (test2,localhost,test2,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+--echo connect (test2,localhost,test2,,test,PRIMARY_MYPORT,PRIMARY_MYSOCK);
+connect (test2,localhost,test2,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 USE test;
 SELECT current_user();
 SHOW GRANTS FOR CURRENT_USER;
@@ -59,8 +59,8 @@ disconnect test2;
 connection default;
 REVOKE ALTER ON test.* FROM test2@localhost;
 
---echo connect (test2,localhost,test2,,test,MASTER_MYPORT,MASTER_MYSOCK);
-connect (test2,localhost,test2,,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+--echo connect (test2,localhost,test2,,test,PRIMARY_MYPORT,PRIMARY_MYSOCK);
+connect (test2,localhost,test2,,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 USE test;
 SELECT current_user();
 SHOW GRANTS FOR CURRENT_USER;

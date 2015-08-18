@@ -14,9 +14,9 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 // ---------------------------------------------------------------------------
-// This file contains a signal log trace for DBDICT at the master for a
+// This file contains a signal log trace for DBDICT at the primary for a
 // create table. Another file contains the signal log for the participant
-// node. Master node is 2, participant node 4 and api node is 3.
+// node. Primary node is 2, participant node 4 and api node is 3.
 
 // ---------------------------------------------------------------------------
 // First arrives the table description in a number of DICTTABINFO signals.

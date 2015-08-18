@@ -561,11 +561,11 @@ UpgradeStartup::execCM_APPCHG(SimulatedBlock & block, Signal* signal){
 }
 
 void
-UpgradeStartup::sendCntrMasterReq(Ndbcntr& cntr, Signal* signal, Uint32 n){
+UpgradeStartup::sendCntrPrimaryReq(Ndbcntr& cntr, Signal* signal, Uint32 n){
 }
 
 void
-UpgradeStartup::execCNTR_MASTER_REPLY(SimulatedBlock & block, Signal* signal){
+UpgradeStartup::execCNTR_PRIMARY_REPLY(SimulatedBlock & block, Signal* signal){
 }
 
 #include <SimBlockList.hpp>

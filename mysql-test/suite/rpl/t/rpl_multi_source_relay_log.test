@@ -1,5 +1,5 @@
 --echo #########################################################################
---echo # Verify RESET SLAVE and RESET SLAVE FOR CHANNEL
+--echo # Verify RESET REPLICA and RESET REPLICA FOR CHANNEL
 --echo # - deletes all relay log files of named channels.
 --echo # - For default channel, it restart the relay log from .000001
 --echo #########################################################################
@@ -7,40 +7,40 @@
 #Skip on group replication runs
 --source include/not_group_replication_plugin.inc
 --source include/have_binlog_format_mixed.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 --let $datadir= `SELECT @@GLOBAL.datadir`
 
 # add a new channel
-CHANGE MASTER TO MASTER_HOST="localhost", MASTER_PORT=10 FOR CHANNEL "ch1";
-CHANGE MASTER TO MASTER_HOST="localhost", MASTER_PORT=11 FOR CHANNEL "ch2";
+CHANGE PRIMARY TO PRIMARY_HOST="localhost", PRIMARY_PORT=10 FOR CHANNEL "ch1";
+CHANGE PRIMARY TO PRIMARY_HOST="localhost", PRIMARY_PORT=11 FOR CHANNEL "ch2";
 
 FLUSH RELAY LOGS;
 FLUSH RELAY LOGS FOR CHANNEL "ch1";
 FLUSH RELAY LOGS FOR CHANNEL "ch2";
 
 --echo #
---echo # RESET SLAVE FOR CHANNEL "ch1" deletes all relay log files of ch1.
+--echo # RESET REPLICA FOR CHANNEL "ch1" deletes all relay log files of ch1.
 --echo #
-eval RESET SLAVE FOR CHANNEL "ch1";
+eval RESET REPLICA FOR CHANNEL "ch1";
 
 # all files of "ch1" are removed
 --list_files $datadir *ch1*
 
 --echo #
---echo # RESET SLAVE deletes all relay log files of ch2
+--echo # RESET REPLICA deletes all relay log files of ch2
 --echo #
 --disable_warnings
---source include/stop_slave.inc
+--source include/stop_replica.inc
 --enable_warnings
-RESET SLAVE;
+RESET REPLICA;
 
 # all files of "ch2" are removed
 --list_files $datadir *ch2*
 
 --echo #
---echo # RESET SLAVE resets relay log of default channel from .000001
+--echo # RESET REPLICA resets relay log of default channel from .000001
 --echo #
 # relay log files of default channel is still there
 --let $relay_log_index= `SELECT @@GLOBAL.relay_log_index`
@@ -52,8 +52,8 @@ RESET SLAVE;
 --echo #
 --echo # Recreate channels "ch1" and "ch2" files again.
 --echo #
-CHANGE MASTER TO MASTER_HOST="localhost", MASTER_PORT=10 FOR CHANNEL "ch1";
-CHANGE MASTER TO MASTER_HOST="localhost", MASTER_PORT=11 FOR CHANNEL "ch2";
+CHANGE PRIMARY TO PRIMARY_HOST="localhost", PRIMARY_PORT=10 FOR CHANNEL "ch1";
+CHANGE PRIMARY TO PRIMARY_HOST="localhost", PRIMARY_PORT=11 FOR CHANNEL "ch2";
 
 # Check that files exist.
 --let $relay_log_base_name= `SELECT @@GLOBAL.relay_log_basename`
@@ -61,9 +61,9 @@ CHANGE MASTER TO MASTER_HOST="localhost", MASTER_PORT=11 FOR CHANNEL "ch2";
 --file_exists $relay_log_base_name-ch2.000001
 
 --echo #
---echo # RESET SLAVE ALL deletes all channels info and files.
+--echo # RESET REPLICA ALL deletes all channels info and files.
 --echo #
-RESET SLAVE ALL;
+RESET REPLICA ALL;
 
 # all files of "ch1" and "ch2" are removed
 --list_files $datadir *ch1*
@@ -77,11 +77,11 @@ RESET SLAVE ALL;
 --file_exists $relay_log_basename.000001
 
 --disable_warnings
---replace_result $MASTER_MYPORT MASTER_PORT
-eval CHANGE MASTER TO MASTER_HOST="127.0.0.1", MASTER_PORT=$MASTER_MYPORT,
-     MASTER_USER="root";
+--replace_result $PRIMARY_MYPORT PRIMARY_PORT
+eval CHANGE PRIMARY TO PRIMARY_HOST="127.0.0.1", PRIMARY_PORT=$PRIMARY_MYPORT,
+     PRIMARY_USER="root";
 --enable_warnings
 
---source include/start_slave.inc
+--source include/start_replica.inc
 --source include/rpl_end.inc
 

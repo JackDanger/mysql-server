@@ -6875,7 +6875,7 @@ bool fast_alter_partition_table(THD *thd,
          is written compared to other activities there will always be cases
          where crashes make strange things occur. In this placement it can
          happen that the ALTER TABLE DROP PARTITION gets performed in the
-         master but not in the slaves if we have a crash, after writing the
+         primary but not in the replicas if we have a crash, after writing the
          ddl log but before writing the binlog. A solution to this would
          require writing the statement first in the ddl log and then
          when recovering from the crash read the binlog and insert it into

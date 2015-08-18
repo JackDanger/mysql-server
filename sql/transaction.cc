@@ -666,7 +666,7 @@ bool trans_rollback_to_savepoint(THD *thd, LEX_STRING name)
     res= TRUE;
   else if (thd->get_transaction()->cannot_safely_rollback(
            Transaction_ctx::SESSION) &&
-           !thd->slave_thread)
+           !thd->replica_thread)
     thd->get_transaction()->push_unsafe_rollback_warnings(thd);
 
   thd->get_transaction()->m_savepoints= sv;

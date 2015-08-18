@@ -26,7 +26,7 @@ if (`SELECT "$binlog" != "ON"`)
 }
 
 --disable_query_log
-RESET MASTER;
+RESET PRIMARY;
 --enable_query_log
 
 # Following code 'inspired' by include/wait_for_binlog_event.inc
@@ -67,12 +67,12 @@ while (`SELECT INSTR("$_event","$wait_binlog_event") = 0`)
 # Since we're attached to the same cluster, if we've seen the event
 # then synchronous binlogging of changes is on (i.e. synchronous with
 # the original schema change)
-# Therefore it should now be safe to reset the master on the destination
+# Therefore it should now be safe to reset the primary on the destination
 # server as no more binlog changes are in-flight.
 connection $dest_server;
 
 --disable_query_log
-RESET MASTER;
+RESET PRIMARY;
 --enable_query_log
 
 #--echo - Schema event logging is active

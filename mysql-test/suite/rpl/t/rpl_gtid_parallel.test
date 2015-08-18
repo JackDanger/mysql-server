@@ -7,20 +7,20 @@
 #
 # ==== Implementation ====
 #
-# 1. Generate a load on the master consisting of:
+# 1. Generate a load on the primary consisting of:
 #     - transactions (INSERT/UPDATE/DELETE)
 #     - DDL (ALTER and RENAME)
 #     - FLUSH LOGS
 #    Do not replicate anything.
 #
-# 2. Apply the binary logs on the slave (which is fresh).  The binary
+# 2. Apply the binary logs on the replica (which is fresh).  The binary
 #    logs are applied in N parallel connections.  In addition, for
 #    increased concurrency, we open N concurrent connections that
-#    repeatedly execute SHOW SLAVE STATUS, and N concurrent
+#    repeatedly execute SHOW REPLICA STATUS, and N concurrent
 #    connections that repeatedly read @@GLOBAL.GTID_EXECUTED and
 #    @@GLOBAL.GTID_PURGED.
 #
-# 3. Check that master and slave have the same data.
+# 3. Check that primary and replica have the same data.
 #
 # ==== References ====
 #
@@ -30,7 +30,7 @@
 --source include/big_test.inc
 --source include/have_gtid.inc
 --source include/not_windows.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --echo ==== Configure ====
 
@@ -43,15 +43,15 @@
 --echo ==== Initialize ====
 
 --enable_connect_log
---connection slave
---source include/stop_slave.inc
+--connection replica
+--source include/stop_replica.inc
 
 --delimiter |
-CREATE PROCEDURE show_slave_status ()
+CREATE PROCEDURE show_replica_status ()
 BEGIN
   DECLARE name VARCHAR(100) DEFAULT('');
   WHILE name = '' DO
-    SHOW SLAVE STATUS;
+    SHOW REPLICA STATUS;
     SELECT TABLE_NAME INTO name
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_NAME = 't_end';
@@ -72,7 +72,7 @@ BEGIN
 END|
 --delimiter ;
 
---connection master
+--connection primary
 
 --let $t= 1
 eval CREATE TABLE t1_$t (a INT) ENGINE = InnoDB;
@@ -127,7 +127,7 @@ CREATE TABLE t_end (a INT);
 
 --echo ==== Apply the generated binary logs ====
 
---let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
+--let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
 --let $data_dir= `SELECT @@datadir`
 --let _BINLOG_FILE= $data_dir/$binlog_file
 --let _N_FORKS= $n_forks
@@ -141,7 +141,7 @@ perl;
     map { sprintf("$ENV{MYSQL_BINLOG} %s%06d", $file, $_) } 1 .. $number;
   my $n_forks= $ENV{_N_FORKS};
   my $n= $n_forks;
-  my @cmd_lists= ( [ 'echo "USE test; CALL show_slave_status();"' ],
+  my @cmd_lists= ( [ 'echo "USE test; CALL show_replica_status();"' ],
                    [ 'echo "USE test; CALL read_gtid_executed();"' ],
                    \@mysqlbinlog_commands,
                    \@mysqlbinlog_commands );
@@ -157,7 +157,7 @@ EOF
 
 --echo ==== Wait for load to finish ====
 
---connection slave
+--connection replica
 --let $show_statement= SHOW TABLES;
 --let $field= Tables_in_test
 --let $condition= t_end
@@ -165,23 +165,23 @@ EOF
 
 --echo ==== Check result ====
 
---let $diff_tables= master:t1_$t, master:t2_$t, slave:t1_$t, slave:t2_$t
+--let $diff_tables= primary:t1_$t, primary:t2_$t, replica:t1_$t, replica:t2_$t
 --let $diff_tables_silent= 1
 --source include/diff_tables.inc
 
 --echo ==== Clean up ====
 
---connection master
+--connection primary
 --disable_query_log
 eval DROP TABLE t1_$t, t2_$t;
 --enable_query_log
 DROP TABLE t_end;
 
---connection slave
+--connection replica
 --disable_query_log
 eval DROP TABLE t1_$t, t2_$t;
 --enable_query_log
 DROP TABLE t_end;
-DROP PROCEDURE show_slave_status;
+DROP PROCEDURE show_replica_status;
 DROP PROCEDURE read_gtid_executed;
-CHANGE MASTER TO MASTER_AUTO_POSITION= 0;
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 0;

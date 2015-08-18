@@ -2284,7 +2284,7 @@ acl_authenticate(THD *thd, enum_server_command command)
     }
 #endif /* NO_EMBEDDED_ACCESS_CHECKS */
 
-    sctx->set_master_access(acl_user->access);
+    sctx->set_primary_access(acl_user->access);
     sctx->assign_priv_user(acl_user->user, acl_user->user ?
                                            strlen(acl_user->user) : 0);
     sctx->assign_priv_host(acl_user->host.get_host(),
@@ -2410,7 +2410,7 @@ acl_authenticate(THD *thd, enum_server_command command)
               thd->max_client_packet_length,
               sctx->host_or_ip().str, sctx->user().str, sctx->priv_user().str,
               thd->password ? "yes": "no",
-              sctx->master_access(), mpvio.db.str));
+              sctx->primary_access(), mpvio.db.str));
 
   if (command == COM_CONNECT &&
       !(thd->m_main_security_ctx.check_access(SUPER_ACL)))

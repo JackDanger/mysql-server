@@ -106,7 +106,7 @@ const TABLE_FIELD_TYPE event_table_fields[ET_FIELD_COUNT] =
   },
   {
     { C_STRING_WITH_LEN("status") },
-    { C_STRING_WITH_LEN("enum('ENABLED','DISABLED','SLAVESIDE_DISABLED')") },
+    { C_STRING_WITH_LEN("enum('ENABLED','DISABLED','REPLICASIDE_DISABLED')") },
     {NULL, 0}
   },
   {
@@ -1145,7 +1145,7 @@ update_timing_fields_for_event(THD *thd,
 
   /*
     Turn off row binlogging of event timing updates. These are not used
-    for RBR of events replicated to the slave.
+    for RBR of events replicated to the replica.
   */
   if ((save_binlog_row_based= thd->is_current_stmt_binlog_format_row()))
     thd->clear_current_stmt_binlog_format_row();

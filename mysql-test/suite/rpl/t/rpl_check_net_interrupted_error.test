@@ -1,24 +1,24 @@
 # ==== Purpose ====
 #
-# Bug#18091217  Slave I/O thread won't attempt auto reconnect to the master / error-code 1159
+# Bug#18091217  Replica I/O thread won't attempt auto reconnect to the primary / error-code 1159
 #
-# The slave receiver thread stops due to the 'ER_NET_READ_INTERRUPTED'
+# The replica receiver thread stops due to the 'ER_NET_READ_INTERRUPTED'
 # or 'ER_NET_WRITE_INTERRUPTED' error is encountered while getting
-# timestamp, server id from master, setting @master_heartbeat_period
+# timestamp, server id from primary, setting @primary_heartbeat_period
 # and so on.
 #
 # To fix the problem, we fix to handle the 'ER_NET_READ_INTERRUPTED'
 # and 'ER_NET_WRITE_INTERRUPTED' errors as transient network errors.
-# Then the slave receiver thread attempts to automatically reconnect
-# to the master on these errors.
+# Then the replica receiver thread attempts to automatically reconnect
+# to the primary on these errors.
 #
 # Steps to reproduce:
-#  1) Log on slave, stop slave threads.
-#  2) Active injected error during getting server id from master
-#  3) Start slave theads to verify that their is no error happened.
+#  1) Log on replica, stop replica threads.
+#  2) Active injected error during getting server id from primary
+#  3) Start replica theads to verify that their is no error happened.
 #
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 # The error injection works only with debug facilities.
 --source include/have_debug.inc
 --source include/have_debug_sync.inc
@@ -26,46 +26,46 @@
 # Hence it's enough to run only with one binlog format
 --source include/have_binlog_format_mixed.inc
 
---source include/rpl_connection_slave.inc
-call mtr.add_suppression("Slave I/O .*: Master command COM_REGISTER_SLAVE failed: .*");
+--source include/rpl_connection_replica.inc
+call mtr.add_suppression("Replica I/O .*: Primary command COM_REGISTER_REPLICA failed: .*");
 SET @debug_saved=@@global.debug;
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 CREATE TABLE t1 (c1 INT);
 DROP TABLE t1;
 
---source include/rpl_connection_slave.inc
+--source include/rpl_connection_replica.inc
 --echo #
---echo # Active injected error during getting server id from master
+--echo # Active injected error during getting server id from primary
 --echo #
-SET GLOBAL DEBUG='d,get_master_server_id.ER_NET_READ_INTERRUPTED';
+SET GLOBAL DEBUG='d,get_primary_server_id.ER_NET_READ_INTERRUPTED';
 
-START SLAVE;
-# Crash if error happens during getting server id from master
+START REPLICA;
+# Crash if error happens during getting server id from primary
 --let $rpl_allow_error= 0
---source include/wait_for_slave_io_to_start.inc
---source include/rpl_connection_master.inc
---source include/sync_slave_io_with_master.inc
+--source include/wait_for_replica_io_to_start.inc
+--source include/rpl_connection_primary.inc
+--source include/sync_replica_io_with_primary.inc
 
 --let $assert_file= $MYSQLTEST_VARDIR/log/mysqld.2.err
 --let $assert_only_after= CURRENT_TEST: rpl.rpl_check_net_interrupted_error
 --let $assert_count= 0
---let $assert_select= fatal error is encountered when it try to get the value of SERVER_ID variable from master
---let $assert_text= Make sure there is not the error "fatal error is encountered when it try to get the value of SERVER_ID variable from master" in slave's error log.
+--let $assert_select= fatal error is encountered when it try to get the value of SERVER_ID variable from primary
+--let $assert_text= Make sure there is not the error "fatal error is encountered when it try to get the value of SERVER_ID variable from primary" in replica's error log.
 --source include/assert_grep.inc
 
 --let $assert_count= 1
---let $assert_select= Get master SERVER_ID failed with error
---let $assert_text= Make sure there is the warning "Get master SERVER_ID failed with error" in slave's error log.
+--let $assert_select= Get primary SERVER_ID failed with error
+--let $assert_text= Make sure there is the warning "Get primary SERVER_ID failed with error" in replica's error log.
 --source include/assert_grep.inc
 
---source include/stop_slave.inc
+--source include/stop_replica.inc
 
 SET GLOBAL DEBUG= @save_debug;
 
 # Cleanup
---source include/start_slave.inc
+--source include/start_replica.inc
 --let $assert_file=
 --let $assert_only_after=
 --let $assert_count=

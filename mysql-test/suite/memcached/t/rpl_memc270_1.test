@@ -1,12 +1,12 @@
 source include/have_memcached_plugin.inc;
 source include/not_valgrind.inc;
 
-# Test of master and both with slave with memcached access and binlog-format=raw.
+# Test of primary and both with replica with memcached access and binlog-format=raw.
 #
 source include/not_windows.inc;
 source include/have_innodb.inc;
 --disable_warnings
-source include/master-slave.inc;
+source include/primary-replica.inc;
 --enable_warnings
 
 --disable_query_log
@@ -79,14 +79,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -103,14 +103,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -127,14 +127,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -151,14 +151,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -175,14 +175,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -203,14 +203,14 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 perl;
 use DBI;
 use Cache::Memcached;
@@ -231,20 +231,20 @@ EOF
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
---echo sync_slave_with_master;
-sync_slave_with_master;
+--echo sync_replica_with_primary;
+sync_replica_with_primary;
 
-connection slave;
+connection replica;
 --sorted_result
 SELECT c1,c2,c21 FROM t1;
 
-connection master;
+connection primary;
 DROP TABLE t1;
 
 UNINSTALL PLUGIN daemon_memcached;
 DROP DATABASE innodb_memcache;
  
 SET @@global.tx_isolation= @tx_isolation;
-sync_slave_with_master;
+sync_replica_with_primary;
 source include/rpl_end.inc;
 

@@ -1,12 +1,12 @@
 ################################################################################
 # Bug#18338203 P_S REPLICATION_CONNECTION_STATUS.SOURCE_UUID UNINITIALIZED VALUE
 #
-# The master_uuid field was introduced in mysql-5.6.0.
-# When replicating from a pre-5.6.0 master to a 5.7 slave,
-# the slave will ask for the master_uuid field which the master doesnt have.
-# Prior to fix, the P_S code made an assuption that if there is a master
-# there will be a master_uuid for the master which is not true in the case
-# of say 5.5->5.7 replication. Since the P_S code blindly copied MASTER_UUID
+# The primary_uuid field was introduced in mysql-5.6.0.
+# When replicating from a pre-5.6.0 primary to a 5.7 replica,
+# the replica will ask for the primary_uuid field which the primary doesnt have.
+# Prior to fix, the P_S code made an assuption that if there is a primary
+# there will be a primary_uuid for the primary which is not true in the case
+# of say 5.5->5.7 replication. Since the P_S code blindly copied PRIMARY_UUID
 # bytes from mi object, we ended up with a garbage value in the select
 # SOURCE_UUID field from P_S.replication_connect_status
 ################################################################################
@@ -14,40 +14,40 @@
 --source include/have_debug_sync.inc
 # Testing it in one mode is enough
 --source include/have_binlog_format_row.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---source include/rpl_connection_slave.inc
---source include/stop_slave.inc
+--source include/rpl_connection_replica.inc
+--source include/stop_replica.inc
 
---let $orig_master_uuid= query_get_value(select source_uuid from performance_schema.replication_connection_status, source_uuid, 1)
+--let $orig_primary_uuid= query_get_value(select source_uuid from performance_schema.replication_connection_status, source_uuid, 1)
 
 --echo #
---echo # Explicitly simulate a NULL master_uuid return value i.e., fake as a pre-5.6 master.
+--echo # Explicitly simulate a NULL primary_uuid return value i.e., fake as a pre-5.6 primary.
 --echo #
 
 SET @save_debug= @@GLOBAL.debug;
-SET GLOBAL debug= '+d,dbug.return_null_MASTER_UUID';
+SET GLOBAL debug= '+d,dbug.return_null_PRIMARY_UUID';
 
 --echo #
---echo # We should still have the master_uuid value.
+--echo # We should still have the primary_uuid value.
 --echo #
 
---let $instrumented_master_uuid= query_get_value(select source_uuid from performance_schema.replication_connection_status, source_uuid, 1)
+--let $instrumented_primary_uuid= query_get_value(select source_uuid from performance_schema.replication_connection_status, source_uuid, 1)
 
 --let $assert_text= source_uuid field should be non-empty.
---let $assert_cond= "$instrumented_master_uuid" != ""
+--let $assert_cond= "$instrumented_primary_uuid" != ""
 --source include/assert.inc
 
---let $instrumented_master_uuid=
+--let $instrumented_primary_uuid=
 
 --echo #
---echo # START SLAVE will return a NULL for master_uuid now as per our debug behaviour.
+--echo # START REPLICA will return a NULL for primary_uuid now as per our debug behaviour.
 --echo #
 
---source include/start_slave.inc
+--source include/start_replica.inc
 
 --echo #
---echo # We dont have a master_uuid now, so should see an empty output as the master_uuid value.
+--echo # We dont have a primary_uuid now, so should see an empty output as the primary_uuid value.
 --echo #
 
 --let $wait_condition=select source_uuid = "" from performance_schema.replication_connection_status
@@ -57,23 +57,23 @@ SET GLOBAL debug= '+d,dbug.return_null_MASTER_UUID';
 --echo # de-activate the debug behaviour.
 --echo #
 
-SET GLOBAL debug= '-d,dbug.return_null_MASTER_UUID';
+SET GLOBAL debug= '-d,dbug.return_null_PRIMARY_UUID';
 SET GLOBAL debug= @save_debug;
 
 --echo #
---echo # After de-activating, the master_uuid value should be there.
+--echo # After de-activating, the primary_uuid value should be there.
 --echo #
 
---source include/stop_slave.inc
---source include/start_slave.inc
+--source include/stop_replica.inc
+--source include/start_replica.inc
 
 --echo #
---echo # Verify that we have the master_uuid now.
+--echo # Verify that we have the primary_uuid now.
 --echo #
 
---let $wait_condition=select source_uuid = "$orig_master_uuid" from performance_schema.replication_connection_status
+--let $wait_condition=select source_uuid = "$orig_primary_uuid" from performance_schema.replication_connection_status
 --source include/wait_condition.inc
 
 --let $wait_condition=
---let $orig_master_uuid=
+--let $orig_primary_uuid=
 --source include/rpl_end.inc

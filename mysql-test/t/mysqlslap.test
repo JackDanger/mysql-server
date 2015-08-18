@@ -108,7 +108,7 @@ DROP DATABASE bug58090;
 CREATE USER 'user_with_length_32_abcdefghijkl'@'localhost';
 GRANT ALL ON *.* TO 'user_with_length_32_abcdefghijkl'@'localhost';
 
---exec $MYSQL_SLAP --silent --host=127.0.0.1 -P $MASTER_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP --create-schema=mysql
+--exec $MYSQL_SLAP --silent --host=127.0.0.1 -P $PRIMARY_MYPORT --user=user_with_length_32_abcdefghijkl --protocol=TCP --create-schema=mysql
 
 DROP USER 'user_with_length_32_abcdefghijkl'@'localhost';
 

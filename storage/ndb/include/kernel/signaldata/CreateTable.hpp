@@ -52,7 +52,7 @@ struct CreateTableRef {
     NoError = 0,
     Busy = 701,
     BusyWithNR = 711,
-    NotMaster = 702,
+    NotPrimary = 702,
     TooManySchemaOps = 783,     //wl3600_todo move the 3 to DictSignal.hpp
     InvalidTransKey = 781,
     InvalidTransId = 782,
@@ -90,7 +90,7 @@ struct CreateTableRef {
   Uint32 errorCode;
   Uint32 errorLine; 
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
   Uint32 errorStatus;
   Uint32 errorKey;
 

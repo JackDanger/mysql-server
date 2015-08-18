@@ -11,10 +11,10 @@
 
 #  - Verify that SELECT works for every field in the table.
 #  - The SELECT per field produces an output similar to the corresponding field
-#    in SHOW SLAVE STATUS(SSS), if there is one.
+#    in SHOW REPLICA STATUS(SSS), if there is one.
 #  - If there is no matching field in SSS, we resort to other method of testing
 #    those fields.
-#  - We perform all the testing on connection "slave". On master, the table
+#  - We perform all the testing on connection "replica". On primary, the table
 #    returns an empty set.
 #
 # There are two parts to this test.
@@ -29,72 +29,72 @@
 # The follwing scenarios are tested in this test script:
 #
 #  - Test each field in STS on a fresh replication setup.
-#  - Change configuration parameters using CHANGE MASTER TO and verify that
+#  - Change configuration parameters using CHANGE PRIMARY TO and verify that
 #    these changes are seen in SELECTs from PS table.
 #  - Verify that, the change in values are correctly shown by the table.
-#  - Verify that the values are preserved after STOP SLAVE, thread_id
+#  - Verify that the values are preserved after STOP REPLICA, thread_id
 #    changes to NULL and service_state changes to "Off".
-#  - A priliminary test for Multi-threaded slave(MTS) mode.
+#  - A priliminary test for Multi-threaded replica(MTS) mode.
 #
 #  ==== Related Worklog ====
 #
-#  WL#3656: PERFORMANCE SCHEMA table for SHOW SLAVE STATUS
+#  WL#3656: PERFORMANCE SCHEMA table for SHOW REPLICA STATUS
 #
 
-source include/master-slave.inc;
+source include/primary-replica.inc;
 source include/have_binlog_format_mixed.inc;
 
 call mtr.add_suppression("Error 'Table 'test.t' doesn't exist' on query.");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state.*");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state.*");
 
-let $assert_text= On master, the table should return an empty set.;
+let $assert_text= On primary, the table should return an empty set.;
 let $assert_cond= [select count(*) from performance_schema.replication_applier_status_by_coordinator] = 0;
 source include/assert.inc;
 
---connection slave
+--connection replica
 
---let $slave_param= Slave_SQL_Running_State
---let $slave_param_value= Slave has read all relay log; waiting for more updates
-source include/wait_for_slave_param.inc;
+--let $replica_param= Replica_SQL_Running_State
+--let $replica_param_value= Replica has read all relay log; waiting for more updates
+source include/wait_for_replica_param.inc;
 
 --echo
---echo # Testing on fresh slave.
+--echo # Testing on fresh replica.
 --echo
 
 # To verify the correctness of thread_id field, we check for the name of
 # the thread.
 let $thread_name= `select name from performance_schema.threads where thread_id= (select Thread_Id from performance_schema.replication_applier_status_by_coordinator)`;
 let $assert_text= thread_name should should indicate sql thread.;
-let $assert_cond= "$thread_name" = "thread/sql/slave_sql";
+let $assert_cond= "$thread_name" = "thread/sql/replica_sql";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Slave_SQL_Running, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Replica_SQL_Running, 1);
 let $ps_value= query_get_value(select Service_State from performance_schema.replication_connection_status, Service_State, 1);
-let $assert_text= SSS shows Slave_IO_Running as "Yes". So, Service_State from this PS table should be "ON".;
+let $assert_text= SSS shows Replica_IO_Running as "Yes". So, Service_State from this PS table should be "ON".;
 let $assert_cond= "$sss_value" = "Yes" AND "$ps_value"= "ON";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Errno, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Errno, 1);
 let $ps_value= query_get_value(select Last_Error_Number from performance_schema.replication_applier_status_by_coordinator, Last_Error_Number, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Number should be same.;
 let $assert_cond= "$sss_value" = "$ps_value";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Error, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Error, 1);
 let $ps_value= query_get_value(select Last_Error_Message from performance_schema.replication_connection_status, Last_Error_Message, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Message should be same.;
 let $assert_cond= "$sss_value" = "$ps_value";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Error_Timestamp, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Error_Timestamp, 1);
 let $ps_value= query_get_value(select Last_Error_Timestamp from performance_schema.replication_applier_status_by_coordinator, Last_Error_Timestamp, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Timestamp should be 0000-00-00 00:00:00.;
 let $assert_cond= "$ps_value" = "0000-00-00 00:00:00";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Slave_SQL_Running, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Replica_SQL_Running, 1);
 let $ps_value= query_get_value(select Service_State from performance_schema.replication_applier_status_by_coordinator, Service_State, 1);
-let $assert_text= SSS shows Slave_SQL_Running as "Yes". So, Service_State from this PS table should be "ON".;
+let $assert_text= SSS shows Replica_SQL_Running as "Yes". So, Service_State from this PS table should be "ON".;
 let $assert_cond= "$sss_value" = "Yes" AND "$ps_value"= "ON";
 source include/assert.inc;
 
@@ -104,28 +104,28 @@ source include/assert.inc;
 --echo
 
 # Cause an error in SQL thread.
-# 1) Ceate a table 't' at master, replicate at slave.
-# 2) Drop table 't' at slave only.
-# 3) Insert a value in table 't' on master and replicate on slave.
-# Since slave doesnt have table 't' anymore, SQL thread will show an error.
+# 1) Ceate a table 't' at primary, replicate at replica.
+# 2) Drop table 't' at replica only.
+# 3) Insert a value in table 't' on primary and replicate on replica.
+# Since replica doesnt have table 't' anymore, SQL thread will show an error.
 
---connection master
+--connection primary
 use test;
 create table t(a int primary key);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 drop table t;
---connection master
+--connection primary
 insert into t values(1);
---connection slave
-let $slave_sql_errno=1146;
-source include/wait_for_slave_sql_error.inc;
+--connection replica
+let $replica_sql_errno=1146;
+source include/wait_for_replica_sql_error.inc;
 
 --echo
 --echo # Extract the error related fields from SSS and PS table and compare
 --echo # them for correctness.
 --echo
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Errno, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Errno, 1);
 let $ps_value= query_get_value(select Last_Error_Number from performance_schema.replication_applier_status_by_coordinator, Last_Error_Number, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Number should be same.;
 let $assert_cond= "$sss_value" = "$ps_value";
@@ -135,7 +135,7 @@ source include/assert.inc;
 # makes it difficult use the assert.inc or mysql functionstrcmp().
 # So, the equality of error messages is checked using the below perl code.
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Error, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Error, 1);
 let $ps_value= query_get_value(select Last_Error_Message from performance_schema.replication_applier_status_by_coordinator, Last_Error_Message, 1);
 
 let PS_VALUE= $ps_value;
@@ -164,7 +164,7 @@ EOF
 # To match the two, we get rid of hyphons from PS output and first two digits
 # the year field so that it can be matched directly.
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Error_Timestamp, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Error_Timestamp, 1);
 let $ps_value= query_get_value(select Last_Error_Timestamp from performance_schema.replication_applier_status_by_coordinator, Last_Error_Timestamp, 1);
 let $ps_value_without_hyphons= `SELECT REPLACE("$ps_value", '-', '')`;
 let $ps_value_in_sss_format= `select substring("$ps_value_without_hyphons", 3)`;
@@ -173,23 +173,23 @@ let $assert_cond= "$sss_value" = "$ps_value_in_sss_format";
 source include/assert.inc;
 
 --echo
---echo # Verify that the error fields are preserved after STOP SLAVE, thread_id
+--echo # Verify that the error fields are preserved after STOP REPLICA, thread_id
 --echo # changes to NULL and service_state changes to "Off".
 --echo
 
 --echo
 --echo # 1. Verify that thread_id changes to NULL and service_state to "off" on
---echo #    STOP SLAVE.
+--echo #    STOP REPLICA.
 --echo
 
 let $ps_value= query_get_value(select thread_id from performance_schema.replication_applier_status_by_coordinator, thread_id, 1);
-let $assert_text= After STOP SLAVE, thread_id should be NULL;
+let $assert_text= After STOP REPLICA, thread_id should be NULL;
 let $assert_cond= "$ps_value" = "NULL";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Slave_SQL_Running, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Replica_SQL_Running, 1);
 let $ps_value= query_get_value(select Service_State from performance_schema.replication_applier_status_by_coordinator, Service_State, 1);
-let $assert_text= SSS shows Slave_SQL_Running as "No". So, Service_State from this PS table should be "OFF".;
+let $assert_text= SSS shows Replica_SQL_Running as "No". So, Service_State from this PS table should be "OFF".;
 let $assert_cond= "$sss_value" = "No" AND "$ps_value"= "OFF";
 source include/assert.inc;
 
@@ -198,7 +198,7 @@ source include/assert.inc;
 --echo #    them. These fields should preserve their values.
 --echo
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Errno, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Errno, 1);
 let $ps_value= query_get_value(select Last_Error_Number from performance_schema.replication_applier_status_by_coordinator, Last_Error_Number, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Number should be same.;
 let $assert_cond= "$sss_value" = "$ps_value";
@@ -208,7 +208,7 @@ source include/assert.inc;
 # makes it difficult use the assert.inc or mysql functionstrcmp().
 # So, the equality of error messages is checked using the below perl code.
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Error, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Error, 1);
 let $ps_value= query_get_value(select Last_Error_Message from performance_schema.replication_applier_status_by_coordinator, Last_Error_Message, 1);
 
 let PS_VALUE= $ps_value;
@@ -237,7 +237,7 @@ EOF
 # To match the two, we get rid of hyphons from PS output and first two digits
 # the year field so that it can be matched directly.
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Error_Timestamp, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Error_Timestamp, 1);
 let $ps_value= query_get_value(select Last_Error_Timestamp from performance_schema.replication_applier_status_by_coordinator, Last_Error_Timestamp, 1);
 let $ps_value_without_hyphons= `SELECT REPLACE("$ps_value", '-', '')`;
 let $ps_value_in_sss_format= `select substring("$ps_value_without_hyphons", 3)`;
@@ -245,13 +245,13 @@ let $assert_text= Value returned by SSS and PS table for Last_Error_Timestamp sh
 let $assert_cond= "$sss_value" = "$ps_value_in_sss_format";
 source include/assert.inc;
 
-source include/stop_slave.inc;
---connection master
+source include/stop_replica.inc;
+--connection primary
 drop table t;
-reset master;
+reset primary;
 
---connection slave
-reset slave;
+--connection replica
+reset replica;
 
 --echo
 --echo # Restarting servers and setting up MTS now. Since, SQL thread and
@@ -266,49 +266,49 @@ reset slave;
 --let $rpl_server_number= 2
 --source include/rpl_restart_server.inc
 
---connection slave
-replace_result $MASTER_MYPORT MASTER_MYPORT;
+--connection replica
+replace_result $PRIMARY_MYPORT PRIMARY_MYPORT;
 replace_column 2 ###;
-eval change master to
-  master_host='127.0.0.1',
-  master_port=$MASTER_MYPORT,
-  master_user='root';
-SET @save.slave_parallel_workers=@@global.slave_parallel_workers;
-SET @@global.slave_parallel_workers=1;
+eval change primary to
+  primary_host='127.0.0.1',
+  primary_port=$PRIMARY_MYPORT,
+  primary_user='root';
+SET @save.replica_parallel_workers=@@global.replica_parallel_workers;
+SET @@global.replica_parallel_workers=1;
 # to avoid warnings
-set @save.slave_transaction_retries= @@global.slave_transaction_retries;
-source include/start_slave.inc;
+set @save.replica_transaction_retries= @@global.replica_transaction_retries;
+source include/start_replica.inc;
 
---let $slave_param= Slave_SQL_Running_State
---let $slave_param_value= Slave has read all relay log; waiting for more updates
-source include/wait_for_slave_param.inc;
+--let $replica_param= Replica_SQL_Running_State
+--let $replica_param_value= Replica has read all relay log; waiting for more updates
+source include/wait_for_replica_param.inc;
 
 # To verify the correctness of thread_id field, we check for the name of
 # the thread.
 let $thread_name= `select name from performance_schema.threads where thread_id= (select Thread_Id from performance_schema.replication_applier_status_by_coordinator)`;
 let $assert_text= thread_name should should indicate sql thread.;
-let $assert_cond= "$thread_name" = "thread/sql/slave_sql";
+let $assert_cond= "$thread_name" = "thread/sql/replica_sql";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Slave_SQL_Running, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Replica_SQL_Running, 1);
 let $ps_value= query_get_value(select Service_State from performance_schema.replication_connection_status, Service_State, 1);
-let $assert_text= SSS shows Slave_SQL_Running as "Yes". So, Service_State from this PS table should be "ON".;
+let $assert_text= SSS shows Replica_SQL_Running as "Yes". So, Service_State from this PS table should be "ON".;
 let $assert_cond= "$sss_value" = "Yes" AND "$ps_value"= "ON";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Errno, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Errno, 1);
 let $ps_value= query_get_value(select Last_Error_Number from performance_schema.replication_applier_status_by_coordinator, Last_Error_Number, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Number should be same.;
 let $assert_cond= "$sss_value" = "$ps_value";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_IO_Error, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_IO_Error, 1);
 let $ps_value= query_get_value(select Last_Error_Message from performance_schema.replication_connection_status, Last_Error_Message, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Message should be same.;
 let $assert_cond= "$sss_value" = "$ps_value";
 source include/assert.inc;
 
-let $sss_value= query_get_value(SHOW SLAVE STATUS, Last_SQL_Error_Timestamp, 1);
+let $sss_value= query_get_value(SHOW REPLICA STATUS, Last_SQL_Error_Timestamp, 1);
 let $ps_value= query_get_value(select Last_Error_Timestamp from performance_schema.replication_applier_status_by_coordinator, Last_Error_Timestamp, 1);
 let $assert_text= Value returned by SSS and PS table for Last_Error_Timestamp should be 0000-00-00 00:00:00.;
 let $assert_cond= "$ps_value" = "0000-00-00 00:00:00";
@@ -318,9 +318,9 @@ source include/assert.inc;
 --echo # Cleanup.
 --echo
 
-source include/stop_slave.inc;
-set @@global.slave_parallel_workers= @save.slave_parallel_workers;
-set @@global.slave_transaction_retries= @save.slave_transaction_retries;
-source include/start_slave.inc;
+source include/stop_replica.inc;
+set @@global.replica_parallel_workers= @save.replica_parallel_workers;
+set @@global.replica_transaction_retries= @save.replica_transaction_retries;
+source include/start_replica.inc;
 
 source include/rpl_end.inc;

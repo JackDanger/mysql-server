@@ -1,68 +1,68 @@
 --source include/have_plugin_auth.inc
 --source include/not_embedded.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 #
-# Check that replication slave can connect to master using an account
+# Check that replication replica can connect to primary using an account
 # which authenticates with an external authentication plugin (bug#12897501).
 
 #
-# First stop the slave to guarantee that nothing is replicated.
+# First stop the replica to guarantee that nothing is replicated.
 #
---connection slave
---echo [connection slave]
---source include/stop_slave.inc
+--connection replica
+--echo [connection replica]
+--source include/stop_replica.inc
 #
-# Create an replication account on the master.
+# Create an replication account on the primary.
 #
---connection master
---echo [connection master]
+--connection primary
+--echo [connection primary]
 CREATE USER 'plug_user' IDENTIFIED WITH 'test_plugin_server' AS 'plug_user';
-GRANT REPLICATION SLAVE ON *.* TO plug_user;
+GRANT REPLICATION REPLICA ON *.* TO plug_user;
 FLUSH PRIVILEGES;
 
 #
-# Now go to slave and change the replication user.
+# Now go to replica and change the replication user.
 #
---connection slave
---echo [connection slave]
---let $master_user= query_get_value(SHOW SLAVE STATUS, Master_User, 1)
+--connection replica
+--echo [connection replica]
+--let $primary_user= query_get_value(SHOW REPLICA STATUS, Primary_User, 1)
 --replace_column 2 ####
-CHANGE MASTER TO 
-  MASTER_USER=     'plug_user',
-  MASTER_PASSWORD= 'plug_user',
-  MASTER_RETRY_COUNT= 0;
+CHANGE PRIMARY TO 
+  PRIMARY_USER=     'plug_user',
+  PRIMARY_PASSWORD= 'plug_user',
+  PRIMARY_RETRY_COUNT= 0;
 
 #
-# Start slave with new replication account - this should trigger connection
-# to the master server.
+# Start replica with new replication account - this should trigger connection
+# to the primary server.
 #
---source include/start_slave.inc
+--source include/start_replica.inc
 
-# Replicate all statements executed on master, in this case,
+# Replicate all statements executed on primary, in this case,
 # (creation of the plug_user account).
 #
---connection master
---sync_slave_with_master
---echo # Slave in-sync with master now.
+--connection primary
+--sync_replica_with_primary
+--echo # Replica in-sync with primary now.
 
 SELECT user, plugin, authentication_string FROM mysql.user WHERE user LIKE 'plug_user';
 
 #
-# Now we can stop the slave and clean up.
+# Now we can stop the replica and clean up.
 #
-# Note: it is important that slave is stopped at this
-# moment - otherwise master's cleanup statements
-# would be replicated on slave!
+# Note: it is important that replica is stopped at this
+# moment - otherwise primary's cleanup statements
+# would be replicated on replica!
 #
---echo # Cleanup (on slave).
---source include/stop_slave.inc
+--echo # Cleanup (on replica).
+--source include/stop_replica.inc
 --replace_column 2 ####
-eval CHANGE MASTER TO MASTER_USER='$master_user';
+eval CHANGE PRIMARY TO PRIMARY_USER='$primary_user';
 DROP USER 'plug_user';
 
---echo # Cleanup (on master).
---connection master
+--echo # Cleanup (on primary).
+--connection primary
 DROP USER 'plug_user';
 
 --let $rpl_only_running_threads= 1

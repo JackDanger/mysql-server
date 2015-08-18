@@ -47,8 +47,8 @@
 #include "sql_timer.h"                       // thd_timer_destroy
 #include "transaction.h"                     // trans_rollback
 #ifdef HAVE_REPLICATION
-#include "rpl_rli_pdb.h"                     // Slave_worker
-#include "rpl_slave_commit_order_manager.h"
+#include "rpl_rli_pdb.h"                     // Replica_worker
+#include "rpl_replica_commit_order_manager.h"
 #endif
 
 #include "pfs_file_provider.h"
@@ -1120,7 +1120,7 @@ THD::THD(bool enable_plugins)
    lex(&main_lex),
    m_query_string(NULL_CSTR),
    m_db(NULL_CSTR),
-   rli_fake(0), rli_slave(NULL),
+   rli_fake(0), rli_replica(NULL),
 #ifdef EMBEDDED_LIBRARY
    mysql(NULL),
 #endif
@@ -1184,7 +1184,7 @@ THD::THD(bool enable_plugins)
    m_query_rewrite_plugin_da(false),
    m_query_rewrite_plugin_da_ptr(&m_query_rewrite_plugin_da),
    m_stmt_da(&main_da),
-   duplicate_slave_uuid(false)
+   duplicate_replica_uuid(false)
 {
   mdl_context.init(this);
   init_sql_alloc(key_memory_thd_main_mem_root,
@@ -1202,7 +1202,7 @@ THD::THD(bool enable_plugins)
   count_cuted_fields= CHECK_FIELD_IGNORE;
   killed= NOT_KILLED;
   col_access=0;
-  is_slave_error= thread_specific_used= FALSE;
+  is_replica_error= thread_specific_used= FALSE;
   my_hash_clear(&handler_tables_hash);
   my_hash_clear(&ull_hash);
   tmp_table=0;
@@ -1218,7 +1218,7 @@ THD::THD(bool enable_plugins)
   lex->set_current_select(0);
   utime_after_lock= 0L;
   current_linfo =  0;
-  slave_thread = 0;
+  replica_thread = 0;
   memset(&variables, 0, sizeof(variables));
   m_thread_id= Global_THD_manager::reserved_thread_id;
   file_id = 0;
@@ -1256,7 +1256,7 @@ THD::THD(bool enable_plugins)
   where= THD::DEFAULT_WHERE;
   server_id = ::server_id;
   unmasked_server_id = server_id;
-  slave_net = 0;
+  replica_net = 0;
   set_command(COM_CONNECT);
   *scramble= '\0';
 
@@ -1495,7 +1495,7 @@ Sql_condition* THD::raise_condition(uint sql_errno,
   Diagnostics_area *da= get_stmt_da();
   if (level == Sql_condition::SL_ERROR)
   {
-    is_slave_error= true; // needed to catch query errors during replication
+    is_replica_error= true; // needed to catch query errors during replication
 
     if (!da->is_error())
     {
@@ -1667,9 +1667,9 @@ void THD::init_for_queries(Relay_log_info *rli)
     {
       rli->deferred_events= new Deferred_log_events(rli);
     }
-    rli_slave= rli;
+    rli_replica= rli;
 
-    DBUG_ASSERT(rli_slave->info_thd == this && slave_thread);
+    DBUG_ASSERT(rli_replica->info_thd == this && replica_thread);
   }
 #endif
 }
@@ -1949,8 +1949,8 @@ THD::~THD()
     DBUG_ASSERT(0);
 #endif
   }
-  if (rli_slave)
-    rli_slave->cleanup_after_session();
+  if (rli_replica)
+    rli_replica->cleanup_after_session();
 #endif
 
   free_root(&main_mem_root, MYF(0));
@@ -2099,7 +2099,7 @@ void THD::awake(THD::killed_state state_to_set)
     }
 
     /* Send an event to the scheduler that a thread should be killed. */
-    if (!slave_thread)
+    if (!replica_thread)
       MYSQL_CALLBACK(Connection_handler_manager::event_functions,
                      post_kill_notification, (this));
   }
@@ -2291,15 +2291,15 @@ bool THD::restore_globals()
   NOTE
     This function is not suitable for setting thread data to some
     non-default values, as there is only one replication thread, so
-    different master threads may overwrite data of each other on
-    slave.
+    different primary threads may overwrite data of each other on
+    replica.
 */
 
 void THD::cleanup_after_query()
 {
   /*
     Reset rand_used so that detection of calls to rand() will save random 
-    seeds if needed by the slave.
+    seeds if needed by the replica.
 
     Do not reset rand_used if inside a stored function or trigger because 
     only the call to these operations is logged. Thus only the calling 
@@ -2325,7 +2325,7 @@ void THD::cleanup_after_query()
         which is intended to consume its event (there can be other
         SET statements between them).
     */
-    if ((rli_slave || rli_fake) && is_update_query(lex->sql_command))
+    if ((rli_replica || rli_fake) && is_update_query(lex->sql_command))
       auto_inc_intervals_forced.empty();
 #endif
   }
@@ -2367,8 +2367,8 @@ void THD::cleanup_after_query()
     lex->mi.repl_ignore_server_ids.clear();
   }
 #ifndef EMBEDDED_LIBRARY
-  if (rli_slave)
-    rli_slave->cleanup_after_query();
+  if (rli_replica)
+    rli_replica->cleanup_after_query();
 #endif
 }
 
@@ -3864,7 +3864,7 @@ extern "C" unsigned long thd_get_thread_id(const MYSQL_THD thd)
 extern "C" int thd_allow_batch(MYSQL_THD thd)
 {
   if ((thd->variables.option_bits & OPTION_ALLOW_BATCH) ||
-      (thd->slave_thread && opt_slave_allow_batching))
+      (thd->replica_thread && opt_replica_allow_batching))
     return 1;
   return 0;
 }
@@ -3920,9 +3920,9 @@ extern "C" size_t thd_query_safe(MYSQL_THD thd, char *buf, size_t buflen)
   return len;
 }
 
-extern "C" int thd_slave_thread(const MYSQL_THD thd)
+extern "C" int thd_replica_thread(const MYSQL_THD thd)
 {
-  return(thd->slave_thread);
+  return(thd->replica_thread);
 }
 
 extern "C" int thd_non_transactional_update(const MYSQL_THD thd)
@@ -4115,11 +4115,11 @@ void THD::reset_sub_statement_state(Sub_statement_state *backup,
                                     uint new_state)
 {
 #ifndef EMBEDDED_LIBRARY
-  /* BUG#33029, if we are replicating from a buggy master, reset
+  /* BUG#33029, if we are replicating from a buggy primary, reset
      auto_inc_intervals_forced to prevent substatement
      (triggers/functions) from using erroneous INSERT_ID value
    */
-  if (rpl_master_erroneous_autoinc(this))
+  if (rpl_primary_erroneous_autoinc(this))
   {
     DBUG_ASSERT(backup->auto_inc_intervals_forced.nb_elements() == 0);
     auto_inc_intervals_forced.swap(&backup->auto_inc_intervals_forced);
@@ -4167,11 +4167,11 @@ void THD::restore_sub_statement_state(Sub_statement_state *backup)
 {
   DBUG_ENTER("THD::restore_sub_statement_state");
 #ifndef EMBEDDED_LIBRARY
-  /* BUG#33029, if we are replicating from a buggy master, restore
+  /* BUG#33029, if we are replicating from a buggy primary, restore
      auto_inc_intervals_forced so that the top statement can use the
      INSERT_ID value set before this statement.
    */
-  if (rpl_master_erroneous_autoinc(this))
+  if (rpl_primary_erroneous_autoinc(this))
   {
     backup->auto_inc_intervals_forced.swap(&auto_inc_intervals_forced);
     DBUG_ASSERT(backup->auto_inc_intervals_forced.nb_elements() == 0);
@@ -4419,7 +4419,7 @@ void THD::get_definer(LEX_USER *definer)
 {
   binlog_invoker();
 #if !defined(MYSQL_CLIENT) && defined(HAVE_REPLICATION)
-  if (slave_thread && has_invoker())
+  if (replica_thread && has_invoker())
   {
     definer->user= m_invoker_user;
     definer->host= m_invoker_host;
@@ -4483,7 +4483,7 @@ void THD::clear_next_event_pos()
 };
 
 #ifdef HAVE_REPLICATION
-void THD::set_currently_executing_gtid_for_slave_thread()
+void THD::set_currently_executing_gtid_for_replica_thread()
 {
   /*
     This function may be called in three cases:
@@ -4498,13 +4498,13 @@ void THD::set_currently_executing_gtid_for_slave_thread()
       that is missing Gtid events completely, from
       gtid_pre_statement_checks() for a statement that appears after a
       BINLOG statement containing a Format_description_log_event
-      originating from the master.
+      originating from the primary.
 
     Because of the last case, we don't assert(is_mts_worker())
   */
   if (is_mts_worker(this))
   {
-    dynamic_cast<Slave_worker *>(rli_slave)->currently_executing_gtid=
+    dynamic_cast<Replica_worker *>(rli_replica)->currently_executing_gtid=
       variables.gtid_next;
   }
 }

@@ -197,7 +197,7 @@ Event_queue::update_event(THD *thd, LEX_STRING dbname, LEX_STRING name,
   DBUG_PRINT("enter", ("thd: 0x%lx  et=[%s.%s]", (long) thd, dbname.str, name.str));
 
   if ((new_element->status == Event_parse_data::DISABLED) ||
-      (new_element->status == Event_parse_data::SLAVESIDE_DISABLED))
+      (new_element->status == Event_parse_data::REPLICASIDE_DISABLED))
   {
     DBUG_PRINT("info", ("The event is disabled."));
     /*

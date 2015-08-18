@@ -5,7 +5,7 @@ BEGIN;
 INSERT INTO t1 VALUES(1);
 COMMIT;
 ERROR HY000: Lost connection to MySQL server during query
-# Restart the master server
+# Restart the primary server
 #
 # Verify that a transaction can not be recovered during server
 # recovery from a crash, which happened after flushing it to
@@ -18,7 +18,7 @@ BEGIN;
 INSERT INTO t1 VALUES(2);
 COMMIT;
 ERROR HY000: Lost connection to MySQL server during query
-# Restart the master server
+# Restart the primary server
 #
 # Verify that a transaction can be recovered during server
 # recovery from a crash, which happened after flushing it

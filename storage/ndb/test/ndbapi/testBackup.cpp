@@ -52,22 +52,22 @@ int runLoadTable(NDBT_Context* ctx, NDBT_Step* step){
   return NDBT_OK;
 }
 
-bool testMaster = true;
-bool testSlave = false;
+bool testPrimary = true;
+bool testReplica = false;
 
-int setMaster(NDBT_Context* ctx, NDBT_Step* step){
-  testMaster = true;
-  testSlave = false;
+int setPrimary(NDBT_Context* ctx, NDBT_Step* step){
+  testPrimary = true;
+  testReplica = false;
   return NDBT_OK;
 }
-int setMasterAsSlave(NDBT_Context* ctx, NDBT_Step* step){
-  testMaster = true;
-  testSlave = true;
+int setPrimaryAsReplica(NDBT_Context* ctx, NDBT_Step* step){
+  testPrimary = true;
+  testReplica = true;
   return NDBT_OK;
 }
-int setSlave(NDBT_Context* ctx, NDBT_Step* step){
-  testMaster = false;
-  testSlave = true;
+int setReplica(NDBT_Context* ctx, NDBT_Step* step){
+  testPrimary = false;
+  testReplica = true;
   return NDBT_OK;
 }
 
@@ -86,18 +86,18 @@ int runAbort(NDBT_Context* ctx, NDBT_Step* step){
     return NDBT_FAILED;
   }
 
-  if (testMaster) {
-    if (testSlave) {
-      if (backup.NFMasterAsSlave(restarter) != NDBT_OK){
+  if (testPrimary) {
+    if (testReplica) {
+      if (backup.NFPrimaryAsReplica(restarter) != NDBT_OK){
 	return NDBT_FAILED;
       }
     } else {
-      if (backup.NFMaster(restarter) != NDBT_OK){
+      if (backup.NFPrimary(restarter) != NDBT_OK){
 	return NDBT_FAILED;
       }
     }
   } else {
-    if (backup.NFSlave(restarter) != NDBT_OK){
+    if (backup.NFReplica(restarter) != NDBT_OK){
       return NDBT_FAILED;
     }
   }
@@ -120,18 +120,18 @@ int runFail(NDBT_Context* ctx, NDBT_Step* step){
     return NDBT_FAILED;
   }
 
-  if (testMaster) {
-    if (testSlave) {
-      if (backup.FailMasterAsSlave(restarter) != NDBT_OK){
+  if (testPrimary) {
+    if (testReplica) {
+      if (backup.FailPrimaryAsReplica(restarter) != NDBT_OK){
 	return NDBT_FAILED;
       }
     } else {
-      if (backup.FailMaster(restarter) != NDBT_OK){
+      if (backup.FailPrimary(restarter) != NDBT_OK){
 	return NDBT_FAILED;
       }
     }
   } else {
-    if (backup.FailSlave(restarter) != NDBT_OK){
+    if (backup.FailReplica(restarter) != NDBT_OK){
       return NDBT_FAILED;
     }
   }
@@ -1005,45 +1005,45 @@ TESTCASE("BackupUndoLog",
   VERIFIER(runVerifyUndoData);
   FINALIZER(runClearTable);
 }
-TESTCASE("NFMaster", 
+TESTCASE("NFPrimary", 
 	 "Test that backup behaves during node failiure\n"){
   INITIALIZER(clearOldBackups);
-  INITIALIZER(setMaster);
+  INITIALIZER(setPrimary);
   STEP(runAbort);
 
 }
-TESTCASE("NFMasterAsSlave", 
+TESTCASE("NFPrimaryAsReplica", 
 	 "Test that backup behaves during node failiure\n"){
   INITIALIZER(clearOldBackups);
-  INITIALIZER(setMasterAsSlave);
+  INITIALIZER(setPrimaryAsReplica);
   STEP(runAbort);
 
 }
-TESTCASE("NFSlave", 
+TESTCASE("NFReplica", 
 	 "Test that backup behaves during node failiure\n"){
   INITIALIZER(clearOldBackups);
-  INITIALIZER(setSlave);
+  INITIALIZER(setReplica);
   STEP(runAbort);
 
 }
-TESTCASE("FailMaster", 
+TESTCASE("FailPrimary", 
 	 "Test that backup behaves during node failiure\n"){
   INITIALIZER(clearOldBackups);
-  INITIALIZER(setMaster);
+  INITIALIZER(setPrimary);
   STEP(runFail);
 
 }
-TESTCASE("FailMasterAsSlave", 
+TESTCASE("FailPrimaryAsReplica", 
 	 "Test that backup behaves during node failiure\n"){
   INITIALIZER(clearOldBackups);
-  INITIALIZER(setMasterAsSlave);
+  INITIALIZER(setPrimaryAsReplica);
   STEP(runFail);
 
 }
-TESTCASE("FailSlave", 
+TESTCASE("FailReplica", 
 	 "Test that backup behaves during node failiure\n"){
   INITIALIZER(clearOldBackups);
-  INITIALIZER(setSlave);
+  INITIALIZER(setReplica);
   STEP(runFail);
 
 }

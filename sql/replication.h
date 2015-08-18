@@ -408,7 +408,7 @@ typedef struct Binlog_transmit_observer {
                         unsigned long *len);
 
   /**
-     This callback is called before sending an event packet to slave
+     This callback is called before sending an event packet to replica
 
      @param param Observer common parameter
      @param packet Binlog event packet to send
@@ -425,16 +425,16 @@ typedef struct Binlog_transmit_observer {
 
   /**
      This callback is called after an event packet is sent to the
-     slave or is skipped.
+     replica or is skipped.
 
      @param param             Observer common parameter
      @param event_buf         Binlog event packet buffer sent
      @param len               length of the event packet buffer
      @param skipped_log_file  Binlog file name of the event that
-                              was skipped in the master. This is
+                              was skipped in the primary. This is
                               null if the position was not skipped
      @param skipped_log_pos   Binlog position of the event that
-                              was skipped in the master. 0 if not
+                              was skipped in the primary. 0 if not
                               skipped
      @retval 0 Sucess
      @retval 1 Failure
@@ -444,9 +444,9 @@ typedef struct Binlog_transmit_observer {
                           const char *skipped_log_file, my_off_t skipped_log_pos);
 
   /**
-     This callback is called after resetting master status
+     This callback is called after resetting primary status
 
-     This is called when executing the command RESET MASTER, and is
+     This is called when executing the command RESET PRIMARY, and is
      used to reset status variables added by observers.
 
      @param param Observer common parameter
@@ -454,7 +454,7 @@ typedef struct Binlog_transmit_observer {
      @retval 0 Sucess
      @retval 1 Failure
   */
-  int (*after_reset_master)(Binlog_transmit_param *param);
+  int (*after_reset_primary)(Binlog_transmit_param *param);
 } Binlog_transmit_observer;
 
 /**
@@ -473,25 +473,25 @@ typedef struct Binlog_relay_IO_param {
   uint32 server_id;
   my_thread_id thread_id;
 
-  /* Master host, user and port */
+  /* Primary host, user and port */
   char *host;
   char *user;
   unsigned int port;
 
-  char *master_log_name;
-  my_off_t master_log_pos;
+  char *primary_log_name;
+  my_off_t primary_log_pos;
 
-  MYSQL *mysql;                        /* the connection to master */
+  MYSQL *mysql;                        /* the connection to primary */
 } Binlog_relay_IO_param;
 
 /**
-   Observes and extends the service of slave IO thread.
+   Observes and extends the service of replica IO thread.
 */
 typedef struct Binlog_relay_IO_observer {
   uint32 len;
 
   /**
-     This callback is called when slave IO thread starts
+     This callback is called when replica IO thread starts
 
      @param param Observer common parameter
 
@@ -501,7 +501,7 @@ typedef struct Binlog_relay_IO_observer {
   int (*thread_start)(Binlog_relay_IO_param *param);
 
   /**
-     This callback is called when slave IO thread stops
+     This callback is called when replica IO thread stops
 
      @param param Observer common parameter
 
@@ -523,9 +523,9 @@ typedef struct Binlog_relay_IO_observer {
   int (*applier_stop)(Binlog_relay_IO_param *param, bool aborted);
 
   /**
-     This callback is called before slave requesting binlog transmission from master
+     This callback is called before replica requesting binlog transmission from primary
 
-     This is called before slave issuing BINLOG_DUMP command to master
+     This is called before replica issuing BINLOG_DUMP command to primary
      to request binlog.
 
      @param param Observer common parameter
@@ -537,11 +537,11 @@ typedef struct Binlog_relay_IO_observer {
   int (*before_request_transmit)(Binlog_relay_IO_param *param, uint32 flags);
 
   /**
-     This callback is called after read an event packet from master
+     This callback is called after read an event packet from primary
 
      @param param Observer common parameter
-     @param packet The event packet read from master
-     @param len Length of the event packet read from master
+     @param packet The event packet read from primary
+     @param len Length of the event packet read from primary
      @param event_buf The event packet return after process
      @param event_len The length of event packet return after process
 
@@ -568,14 +568,14 @@ typedef struct Binlog_relay_IO_observer {
                            uint32 flags);
 
   /**
-     This callback is called after reset slave relay log IO status
+     This callback is called after reset replica relay log IO status
 
      @param param Observer common parameter
 
      @retval 0 Sucess
      @retval 1 Failure
   */
-  int (*after_reset_slave)(Binlog_relay_IO_param *param);
+  int (*after_reset_replica)(Binlog_relay_IO_param *param);
 } Binlog_relay_IO_observer;
 
 
@@ -668,7 +668,7 @@ int register_server_state_observer(Server_state_observer *observer, void *p);
 int unregister_server_state_observer(Server_state_observer *observer, void *p);
 
 /**
-   Register a binlog relay IO (slave IO thread) observer
+   Register a binlog relay IO (replica IO thread) observer
 
    @param observer The binlog relay IO observer to register
    @param p pointer to the internal plugin structure
@@ -679,7 +679,7 @@ int unregister_server_state_observer(Server_state_observer *observer, void *p);
 int register_binlog_relay_io_observer(Binlog_relay_IO_observer *observer, void *p);
 
 /**
-   Unregister a binlog relay IO (slave IO thread) observer
+   Unregister a binlog relay IO (replica IO thread) observer
 
    @param observer The binlog relay IO observer to unregister
    @param p pointer to the internal plugin structure

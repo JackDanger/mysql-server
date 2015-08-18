@@ -1,13 +1,13 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 #### Initialize ####
 CREATE TABLE t1 (a INT);
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 CALL mtr.add_suppression('QUERY.*COMMIT or ROLLBACK.* or XID_LOG_EVENT is not expected in an event stream outside a transaction');
-CALL mtr.add_suppression('An unexpected event sequence was detected by the IO thread while queuing the event received from master');
+CALL mtr.add_suppression('An unexpected event sequence was detected by the IO thread while queuing the event received from primary');
 #### 1. Check basic properties of GTID_NEXT = NOT_YET_DETERMINED ####
 ---- 1.1. Format_description_log_event sets NOT_YET_DETERMINED ----
 BINLOG 'C9BAVQ8BAAAAdwAAAHsAAAABAAQANS43LjgtcmMtZGVidWctbG9nAAAAAAAAAAAAAAAAAAAAAAAA
@@ -125,19 +125,19 @@ aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:1
 ROLLBACK;
 SET @@SESSION.GTID_NEXT = 'AUTOMATIC';
 SET GLOBAL GTID_MODE = OFF;
-#### 2. CHANGE MASTER TO MASTER_LOG_POS ####
-include/stop_slave_io.inc
+#### 2. CHANGE PRIMARY TO PRIMARY_LOG_POS ####
+include/stop_replica_io.inc
 INSERT INTO t1 VALUES (1);
-CHANGE MASTER TO MASTER_LOG_FILE = 'FILE', MASTER_LOG_POS = POSITION;
-include/start_slave_io.inc
-include/sync_slave_sql_with_master.inc
-#### 3. CHANGE MASTER TO RELAY_LOG_POS ####
-include/stop_slave_sql.inc
+CHANGE PRIMARY TO PRIMARY_LOG_FILE = 'FILE', PRIMARY_LOG_POS = POSITION;
+include/start_replica_io.inc
+include/sync_replica_sql_with_primary.inc
+#### 3. CHANGE PRIMARY TO RELAY_LOG_POS ####
+include/stop_replica_sql.inc
 INSERT INTO t1 VALUES (2);
-include/sync_slave_io_with_master.inc
-CHANGE MASTER TO RELAY_LOG_FILE = 'FILE', RELAY_LOG_POS = POSITION;
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
+include/sync_replica_io_with_primary.inc
+CHANGE PRIMARY TO RELAY_LOG_FILE = 'FILE', RELAY_LOG_POS = POSITION;
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
 #### Clean up ####
 DROP TABLE t1;
 include/rpl_end.inc

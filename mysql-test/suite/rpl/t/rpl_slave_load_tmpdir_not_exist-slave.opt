@@ -1,1 +1,1 @@
---slave-load-tmpdir=../../../error
+--replica-load-tmpdir=../../../error

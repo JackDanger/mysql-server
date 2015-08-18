@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE IF NOT EXISTS t1 (a INT) ENGINE=InnoDB;
 CREATE TABLE t2 (a INT) ENGINE=MyISAM;
 INSERT INTO t1 VALUES(1);
@@ -11,55 +11,55 @@ INSERT INTO t2 VALUES(1);
 # Verify that transactions' gtids can be reported
 # from global.gtid_executed correctly.
 #
-include/assert.inc [committed gtids MASTER_UUID:1-4]
+include/assert.inc [committed gtids PRIMARY_UUID:1-4]
 #
-# Store gtids MASTER_UUID:1-4 in gtid_executed table on binlog rotation
+# Store gtids PRIMARY_UUID:1-4 in gtid_executed table on binlog rotation
 #
 FLUSH LOGS;
 SELECT * FROM mysql.gtid_executed;
 source_uuid	interval_start	interval_end
-MASTER_UUID	1	4
-include/sync_slave_sql_with_master.inc
+PRIMARY_UUID	1	4
+include/sync_replica_sql_with_primary.inc
 #
-# connection slave
+# connection replica
 #
-include/assert.inc [committed gtids MASTER_UUID:1-4]
+include/assert.inc [committed gtids PRIMARY_UUID:1-4]
 #
-# Verify that slave thread stores gtid into gtid_executed table within
-# each transaction if binlog is on and log_slave_updated is disabled.
+# Verify that replica thread stores gtid into gtid_executed table within
+# each transaction if binlog is on and log_replica_updated is disabled.
 #
 SELECT * FROM mysql.gtid_executed;
 source_uuid	interval_start	interval_end
-MASTER_UUID	1	1
-MASTER_UUID	2	2
-MASTER_UUID	3	3
-MASTER_UUID	4	4
+PRIMARY_UUID	1	1
+PRIMARY_UUID	2	2
+PRIMARY_UUID	3	3
+PRIMARY_UUID	4	4
 INSERT INTO t1 VALUES(2);
 INSERT INTO t2 VALUES(2);
 #
-# Verify that store gtids SLAVE_UUID:1-2 into gtid_executed table,
+# Verify that store gtids REPLICA_UUID:1-2 into gtid_executed table,
 # which is also compressed on binlog rotation.
 #
 SET @old_compression_period= @@GLOBAL.GTID_EXECUTED_COMPRESSION_PERIOD;
 SET @@GLOBAL.GTID_EXECUTED_COMPRESSION_PERIOD= 1;
 FLUSH LOGS;
 SET @@GLOBAL.GTID_EXECUTED_COMPRESSION_PERIOD= @old_compression_period;
-SELECT * FROM mysql.gtid_executed where source_uuid="MASTER_UUID";
+SELECT * FROM mysql.gtid_executed where source_uuid="PRIMARY_UUID";
 source_uuid	interval_start	interval_end
-MASTER_UUID	1	4
-SELECT * FROM mysql.gtid_executed where source_uuid="SLAVE_UUID";
+PRIMARY_UUID	1	4
+SELECT * FROM mysql.gtid_executed where source_uuid="REPLICA_UUID";
 source_uuid	interval_start	interval_end
-SLAVE_UUID	1	2
+REPLICA_UUID	1	2
 #
 # Verify that we can get the correct set of gtid_purged when purging
-# logs if binlog is enabled and log_slave_updates is disabled.
+# logs if binlog is enabled and log_replica_updates is disabled.
 #
-PURGE BINARY LOGS TO 'slave-bin.000002';
-include/assert.inc [purged gtids SLAVE_UUID:1-2,MASTER_UUID:1-4]
+PURGE BINARY LOGS TO 'replica-bin.000002';
+include/assert.inc [purged gtids REPLICA_UUID:1-2,PRIMARY_UUID:1-4]
 #
 # Verify that we can get the correct set from 'gtid_executed' table
 # when executing a big transaction that exceeds the max size of the
-# binlog if binlog is enabled and log_slave_updates is disabled.
+# binlog if binlog is enabled and log_replica_updates is disabled.
 #
 SET @SIZE_DEFAULT=@@MAX_BINLOG_SIZE;
 SET GLOBAL MAX_BINLOG_SIZE=4096;
@@ -127,12 +127,12 @@ INSERT INTO t1 VALUES (59);;
 COMMIT;
 SET GLOBAL DEBUG= @debug_save;
 SET GLOBAL MAX_BINLOG_SIZE=@SIZE_DEFAULT;
-SELECT * FROM mysql.gtid_executed where source_uuid="MASTER_UUID";
+SELECT * FROM mysql.gtid_executed where source_uuid="PRIMARY_UUID";
 source_uuid	interval_start	interval_end
-MASTER_UUID	1	4
-SELECT * FROM mysql.gtid_executed where source_uuid="SLAVE_UUID";
+PRIMARY_UUID	1	4
+SELECT * FROM mysql.gtid_executed where source_uuid="REPLICA_UUID";
 source_uuid	interval_start	interval_end
-SLAVE_UUID	1	2
-SLAVE_UUID	3	3
+REPLICA_UUID	1	2
+REPLICA_UUID	3	3
 DROP TABLE t1,t2;
 include/rpl_end.inc

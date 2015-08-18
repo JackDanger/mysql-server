@@ -1105,26 +1105,26 @@ static monitor_info_t	innodb_counter_info[] =
 	 MONITOR_MODULE,
 	 MONITOR_DEFAULT_START, MONITOR_MODULE_SERVER},
 
-	{"innodb_master_thread_sleeps", "server",
-	 "Number of times (seconds) master thread sleeps",
+	{"innodb_primary_thread_sleeps", "server",
+	 "Number of times (seconds) primary thread sleeps",
 	 MONITOR_NONE,
-	 MONITOR_DEFAULT_START, MONITOR_MASTER_THREAD_SLEEP},
+	 MONITOR_DEFAULT_START, MONITOR_PRIMARY_THREAD_SLEEP},
 
 	{"innodb_activity_count", "server", "Current server activity count",
 	 static_cast<monitor_type_t>(
 	 MONITOR_EXISTING | MONITOR_DEFAULT_ON),
 	 MONITOR_DEFAULT_START, MONITOR_OVLD_SERVER_ACTIVITY},
 
-	{"innodb_master_active_loops", "server",
-	 "Number of times master thread performs its tasks when"
+	{"innodb_primary_active_loops", "server",
+	 "Number of times primary thread performs its tasks when"
 	 " server is active",
 	 MONITOR_NONE,
-	 MONITOR_DEFAULT_START, MONITOR_MASTER_ACTIVE_LOOPS},
+	 MONITOR_DEFAULT_START, MONITOR_PRIMARY_ACTIVE_LOOPS},
 
-	{"innodb_master_idle_loops", "server",
-	 "Number of times master thread performs its tasks when server is idle",
+	{"innodb_primary_idle_loops", "server",
+	 "Number of times primary thread performs its tasks when server is idle",
 	 MONITOR_NONE,
-	 MONITOR_DEFAULT_START, MONITOR_MASTER_IDLE_LOOPS},
+	 MONITOR_DEFAULT_START, MONITOR_PRIMARY_IDLE_LOOPS},
 
 	{"innodb_background_drop_table_usec", "server",
 	 "Time (in microseconds) spent to process drop table list",
@@ -1146,8 +1146,8 @@ static monitor_info_t	innodb_counter_info[] =
 	 MONITOR_NONE,
 	 MONITOR_DEFAULT_START, MONITOR_SRV_MEM_VALIDATE_MICROSECOND},
 
-	{"innodb_master_purge_usec", "server",
-	 "Time (in microseconds) spent by master thread to purge records",
+	{"innodb_primary_purge_usec", "server",
+	 "Time (in microseconds) spent by primary thread to purge records",
 	 MONITOR_NONE,
 	 MONITOR_DEFAULT_START, MONITOR_SRV_PURGE_MICROSECOND},
 
@@ -1157,7 +1157,7 @@ static monitor_info_t	innodb_counter_info[] =
 	 MONITOR_DEFAULT_START, MONITOR_SRV_DICT_LRU_MICROSECOND},
 
 	{"innodb_checkpoint_usec", "server",
-	 "Time (in microseconds) spent by master thread to do checkpoint",
+	 "Time (in microseconds) spent by primary thread to do checkpoint",
 	 MONITOR_NONE,
 	 MONITOR_DEFAULT_START, MONITOR_SRV_CHECKPOINT_MICROSECOND},
 

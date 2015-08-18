@@ -5,14 +5,14 @@
 
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
 #
-# Slave behaviour when replicating unique index operations
+# Replica behaviour when replicating unique index operations
 #
 #
 
---connection master
+--connection primary
 
 CREATE TABLE t1 (pk int primary key, uk int not null, unique(uk)) engine=ndb;
 
@@ -38,20 +38,20 @@ update t1 set uk=uk-1 order by pk;
 --sorted_result
 select * from t1 where uk in (0,1,2,3,4);
 
---echo Master table contents
+--echo Primary table contents
 select * from t1 order by pk;
 
 flush logs;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
+--connection replica
 
---echo Slave table contents
+--echo Replica table contents
 select * from t1 order by pk;
 select * from t1 where uk in (0,1,2,3,4);
 
---connection master
+--connection primary
 drop table t1;
 
 # bug12974714
@@ -75,15 +75,15 @@ insert into t2 select null from t2;
 commit;
 select count(*) from t1;
 select count(*) from t2;
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
+--connection replica
 select count(*) from t1;
 select count(*) from t2;
 
---connection master
+--connection primary
 drop table t1;
 drop table t2;
---sync_slave_with_master
+--sync_replica_with_primary
 
 --source include/rpl_end.inc

@@ -27,7 +27,7 @@ connect (con1,localhost,ssl_user1,,,,,SSL);
 connect (con2,localhost,ssl_user2,,,,,SSL);
 connect (con3,localhost,ssl_user3,,,,,SSL);
 connect (con4,localhost,ssl_user4,,,,,SSL);
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
 connect (con5,localhost,ssl_user5,,,,,SSL);
 
@@ -114,7 +114,7 @@ drop table t1;
 --exec $MYSQL_TEST --ssl --ssl-cert= --max-connect-retries=1 < $MYSQLTEST_VARDIR/tmp/test.sql 2>&1
 
 #
-# Bug#21611 Slave can't connect when master-ssl-cipher specified
+# Bug#21611 Replica can't connect when primary-ssl-cipher specified
 # - Apparently selecting a cipher doesn't work at all
 # - Usa a cipher that both yaSSL and OpenSSL supports
 #
@@ -269,9 +269,9 @@ set sql_mode= @orig_sql_mode;
 --echo #
 
 --echo # Must return empty
---exec $MYSQL --host=127.0.0.1 -P $MASTER_MYPORT --skip-ssl -e "SHOW STATUS LIKE 'Ssl-cipher';"
+--exec $MYSQL --host=127.0.0.1 -P $PRIMARY_MYPORT --skip-ssl -e "SHOW STATUS LIKE 'Ssl-cipher';"
 --echo # Must return values for the certificate data
---exec $MYSQL --host=127.0.0.1 -P $MASTER_MYPORT --skip-ssl -e "SHOW STATUS LIKE 'Ssl_server_not%';"
+--exec $MYSQL --host=127.0.0.1 -P $PRIMARY_MYPORT --skip-ssl -e "SHOW STATUS LIKE 'Ssl_server_not%';"
 
 --echo End of 5.7 tests
 

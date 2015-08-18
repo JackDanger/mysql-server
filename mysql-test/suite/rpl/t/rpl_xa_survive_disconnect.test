@@ -3,7 +3,7 @@
 #    a. disconnection does not lose a prepared transaction
 #        so it can be committed from another connection
 #    c. the prepared transaction is logged
-#    d. interleaved prepared transactions are correctly applied on the slave.
+#    d. interleaved prepared transactions are correctly applied on the replica.
 
 #
 # Both replication format are checked through explict
@@ -17,9 +17,9 @@
 # Selecting from P_S.threads provides a method to learn that.
 #
 --source include/have_perfschema.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---connection master
+--connection primary
 call mtr.add_suppression("Found 2 prepared XA transactions");
 CREATE VIEW v_processlist  as SELECT * FROM performance_schema.threads where type = 'FOREGROUND';
 
@@ -29,7 +29,7 @@ CREATE DATABASE d2;
 CREATE TABLE d1.t (a INT) ENGINE=innodb;
 CREATE TABLE d2.t (a INT) ENGINE=innodb;
 
-connect (master_conn1, 127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (primary_conn1, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 --let $conn_id=`SELECT connection_id()`
 SET @@session.binlog_format= statement;
 XA START '1-stmt';
@@ -37,13 +37,13 @@ INSERT INTO d1.t VALUES (1);
 XA END '1-stmt';
 XA PREPARE '1-stmt';
 
---disconnect master_conn1
+--disconnect primary_conn1
 
---connection master
+--connection primary
 --let $wait_condition= SELECT count(*) = 0 FROM v_processlist WHERE PROCESSLIST_ID = $conn_id
 --source include/wait_condition.inc
 
-connect (master_conn2, 127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (primary_conn2, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 --let $conn_id=`SELECT connection_id()`
 SET @@session.binlog_format= row;
 XA START '1-row';
@@ -51,9 +51,9 @@ INSERT INTO d2.t VALUES (1);
 XA END '1-row';
 XA PREPARE '1-row';
 
---disconnect master_conn2
+--disconnect primary_conn2
 
---connection master
+--connection primary
 --let $wait_condition= SELECT count(*) = 0 FROM v_processlist WHERE PROCESSLIST_ID = $conn_id
 --source include/wait_condition.inc
 
@@ -67,45 +67,45 @@ XA COMMIT '1-row';
 XA COMMIT '1-stmt';
 source include/show_binlog_events.inc;
 
-# the proof: slave is in sync with the table updated by the prepared transactions.
---source include/sync_slave_sql_with_master.inc
---source include/stop_slave.inc
+# the proof: replica is in sync with the table updated by the prepared transactions.
+--source include/sync_replica_sql_with_primary.inc
+--source include/stop_replica.inc
 
 #
-# Recover with Master server restart
+# Recover with Primary server restart
 #
---connection master
+--connection primary
 
-connect (master2, 127.0.0.1,root,,test,$MASTER_MYPORT,);
---connection master2
+connect (primary2, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+--connection primary2
 SET @@session.binlog_format= statement;
 XA START '3-stmt';
 INSERT INTO d1.t VALUES (3);
 XA END '3-stmt';
 XA PREPARE '3-stmt';
---disconnect master2
+--disconnect primary2
 
-connect (master2, 127.0.0.1,root,,test,$MASTER_MYPORT,);
---connection master2
+connect (primary2, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+--connection primary2
 SET @@session.binlog_format= row;
 XA START '3-row';
 INSERT INTO d2.t VALUES (4);
 XA END '3-row';
 XA PREPARE '3-row';
---disconnect master2
+--disconnect primary2
 
---connection master
+--connection primary
 
 #
 # Testing read-only
 #
-connect (master2, 127.0.0.1,root,,test,$MASTER_MYPORT,);
---connection master2
+connect (primary2, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+--connection primary2
 XA START '4';
 SELECT * FROM d1.t;
 XA END '4';
 XA PREPARE '4';
---disconnect master2
+--disconnect primary2
 
 #
 # Logging few disconnected XA:s for replication.
@@ -115,7 +115,7 @@ XA PREPARE '4';
 
 while($i > 0)
 {
-  --connect (master_bulk_conn$i, 127.0.0.1,root,,test,$MASTER_MYPORT,)
+  --connect (primary_bulk_conn$i, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
   --let $conn_id=`SELECT connection_id()`
 
   --eval XA START 'bulk_trx_$i'
@@ -124,16 +124,16 @@ while($i > 0)
   --eval XA END 'bulk_trx_$i'
   --eval XA PREPARE 'bulk_trx_$i'
 
-  --disconnect master_bulk_conn$i
+  --disconnect primary_bulk_conn$i
 
-  --connection master
+  --connection primary
   --let $wait_condition= SELECT count(*) = 0 FROM v_processlist WHERE PROCESSLIST_ID = $conn_id
    --source include/wait_condition.inc
 
   --dec $i
 }
 
---connection master
+--connection primary
 --let $i = $bulk_trx_num
 while($i > 0)
 {
@@ -149,16 +149,16 @@ while($i > 0)
 --let $rpl_server_number= 1
 --source include/rpl_restart_server.inc
 
---connection slave
---source include/start_slave.inc
+--connection replica
+--source include/start_replica.inc
 
---connection master
+--connection primary
 --echo *** '3-stmt','3-row' xa-transactions must be in the list ***
 XA RECOVER;
 XA COMMIT '3-stmt';
 XA ROLLBACK '3-row';
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Testing replication with marginal XID values and in two formats.
@@ -166,7 +166,7 @@ XA ROLLBACK '3-row';
 
 
 # Empty XID
-connect (master_conn1, 127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (primary_conn1, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 --let $conn_id=`SELECT connection_id()`
 
 XA START '';
@@ -174,14 +174,14 @@ INSERT INTO d1.t VALUES (4);
 XA END '';
 XA PREPARE '';
 
---disconnect master_conn1
+--disconnect primary_conn1
 
---connection master
+--connection primary
 --let $wait_condition= SELECT count(*) = 0 FROM v_processlist WHERE PROCESSLIST_ID = $conn_id
 --source include/wait_condition.inc
 
 # Max size XID
-connect (master_conn2, 127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (primary_conn2, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 --let $conn_id=`SELECT connection_id()`
 
 --let $gtrid=0123456789012345678901234567890123456789012345678901234567890124
@@ -191,14 +191,14 @@ connect (master_conn2, 127.0.0.1,root,,test,$MASTER_MYPORT,);
 --eval XA END '$gtrid','$bqual',64
 --eval XA PREPARE '$gtrid','$bqual',64
 
---disconnect master_conn2
+--disconnect primary_conn2
 
---connection master
+--connection primary
 --let $wait_condition= SELECT count(*) = 0 FROM v_processlist WHERE PROCESSLIST_ID = $conn_id
 --source include/wait_condition.inc
 
 # Max size XID with non-ascii chars
-connect (master_conn3, 127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (primary_conn3, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 --let $conn_id=`SELECT connection_id()`
 
 --let $gtrid_hex=FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
@@ -208,16 +208,16 @@ connect (master_conn3, 127.0.0.1,root,,test,$MASTER_MYPORT,);
 --eval XA END X'$gtrid_hex',X'$bqual_hex',0
 --eval XA PREPARE X'$gtrid_hex',X'$bqual_hex',0
 
---disconnect master_conn3
+--disconnect primary_conn3
 
---connection master
+--connection primary
 --let $wait_condition= SELECT count(*) = 0 FROM v_processlist WHERE PROCESSLIST_ID = $conn_id
 --source include/wait_condition.inc
 
 # Random XID
 --disable_query_log
 
-connect (master_conn4, 127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (primary_conn4, 127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 --let $conn_id=`SELECT connection_id()`
 
 --let $gtridlen=`SELECT 2*(round(rand()*100) % 32)`
@@ -233,9 +233,9 @@ connect (master_conn4, 127.0.0.1,root,,test,$MASTER_MYPORT,);
 
 --enable_query_log
 
---disconnect master_conn4
+--disconnect primary_conn4
 
---connection master
+--connection primary
 --let $wait_condition= SELECT count(*) = 0 FROM v_processlist WHERE PROCESSLIST_ID = $conn_id
 --source include/wait_condition.inc
 
@@ -248,7 +248,7 @@ connect (master_conn4, 127.0.0.1,root,,test,$MASTER_MYPORT,);
 --eval XA COMMIT X'$gtrid_rand',X'$bqual_rand',$formt_rand
 --enable_query_log
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Testing ONE PHASE
@@ -257,32 +257,32 @@ connect (master_conn4, 127.0.0.1,root,,test,$MASTER_MYPORT,);
 --let $i = $onephase_trx_num
 while($i > 0)
 {
-  --connect (master_bulk_conn$i, 127.0.0.1,root,,test,$MASTER_MYPORT,)
+  --connect (primary_bulk_conn$i, 127.0.0.1,root,,test,$PRIMARY_MYPORT,)
 
-  --connection master_bulk_conn$i
+  --connection primary_bulk_conn$i
   --eval XA START 'one_phase_$i'
   --eval INSERT INTO d1.t VALUES ($i)
   --eval INSERT INTO d2.t VALUES ($i)
   --eval XA END 'one_phase_$i'
   --eval XA COMMIT 'one_phase_$i' ONE PHASE
 
-  --disconnect master_bulk_conn$i
+  --disconnect primary_bulk_conn$i
   --dec $i
 }
---connection master
---source include/sync_slave_sql_with_master.inc
+--connection primary
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Overall consistency check
 #
---let $diff_tables= master:d1.t, slave:d1.t
+--let $diff_tables= primary:d1.t, replica:d1.t
 --source include/diff_tables.inc
---let $diff_tables= master:d2.t, slave:d2.t
+--let $diff_tables= primary:d2.t, replica:d2.t
 --source include/diff_tables.inc
 #
 # cleanup
 #
---connection master
+--connection primary
 
 DELETE FROM d1.t;
 DELETE FROM d2.t;
@@ -291,6 +291,6 @@ DROP DATABASE d1;
 DROP DATABASE d2;
 DROP VIEW v_processlist;
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

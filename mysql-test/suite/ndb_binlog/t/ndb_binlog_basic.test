@@ -19,11 +19,11 @@ use test;
 # basic insert, update, delete test, alter, rename, drop
 # check that ndb_binlog_index gets the right info
 #
-reset master;
+reset primary;
 
 create table t1 (a int primary key) engine=ndb;
 insert into t1 values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
-save_master_pos;
+save_primary_pos;
 --replace_column 1 #
 select @max_epoch:=max(epoch)-1 from mysql.ndb_binlog_index;
 
@@ -41,9 +41,9 @@ commit;
 drop table t2;
 
 # check that above is ok
-# (save_master_pos waits for last gcp to complete, ensuring that we have
+# (save_primary_pos waits for last gcp to complete, ensuring that we have
 #  the expected data in the binlog)
-save_master_pos;
+save_primary_pos;
 select inserts from mysql.ndb_binlog_index where epoch > @max_epoch and inserts > 5;
 select deletes from mysql.ndb_binlog_index where epoch > @max_epoch and deletes > 5;
 select inserts,updates,deletes from 
@@ -61,7 +61,7 @@ select inserts,updates,deletes from
 flush logs;
 --sleep 1
 --replace_regex /\.[\\\/]mysqld/.\/mysqld/;
-purge master logs before now();
+purge primary logs before now();
 --disable_parsing
 select count(*) from mysql.ndb_binlog_index;
 --enable_parsing
@@ -77,7 +77,7 @@ create table t1 (c int, d int primary key) engine=ndb;
 use test;
 
 insert into mysqltest.t1 values (2,1),(2,2);
-save_master_pos;
+save_primary_pos;
 --replace_column 1 #
 select @max_epoch:=max(epoch)-1 from mysql.ndb_binlog_index;
 
@@ -103,7 +103,7 @@ insert into t1 select c1+512,c2 from t1;
 
 # wait for last gcp to complete, ensuring that we have
 # the expected data in the binlog
-save_master_pos;
+save_primary_pos;
 
 let $before = `select count(*)
   from mysql.ndb_binlog_index
@@ -111,7 +111,7 @@ let $before = `select count(*)
     (inserts > 0 or updates > 0 or deletes > 0)`;
 
 optimize table t1;
-save_master_pos;
+save_primary_pos;
 
 # Ensure that optimize have not sent any event to binlog
 let $optimize_diff = `select count(*) <> $before

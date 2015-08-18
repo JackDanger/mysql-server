@@ -2326,7 +2326,7 @@ fts_optimize_indexes(
 }
 
 /*********************************************************************//**
-Cleanup the snapshot tables and the master deleted table.
+Cleanup the snapshot tables and the primary deleted table.
 @return DB_SUCCESS if all OK */
 static __attribute__((nonnull, warn_unused_result))
 dberr_t
@@ -2336,7 +2336,7 @@ fts_optimize_purge_snapshot(
 {
 	dberr_t		error;
 
-	/* Delete the doc ids from the master deleted tables, that were
+	/* Delete the doc ids from the primary deleted tables, that were
 	in the snapshot that was taken at the start of optimize. */
 	error = fts_optimize_purge_deleted_doc_ids(optim);
 
@@ -2491,7 +2491,7 @@ fts_optimize_table(
 
 		/* Only after all indexes have been optimized can we
 		delete the (snapshot) doc ids in the pending delete,
-		and master deleted tables. */
+		and primary deleted tables. */
 		if (error == DB_SUCCESS
 		    && optim->n_completed == ib_vector_size(fts->indexes)) {
 
@@ -2504,7 +2504,7 @@ fts_optimize_table(
 
 				/* Purge the doc ids that were in the
 				snapshot from the snapshot tables and
-				the master deleted table. */
+				the primary deleted table. */
 				error = fts_optimize_purge_snapshot(optim);
 			}
 
@@ -3132,7 +3132,7 @@ fts_optimize_start_shutdown(void)
 	fts_msg_t*	msg;
 
 	/* If there is an ongoing activity on dictionary, such as
-	srv_master_evict_from_table_cache(), wait for it */
+	srv_primary_evict_from_table_cache(), wait for it */
 	dict_mutex_enter_for_mysql();
 
 	/* Tells FTS optimizer system that we are exiting from

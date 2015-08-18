@@ -3,7 +3,7 @@
 
 # default value
 
-RESET MASTER;
+RESET PRIMARY;
 SET @start_global_value = @@global.gtid_mode;
 SELECT @start_global_value;
 
@@ -82,12 +82,12 @@ select @@global.gtid_mode;
 --error ER_GLOBAL_VARIABLE
 set session gtid_mode = ON;
 
-# can't set ON when sql_slave_skip_counter > 0
+# can't set ON when sql_replica_skip_counter > 0
 set global gtid_mode = on_permissive;
-set global sql_slave_skip_counter = 1;
+set global sql_replica_skip_counter = 1;
 --error ER_CANT_SET_GTID_MODE
 set global gtid_mode = on;
-set global sql_slave_skip_counter = 0;
+set global sql_replica_skip_counter = 0;
 set global gtid_mode = on;
 
 # can set everything except ON when enforce_gtid_consistency!=ON

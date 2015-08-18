@@ -6,16 +6,16 @@
 
 SET @old_debug=@@global.debug;
 -- disable_warnings
--- source include/stop_slave.inc 
+-- source include/stop_replica.inc 
 -- enable_warnings
 -- eval SET GLOBAL debug="+d,$io_thd_injection_fault_flag"
 
-START SLAVE io_thread;
--- source include/wait_for_slave_io_error.inc
+START REPLICA io_thread;
+-- source include/wait_for_replica_io_error.inc
 
 -- eval SET GLOBAL debug="-d,$io_thd_injection_fault_flag"
 SET GLOBAL debug=@old_debug;
 
-# restart because slave is in bad shape
+# restart because replica is in bad shape
 --let $rpl_server_number= 2
 --source include/rpl_restart_server.inc

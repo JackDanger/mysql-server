@@ -117,7 +117,7 @@ typedef ndbd_exit_classification_enum ndbd_exit_classification;
 /* TC  6200-> */
 /* DIH 6300-> */
 #define NDBD_EXIT_MAX_CRASHED_REPLICAS        6300
-#define NDBD_EXIT_MASTER_FAILURE_DURING_NR    6301
+#define NDBD_EXIT_PRIMARY_FAILURE_DURING_NR    6301
 #define NDBD_EXIT_LOST_NODE_GROUP             6302
 #define NDBD_EXIT_NO_RESTORABLE_REPLICA       6303
 #define NDBD_EXIT_UNSUPPORTED_VERSION         6304

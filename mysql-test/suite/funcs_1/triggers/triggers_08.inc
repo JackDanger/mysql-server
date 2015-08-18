@@ -23,8 +23,8 @@ let $message= Testcase: 3.5:;
 	create User test_super@localhost;
         alter user test_super@localhost identified by 'PWD';
 	grant ALL on *.* to test_super@localhost with grant OPTION;
-	connect (con2_general,localhost,test_general,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
-	connect (con2_super,localhost,test_super,PWD,test,$MASTER_MYPORT,$MASTER_MYSOCK);
+	connect (con2_general,localhost,test_general,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
+	connect (con2_super,localhost,test_super,PWD,test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 	connection default;
 
 #################################

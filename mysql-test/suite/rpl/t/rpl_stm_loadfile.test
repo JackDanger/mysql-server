@@ -13,7 +13,7 @@
 ##########
 
 # Includes
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 -- source include/have_binlog_format_statement.inc
 
 disable_query_log;

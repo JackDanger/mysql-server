@@ -1260,7 +1260,7 @@ cli_advanced_command(MYSQL *mysql, enum enum_server_command command,
  */
   case COM_STMT_SEND_LONG_DATA: 
   case COM_STMT_CLOSE:
-  case COM_REGISTER_SLAVE:
+  case COM_REGISTER_REPLICA:
   case COM_QUIT:
     break;
 
@@ -1561,7 +1561,7 @@ void end_server(MYSQL *mysql)
   {
     DBUG_PRINT("info",("Net: %s", vio_description(mysql->net.vio)));
 #ifdef MYSQL_SERVER
-    slave_io_thread_detach_vio();
+    replica_io_thread_detach_vio();
 #endif
     vio_delete(mysql->net.vio);
     mysql->net.vio= 0;          /* Marker */

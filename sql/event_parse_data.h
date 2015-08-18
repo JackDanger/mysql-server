@@ -33,14 +33,14 @@ class Event_parse_data : public Sql_alloc
 public:
   /*
     ENABLED = feature can function normally (is turned on)
-    SLAVESIDE_DISABLED = feature is turned off on slave
+    REPLICASIDE_DISABLED = feature is turned off on replica
     DISABLED = feature is turned off
   */
   enum enum_status
   {
     ENABLED = 1,
     DISABLED,
-    SLAVESIDE_DISABLED  
+    REPLICASIDE_DISABLED  
   };
 
   enum enum_on_completion

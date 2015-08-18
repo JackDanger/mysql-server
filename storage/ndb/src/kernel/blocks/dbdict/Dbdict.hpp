@@ -562,14 +562,14 @@ public:
       API_NODE = 0,
       NDB_NODE_ALIVE = 1,
       NDB_NODE_DEAD = 2,
-      NDB_MASTER_TAKEOVER = 3
+      NDB_PRIMARY_TAKEOVER = 3
     };
     bool hotSpare;
     NodeState nodeState;
 
     // Schema transaction data
     enum RecoveryState {
-      RS_NORMAL = 0,             // Node is up to date with master
+      RS_NORMAL = 0,             // Node is up to date with primary
       RS_PARTIAL_ROLLBACK = 1,   // Node has rolled back some operations
       RS_PARTIAL_ROLLFORWARD = 2 // Node has committed some operations
     };
@@ -1111,9 +1111,9 @@ private:
     /** State, indicates from where it was called */
     enum TableWriteState {
       IDLE = 0,
-      WRITE_ADD_TABLE_MASTER = 1,
-      WRITE_ADD_TABLE_SLAVE = 2,
-      WRITE_RESTART_FROM_MASTER = 3,
+      WRITE_ADD_TABLE_PRIMARY = 1,
+      WRITE_ADD_TABLE_REPLICA = 2,
+      WRITE_RESTART_FROM_PRIMARY = 3,
       WRITE_RESTART_FROM_OWN = 4,
       TWR_CALLBACK = 5
     };
@@ -1294,7 +1294,7 @@ private:
   /* ----------------------------------------------------------------------- */
   // Node References
   /* ----------------------------------------------------------------------- */
-  Uint16 c_masterNodeId;
+  Uint16 c_primaryNodeId;
 
   /* ----------------------------------------------------------------------- */
   // Various current system properties
@@ -1326,7 +1326,7 @@ private:
   Uint32 c_tabinfoReceived;
   /**
    * This flag indicates that a dict takeover is in progress, specifically 
-   * that the new master has outstanding DICT_TAKEOVER_REQ messages. The flag
+   * that the new primary has outstanding DICT_TAKEOVER_REQ messages. The flag
    * is used to prevent client from starting (or ending) transactions during
    * takeover.
    */
@@ -1383,7 +1383,7 @@ private:
    */
   struct OpRecordCommon {
     OpRecordCommon() {}
-    Uint32 key;         // key shared between master and slaves
+    Uint32 key;         // key shared between primary and replicas
     Uint32 nextHash;
     Uint32 prevHash;
     Uint32 hashValue() const {
@@ -1465,7 +1465,7 @@ private:
     ref->errorCode = e.errorCode;
     ref->errorLine = e.errorLine;
     ref->errorNodeId = e.errorNodeId;
-    ref->masterNodeId = c_masterNodeId;
+    ref->primaryNodeId = c_primaryNodeId;
   }
 
   bool hasError(const ErrorInfo&);
@@ -1488,7 +1488,7 @@ private:
     void (Dbdict::*m_release)(SchemaOpPtr);
 
     // parse phase
-    void (Dbdict::*m_parse)(Signal*, bool master,
+    void (Dbdict::*m_parse)(Signal*, bool primary,
                             SchemaOpPtr, SectionHandle&, ErrorInfo&);
     bool (Dbdict::*m_subOps)(Signal*, SchemaOpPtr);
     void (Dbdict::*m_reply)(Signal*, SchemaOpPtr, ErrorInfo);
@@ -1581,7 +1581,7 @@ private:
     enum OpState
     {
       OS_INITIAL          = 0,
-      OS_PARSE_MASTER     = 1,
+      OS_PARSE_PRIMARY     = 1,
       OS_PARSING          = 2,
       OS_PARSED           = 3,
       OS_PREPARING        = 4,
@@ -1605,7 +1605,7 @@ private:
       switch ((OpState) state) {
       case OS_INITIAL:
         return 0;
-      case OS_PARSE_MASTER:
+      case OS_PARSE_PRIMARY:
         return 1;
       case OS_PARSING:
         return 2;
@@ -1650,7 +1650,7 @@ private:
     Uint32 nextList;
     Uint32 prevList;
 
-    // tx client or DICT master for recursive ops
+    // tx client or DICT primary for recursive ops
     Uint32 m_clientRef;
     Uint32 m_clientData;
 
@@ -1921,7 +1921,7 @@ private:
     static Uint32 weight(Uint32 state) {
     /*
       Return the "weight" of a transaction state, used to determine
-      the absolute order of beleived transaction states at master
+      the absolute order of beleived transaction states at primary
       takeover.
      */
       switch ((TransState) state) {
@@ -1974,8 +1974,8 @@ private:
     Uint32 nextList;
     Uint32 prevList;
 
-    bool m_isMaster;
-    BlockReference m_masterRef;
+    bool m_isPrimary;
+    BlockReference m_primaryRef;
 
     // requestFlags from begin/end trans
     Uint32 m_requestInfo;
@@ -1995,14 +1995,14 @@ private:
     Uint32 m_curr_op_ptr_i;
     SchemaOp_head m_op_list;
 
-    // Master takeover
+    // Primary takeover
     enum TakeoverRecoveryState
     {
       TRS_INITIAL     = 0,
       TRS_ROLLFORWARD = 1,
       TRS_ROLLBACK    = 2
     };
-    Uint32 m_master_recovery_state;
+    Uint32 m_primary_recovery_state;
     // These are common states all nodes must achieve
     // to be able to be involved in total rollforward/rollbackward
     Uint32 m_rollforward_op;
@@ -2011,7 +2011,7 @@ private:
     Uint32 m_rollback_op_state;
     Uint32 m_lowest_trans_state;
     Uint32 m_highest_trans_state;
-    // Flag for signalling partial rollforward check during master takeover
+    // Flag for signalling partial rollforward check during primary takeover
     bool check_partial_rollforward;
     // Flag for signalling that already completed operation is recreated
     bool ressurected_op;
@@ -2043,8 +2043,8 @@ private:
 
     SchemaTrans() {
       m_state = TS_INITIAL;
-      m_isMaster = false;
-      m_masterRef = 0;
+      m_isPrimary = false;
+      m_primaryRef = 0;
       m_requestInfo = 0;
       m_clientRef = 0;
       m_transId = 0;
@@ -2148,7 +2148,7 @@ private:
   void trans_log_schema_op_abort(SchemaOpPtr);
   void trans_log_schema_op_complete(SchemaOpPtr);
 
-  void handle_master_takeover(Signal*);
+  void handle_primary_takeover(Signal*);
   void check_takeover_replies(Signal*);
   void trans_recover(Signal*, SchemaTransPtr);
   void check_partial_trans_abort_prepare_next(SchemaTransPtr,
@@ -2168,7 +2168,7 @@ private:
   void recvTransParseReq(Signal*, SchemaTransPtr,
                          Uint32 op_key, const OpInfo& info,
                          Uint32 requestInfo);
-  void runTransSlave(Signal*, SchemaTransPtr);
+  void runTransReplica(Signal*, SchemaTransPtr);
   void update_op_state(SchemaOpPtr);
   void sendTransConf(Signal*, SchemaOpPtr);
   void sendTransConf(Signal*, SchemaTransPtr);
@@ -2176,18 +2176,18 @@ private:
   void sendTransRef(Signal*, SchemaOpPtr);
   void sendTransRef(Signal*, SchemaTransPtr);
 
-  void slave_run_start(Signal*, const SchemaTransImplReq*);
-  void slave_run_parse(Signal*, SchemaTransPtr, const SchemaTransImplReq*);
-  void slave_run_flush(Signal*, SchemaTransPtr, const SchemaTransImplReq*);
-  void slave_writeSchema_conf(Signal*, Uint32, Uint32);
-  void slave_commit_mutex_locked(Signal*, Uint32, Uint32);
-  void slave_commit_mutex_unlocked(Signal*, Uint32, Uint32);
+  void replica_run_start(Signal*, const SchemaTransImplReq*);
+  void replica_run_parse(Signal*, SchemaTransPtr, const SchemaTransImplReq*);
+  void replica_run_flush(Signal*, SchemaTransPtr, const SchemaTransImplReq*);
+  void replica_writeSchema_conf(Signal*, Uint32, Uint32);
+  void replica_commit_mutex_locked(Signal*, Uint32, Uint32);
+  void replica_commit_mutex_unlocked(Signal*, Uint32, Uint32);
 
   // reply to trans client for begin/end trans
   void sendTransClientReply(Signal*, SchemaTransPtr);
 
-  // on DB slave node failure exclude the node from transactions
-  void handleTransSlaveFail(Signal*, Uint32 failedNode);
+  // on DB replica node failure exclude the node from transactions
+  void handleTransReplicaFail(Signal*, Uint32 failedNode);
 
   // common code for different op types
 
@@ -2207,9 +2207,9 @@ private:
     const Uint32 requestExtra = DictSignal::getRequestExtra(requestInfo);
     const bool localTrans = (requestInfo & DictSignal::RF_LOCAL_TRANS);
 
-    if (getOwnNodeId() != c_masterNodeId && !localTrans) {
+    if (getOwnNodeId() != c_primaryNodeId && !localTrans) {
       jam();
-      setError(error, SchemaTransImplRef::NotMaster, __LINE__);
+      setError(error, SchemaTransImplRef::NotPrimary, __LINE__);
       return;
     }
 
@@ -2227,11 +2227,11 @@ private:
 
     if (!localTrans)
     {
-      ndbassert(getOwnNodeId() == c_masterNodeId);
-      NodeRecordPtr masterNodePtr;
-      c_nodes.getPtr(masterNodePtr, c_masterNodeId);
+      ndbassert(getOwnNodeId() == c_primaryNodeId);
+      NodeRecordPtr primaryNodePtr;
+      c_nodes.getPtr(primaryNodePtr, c_primaryNodeId);
 
-      if (masterNodePtr.p->nodeState == NodeRecord::NDB_MASTER_TAKEOVER)
+      if (primaryNodePtr.p->nodeState == NodeRecord::NDB_PRIMARY_TAKEOVER)
       {
         jam();
         /**
@@ -2463,7 +2463,7 @@ private:
   bool createTable_seize(SchemaOpPtr);
   void createTable_release(SchemaOpPtr);
   //
-  void createTable_parse(Signal*, bool master,
+  void createTable_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool createTable_subOps(Signal*, SchemaOpPtr);
   void createTable_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -2529,7 +2529,7 @@ private:
   bool dropTable_seize(SchemaOpPtr);
   void dropTable_release(SchemaOpPtr);
   //
-  void dropTable_parse(Signal*, bool master,
+  void dropTable_parse(Signal*, bool primary,
                        SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool dropTable_subOps(Signal*, SchemaOpPtr);
   void dropTable_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -2634,7 +2634,7 @@ private:
   bool alterTable_seize(SchemaOpPtr);
   void alterTable_release(SchemaOpPtr);
   //
-  void alterTable_parse(Signal*, bool master,
+  void alterTable_parse(Signal*, bool primary,
                         SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool alterTable_subOps(Signal*, SchemaOpPtr);
   void alterTable_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -2735,7 +2735,7 @@ private:
   bool createIndex_seize(SchemaOpPtr);
   void createIndex_release(SchemaOpPtr);
   //
-  void createIndex_parse(Signal*, bool master,
+  void createIndex_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool createIndex_subOps(Signal*, SchemaOpPtr);
   void createIndex_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -2791,7 +2791,7 @@ private:
   bool dropIndex_seize(SchemaOpPtr);
   void dropIndex_release(SchemaOpPtr);
   //
-  void dropIndex_parse(Signal*, bool master,
+  void dropIndex_parse(Signal*, bool primary,
                        SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool dropIndex_subOps(Signal*, SchemaOpPtr);
   void dropIndex_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -2877,7 +2877,7 @@ private:
   bool alterIndex_seize(SchemaOpPtr);
   void alterIndex_release(SchemaOpPtr);
   //
-  void alterIndex_parse(Signal*, bool master,
+  void alterIndex_parse(Signal*, bool primary,
                         SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool alterIndex_subOps(Signal*, SchemaOpPtr);
   void alterIndex_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -2965,7 +2965,7 @@ private:
   bool buildIndex_seize(SchemaOpPtr);
   void buildIndex_release(SchemaOpPtr);
   //
-  void buildIndex_parse(Signal*, bool master,
+  void buildIndex_parse(Signal*, bool primary,
                         SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool buildIndex_subOps(Signal*, SchemaOpPtr);
   void buildIndex_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3036,7 +3036,7 @@ private:
   bool indexStat_seize(SchemaOpPtr);
   void indexStat_release(SchemaOpPtr);
   //
-  void indexStat_parse(Signal*, bool master,
+  void indexStat_parse(Signal*, bool primary,
                         SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool indexStat_subOps(Signal*, SchemaOpPtr);
   void indexStat_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3120,7 +3120,7 @@ private:
   bool createHashMap_seize(SchemaOpPtr);
   void createHashMap_release(SchemaOpPtr);
   //
-  void createHashMap_parse(Signal*, bool master,
+  void createHashMap_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool createHashMap_subOps(Signal*, SchemaOpPtr);
   void createHashMap_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3168,7 +3168,7 @@ private:
   bool copyData_seize(SchemaOpPtr);
   void copyData_release(SchemaOpPtr);
   //
-  void copyData_parse(Signal*, bool master,
+  void copyData_parse(Signal*, bool primary,
                       SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool copyData_subOps(Signal*, SchemaOpPtr);
   void copyData_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3231,8 +3231,8 @@ private:
     // error info
     Uint32 m_errorCode;
     Uint32 m_errorLine;
-    Uint32 m_errorNode; /* also used to store master node id
-                           in case of NotMaster */
+    Uint32 m_errorNode; /* also used to store primary node id
+                           in case of NotPrimary */
     // ctor
     OpCreateEvent() {
       memset(&m_request, 0, sizeof(m_request));
@@ -3342,7 +3342,7 @@ private:
   bool createTrigger_seize(SchemaOpPtr);
   void createTrigger_release(SchemaOpPtr);
   //
-  void createTrigger_parse(Signal*, bool master,
+  void createTrigger_parse(Signal*, bool primary,
                            SchemaOpPtr, SectionHandle&, ErrorInfo&);
   void createTrigger_parse_endpoint(Signal*, SchemaOpPtr op_ptr, ErrorInfo&);
   bool createTrigger_subOps(Signal*, SchemaOpPtr);
@@ -3404,7 +3404,7 @@ private:
   bool dropTrigger_seize(SchemaOpPtr);
   void dropTrigger_release(SchemaOpPtr);
   //
-  void dropTrigger_parse(Signal*, bool master,
+  void dropTrigger_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   void dropTrigger_parse_endpoint(Signal*, SchemaOpPtr op_ptr, ErrorInfo&);
   bool dropTrigger_subOps(Signal*, SchemaOpPtr);
@@ -3457,7 +3457,7 @@ private:
   bool createFilegroup_seize(SchemaOpPtr);
   void createFilegroup_release(SchemaOpPtr);
   //
-  void createFilegroup_parse(Signal*, bool master,
+  void createFilegroup_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool createFilegroup_subOps(Signal*, SchemaOpPtr);
   void createFilegroup_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3505,7 +3505,7 @@ private:
   bool createFile_seize(SchemaOpPtr);
   void createFile_release(SchemaOpPtr);
   //
-  void createFile_parse(Signal*, bool master,
+  void createFile_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool createFile_subOps(Signal*, SchemaOpPtr);
   void createFile_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3551,7 +3551,7 @@ private:
   bool dropFilegroup_seize(SchemaOpPtr);
   void dropFilegroup_release(SchemaOpPtr);
   //
-  void dropFilegroup_parse(Signal*, bool master,
+  void dropFilegroup_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool dropFilegroup_subOps(Signal*, SchemaOpPtr);
   void dropFilegroup_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3596,7 +3596,7 @@ private:
   bool dropFile_seize(SchemaOpPtr);
   void dropFile_release(SchemaOpPtr);
   //
-  void dropFile_parse(Signal*, bool master,
+  void dropFile_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool dropFile_subOps(Signal*, SchemaOpPtr);
   void dropFile_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3660,7 +3660,7 @@ private:
   bool createNodegroup_seize(SchemaOpPtr);
   void createNodegroup_release(SchemaOpPtr);
   //
-  void createNodegroup_parse(Signal*, bool master,
+  void createNodegroup_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool createNodegroup_subOps(Signal*, SchemaOpPtr);
   void createNodegroup_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3729,7 +3729,7 @@ private:
   bool dropNodegroup_seize(SchemaOpPtr);
   void dropNodegroup_release(SchemaOpPtr);
   //
-  void dropNodegroup_parse(Signal*, bool master,
+  void dropNodegroup_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool dropNodegroup_subOps(Signal*, SchemaOpPtr);
   void dropNodegroup_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3781,7 +3781,7 @@ private:
   bool createFK_seize(SchemaOpPtr);
   void createFK_release(SchemaOpPtr);
   //
-  void createFK_parse(Signal*, bool master,
+  void createFK_parse(Signal*, bool primary,
                       SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool createFK_subOps(Signal*, SchemaOpPtr);
   void createFK_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3840,7 +3840,7 @@ private:
   bool buildFK_seize(SchemaOpPtr);
   void buildFK_release(SchemaOpPtr);
   //
-  void buildFK_parse(Signal*, bool master,
+  void buildFK_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool buildFK_subOps(Signal*, SchemaOpPtr);
   void buildFK_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3893,7 +3893,7 @@ private:
   bool dropFK_seize(SchemaOpPtr);
   void dropFK_release(SchemaOpPtr);
   //
-  void dropFK_parse(Signal*, bool master,
+  void dropFK_parse(Signal*, bool primary,
                          SchemaOpPtr, SectionHandle&, ErrorInfo&);
   bool dropFK_subOps(Signal*, SchemaOpPtr);
   void dropFK_reply(Signal*, SchemaOpPtr, ErrorInfo);
@@ -3972,7 +3972,7 @@ private:
   void packFKIntoPages(SimpleProperties::Writer &, Ptr<ForeignKeyRec>);
 
   /**
-   * Only used at coordinator/master
+   * Only used at coordinator/primary
    */
   // Common operation record pool
 public:
@@ -4322,7 +4322,7 @@ private:
   void restartDropObj(Signal*, Uint32, const SchemaFile::TableEntry *);
 
   void restart_checkSchemaStatusComplete(Signal*, Uint32 callback, Uint32);
-  void masterRestart_checkSchemaStatusComplete(Signal*, Uint32, Uint32);
+  void primaryRestart_checkSchemaStatusComplete(Signal*, Uint32, Uint32);
 
   void sendSchemaComplete(Signal*, Uint32 callbackData, Uint32);
 

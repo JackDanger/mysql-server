@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE t4 (
 id INT(5) unsigned NOT NULL auto_increment,
 name varchar(15) NOT NULL default '',
@@ -41,14 +41,14 @@ CREATE DATABASE mysqltest1;
 CREATE TEMPORARY TABLE mysqltest1.tmp (f1 BIGINT);
 CREATE TABLE mysqltest1.t1 (f1 BIGINT) ENGINE="InnoDB";
 SET AUTOCOMMIT = 0;
--------- switch to slave --------
+-------- switch to replica --------
 ALTER TABLE mysqltest1.t1 ENGINE = MyISAM;
 SHOW CREATE TABLE mysqltest1.t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `f1` bigint(20) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
--------- switch to master --------
+-------- switch to primary --------
 INSERT INTO mysqltest1.t1 SET f1= 1;
 DROP TEMPORARY TABLE mysqltest1.tmp;
 ROLLBACK;
@@ -74,7 +74,7 @@ tmp2	CREATE TEMPORARY TABLE `tmp2` (
 SELECT COUNT(*) FROM mysqltest1.t1;
 COUNT(*)
 0
--------- switch to slave --------
+-------- switch to replica --------
 SHOW CREATE TABLE mysqltest1.tmp;
 ERROR 42S02: Table 'mysqltest1.tmp' doesn't exist
 SHOW CREATE TABLE mysqltest1.tmp2;
@@ -84,14 +84,14 @@ SELECT COUNT(*) FROM mysqltest1.t1;
 COUNT(*)
 2
 FLUSH LOGS;
--------- switch to master --------
+-------- switch to primary --------
 FLUSH LOGS;
 DROP TEMPORARY TABLE IF EXISTS mysqltest1.tmp2;
 DROP DATABASE mysqltest1;
 End of 5.1 tests
 #
 # Bug#39675 rename tables on innodb tables with pending 
-# transactions causes slave data issue.
+# transactions causes replica data issue.
 #
 DROP TABLE IF EXISTS t1;
 DROP TABLE IF EXISTS t2;
@@ -107,12 +107,12 @@ b INT DEFAULT NULL
 INSERT INTO t1 (b) VALUES (1),(2),(3);
 BEGIN;
 INSERT INTO t1(b) VALUES (4);
--------- switch to master1 --------
+-------- switch to primary1 --------
 RENAME TABLE t1 TO t3, t2 TO t1;;
--------- switch to master --------
+-------- switch to primary --------
 COMMIT;
--------- switch to master1 --------
--------- switch to master --------
+-------- switch to primary1 --------
+-------- switch to primary --------
 SELECT * FROM t1;
 id	b
 SELECT * FROM t3;
@@ -121,7 +121,7 @@ id	b
 2	2
 3	3
 4	4
--------- switch to slave --------
+-------- switch to replica --------
 SELECT * FROM t1;
 id	b
 SELECT * FROM t3;
@@ -130,7 +130,7 @@ id	b
 2	2
 3	3
 4	4
--------- switch to master --------
+-------- switch to primary --------
 DROP TABLE t1;
 DROP TABLE t3;
 End of 6.0 tests

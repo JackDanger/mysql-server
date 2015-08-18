@@ -1,4 +1,4 @@
-connection master;
+connection primary;
 --disable_warnings
 DROP DATABASE IF EXISTS mysqltest;
 --enable_warnings
@@ -18,18 +18,18 @@ if ($LOAD_LOCAL)
   FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';
 }
 
-save_master_pos;
-echo ----------content on master----------;
+save_primary_pos;
+echo ----------content on primary----------;
 SELECT hex(cl) FROM t;
 
-connection slave;
-sync_with_master;
-echo ----------content on slave----------;
+connection replica;
+sync_with_primary;
+echo ----------content on replica----------;
 USE mysqltest;
 SELECT hex(cl) FROM t;
 
-connection master;
+connection primary;
 DROP DATABASE mysqltest;
-save_master_pos;
-connection slave;
-sync_with_master;
+save_primary_pos;
+connection replica;
+sync_with_primary;

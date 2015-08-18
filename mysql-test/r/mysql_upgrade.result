@@ -19,9 +19,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -56,9 +56,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -94,9 +94,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -132,9 +132,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -174,9 +174,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -229,9 +229,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -274,9 +274,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -314,9 +314,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -349,9 +349,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -384,9 +384,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -419,9 +419,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -455,9 +455,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -491,9 +491,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -527,9 +527,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -563,9 +563,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -598,9 +598,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -633,9 +633,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -669,9 +669,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -705,9 +705,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -741,9 +741,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -777,9 +777,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -812,9 +812,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -847,9 +847,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -882,9 +882,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -920,9 +920,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -959,9 +959,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -994,9 +994,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1071,9 +1071,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1125,9 +1125,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1166,9 +1166,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1211,9 +1211,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1272,9 +1272,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1325,9 +1325,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1455,9 +1455,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1495,9 +1495,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1552,9 +1552,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1608,9 +1608,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1670,11 +1670,11 @@ FLUSH PRIVILEGES;
 # end of check for the presense of the warning
 #Connect using root account - should succeed
 #Connecting user with pre 4.1 hash and empty plugin- should fail
-connect(localhost,user_old_pass_pn,lala,test,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,user_old_pass_pn,lala,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR 28000: Access denied for user 'user_old_pass_pn'@'localhost' (using password: YES)
 #Connecting user with pre 4.1 hash and mysql_old_password plugin set -
 #should fail - the mysql_old_password was removed in 5.7
-connect(localhost,user_old_pass_wp,lala,test,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,user_old_pass_wp,lala,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR HY000: Plugin 'mysql_old_password' is not loaded
 #Connecting user with 4.1 hash and empty plugin - should succeed
 #Connecting user with 4.1 hash and mysql_native_plugin plugin set -
@@ -1690,7 +1690,7 @@ GRANT ALL PRIVILEGES ON mysql.* TO 'user_nat_pass_pn'@'%' WITH GRANT OPTION;
 #Select on mysql.user should be possible - we have select privileges on
 #mysql database
 SELECT * FROM mysql.user WHERE user="user_nat_pass_pn";
-Host	User	Password	Select_priv	Insert_priv	Update_priv	Delete_priv	Create_priv	Drop_priv	Reload_priv	Shutdown_priv	Process_priv	File_priv	Grant_priv	References_priv	Index_priv	Alter_priv	Show_db_priv	Super_priv	Create_tmp_table_priv	Lock_tables_priv	Execute_priv	Repl_slave_priv	Repl_client_priv	Create_view_priv	Show_view_priv	Create_routine_priv	Alter_routine_priv	Create_user_priv	Event_priv	Trigger_priv	Create_tablespace_priv	ssl_type	ssl_cipher	x509_issuer	x509_subject	max_questions	max_updates	max_connections	max_user_connections	plugin	authentication_string	password_expired
+Host	User	Password	Select_priv	Insert_priv	Update_priv	Delete_priv	Create_priv	Drop_priv	Reload_priv	Shutdown_priv	Process_priv	File_priv	Grant_priv	References_priv	Index_priv	Alter_priv	Show_db_priv	Super_priv	Create_tmp_table_priv	Lock_tables_priv	Execute_priv	Repl_replica_priv	Repl_client_priv	Create_view_priv	Show_view_priv	Create_routine_priv	Alter_routine_priv	Create_user_priv	Event_priv	Trigger_priv	Create_tablespace_priv	ssl_type	ssl_cipher	x509_issuer	x509_subject	max_questions	max_updates	max_connections	max_user_connections	plugin	authentication_string	password_expired
 %	user_nat_pass_pn	*46ABF58B20022A84DF7B2E8B1AC8219C8DA71553	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N	N					0	0	0	0	NULL		N
 #Revoke all privileges from 'user_nat_pass_pn'@'%'
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'user_nat_pass_pn'@'%';
@@ -1719,11 +1719,11 @@ N
 UPDATE mysql.user SET authentication_string='' WHERE user='user_nat_pass_pn';
 #"Manualy" grant super user privileges to user_nat_pass_pn, note we are
 #now updating mysql_user to get all privileges on *.*
-UPDATE mysql.user SET Select_priv='Y', Insert_priv='Y', Update_priv='Y', Delete_priv='Y', Create_priv='Y', Drop_priv='Y', Reload_priv='Y', Shutdown_priv='Y', Process_priv='Y', File_priv='Y', Grant_priv='Y', References_priv='Y', Index_priv='Y', Alter_priv='Y', Show_db_priv='Y', Super_priv='Y', Create_tmp_table_priv='Y', Lock_tables_priv='Y', Execute_priv='Y', Repl_slave_priv='Y', Repl_client_priv='Y', Create_view_priv='Y', Show_view_priv='Y', Create_routine_priv='Y', Alter_routine_priv='Y', Create_user_priv='Y', Event_priv='Y', Trigger_priv='Y', Create_tablespace_priv='Y' where user="user_nat_pass_pn";
+UPDATE mysql.user SET Select_priv='Y', Insert_priv='Y', Update_priv='Y', Delete_priv='Y', Create_priv='Y', Drop_priv='Y', Reload_priv='Y', Shutdown_priv='Y', Process_priv='Y', File_priv='Y', Grant_priv='Y', References_priv='Y', Index_priv='Y', Alter_priv='Y', Show_db_priv='Y', Super_priv='Y', Create_tmp_table_priv='Y', Lock_tables_priv='Y', Execute_priv='Y', Repl_replica_priv='Y', Repl_client_priv='Y', Create_view_priv='Y', Show_view_priv='Y', Create_routine_priv='Y', Alter_routine_priv='Y', Create_user_priv='Y', Event_priv='Y', Trigger_priv='Y', Create_tablespace_priv='Y' where user="user_nat_pass_pn";
 FLUSH PRIVILEGES;
 #Select on mysql.user should now be possible
 SELECT * FROM mysql.user WHERE user="user_nat_pass_pn";
-Host	User	Password	Select_priv	Insert_priv	Update_priv	Delete_priv	Create_priv	Drop_priv	Reload_priv	Shutdown_priv	Process_priv	File_priv	Grant_priv	References_priv	Index_priv	Alter_priv	Show_db_priv	Super_priv	Create_tmp_table_priv	Lock_tables_priv	Execute_priv	Repl_slave_priv	Repl_client_priv	Create_view_priv	Show_view_priv	Create_routine_priv	Alter_routine_priv	Create_user_priv	Event_priv	Trigger_priv	Create_tablespace_priv	ssl_type	ssl_cipher	x509_issuer	x509_subject	max_questions	max_updates	max_connections	max_user_connections	plugin	authentication_string	password_expired
+Host	User	Password	Select_priv	Insert_priv	Update_priv	Delete_priv	Create_priv	Drop_priv	Reload_priv	Shutdown_priv	Process_priv	File_priv	Grant_priv	References_priv	Index_priv	Alter_priv	Show_db_priv	Super_priv	Create_tmp_table_priv	Lock_tables_priv	Execute_priv	Repl_replica_priv	Repl_client_priv	Create_view_priv	Show_view_priv	Create_routine_priv	Alter_routine_priv	Create_user_priv	Event_priv	Trigger_priv	Create_tablespace_priv	ssl_type	ssl_cipher	x509_issuer	x509_subject	max_questions	max_updates	max_connections	max_user_connections	plugin	authentication_string	password_expired
 %	user_nat_pass_pn	*46ABF58B20022A84DF7B2E8B1AC8219C8DA71553	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y	Y					0	0	0	0	NULL		N
 #Run mysql_upgrade with user_nat_pass_pn - i.e. user with empty plugin
 #column and 4.1 hash password. After mysql_upgrade finishes the
@@ -1751,9 +1751,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -1792,7 +1792,7 @@ account_locked
 N
 #Connecting with user using mysql_old_password plugin should not be
 #possible
-connect(localhost,user_old_pass_wp,lala,test,MASTER_PORT,MASTER_SOCKET);
+connect(localhost,user_old_pass_wp,lala,test,PRIMARY_PORT,PRIMARY_SOCKET);
 ERROR HY000: Plugin 'mysql_old_password' is not loaded
 #Creating super user and assigning all privileges to it. This updates
 #mysql.user table so should now be possible.
@@ -1848,9 +1848,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK
@@ -2302,9 +2302,9 @@ mysql.procs_priv                                   OK
 mysql.proxies_priv                                 OK
 mysql.server_cost                                  OK
 mysql.servers                                      OK
-mysql.slave_master_info                            OK
-mysql.slave_relay_log_info                         OK
-mysql.slave_worker_info                            OK
+mysql.replica_primary_info                            OK
+mysql.replica_relay_log_info                         OK
+mysql.replica_worker_info                            OK
 mysql.slow_log                                     OK
 mysql.tables_priv                                  OK
 mysql.time_zone                                    OK

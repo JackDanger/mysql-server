@@ -155,7 +155,7 @@ set @@global.concurrent_insert = 0;
 #
 
 # NOTE!! this test must come first! It's testing that the --event-scheduler
-# option with no argument in events_bugs-master.opt turns the scheduler on.
+# option with no argument in events_bugs-primary.opt turns the scheduler on.
 
 --disable_warnings
 select * from information_schema.global_variables where variable_name like 'event_scheduler';
@@ -926,8 +926,8 @@ GRANT select,insert ON test.* TO evtest1@localhost;
 SHOW GRANTS FOR evtest1@localhost;
 
 --echo connection e1;
---replace_result $MASTER_MYPORT MASTER_MYPORT $MASTER_MYSOCK MASTER_MYSOCK
-connect (e1,localhost,evtest1,ev1,events_test,$MASTER_MYPORT,$MASTER_MYSOCK);
+--replace_result $PRIMARY_MYPORT PRIMARY_MYPORT $PRIMARY_MYSOCK PRIMARY_MYSOCK
+connect (e1,localhost,evtest1,ev1,events_test,$PRIMARY_MYPORT,$PRIMARY_MYSOCK);
 DELIMITER |;
 CREATE EVENT ev_sched_1823 ON SCHEDULE EVERY 2 SECOND
 DO BEGIN
@@ -1358,7 +1358,7 @@ DROP EVENT e1;
 
 DROP DATABASE events_test;
 # Restore the original state i.e to how it was when test started
-# (option with no argument in events_bugs-master.opt  turns the scheduler on).
+# (option with no argument in events_bugs-primary.opt  turns the scheduler on).
 SET GLOBAL event_scheduler= 'ON';
 --source include/running_event_scheduler.inc
 SET @@global.concurrent_insert= @concurrent_insert;

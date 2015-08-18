@@ -50,7 +50,7 @@ struct CreateIndxImplRef {
     NoError = 0,
     Busy = 701,
     BusyWithNR = 711,
-    NotMaster = 702,
+    NotPrimary = 702,
     IndexOnDiskAttributeError = 756,
     TriggerNotFound = 4238,
     TriggerExists = 4239,
@@ -77,7 +77,7 @@ struct CreateIndxImplRef {
   Uint32 errorCode;
   Uint32 errorLine;
   Uint32 errorNodeId;
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 };
 
 

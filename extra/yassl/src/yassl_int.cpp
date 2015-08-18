@@ -856,11 +856,11 @@ void SSL::set_random(const opaque* random, ConnectionEnd sender)
 }
 
 
-// store client pre master secret
-void SSL::set_preMaster(const opaque* pre, uint sz)
+// store client pre primary secret
+void SSL::set_prePrimary(const opaque* pre, uint sz)
 {
     secure_.use_connection().AllocPreSecret(sz);
-    memcpy(secure_.use_connection().pre_master_secret_, pre, sz);
+    memcpy(secure_.use_connection().pre_primary_secret_, pre, sz);
 }
 
 
@@ -890,10 +890,10 @@ bool SSL::CompressionOn() const
 }
 
 
-// store master secret
-void SSL::set_masterSecret(const opaque* sec)
+// store primary secret
+void SSL::set_primarySecret(const opaque* sec)
 {
-    memcpy(secure_.use_connection().master_secret_, sec, SECRET_LEN);
+    memcpy(secure_.use_connection().primary_secret_, sec, SECRET_LEN);
 }
 
 // store server issued id
@@ -929,7 +929,7 @@ Buffers& SSL::useBuffers()
 // locals
 namespace {
 
-// DeriveKeys and MasterSecret helper sets prefix letters
+// DeriveKeys and PrimarySecret helper sets prefix letters
 static bool setPrefix(opaque* sha_input, int i)
 {
     switch (i) {
@@ -973,11 +973,11 @@ void SSL::order_error()
 }
 
 
-// Create and store the master secret see page 32, 6.1
-void SSL::makeMasterSecret()
+// Create and store the primary secret see page 32, 6.1
+void SSL::makePrimarySecret()
 {
     if (isTLS())
-        makeTLSMasterSecret();
+        makeTLSPrimarySecret();
     else {
         opaque sha_output[SHA_LEN];
 
@@ -988,9 +988,9 @@ void SSL::makeMasterSecret()
         MD5 md5;
         SHA sha;
 
-        md5_input.write(secure_.get_connection().pre_master_secret_, preSz);
+        md5_input.write(secure_.get_connection().pre_primary_secret_, preSz);
 
-        for (int i = 0; i < MASTER_ROUNDS; ++i) {
+        for (int i = 0; i < PRIMARY_ROUNDS; ++i) {
             opaque prefix[PREFIX];
             if (!setPrefix(prefix, i)) {
                 SetError(prefix_error);
@@ -1000,7 +1000,7 @@ void SSL::makeMasterSecret()
             sha_input.set_current(0);
             sha_input.write(prefix, i + 1);
 
-            sha_input.write(secure_.get_connection().pre_master_secret_,preSz);
+            sha_input.write(secure_.get_connection().pre_primary_secret_,preSz);
             sha_input.write(secure_.get_connection().client_random_, RAN_LEN);
             sha_input.write(secure_.get_connection().server_random_, RAN_LEN);
             sha.get_digest(sha_output, sha_input.get_buffer(),
@@ -1008,27 +1008,27 @@ void SSL::makeMasterSecret()
 
             md5_input.set_current(preSz);
             md5_input.write(sha_output, SHA_LEN);
-            md5.get_digest(&secure_.use_connection().master_secret_[i*MD5_LEN],
+            md5.get_digest(&secure_.use_connection().primary_secret_[i*MD5_LEN],
                            md5_input.get_buffer(), md5_input.get_size());
         }
         deriveKeys();
     }
-    secure_.use_connection().CleanPreMaster();
+    secure_.use_connection().CleanPrePrimary();
 }
 
 
-// create TLSv1 master secret
-void SSL::makeTLSMasterSecret()
+// create TLSv1 primary secret
+void SSL::makeTLSPrimarySecret()
 {
     opaque seed[SEED_LEN];
     
     memcpy(seed, secure_.get_connection().client_random_, RAN_LEN);
     memcpy(&seed[RAN_LEN], secure_.get_connection().server_random_, RAN_LEN);
 
-    PRF(secure_.use_connection().master_secret_, SECRET_LEN,
-        secure_.get_connection().pre_master_secret_,
+    PRF(secure_.use_connection().primary_secret_, SECRET_LEN,
+        secure_.get_connection().pre_primary_secret_,
         secure_.get_connection().pre_secret_len_,
-        master_label, MASTER_LABEL_SZ, 
+        primary_label, PRIMARY_LABEL_SZ, 
         seed, SEED_LEN);
 
     deriveTLSKeys();
@@ -1051,7 +1051,7 @@ void SSL::deriveKeys()
     MD5 md5;
     SHA sha;
 
-    memcpy(md5_input, secure_.get_connection().master_secret_, SECRET_LEN);
+    memcpy(md5_input, secure_.get_connection().primary_secret_, SECRET_LEN);
 
     for (int i = 0; i < rounds; ++i) {
         int j = i + 1;
@@ -1060,7 +1060,7 @@ void SSL::deriveKeys()
             return;
         }
 
-        memcpy(&sha_input[j], secure_.get_connection().master_secret_,
+        memcpy(&sha_input[j], secure_.get_connection().primary_secret_,
                SECRET_LEN);
         memcpy(&sha_input[j+SECRET_LEN],
                secure_.get_connection().server_random_, RAN_LEN);
@@ -1089,7 +1089,7 @@ void SSL::deriveTLSKeys()
     memcpy(seed, secure_.get_connection().server_random_, RAN_LEN);
     memcpy(&seed[RAN_LEN], secure_.get_connection().client_random_, RAN_LEN);
 
-    PRF(key_data.get_buffer(), length, secure_.get_connection().master_secret_,
+    PRF(key_data.get_buffer(), length, secure_.get_connection().primary_secret_,
         SECRET_LEN, key_label, KEY_LABEL_SZ, seed, SEED_LEN);
 
     storeKeys(key_data.get_buffer());
@@ -1603,7 +1603,7 @@ SSL_SESSION::SSL_SESSION(const SSL& ssl, RandomPool& ran)
     const Connection& conn = ssl.getSecurity().get_connection();
 
     memcpy(sessionID_, conn.sessionID_, ID_LEN);
-    memcpy(master_secret_, conn.master_secret_, SECRET_LEN);
+    memcpy(primary_secret_, conn.primary_secret_, SECRET_LEN);
     memcpy(suite_, ssl.getSecurity().get_parms().suite_, SUITE_LEN);
 
     bornOn_ = lowResTimer();
@@ -1617,7 +1617,7 @@ SSL_SESSION::SSL_SESSION(RandomPool& ran)
     : bornOn_(0), timeout_(0), random_(ran), peerX509_(0)
 {
     memset(sessionID_, 0, ID_LEN);
-    memset(master_secret_, 0, SECRET_LEN);
+    memset(primary_secret_, 0, SECRET_LEN);
     memset(suite_, 0, SUITE_LEN);
 }
 
@@ -1625,7 +1625,7 @@ SSL_SESSION::SSL_SESSION(RandomPool& ran)
 SSL_SESSION& SSL_SESSION::operator=(const SSL_SESSION& that)
 {
     memcpy(sessionID_, that.sessionID_, ID_LEN);
-    memcpy(master_secret_, that.master_secret_, SECRET_LEN);
+    memcpy(primary_secret_, that.primary_secret_, SECRET_LEN);
     memcpy(suite_, that.suite_, SUITE_LEN);
     
     bornOn_  = that.bornOn_;
@@ -1649,7 +1649,7 @@ const opaque* SSL_SESSION::GetID() const
 
 const opaque* SSL_SESSION::GetSecret() const
 {
-    return master_secret_;
+    return primary_secret_;
 }
 
 
@@ -1689,7 +1689,7 @@ extern void clean(volatile opaque*, uint, RandomPool&);
 // clean up secret data
 SSL_SESSION::~SSL_SESSION()
 {
-    volatile opaque* p = master_secret_;
+    volatile opaque* p = primary_secret_;
     clean(p, SECRET_LEN, random_);
 
     ysDelete(peerX509_);

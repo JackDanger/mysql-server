@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 use test;
 CREATE TABLE test.regular_tbl(id MEDIUMINT NOT NULL AUTO_INCREMENT,
 dt TIMESTAMP, user CHAR(255), uuidf LONGBLOB,
@@ -30,7 +30,7 @@ SET del_count = del_count - 2;
 END WHILE;
 END|
 CALL test.proc_norm();
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 DROP PROCEDURE test.proc_norm;
 DROP TABLE test.regular_tbl;
 include/rpl_end.inc

@@ -413,7 +413,7 @@ use test;
 #
 # This test works as expected, it's a negative test.
 # The message "[ERROR] Failed to write to mysql.general_log"
-# is printed to master.err when writing to the table mysql.general_log
+# is printed to primary.err when writing to the table mysql.general_log
 # failed.
 # However, this message is picked up by mysql-test-run.pl,
 # and reported as a test failure, which is a false negative.
@@ -422,7 +422,7 @@ use test;
 # Instead of filtering all occurences of "Failed to write to
 # mysql.general_log", which could hide bugs when the error is not expected,
 # this test case is commented instead.
-# TODO: improve filtering of expected errors in master.err in
+# TODO: improve filtering of expected errors in primary.err in
 # mysql-test-run.pl (based on the test name ?), and uncomment this test.
 
 # --disable_warnings
@@ -440,7 +440,7 @@ use test;
 # rename table mysql.general_log to mysql.general_log_hide, mysql.bad_general_log TO mysql.general_log;
 # rename table mysql.slow_log to mysql.slow_log_hide, mysql.bad_slow_log TO mysql.slow_log;
 # 
-# # The following message should be printed in master.log:
+# # The following message should be printed in primary.log:
 # # [ERROR] Failed to write to mysql.general_log
 # # TODO: See how verifying this could be automated
 # 

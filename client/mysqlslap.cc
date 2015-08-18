@@ -111,7 +111,7 @@ static char *shared_memory_base_name=0;
 uint thread_counter;
 native_mutex_t counter_mutex;
 native_cond_t count_threshold;
-uint master_wakeup;
+uint primary_wakeup;
 native_mutex_t sleeper_mutex;
 native_cond_t sleep_threshold;
 
@@ -1840,7 +1840,7 @@ run_scheduler(stats *sptr, statement *stmts, uint concur, ulonglong limit)
   thread_counter= 0;
 
   native_mutex_lock(&sleeper_mutex);
-  master_wakeup= 1;
+  primary_wakeup= 1;
   native_mutex_unlock(&sleeper_mutex);
   for (x= 0; x < concur; x++)
   {
@@ -1858,7 +1858,7 @@ run_scheduler(stats *sptr, statement *stmts, uint concur, ulonglong limit)
   my_thread_attr_destroy(&attr);
 
   native_mutex_lock(&sleeper_mutex);
-  master_wakeup= 0;
+  primary_wakeup= 0;
   native_mutex_unlock(&sleeper_mutex);
   native_cond_broadcast(&sleep_threshold);
 
@@ -1903,7 +1903,7 @@ extern "C" void *run_task(void *p)
   DBUG_PRINT("info", ("task script \"%s\"", con->stmt ? con->stmt->string : ""));
 
   native_mutex_lock(&sleeper_mutex);
-  while (master_wakeup)
+  while (primary_wakeup)
   {
     native_cond_wait(&sleep_threshold, &sleeper_mutex);
   }

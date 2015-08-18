@@ -1592,7 +1592,7 @@ int mi_repair(MI_CHECK *param, MI_INFO *info,
     mysql_file_seek(info->dfile, 0L, MY_SEEK_END, MYF(0));
   sort_info.dupp=0;
   sort_param.fix_datafile= (my_bool) (! rep_quick);
-  sort_param.master=1;
+  sort_param.primary=1;
   sort_info.max_records= ~(ha_rows) 0;
 
   set_data_file_type(&sort_info, share);
@@ -2330,7 +2330,7 @@ int mi_repair_by_sort(MI_CHECK *param, MI_INFO *info,
   sort_param.tmpdir=param->tmpdir;
   sort_param.sort_info=&sort_info;
   sort_param.fix_datafile= (my_bool) (! rep_quick);
-  sort_param.master =1;
+  sort_param.primary =1;
   
   del=info->state->del;
   param->glob_crc=0;
@@ -2600,13 +2600,13 @@ err:
     Non-quick
 
       The data file is rebuilt and all indexes are rebuilt to point to
-      the new record positions. One thread is the master thread. It
+      the new record positions. One thread is the primary thread. It
       reads from the old data file and writes to the new data file. It
       also creates one of the indexes. The other threads read from a
-      buffer which is filled by the master. If they need fresh data,
-      they enter the shared cache lock. If the masters write buffer is
+      buffer which is filled by the primary. If they need fresh data,
+      they enter the shared cache lock. If the primarys write buffer is
       full, it flushes it to the new data file and enters the shared
-      cache lock too. When all threads joined in the lock, the master
+      cache lock too. When all threads joined in the lock, the primary
       copies its write buffer to the read buffer for the other threads
       and wakes them.
 
@@ -2661,14 +2661,14 @@ int mi_repair_parallel(MI_CHECK *param, MI_INFO *info,
 
     Non-quick repair (rebuilding data file and indexes):
     {
-      Master thread:
+      Primary thread:
 
         Read  cache is (MI_CHECK *param)->read_cache using info->dfile.
         Write cache is (MI_INFO   *info)->rec_cache  using new_file.
 
-      Slave threads:
+      Replica threads:
 
-        Read  cache is new_data_cache synced to master rec_cache.
+        Read  cache is new_data_cache synced to primary rec_cache.
 
       The final assignment of the filedescriptor for rec_cache is done
       after the cache creation.
@@ -2770,7 +2770,7 @@ int mi_repair_parallel(MI_CHECK *param, MI_INFO *info,
     to sort_info.max_records and cannot exceed it, is
     increased in sort_key_write. In mi_repair_by_sort, sort_key_write
     is called after sort_key_read, where the comparison is performed,
-    but in parallel mode master thread can call sort_key_write
+    but in parallel mode primary thread can call sort_key_write
     before some other repair thread calls sort_key_read.
     Furthermore I'm not even sure +1 would be enough.
     May be sort_info.max_records shold be always set to max value in
@@ -2837,7 +2837,7 @@ int mi_repair_parallel(MI_CHECK *param, MI_INFO *info,
     sort_param[i].lock_in_memory=lock_memory;
     sort_param[i].tmpdir=param->tmpdir;
     sort_param[i].sort_info=&sort_info;
-    sort_param[i].master=0;
+    sort_param[i].primary=0;
     sort_param[i].fix_datafile=0;
     sort_param[i].calc_checksum= 0;
 
@@ -2876,7 +2876,7 @@ int mi_repair_parallel(MI_CHECK *param, MI_INFO *info,
     }
   }
   sort_info.total_keys=i;
-  sort_param[0].master= 1;
+  sort_param[0].primary= 1;
   sort_param[0].fix_datafile= (my_bool)(! rep_quick);
   sort_param[0].calc_checksum= MY_TEST(param->testflag & T_CALC_CHECKSUM);
 
@@ -2958,7 +2958,7 @@ int mi_repair_parallel(MI_CHECK *param, MI_INFO *info,
   {
     /*
       Append some nuls to the end of a memory mapped file. Destroy the
-      write cache. The master thread did already detach from the share
+      write cache. The primary thread did already detach from the share
       by remove_io_thread() in sort.c:thr_find_all_keys().
     */
     if (write_data_suffix(&sort_info,1) || end_io_cache(&info->rec_cache))
@@ -3034,13 +3034,13 @@ int mi_repair_parallel(MI_CHECK *param, MI_INFO *info,
 err:
   got_error|= flush_blocks(param, share->key_cache, share->kfile);
   /*
-    Destroy the write cache. The master thread did already detach from
+    Destroy the write cache. The primary thread did already detach from
     the share by remove_io_thread() or it was not yet started (if the
     error happend before creating the thread).
   */
   (void) end_io_cache(&info->rec_cache);
   /*
-    Destroy the new data cache in case of non-quick repair. All slave
+    Destroy the new data cache in case of non-quick repair. All replica
     threads did either detach from the share by remove_io_thread()
     already or they were not yet started (if the error happend before
     creating the threads).
@@ -3182,13 +3182,13 @@ static int sort_ft_key_read(MI_SORT_PARAM *sort_param, void *key)
     Dynamic Records With Non-Quick Parallel Repair
 
       For non-quick parallel repair we use a synchronized read/write
-      cache. This means that one thread is the master who fixes the data
+      cache. This means that one thread is the primary who fixes the data
       file by reading each record from the old data file and writing it
       to the new data file. By doing this the records in the new data
       file are written contiguously. Whenever the write buffer is full,
-      it is copied to the read buffer. The slaves read from the read
+      it is copied to the read buffer. The replicas read from the read
       buffer, which is not associated with a file. Thus read_cache.file
-      is -1. When using _mi_read_cache(), the slaves must always set
+      is -1. When using _mi_read_cache(), the replicas must always set
       flag to READING_NEXT so that the function never tries to read from
       file. This is safe because the records are contiguous. There is no
       need to read outside the cache. This condition is evaluated in the
@@ -3236,7 +3236,7 @@ static int sort_get_next_record(MI_SORT_PARAM *sort_param)
       if (!sort_param->fix_datafile)
       {
 	sort_param->filepos=sort_param->pos;
-        if (sort_param->master)
+        if (sort_param->primary)
 	  share->state.split++;
       }
       sort_param->max_pos=(sort_param->pos+=share->base.pack_reclength);
@@ -3247,7 +3247,7 @@ static int sort_get_next_record(MI_SORT_PARAM *sort_param)
 			     mi_static_checksum(info,sort_param->record));
 	DBUG_RETURN(0);
       }
-      if (!sort_param->fix_datafile && sort_param->master)
+      if (!sort_param->fix_datafile && sort_param->primary)
       {
 	info->state->del++;
 	info->state->empty+=share->base.pack_reclength;
@@ -3394,7 +3394,7 @@ static int sort_get_next_record(MI_SORT_PARAM *sort_param)
 	}
 	if (b_type & (BLOCK_DELETED | BLOCK_SYNC_ERROR))
 	{
-          if (!sort_param->fix_datafile && sort_param->master &&
+          if (!sort_param->fix_datafile && sort_param->primary &&
               (b_type & BLOCK_DELETED))
 	  {
 	    info->state->empty+=block_info.block_len;
@@ -3414,7 +3414,7 @@ static int sort_get_next_record(MI_SORT_PARAM *sort_param)
 	  continue;
 	}
 
-	if (!sort_param->fix_datafile && sort_param->master)
+	if (!sort_param->fix_datafile && sort_param->primary)
 	  share->state.split++;
 	if (! found_record++)
 	{
@@ -3597,7 +3597,7 @@ static int sort_get_next_record(MI_SORT_PARAM *sort_param)
       if (!sort_param->fix_datafile)
       {
 	sort_param->filepos=sort_param->pos;
-        if (sort_param->master)
+        if (sort_param->primary)
 	  share->state.split++;
       }
       sort_param->max_pos=(sort_param->pos=block_info.filepos+
@@ -3623,7 +3623,7 @@ static int sort_get_next_record(MI_SORT_PARAM *sort_param)
       sort_param                Sort parameters.
 
   NOTE
-    This is only called by a master thread if parallel repair is used.
+    This is only called by a primary thread if parallel repair is used.
 
   RETURN
     0           OK
@@ -3726,7 +3726,7 @@ int sort_write_record(MI_SORT_PARAM *sort_param)
       assert(0);                                  /* Impossible */
     }
   }
-  if (sort_param->master)
+  if (sort_param->primary)
   {
     info->state->records++;
     if ((param->testflag & T_WRITE_LOOP) &&

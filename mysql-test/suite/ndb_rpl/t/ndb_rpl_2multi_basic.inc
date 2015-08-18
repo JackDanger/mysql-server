@@ -10,7 +10,7 @@
 
 --echo --- Doing pre test cleanup --- 
 
-connection master;
+connection primary;
 --disable_warnings
 DROP TABLE IF EXISTS t1;
 --enable_query_log
@@ -29,13 +29,13 @@ CREATE TABLE t1 (id MEDIUMINT NOT NULL,
                  t DATE, 
                  PRIMARY KEY(id));
 
---echo --- Show table on master ---
+--echo --- Show table on primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Show table on slave ---
+--echo --- Show table on replica ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
 --source suite/ndb_rpl/t/ndb_rpl_multi_engine2.inc
@@ -48,29 +48,29 @@ ALTER TABLE t1 DROP PRIMARY KEY;
 # note: table with no PK can't contain blobs if it is to be replicated.
 ALTER TABLE t1 MODIFY vc char(32);  
 
---echo --- Show the new improved table on the master ---
+--echo --- Show the new improved table on the primary ---
 
 SHOW CREATE TABLE t1;
 
---echo --- Make sure that our tables on slave are still same engine ---
+--echo --- Make sure that our tables on replica are still same engine ---
 --echo --- and that the alter statements replicated correctly ---
 
-sync_slave_with_master;
+sync_replica_with_primary;
 SHOW CREATE TABLE t1;
 
 # Turn off strict mode since the sourced include file
 # intentionally INSERT rows which exceed the length of column 'vc'
-connection master;
+connection primary;
 --source suite/ndb/include/turn_off_strict_sql_mode.inc
 
 --source suite/ndb_rpl/t/ndb_rpl_multi_engine2.inc
 
-connection master;
+connection primary;
 --source suite/ndb/include/restore_sql_mode_after_turn_off_strict.inc
 
 #################################################
---echo --- Check that replication works when slave has more columns than master
-connection master;
+--echo --- Check that replication works when replica has more columns than primary
+connection primary;
 ALTER TABLE t1 ADD PRIMARY KEY(id,total);
 ALTER TABLE t1 MODIFY vc TEXT;
 
@@ -84,13 +84,13 @@ INSERT INTO t1 VALUES(50,1,'Testing MySQL databases is a cool ',
                       'Must make it bug free for the customer',
                        654321.4321,15.21,0,1965,"1985-11-14");
 
---echo --- Add columns on slave ---
---sync_slave_with_master
+--echo --- Add columns on replica ---
+--sync_replica_with_primary
 ALTER TABLE t1 ADD (u int, v char(16) default 'default');
 UPDATE t1 SET u=7 WHERE id < 50;
 UPDATE t1 SET v='explicit' WHERE id >10;
 
---echo --- Show changed table on slave ---
+--echo --- Show changed table on replica ---
 
 SHOW CREATE TABLE t1;
 SELECT * 
@@ -101,17 +101,17 @@ ORDER BY id;
 TRUNCATE TABLE t1;
 
 #################################################
---echo --- Check that replication works when master has more columns than slave
-connection master;
+--echo --- Check that replication works when primary has more columns than replica
+connection primary;
 
---echo --- Remove columns on slave ---
---sync_slave_with_master
+--echo --- Remove columns on replica ---
+--sync_replica_with_primary
 ALTER TABLE t1 DROP COLUMN v;
 ALTER TABLE t1 DROP COLUMN u;
 ALTER TABLE t1 DROP COLUMN t;
 ALTER TABLE t1 DROP COLUMN y;
 
---echo --- Show changed table on slave ---
+--echo --- Show changed table on replica ---
 
 SHOW CREATE TABLE t1;
 
@@ -120,8 +120,8 @@ TRUNCATE TABLE t1;
 
 #################################################
 --echo --- Do Cleanup --
-connection master;
+connection primary;
 DROP TABLE IF EXISTS t1;
 
-sync_slave_with_master;
-connection master;
+sync_replica_with_primary;
+connection primary;

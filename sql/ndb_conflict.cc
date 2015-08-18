@@ -21,11 +21,11 @@
 #include "ndb_binlog_extra_row_info.h"
 #include "ndb_table_guard.h"
 
-extern st_ndb_slave_state g_ndb_slave_state;
+extern st_ndb_replica_state g_ndb_replica_state;
 
 #ifdef HAVE_NDB_BINLOG
 #include "ndb_mi.h"
-extern ulong opt_ndb_slave_conflict_role;
+extern ulong opt_ndb_replica_conflict_role;
 extern ulong opt_ndb_extra_logging;
 
 #define NDBTAB NdbDictionary::Table
@@ -126,10 +126,10 @@ ExceptionsTableWriter::check_mandatory_columns(const NdbDictionary::Table* excep
   if (/* server id */
       exceptionsTable->getColumn(0)->getType() == NDBCOL::Unsigned &&
       exceptionsTable->getColumn(0)->getPrimaryKey() &&
-      /* master_server_id */
+      /* primary_server_id */
       exceptionsTable->getColumn(1)->getType() == NDBCOL::Unsigned &&
       exceptionsTable->getColumn(1)->getPrimaryKey() &&
-      /* master_epoch */
+      /* primary_epoch */
       exceptionsTable->getColumn(2)->getType() == NDBCOL::Bigunsigned &&
       exceptionsTable->getColumn(2)->getPrimaryKey() &&
       /* count */
@@ -403,7 +403,7 @@ ExceptionsTableWriter::check_optional_columns(const NdbDictionary::Table* mainTa
                     mainTable->getName());
         DBUG_PRINT("info", ("%s", error_details));
         my_snprintf(msg_buf, msg_buf_len,
-                    "NDB Slave: exceptions table %s has suspicious "
+                    "NDB Replica: exceptions table %s has suspicious "
                     "definition ((column %d): %s",
                     ex_tab_name, fixed_cols + k, error_details);
         continue;
@@ -596,13 +596,13 @@ ExceptionsTableWriter::init(const NdbDictionary::Table* mainTable,
     }
     else
       my_snprintf(msg_buf, msg_buf_len,
-                  "NDB Slave: exceptions table %s has wrong "
+                  "NDB Replica: exceptions table %s has wrong "
                   "definition (column %d): %s",
                   ex_tab_name, fixed_cols + k, error_details);
   }
   else
     my_snprintf(msg_buf, msg_buf_len,
-                "NDB Slave: exceptions table %s has wrong "
+                "NDB Replica: exceptions table %s has wrong "
                 "definition (initial %d columns)",
                 ex_tab_name, fixed_cols);
 
@@ -626,8 +626,8 @@ ExceptionsTableWriter::writeRow(NdbTransaction* trans,
                                 const NdbRecord* keyRecord,
                                 const NdbRecord* dataRecord,
                                 uint32 server_id,
-                                uint32 master_server_id,
-                                uint64 master_epoch,
+                                uint32 primary_server_id,
+                                uint64 primary_epoch,
                                 const uchar* oldRowPtr,
                                 const uchar* newRowPtr,
                                 enum_conflicting_op_type op_type,
@@ -666,8 +666,8 @@ ExceptionsTableWriter::writeRow(NdbTransaction* trans,
       uint32 count= (uint32)++m_count;
       /* Set mandatory columns */
       if (ex_op->setValue((Uint32)0, (const char *)&(server_id)) ||
-          ex_op->setValue((Uint32)1, (const char *)&(master_server_id)) ||
-          ex_op->setValue((Uint32)2, (const char *)&(master_epoch)) ||
+          ex_op->setValue((Uint32)1, (const char *)&(primary_server_id)) ||
+          ex_op->setValue((Uint32)2, (const char *)&(primary_epoch)) ||
           ex_op->setValue((Uint32)3, (const char *)&(count)))
       {
         err= ex_op->getNdbError();
@@ -858,7 +858,7 @@ ExceptionsTableWriter::writeRow(NdbTransaction* trans,
       /* 
        * Something up with Exceptions table schema, forget it.
        * No further exceptions will be recorded.
-       * Caller will log this and slave will stop.
+       * Caller will log this and replica will stop.
        */
       NdbDictionary::Dictionary* dict= trans->getNdb()->getDictionary();
       dict->removeTableGlobal(*m_ex_tab, false);
@@ -874,17 +874,17 @@ ExceptionsTableWriter::writeRow(NdbTransaction* trans,
 #endif
 
 /**
-   st_ndb_slave_state constructor
+   st_ndb_replica_state constructor
 
-   Initialise Ndb Slave state object
+   Initialise Ndb Replica state object
 */
-st_ndb_slave_state::st_ndb_slave_state()
+st_ndb_replica_state::st_ndb_replica_state()
   : current_delete_delete_count(0),
     current_reflect_op_prepare_count(0),
     current_reflect_op_discard_count(0),
     current_refresh_op_count(0),
-    current_master_server_epoch(0),
-    current_master_server_epoch_committed(false),
+    current_primary_server_epoch(0),
+    current_primary_server_epoch_committed(false),
     current_max_rep_epoch(0),
     conflict_flags(0),
     retry_trans_count(0),
@@ -916,7 +916,7 @@ st_ndb_slave_state::st_ndb_slave_state()
                   &conflict_mem_root, CONFLICT_MEMROOT_BLOCK_SIZE, 0);
 }
 
-st_ndb_slave_state::~st_ndb_slave_state()
+st_ndb_replica_state::~st_ndb_replica_state()
 {
   free_root(&conflict_mem_root, 0);
 }
@@ -927,7 +927,7 @@ st_ndb_slave_state::~st_ndb_slave_state()
    Reset the per-epoch-transaction-application-attempt counters
 */
 void
-st_ndb_slave_state::resetPerAttemptCounters()
+st_ndb_replica_state::resetPerAttemptCounters()
 {
   memset(current_violation_count, 0, sizeof(current_violation_count));
   current_delete_delete_count = 0;
@@ -945,10 +945,10 @@ st_ndb_slave_state::resetPerAttemptCounters()
 /**
    atTransactionAbort()
 
-   Called by Slave SQL thread during transaction abort.
+   Called by Replica SQL thread during transaction abort.
 */
 void
-st_ndb_slave_state::atTransactionAbort()
+st_ndb_replica_state::atTransactionAbort()
 {
 #ifdef HAVE_NDB_BINLOG
   /* Reset any gathered transaction dependency information */
@@ -965,10 +965,10 @@ st_ndb_slave_state::atTransactionAbort()
 /**
    atTransactionCommit()
 
-   Called by Slave SQL thread after transaction commit
+   Called by Replica SQL thread after transaction commit
 */
 void
-st_ndb_slave_state::atTransactionCommit(Uint64 epoch)
+st_ndb_replica_state::atTransactionCommit(Uint64 epoch)
 {
   assert( ((trans_dependency_tracker == NULL) &&
            (trans_conflict_apply_state == SAS_NORMAL)) ||
@@ -1073,17 +1073,17 @@ st_ndb_slave_state::atTransactionCommit(Uint64 epoch)
   /* Clear per-epoch-transaction retry_trans_count */
   retry_trans_count = 0;
 
-  current_master_server_epoch_committed = true;
+  current_primary_server_epoch_committed = true;
 
-  DBUG_EXECUTE_IF("ndb_slave_fail_marking_epoch_committed",
+  DBUG_EXECUTE_IF("ndb_replica_fail_marking_epoch_committed",
                   {
                     fprintf(stderr, 
-                            "Slave clearing epoch committed flag "
+                            "Replica clearing epoch committed flag "
                             "for epoch %llu/%llu (%llu)\n",
-                            current_master_server_epoch >> 32,
-                            current_master_server_epoch & 0xffffffff,
-                            current_master_server_epoch);
-                    current_master_server_epoch_committed = false;
+                            current_primary_server_epoch >> 32,
+                            current_primary_server_epoch & 0xffffffff,
+                            current_primary_server_epoch);
+                    current_primary_server_epoch_committed = false;
                   });
 }
 
@@ -1091,14 +1091,14 @@ st_ndb_slave_state::atTransactionCommit(Uint64 epoch)
    verifyNextEpoch
 
    Check that a new incoming epoch from the relay log
-   is expected given the current slave state, previous
+   is expected given the current replica state, previous
    epoch etc.
    This is checking Generic replication errors, with
    a user warning thrown in too.
 */
 bool
-st_ndb_slave_state::verifyNextEpoch(Uint64 next_epoch,
-                                    Uint32 master_server_id) const
+st_ndb_replica_state::verifyNextEpoch(Uint64 next_epoch,
+                                    Uint32 primary_server_id) const
 {
   DBUG_ENTER("verifyNextEpoch");
 #ifdef HAVE_NDB_BINLOG
@@ -1110,53 +1110,53 @@ st_ndb_slave_state::verifyNextEpoch(Uint64 next_epoch,
     epoch - to make sure that we are getting a sensible sequence
     of epochs.
   */
-  bool first_epoch_since_slave_start = (ndb_mi_get_slave_run_id() != sql_run_id);
+  bool first_epoch_since_replica_start = (ndb_mi_get_replica_run_id() != sql_run_id);
   
-  DBUG_PRINT("info", ("ndb_apply_status write from upstream master."
+  DBUG_PRINT("info", ("ndb_apply_status write from upstream primary."
                       "ServerId %u, Epoch %llu/%llu (%llu) "
-                      "Current master server epoch %llu/%llu (%llu)"
-                      "Current master server epoch committed? %u",
-                      master_server_id,
+                      "Current primary server epoch %llu/%llu (%llu)"
+                      "Current primary server epoch committed? %u",
+                      primary_server_id,
                       next_epoch >> 32,
                       next_epoch & 0xffffffff,
                       next_epoch,
-                      current_master_server_epoch >> 32,
-                      current_master_server_epoch & 0xffffffff,
-                      current_master_server_epoch,
-                      current_master_server_epoch_committed));
-  DBUG_PRINT("info", ("mi_slave_run_id=%u, ndb_slave_state_run_id=%u",
-                      ndb_mi_get_slave_run_id(), sql_run_id));
-  DBUG_PRINT("info", ("First epoch since slave start : %u",
-                      first_epoch_since_slave_start));
+                      current_primary_server_epoch >> 32,
+                      current_primary_server_epoch & 0xffffffff,
+                      current_primary_server_epoch,
+                      current_primary_server_epoch_committed));
+  DBUG_PRINT("info", ("mi_replica_run_id=%u, ndb_replica_state_run_id=%u",
+                      ndb_mi_get_replica_run_id(), sql_run_id));
+  DBUG_PRINT("info", ("First epoch since replica start : %u",
+                      first_epoch_since_replica_start));
              
   /* Analysis of nextEpoch generally depends on whether it's the first or not */
-  if (first_epoch_since_slave_start)
+  if (first_epoch_since_replica_start)
   {
     /**
-       First epoch since slave start - might've had a CHANGE MASTER command,
+       First epoch since replica start - might've had a CHANGE PRIMARY command,
        since we were last running, so we are not too strict about epoch
        changes, but we will warn.
     */
-    if (next_epoch < current_master_server_epoch)
+    if (next_epoch < current_primary_server_epoch)
     {
-      sql_print_warning("NDB Slave : At SQL thread start "
+      sql_print_warning("NDB Replica : At SQL thread start "
                         "applying epoch %llu/%llu "
-                        "(%llu) from Master ServerId %u which is lower than previously "
+                        "(%llu) from Primary ServerId %u which is lower than previously "
                         "applied epoch %llu/%llu (%llu).  "
-                        "Group Master Log : %s  Group Master Log Pos : %llu.  "
-                        "Check slave positioning.",
+                        "Group Primary Log : %s  Group Primary Log Pos : %llu.  "
+                        "Check replica positioning.",
                         next_epoch >> 32,
                         next_epoch & 0xffffffff,
                         next_epoch,
-                        master_server_id,
-                        current_master_server_epoch >> 32,
-                        current_master_server_epoch & 0xffffffff,
-                        current_master_server_epoch,
-                        ndb_mi_get_group_master_log_name(),
-                        ndb_mi_get_group_master_log_pos());
-      /* Slave not stopped */
+                        primary_server_id,
+                        current_primary_server_epoch >> 32,
+                        current_primary_server_epoch & 0xffffffff,
+                        current_primary_server_epoch,
+                        ndb_mi_get_group_primary_log_name(),
+                        ndb_mi_get_group_primary_log_pos());
+      /* Replica not stopped */
     }
-    else if (next_epoch == current_master_server_epoch)
+    else if (next_epoch == current_primary_server_epoch)
     {
       /**
          Could warn that started on already applied epoch,
@@ -1165,61 +1165,61 @@ st_ndb_slave_state::verifyNextEpoch(Uint64 next_epoch,
     }
     else
     {
-      /* next_epoch > current_master_server_epoch - fine. */
+      /* next_epoch > current_primary_server_epoch - fine. */
     }
   }
   else
   {
     /**
-       ! first_epoch_since_slave_start
+       ! first_epoch_since_replica_start
        
-       Slave has already applied some epoch in this run, so we expect
+       Replica has already applied some epoch in this run, so we expect
        either :
         a) previous epoch committed ok and next epoch is higher
                                   or
         b) previous epoch not committed and next epoch is the same
            (Retry case)
     */
-    if (next_epoch < current_master_server_epoch)
+    if (next_epoch < current_primary_server_epoch)
     {
       /* Should never happen */
-      sql_print_error("NDB Slave : SQL thread stopped as "
+      sql_print_error("NDB Replica : SQL thread stopped as "
                       "applying epoch %llu/%llu "
-                      "(%llu) from Master ServerId %u which is lower than previously "
+                      "(%llu) from Primary ServerId %u which is lower than previously "
                       "applied epoch %llu/%llu (%llu).  "
-                      "Group Master Log : %s  Group Master Log Pos : %llu",
+                      "Group Primary Log : %s  Group Primary Log Pos : %llu",
                       next_epoch >> 32,
                       next_epoch & 0xffffffff,
                       next_epoch,
-                      master_server_id,
-                      current_master_server_epoch >> 32,
-                      current_master_server_epoch & 0xffffffff,
-                      current_master_server_epoch,
-                      ndb_mi_get_group_master_log_name(),
-                      ndb_mi_get_group_master_log_pos());
-      /* Stop the slave */
+                      primary_server_id,
+                      current_primary_server_epoch >> 32,
+                      current_primary_server_epoch & 0xffffffff,
+                      current_primary_server_epoch,
+                      ndb_mi_get_group_primary_log_name(),
+                      ndb_mi_get_group_primary_log_pos());
+      /* Stop the replica */
       DBUG_RETURN(false);
     }
-    else if (next_epoch == current_master_server_epoch)
+    else if (next_epoch == current_primary_server_epoch)
     {
       /**
          This is ok if we are retrying - e.g. the 
          last epoch was not committed
       */
-      if (current_master_server_epoch_committed)
+      if (current_primary_server_epoch_committed)
       {
         /* This epoch is committed already, why are we replaying it? */
-        sql_print_error("NDB Slave : SQL thread stopped as attempted "
+        sql_print_error("NDB Replica : SQL thread stopped as attempted "
                         "to reapply already committed epoch %llu/%llu (%llu) "
                         "from server id %u.  "
-                        "Group Master Log : %s  Group Master Log Pos : %llu.",
-                        current_master_server_epoch >> 32,
-                        current_master_server_epoch & 0xffffffff,
-                        current_master_server_epoch,
-                        master_server_id,
-                        ndb_mi_get_group_master_log_name(),
-                        ndb_mi_get_group_master_log_pos());
-        /* Stop the slave */
+                        "Group Primary Log : %s  Group Primary Log Pos : %llu.",
+                        current_primary_server_epoch >> 32,
+                        current_primary_server_epoch & 0xffffffff,
+                        current_primary_server_epoch,
+                        primary_server_id,
+                        ndb_mi_get_group_primary_log_name(),
+                        ndb_mi_get_group_primary_log_pos());
+        /* Stop the replica */
         DBUG_RETURN(false);
       }
       else
@@ -1230,33 +1230,33 @@ st_ndb_slave_state::verifyNextEpoch(Uint64 next_epoch,
     else
     {
       /**
-         next_epoch > current_master_server_epoch
+         next_epoch > current_primary_server_epoch
       
          This is the normal case, *unless* the previous epoch
          did not commit - in which case it may be a bug in 
          transaction retry.
       */
-      if (!current_master_server_epoch_committed)
+      if (!current_primary_server_epoch_committed)
       {
         /**
            We've moved onto a new epoch without committing
            the last - probably a bug in transaction retry
         */
-        sql_print_error("NDB Slave : SQL thread stopped as attempting to "
+        sql_print_error("NDB Replica : SQL thread stopped as attempting to "
                         "apply new epoch %llu/%llu (%llu) while lower "
                         "received epoch %llu/%llu (%llu) has not been "
-                        "committed.  Master server id : %u.  "
-                        "Group Master Log : %s  Group Master Log Pos : %llu.",
+                        "committed.  Primary server id : %u.  "
+                        "Group Primary Log : %s  Group Primary Log Pos : %llu.",
                         next_epoch >> 32,
                         next_epoch & 0xffffffff,
                         next_epoch,
-                        current_master_server_epoch >> 32,
-                        current_master_server_epoch & 0xffffffff,
-                        current_master_server_epoch,
-                        master_server_id,
-                        ndb_mi_get_group_master_log_name(),
-                        ndb_mi_get_group_master_log_pos());
-        /* Stop the slave */
+                        current_primary_server_epoch >> 32,
+                        current_primary_server_epoch & 0xffffffff,
+                        current_primary_server_epoch,
+                        primary_server_id,
+                        ndb_mi_get_group_primary_log_name(),
+                        ndb_mi_get_group_primary_log_pos());
+        /* Stop the replica */
         DBUG_RETURN(false);
       }
       else
@@ -1274,31 +1274,31 @@ st_ndb_slave_state::verifyNextEpoch(Uint64 next_epoch,
 /**
    atApplyStatusWrite
 
-   Called by Slave SQL thread when applying an event to the
+   Called by Replica SQL thread when applying an event to the
    ndb_apply_status table
 */
 int
-st_ndb_slave_state::atApplyStatusWrite(Uint32 master_server_id,
+st_ndb_replica_state::atApplyStatusWrite(Uint32 primary_server_id,
                                        Uint32 row_server_id,
                                        Uint64 row_epoch,
                                        bool is_row_server_id_local)
 {
   DBUG_ENTER("atApplyStatusWrite");
-  if (row_server_id == master_server_id)
+  if (row_server_id == primary_server_id)
   {
-    /* This is an apply status write from the immediate master */
+    /* This is an apply status write from the immediate primary */
 
     if (!verifyNextEpoch(row_epoch,
-                         master_server_id))
+                         primary_server_id))
     {
-      /* Problem with the next epoch, stop the slave SQL thread */
+      /* Problem with the next epoch, stop the replica SQL thread */
       DBUG_RETURN(HA_ERR_ROWS_EVENT_APPLY);
     }
 
     /* Epoch ok, record that we're working on it now... */
 
-    current_master_server_epoch = row_epoch;
-    current_master_server_epoch_committed = false;
+    current_primary_server_epoch = row_epoch;
+    current_primary_server_epoch_committed = false;
     assert(! is_row_server_id_local);
   }
   else if (is_row_server_id_local)
@@ -1321,17 +1321,17 @@ st_ndb_slave_state::atApplyStatusWrite(Uint32 master_server_id,
 }
 
 /**
-   atResetSlave()
+   atResetReplica()
 
-   Called when RESET SLAVE command issued - in context of command client.
+   Called when RESET REPLICA command issued - in context of command client.
 */
 void
-st_ndb_slave_state::atResetSlave()
+st_ndb_replica_state::atResetReplica()
 {
   /* Reset the Maximum replicated epoch vars
-   * on slave reset
+   * on replica reset
    * No need to touch the sql_run_id as that
-   * will increment if the slave is started
+   * will increment if the replica is started
    * again.
    */
   resetPerAttemptCounters();
@@ -1341,24 +1341,24 @@ st_ndb_slave_state::atResetSlave()
   last_conflicted_epoch = 0;
   last_stable_epoch = 0;
 
-  /* Reset current master server epoch
+  /* Reset current primary server epoch
    * This avoids warnings when replaying a lower
-   * epoch number after a RESET SLAVE - in this
+   * epoch number after a RESET REPLICA - in this
    * case we assume the user knows best.
    */
-  current_master_server_epoch = 0;
-  current_master_server_epoch_committed = false;
+  current_primary_server_epoch = 0;
+  current_primary_server_epoch_committed = false;
 }
 
 
 /**
-   atStartSlave()
+   atStartReplica()
 
-   Called by Slave SQL thread when first applying a row to Ndb after
-   a START SLAVE command.
+   Called by Replica SQL thread when first applying a row to Ndb after
+   a START REPLICA command.
 */
 void
-st_ndb_slave_state::atStartSlave()
+st_ndb_replica_state::atStartReplica()
 {
 #ifdef HAVE_NDB_BINLOG
   if (trans_conflict_apply_state != SAS_NORMAL)
@@ -1374,8 +1374,8 @@ st_ndb_slave_state::atStartSlave()
 }
 
 bool
-st_ndb_slave_state::checkSlaveConflictRoleChange(enum_slave_conflict_role old_role,
-                                                 enum_slave_conflict_role new_role,
+st_ndb_replica_state::checkReplicaConflictRoleChange(enum_replica_conflict_role old_role,
+                                                 enum_replica_conflict_role new_role,
                                                  const char** failure_cause)
 {
   if (old_role == new_role)
@@ -1426,11 +1426,11 @@ st_ndb_slave_state::checkSlaveConflictRoleChange(enum_slave_conflict_role old_ro
   }
   
 #ifdef HAVE_NDB_BINLOG
-  /* Check that Slave SQL thread is not running */
-  if (ndb_mi_get_slave_sql_running())
+  /* Check that Replica SQL thread is not running */
+  if (ndb_mi_get_replica_sql_running())
   {
-    *failure_cause = "Cannot change role while Slave SQL "
-      "thread is running.  Use STOP SLAVE first.";
+    *failure_cause = "Cannot change role while Replica SQL "
+      "thread is running.  Use STOP REPLICA first.";
     return false;
   }
 #endif
@@ -1447,7 +1447,7 @@ st_ndb_slave_state::checkSlaveConflictRoleChange(enum_slave_conflict_role old_ro
    Called when transactional conflict handling has completed.
 */
 void
-st_ndb_slave_state::atEndTransConflictHandling()
+st_ndb_replica_state::atEndTransConflictHandling()
 {
   DBUG_ENTER("atEndTransConflictHandling");
   /* Release any conflict handling state */
@@ -1464,11 +1464,11 @@ st_ndb_slave_state::atEndTransConflictHandling()
 /**
    atBeginTransConflictHandling()
 
-   Called by Slave SQL thread when it determines that Transactional
+   Called by Replica SQL thread when it determines that Transactional
    Conflict handling is required
 */
 void
-st_ndb_slave_state::atBeginTransConflictHandling()
+st_ndb_replica_state::atBeginTransConflictHandling()
 {
   DBUG_ENTER("atBeginTransConflictHandling");
   /*
@@ -1483,11 +1483,11 @@ st_ndb_slave_state::atBeginTransConflictHandling()
 /**
    atPrepareConflictDetection
 
-   Called by Slave SQL thread prior to defining an operation on
+   Called by Replica SQL thread prior to defining an operation on
    a table with conflict detection defined.
 */
 int
-st_ndb_slave_state::atPrepareConflictDetection(const NdbDictionary::Table* table,
+st_ndb_replica_state::atPrepareConflictDetection(const NdbDictionary::Table* table,
                                                const NdbRecord* key_rec,
                                                const uchar* row_data,
                                                Uint64 transaction_id,
@@ -1495,7 +1495,7 @@ st_ndb_slave_state::atPrepareConflictDetection(const NdbDictionary::Table* table
 {
   DBUG_ENTER("atPrepareConflictDetection");
   /*
-    Slave is preparing to apply an operation with conflict detection.
+    Replica is preparing to apply an operation with conflict detection.
     If we're performing Transactional Conflict Resolution, take
     extra steps
   */
@@ -1565,16 +1565,16 @@ st_ndb_slave_state::atPrepareConflictDetection(const NdbDictionary::Table* table
 /**
    atTransConflictDetected
 
-   Called by the Slave SQL thread when a conflict is detected on
+   Called by the Replica SQL thread when a conflict is detected on
    an executed operation.
 */
 int
-st_ndb_slave_state::atTransConflictDetected(Uint64 transaction_id)
+st_ndb_replica_state::atTransConflictDetected(Uint64 transaction_id)
 {
   DBUG_ENTER("atTransConflictDetected");
 
   /*
-     The Slave has detected a conflict on an operation applied
+     The Replica has detected a conflict on an operation applied
      to a table with Transactional Conflict Resolution defined.
      Handle according to current state.
   */
@@ -1645,14 +1645,14 @@ st_ndb_slave_state::atTransConflictDetected(Uint64 transaction_id)
 /**
    atConflictPreCommit
 
-   Called by the Slave SQL thread prior to committing a Slave transaction.
-   This method can request that the Slave transaction is retried.
+   Called by the Replica SQL thread prior to committing a Replica transaction.
+   This method can request that the Replica transaction is retried.
 
 
    State transitions :
 
-                       START SLAVE /
-                       RESET SLAVE /
+                       START REPLICA /
+                       RESET REPLICA /
                         STARTUP
                             |
                             |
@@ -1689,7 +1689,7 @@ st_ndb_slave_state::atTransConflictDetected(Uint64 transaction_id)
      In SAS_TRACK_TRANS_DEPENDENCIES state, transaction dependencies and
      conflicts are tracked as the epoch transaction is applied.
 
-     Then the Slave transitions to SAS_APPLY_TRANS_DEPENDENCIES state, and
+     Then the Replica transitions to SAS_APPLY_TRANS_DEPENDENCIES state, and
      the epoch transaction is rolled back and reapplied.
 
      In the SAS_APPLY_TRANS_DEPENDENCIES state, operations for transactions
@@ -1703,13 +1703,13 @@ st_ndb_slave_state::atTransConflictDetected(Uint64 transaction_id)
      the new set of dependencies.
 
      If no conflicts are found in the SAS_TRACK_TRANS_DEPENDENCIES state, then
-     the epoch transaction is committed, and the Slave transitions to SAS_NORMAL
+     the epoch transaction is committed, and the Replica transitions to SAS_NORMAL
      state.
 
 
    Properties
      1) Normally, there is no transaction dependency tracking overhead paid by
-        the slave.
+        the replica.
 
      2) On first detecting a transactional conflict, the epoch transaction must be
         applied at least three times, with two rollbacks.
@@ -1724,7 +1724,7 @@ st_ndb_slave_state::atTransConflictDetected(Uint64 transaction_id)
         so we revisit that state to get a more complete picture.
 
      5) The number of iterations of this loop is fixed to a hard coded limit, after
-        which the Slave will stop with an error.  This should be an unlikely
+        which the Replica will stop with an error.  This should be an unlikely
         occurrence, as it requires not just n conflicts, but at least 1 new conflict
         appearing between the transactions in the epoch transaction and the
         database between the two states, n times in a row.
@@ -1735,16 +1735,16 @@ st_ndb_slave_state::atTransConflictDetected(Uint64 transaction_id)
 
 */
 int
-st_ndb_slave_state::atConflictPreCommit(bool& retry_slave_trans)
+st_ndb_replica_state::atConflictPreCommit(bool& retry_replica_trans)
 {
   DBUG_ENTER("atConflictPreCommit");
 
   /*
-    Prior to committing a Slave transaction, we check whether
+    Prior to committing a Replica transaction, we check whether
     Transactional conflicts have been detected which require
-    us to retry the slave transaction
+    us to retry the replica transaction
   */
-  retry_slave_trans = false;
+  retry_replica_trans = false;
   switch(trans_conflict_apply_state)
   {
   case SAS_NORMAL:
@@ -1764,7 +1764,7 @@ st_ndb_slave_state::atConflictPreCommit(bool& retry_slave_trans)
       atBeginTransConflictHandling();
       resetPerAttemptCounters();
       trans_conflict_apply_state = SAS_TRACK_TRANS_DEPENDENCIES;
-      retry_slave_trans = true;
+      retry_replica_trans = true;
     }
     break;
   }
@@ -1788,7 +1788,7 @@ st_ndb_slave_state::atConflictPreCommit(bool& retry_slave_trans)
 
       trans_conflict_apply_state = SAS_APPLY_TRANS_DEPENDENCIES;
       trans_detect_iter_count++;
-      retry_slave_trans = true;
+      retry_replica_trans = true;
       break;
     }
     else
@@ -1810,7 +1810,7 @@ st_ndb_slave_state::atConflictPreCommit(bool& retry_slave_trans)
     DBUG_PRINT("info", ("SAS_APPLY_TRANS_DEPENDENCIES"));
     assert(conflict_flags & SCS_OPS_DEFINED);
     /*
-       We've applied the Slave epoch transaction subject to the
+       We've applied the Replica epoch transaction subject to the
        conflict detection.  If any further transactional
        conflicts have been observed, then we must repeat the
        process.
@@ -1828,7 +1828,7 @@ st_ndb_slave_state::atConflictPreCommit(bool& retry_slave_trans)
          to re-determine dependencies
       */
       resetPerAttemptCounters();
-      retry_slave_trans = true;
+      retry_replica_trans = true;
       break;
     }
 
@@ -1848,7 +1848,7 @@ st_ndb_slave_state::atConflictPreCommit(bool& retry_slave_trans)
   */
   conflict_flags = 0;
 
-  if (retry_slave_trans)
+  if (retry_replica_trans)
   {
     DBUG_PRINT("info", ("Requesting transaction restart"));
     DBUG_RETURN(1);
@@ -1869,7 +1869,7 @@ st_ndb_slave_state::atConflictPreCommit(bool& retry_slave_trans)
   CFT_NDB_OLD
 
   To perform conflict detection, an interpreted program is used to read
-  the timestamp stored locally and compare to what was on the master.
+  the timestamp stored locally and compare to what was on the primary.
   If timestamp is not equal, an error for this operation (9998) will be raised,
   and new row will not be applied. The error codes for the operations will
   be checked on return.  For this to work is is vital that the operation
@@ -1900,7 +1900,7 @@ row_conflict_fn_old(NDB_CONFLICT_FN_SHARE* cfn_share,
 
   if (unlikely(!bitmap_is_set(bi_cols, resolve_column)))
   {
-    sql_print_information("NDB Slave: missing data for %s "
+    sql_print_information("NDB Replica: missing data for %s "
                           "timestamp column %u.",
                           cfn_share->m_conflict_fn->name,
                           resolve_column);
@@ -1983,7 +1983,7 @@ row_conflict_fn_max_update_only(NDB_CONFLICT_FN_SHARE* cfn_share,
 
   if (unlikely(!bitmap_is_set(ai_cols, resolve_column)))
   {
-    sql_print_information("NDB Slave: missing data for %s "
+    sql_print_information("NDB Replica: missing data for %s "
                           "timestamp column %u.",
                           cfn_share->m_conflict_fn->name,
                           resolve_column);
@@ -2191,7 +2191,7 @@ row_conflict_fn_epoch(NDB_CONFLICT_FN_SHARE* cfn_share,
     /*
      * Load registers RegMaxRepEpoch and RegRowEpoch
      */
-    r= code->load_const_u64(RegMaxRepEpoch, g_ndb_slave_state.max_rep_epoch);
+    r= code->load_const_u64(RegMaxRepEpoch, g_ndb_replica_state.max_rep_epoch);
     assert(r == 0);
     r= code->read_attr(RegRowEpoch, NdbDictionary::Column::ROW_GCI64);
     assert(r == 0);
@@ -2316,10 +2316,10 @@ row_conflict_fn_epoch2(NDB_CONFLICT_FN_SHARE* cfn_share,
   DBUG_ENTER("row_conflict_fn_epoch2");
   
   /**
-   * NdbEpoch2 behaviour depends on the Slave conflict role variable
+   * NdbEpoch2 behaviour depends on the Replica conflict role variable
    *
    */
-  switch(opt_ndb_slave_conflict_role)
+  switch(opt_ndb_replica_conflict_role)
   {
   case SCR_NONE:
     /* This is a problem */
@@ -2575,10 +2575,10 @@ parse_conflict_fn_spec(const char* conflict_fn_spec,
 }
 
 static uint
-slave_check_resolve_col_type(const NDBTAB *ndbtab,
+replica_check_resolve_col_type(const NDBTAB *ndbtab,
                              uint field_index)
 {
-  DBUG_ENTER("slave_check_resolve_col_type");
+  DBUG_ENTER("replica_check_resolve_col_type");
   const NDBCOL *c= ndbtab->getColumn(field_index);
   uint sz= 0;
   switch (c->getType())
@@ -2602,7 +2602,7 @@ slave_check_resolve_col_type(const NDBTAB *ndbtab,
 }
 
 static int
-slave_set_resolve_fn(Ndb* ndb, 
+replica_set_resolve_fn(Ndb* ndb, 
                      NDB_CONFLICT_FN_SHARE** ppcfn_share,
                      MEM_ROOT* share_mem_root,
                      const char* dbName,
@@ -2612,7 +2612,7 @@ slave_set_resolve_fn(Ndb* ndb,
                      const st_conflict_fn_def* conflict_fn,
                      uint8 flags)
 {
-  DBUG_ENTER("slave_set_resolve_fn");
+  DBUG_ENTER("replica_set_resolve_fn");
 
   NdbDictionary::Dictionary *dict= ndb->getDictionary();
   NDB_CONFLICT_FN_SHARE *cfn_share= *ppcfn_share;
@@ -2621,7 +2621,7 @@ slave_set_resolve_fn(Ndb* ndb,
   {
     *ppcfn_share= cfn_share= (NDB_CONFLICT_FN_SHARE*)
       alloc_root(share_mem_root, sizeof(NDB_CONFLICT_FN_SHARE));
-    slave_reset_conflict_fn(cfn_share);
+    replica_reset_conflict_fn(cfn_share);
   }
   cfn_share->m_conflict_fn= conflict_fn;
 
@@ -2667,7 +2667,7 @@ slave_set_resolve_fn(Ndb* ndb,
 
         if (opt_ndb_extra_logging)
         {
-          sql_print_information("NDB Slave: Table %s.%s logging exceptions to %s.%s",
+          sql_print_information("NDB Replica: Table %s.%s logging exceptions to %s.%s",
                                 dbName,
                                 tabName,
                                 dbName,
@@ -2719,7 +2719,7 @@ setup_conflict_fn(Ndb* ndb,
   if(is_exceptions_table(tabName))
   {
     my_snprintf(msg, msg_len, 
-                "Ndb Slave: Table %s.%s is exceptions table: not using conflict function %s",
+                "Ndb Replica: Table %s.%s is exceptions table: not using conflict function %s",
                 dbName,
                 tabName,
                 conflict_fn->name);
@@ -2772,10 +2772,10 @@ setup_conflict_fn(Ndb* ndb,
     uint resolve_col_sz= 0;
 
     if (0 == (resolve_col_sz =
-              slave_check_resolve_col_type(ndbtab, colNum)))
+              replica_check_resolve_col_type(ndbtab, colNum)))
     {
       /* wrong data type */
-      slave_reset_conflict_fn(*ppcfn_share);
+      replica_reset_conflict_fn(*ppcfn_share);
       my_snprintf(msg, msg_len,
                   "Column '%s' has wrong datatype",
                   resolveColName);
@@ -2783,7 +2783,7 @@ setup_conflict_fn(Ndb* ndb,
       DBUG_RETURN(-1);
     }
 
-    if (slave_set_resolve_fn(ndb, 
+    if (replica_set_resolve_fn(ndb, 
                              ppcfn_share,
                              share_mem_root,
                              dbName,
@@ -2801,7 +2801,7 @@ setup_conflict_fn(Ndb* ndb,
 
     /* Success, update message */
     my_snprintf(msg, msg_len,
-                "NDB Slave: Table %s.%s using conflict_fn %s on attribute %s.",
+                "NDB Replica: Table %s.%s using conflict_fn %s on attribute %s.",
                 dbName,
                 tabName,
                 conflict_fn->name,
@@ -2853,7 +2853,7 @@ setup_conflict_fn(Ndb* ndb,
      * represent SavePeriod/EpochPeriod
      */
     if (ndbtab->getExtraRowGciBits() == 0)
-      sql_print_information("NDB Slave: Table %s.%s : %s, low epoch resolution",
+      sql_print_information("NDB Replica: Table %s.%s : %s, low epoch resolution",
                             dbName,
                             tabName,
                             conflict_fn->name);
@@ -2865,7 +2865,7 @@ setup_conflict_fn(Ndb* ndb,
       DBUG_RETURN(-1);
     }
 
-    if (slave_set_resolve_fn(ndb,
+    if (replica_set_resolve_fn(ndb,
                              ppcfn_share,
                              share_mem_root,
                              dbName,
@@ -2882,7 +2882,7 @@ setup_conflict_fn(Ndb* ndb,
     }
     /* Success, update message */
     my_snprintf(msg, msg_len,
-                "NDB Slave: Table %s.%s using conflict_fn %s.",
+                "NDB Replica: Table %s.%s using conflict_fn %s.",
                 dbName,
                 tabName,
                 conflict_fn->name);
@@ -2897,7 +2897,7 @@ setup_conflict_fn(Ndb* ndb,
 }
 
 
-void slave_reset_conflict_fn(NDB_CONFLICT_FN_SHARE *cfn_share)
+void replica_reset_conflict_fn(NDB_CONFLICT_FN_SHARE *cfn_share)
 {
   if (cfn_share)
   {
@@ -2914,25 +2914,25 @@ void slave_reset_conflict_fn(NDB_CONFLICT_FN_SHARE *cfn_share)
  */
 
 SHOW_VAR ndb_status_conflict_variables[]= {
-  {"fn_max",       (char*) &g_ndb_slave_state.total_violation_count[CFT_NDB_MAX], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"fn_old",       (char*) &g_ndb_slave_state.total_violation_count[CFT_NDB_OLD], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"fn_max_del_win", (char*) &g_ndb_slave_state.total_violation_count[CFT_NDB_MAX_DEL_WIN], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"fn_epoch",     (char*) &g_ndb_slave_state.total_violation_count[CFT_NDB_EPOCH], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"fn_epoch_trans", (char*) &g_ndb_slave_state.total_violation_count[CFT_NDB_EPOCH_TRANS], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"fn_epoch2",    (char*) &g_ndb_slave_state.total_violation_count[CFT_NDB_EPOCH2], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"fn_epoch2_trans", (char*) &g_ndb_slave_state.total_violation_count[CFT_NDB_EPOCH2_TRANS], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"trans_row_conflict_count", (char*) &g_ndb_slave_state.trans_row_conflict_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"trans_row_reject_count",   (char*) &g_ndb_slave_state.trans_row_reject_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"trans_reject_count",       (char*) &g_ndb_slave_state.trans_in_conflict_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"trans_detect_iter_count",  (char*) &g_ndb_slave_state.trans_detect_iter_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"fn_max",       (char*) &g_ndb_replica_state.total_violation_count[CFT_NDB_MAX], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"fn_old",       (char*) &g_ndb_replica_state.total_violation_count[CFT_NDB_OLD], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"fn_max_del_win", (char*) &g_ndb_replica_state.total_violation_count[CFT_NDB_MAX_DEL_WIN], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"fn_epoch",     (char*) &g_ndb_replica_state.total_violation_count[CFT_NDB_EPOCH], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"fn_epoch_trans", (char*) &g_ndb_replica_state.total_violation_count[CFT_NDB_EPOCH_TRANS], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"fn_epoch2",    (char*) &g_ndb_replica_state.total_violation_count[CFT_NDB_EPOCH2], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"fn_epoch2_trans", (char*) &g_ndb_replica_state.total_violation_count[CFT_NDB_EPOCH2_TRANS], SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"trans_row_conflict_count", (char*) &g_ndb_replica_state.trans_row_conflict_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"trans_row_reject_count",   (char*) &g_ndb_replica_state.trans_row_reject_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"trans_reject_count",       (char*) &g_ndb_replica_state.trans_in_conflict_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"trans_detect_iter_count",  (char*) &g_ndb_replica_state.trans_detect_iter_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
   {"trans_conflict_commit_count",
-                               (char*) &g_ndb_slave_state.trans_conflict_commit_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"epoch_delete_delete_count", (char*) &g_ndb_slave_state.total_delete_delete_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"reflected_op_prepare_count", (char*) &g_ndb_slave_state.total_reflect_op_prepare_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"reflected_op_discard_count", (char*) &g_ndb_slave_state.total_reflect_op_discard_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"refresh_op_count", (char*) &g_ndb_slave_state.total_refresh_op_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"last_conflict_epoch",    (char*) &g_ndb_slave_state.last_conflicted_epoch, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
-  {"last_stable_epoch",    (char*) &g_ndb_slave_state.last_stable_epoch, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+                               (char*) &g_ndb_replica_state.trans_conflict_commit_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"epoch_delete_delete_count", (char*) &g_ndb_replica_state.total_delete_delete_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"reflected_op_prepare_count", (char*) &g_ndb_replica_state.total_reflect_op_prepare_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"reflected_op_discard_count", (char*) &g_ndb_replica_state.total_reflect_op_discard_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"refresh_op_count", (char*) &g_ndb_replica_state.total_refresh_op_count, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"last_conflict_epoch",    (char*) &g_ndb_replica_state.last_conflicted_epoch, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
+  {"last_stable_epoch",    (char*) &g_ndb_replica_state.last_stable_epoch, SHOW_LONGLONG, SHOW_SCOPE_GLOBAL},
   {NullS, NullS, SHOW_LONG, SHOW_SCOPE_GLOBAL}
 };
 

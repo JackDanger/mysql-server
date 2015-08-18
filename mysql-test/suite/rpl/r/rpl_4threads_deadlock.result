@@ -1,13 +1,13 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 FLUSH LOGS;
 SET @save_debug=@@global.debug;
 SET GLOBAL DEBUG='+d,before_dump_thread_acquires_current_mutex,processlist_acquiring_dump_threads_LOCK_thd_data';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 "Wait_for dump_thread_signal"
 SET DEBUG_SYNC='now WAIT_FOR dump_thread_signal';
 SET DEBUG_SYNC='show_binlogs_after_lock_log_before_lock_index SIGNAL parked1 WAIT_FOR go_parked1';
@@ -27,8 +27,8 @@ SET DEBUG_SYNC='now SIGNAL go_dump_thread';
 SET DEBUG_SYNC='now SIGNAL go_parked1';
 SET DEBUG_SYNC='now SIGNAL go_parked2';
 SET DEBUG_SYNC='now SIGNAL go_parked3';
-include/stop_slave.inc
-include/start_slave.inc
+include/stop_replica.inc
+include/start_replica.inc
 "Wait_for dump_thread_signal"
 SET DEBUG_SYNC='now WAIT_FOR dump_thread_signal';
 SET DEBUG_SYNC='show_binlogs_after_lock_log_before_lock_index SIGNAL parked1 WAIT_FOR go_parked1';

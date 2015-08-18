@@ -40,7 +40,7 @@
 
 
 --echo ---- XID $xid, $commit: $gtid1 + $gtid2 ----
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 
 if ($gtid1 != none)
 {
@@ -56,7 +56,7 @@ eval XA PREPARE '$xid';
 --let $assert_cond= @@SESSION.GTID_OWNED = ""
 --source include/assert.inc
 
---source include/rpl_connection_master1.inc
+--source include/rpl_connection_primary1.inc
 
 --let $assert_text= No thread should own any GTID.
 --let $assert_cond= @@GLOBAL.GTID_OWNED = ""
@@ -66,7 +66,7 @@ eval XA PREPARE '$xid';
 --let $assert_cond= [SHOW STATUS LIKE "ONGOING_ANONYMOUS_TRANSACTION_COUNT", Value, 1] = 0
 --source include/assert.inc
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 
 --echo error=$error
 if ($gtid2 != none)
@@ -83,7 +83,7 @@ if ($error)
   --error $error
   eval XA $commit '$xid';
 
-  --source include/rpl_connection_master1.inc
+  --source include/rpl_connection_primary1.inc
 
   --let $assert_text= No thread should own any GTID.
   --let $assert_cond= @@GLOBAL.GTID_OWNED = ""
@@ -93,7 +93,7 @@ if ($error)
   --let $assert_cond= [SHOW STATUS LIKE "ONGOING_ANONYMOUS_TRANSACTION_COUNT", Value, 1] = 0
   --source include/assert.inc
 
-  --source include/rpl_connection_master.inc
+  --source include/rpl_connection_primary.inc
 
   SET GTID_NEXT = 'AUTOMATIC';
 }

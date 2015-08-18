@@ -6,14 +6,14 @@
 # a sourced inc-file.
 
 --source include/not_gtid_enabled.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
---source include/rpl_connection_slave.inc
-#Bug #21273010 	SLAVE GROUP EVENT PARSER DOES NOT RECOGNIZE XA ROLLBACK AS A BOUNDARY
+--source include/rpl_connection_replica.inc
+#Bug #21273010 	REPLICA GROUP EVENT PARSER DOES NOT RECOGNIZE XA ROLLBACK AS A BOUNDARY
 CALL mtr.add_suppression("An unexpected event sequence was detected by the IO thread while queuing the event");
 CALL mtr.add_suppression("GTID_LOG_EVENT or ANONYMOUS_GTID_LOG_EVENT is not expected in an event stream in the middle of a DML");
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 CALL mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
 
 --let $command=setup
@@ -25,8 +25,8 @@ CALL mtr.add_suppression("Unsafe statement written to the binary log using state
 --let $xa_prepare_opt=1
 --source extra/rpl_tests/rpl_xa_mixed_engines.inc
 
---source include/sync_slave_sql_with_master.inc
---source include/rpl_connection_master.inc
+--source include/sync_replica_sql_with_primary.inc
+--source include/rpl_connection_primary.inc
 
 --echo === COMMIT ONE PHASE ===
 
@@ -36,8 +36,8 @@ CALL mtr.add_suppression("Unsafe statement written to the binary log using state
 --let $xa_prepare_opt=
 --source extra/rpl_tests/rpl_xa_mixed_engines.inc
 --let $one_phase=
---source include/sync_slave_sql_with_master.inc
---source include/rpl_connection_master.inc
+--source include/sync_replica_sql_with_primary.inc
+--source include/rpl_connection_primary.inc
 
 --echo === ROLLBACK with PREPARE ===
 
@@ -46,8 +46,8 @@ CALL mtr.add_suppression("Unsafe statement written to the binary log using state
 --let $xa_prepare_opt=1
 --source extra/rpl_tests/rpl_xa_mixed_engines.inc
 
---source include/sync_slave_sql_with_master.inc
---source include/rpl_connection_master.inc
+--source include/sync_replica_sql_with_primary.inc
+--source include/rpl_connection_primary.inc
 
 --echo === ROLLBACK with no PREPARE ===
 
@@ -57,17 +57,17 @@ CALL mtr.add_suppression("Unsafe statement written to the binary log using state
 --source extra/rpl_tests/rpl_xa_mixed_engines.inc
 --let $xa_rollback_only=
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
---let $diff_tables= master:tm, slave:tm
+--let $diff_tables= primary:tm, replica:tm
 --source include/diff_tables.inc
 
 # Cleanup
 
---source include/rpl_connection_master.inc
+--source include/rpl_connection_primary.inc
 --let $command=cleanup
 --source extra/rpl_tests/rpl_xa_mixed_engines.inc
 
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --source include/rpl_end.inc

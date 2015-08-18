@@ -468,10 +468,10 @@ select make_set();
 ERROR 42000: Incorrect parameter count in the call to native function 'make_set'
 select make_set(1);
 ERROR 42000: Incorrect parameter count in the call to native function 'make_set'
-select master_pos_wait();
-ERROR 42000: Incorrect parameter count in the call to native function 'master_pos_wait'
-select master_pos_wait(1);
-ERROR 42000: Incorrect parameter count in the call to native function 'master_pos_wait'
+select primary_pos_wait();
+ERROR 42000: Incorrect parameter count in the call to native function 'primary_pos_wait'
+select primary_pos_wait(1);
+ERROR 42000: Incorrect parameter count in the call to native function 'primary_pos_wait'
 select rand(1, 2, 3);
 ERROR 42000: Incorrect parameter count in the call to native function 'rand'
 select round(1, 2, 3);
@@ -689,13 +689,13 @@ ALTER TABLE t RENAME TO `t1';;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '`t1'' at line 1
 DROP TABLE t;
 #
-# Bug#13819100 BROKEN SYNTAX ACCEPTED FOR START SLAVE, STOP SLAVE
+# Bug#13819100 BROKEN SYNTAX ACCEPTED FOR START REPLICA, STOP REPLICA
 #
-STOP SLAVE ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, ;
+STOP REPLICA ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, ;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ',,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,' at line 1
-STOP SLAVE ,,,,,,,,,,,,, sql_thread, ,,,,,,,,,,,,,,,,,,, ;
+STOP REPLICA ,,,,,,,,,,,,, sql_thread, ,,,,,,,,,,,,,,,,,,, ;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ',,,,,,,,,,,, sql_thread, ,,,,,,,,,,,,,,,,,,,' at line 1
-STOP SLAVE ,,,,,,,,,,,,, io_thread, ,,,,,,,,,,,,,,,,,,, ;
+STOP REPLICA ,,,,,,,,,,,,, io_thread, ,,,,,,,,,,,,,,,,,,, ;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ',,,,,,,,,,,, io_thread, ,,,,,,,,,,,,,,,,,,,' at line 1
 #
 # Bug#13819132 BROKEN SYNTAX ACCEPTED FOR START TRANSACTION

@@ -80,12 +80,12 @@ select User,Table_priv from mysql.tables_priv ORDER BY User;
 #
 # Test connecting with a user that does not exist
 #
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT MASTER_PORT
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT PRIMARY_PORT
 --error ER_ACCESS_DENIED_ERROR
-connect (server1_should_fail,127.0.0.1,magnus,,test,$MASTER_MYPORT,);
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT1 MASTER_PORT1
+connect (server1_should_fail,127.0.0.1,magnus,,test,$PRIMARY_MYPORT,);
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT1 PRIMARY_PORT1
 --error ER_ACCESS_DENIED_ERROR
-connect (server2_should_fail,127.0.0.1,magnus,,test,$MASTER_MYPORT1,);
+connect (server2_should_fail,127.0.0.1,magnus,,test,$PRIMARY_MYPORT1,);
 
 #
 # Create a new user with CREATE USER and check that it's possible
@@ -94,20 +94,20 @@ connect (server2_should_fail,127.0.0.1,magnus,,test,$MASTER_MYPORT1,);
 connection server1;
 CREATE USER 'billy1'@'127.0.0.1' IDENTIFIED by 'mypass';
 
-connect (server2_as_billy1,127.0.0.1,billy1,mypass,test,$MASTER_MYPORT1,);
+connect (server2_as_billy1,127.0.0.1,billy1,mypass,test,$PRIMARY_MYPORT1,);
 connection server2_as_billy1;
 SELECT USER();
 SELECT * FROM t1 order by pk;
 
 # Test connecting with blank password
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT1 MASTER_PORT1
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT1 PRIMARY_PORT1
 --error ER_ACCESS_DENIED_ERROR
-connect (server2_should_fail,127.0.0.1,billy1,,test,$MASTER_MYPORT1,);
+connect (server2_should_fail,127.0.0.1,billy1,,test,$PRIMARY_MYPORT1,);
 
 # Test connecting with wrong password
---replace_result $MASTER_MYSOCK MASTER_SOCKET $MASTER_MYPORT1 MASTER_PORT1
+--replace_result $PRIMARY_MYSOCK PRIMARY_SOCKET $PRIMARY_MYPORT1 PRIMARY_PORT1
 --error ER_ACCESS_DENIED_ERROR
-connect (server2_should_fail,127.0.0.1,billy1,wrongpass,test,$MASTER_MYPORT1,);
+connect (server2_should_fail,127.0.0.1,billy1,wrongpass,test,$PRIMARY_MYPORT1,);
 
 #
 # Testing failed DDL transaction
@@ -145,7 +145,7 @@ set SESSION sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 GRANT ALL ON *.* TO 'billy2'@'127.0.0.1';
 set SESSION sql_mode = @orig_sql_mode;
 
-connect (server2_as_billy2,127.0.0.1,billy2,,test,$MASTER_MYPORT1,);
+connect (server2_as_billy2,127.0.0.1,billy2,,test,$PRIMARY_MYPORT1,);
 connection server2_as_billy2;
 SELECT USER();
 SELECT * FROM t1 order by pk;

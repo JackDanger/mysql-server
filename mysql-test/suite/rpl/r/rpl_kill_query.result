@@ -1,13 +1,13 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CALL mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
-CALL mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
-==== Case 1: Killed query on master -> error on slave ====
+CALL mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+==== Case 1: Killed query on primary -> error on replica ====
 include/assert.inc [Test only works if binlog_format is statement]
-[connection master]
+[connection primary]
 CREATE DATABASE db1;
 USE db1;
 CREATE TABLE t1 (a INT) ENGINE = MyISAM;
@@ -23,9 +23,9 @@ INSERT INTO trigger_table VALUES (1);
 END|
 SET SQL_LOG_BIN=1;
 INSERT INTO t1 VALUES (0), (1);
-[connection master1]
+[connection primary1]
 KILL QUERY <CONNECTION_ID>;
-[connection master]
+[connection primary]
 ERROR 70100: Query execution was interrupted
 SET @@GLOBAL.BINLOG_FORMAT = 'STATEMENT';
 include/assert.inc [At most one row should be inserted in db1.t1]
@@ -37,24 +37,24 @@ DROP TABLE trigger_table;
 DROP TABLE t1;
 DROP DATABASE db1;
 USE test;
----- Verify there is an error on slave ----
-include/sync_slave_io_with_master.inc
-include/wait_for_slave_sql_error.inc [errno=3001]
----- Verify that nothing was inserted on slave -----
-include/assert.inc [Nothing should be inserted on slave]
+---- Verify there is an error on replica ----
+include/sync_replica_io_with_primary.inc
+include/wait_for_replica_sql_error.inc [errno=3001]
+---- Verify that nothing was inserted on replica -----
+include/assert.inc [Nothing should be inserted on replica]
 ---- Clean up ----
-include/stop_slave_io.inc
-RESET SLAVE;
-RESET MASTER;
+include/stop_replica_io.inc
+RESET REPLICA;
+RESET PRIMARY;
 DROP DATABASE db1;
-[connection master]
-RESET MASTER;
-[connection slave]
-include/start_slave.inc
-[connection master]
-==== Case 2: Master kills query -> no error if slave filters by db ====
+[connection primary]
+RESET PRIMARY;
+[connection replica]
+include/start_replica.inc
+[connection primary]
+==== Case 2: Primary kills query -> no error if replica filters by db ====
 include/assert.inc [Test only works if binlog_format is statement]
-[connection master]
+[connection primary]
 CREATE DATABASE ignored_db;
 USE ignored_db;
 CREATE TABLE t1 (a INT) ENGINE = MyISAM;
@@ -70,9 +70,9 @@ INSERT INTO trigger_table VALUES (1);
 END|
 SET SQL_LOG_BIN=1;
 INSERT INTO t1 VALUES (0), (1);
-[connection master1]
+[connection primary1]
 KILL QUERY <CONNECTION_ID>;
-[connection master]
+[connection primary]
 ERROR 70100: Query execution was interrupted
 SET @@GLOBAL.BINLOG_FORMAT = 'STATEMENT';
 include/assert.inc [At most one row should be inserted in ignored_db.t1]
@@ -85,11 +85,11 @@ DROP TABLE t1;
 DROP DATABASE ignored_db;
 USE test;
 ---- Verify all was replicated ok ----
-include/sync_slave_sql_with_master.inc
-[connection master]
-==== Case 3: Master kills query -> no error if slave filters by table ====
+include/sync_replica_sql_with_primary.inc
+[connection primary]
+==== Case 3: Primary kills query -> no error if replica filters by table ====
 include/assert.inc [Test only works if binlog_format is statement]
-[connection master]
+[connection primary]
 CREATE DATABASE db1;
 USE db1;
 CREATE TABLE ignored_table (a INT) ENGINE = MyISAM;
@@ -105,9 +105,9 @@ INSERT INTO trigger_table VALUES (1);
 END|
 SET SQL_LOG_BIN=1;
 INSERT INTO ignored_table VALUES (0), (1);
-[connection master1]
+[connection primary1]
 KILL QUERY <CONNECTION_ID>;
-[connection master]
+[connection primary]
 ERROR 70100: Query execution was interrupted
 SET @@GLOBAL.BINLOG_FORMAT = 'STATEMENT';
 include/assert.inc [At most one row should be inserted in db1.ignored_table]
@@ -120,5 +120,5 @@ DROP TABLE ignored_table;
 DROP DATABASE db1;
 USE test;
 ---- Verify all was replicated ok ----
-include/sync_slave_sql_with_master.inc
+include/sync_replica_sql_with_primary.inc
 include/rpl_end.inc

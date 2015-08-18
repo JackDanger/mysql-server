@@ -636,9 +636,9 @@ drop table t1;
 create table t1 (id int);
 create trigger t1_ai after insert on t1 for each row reset query cache;
 ERROR 0A000: RESET is not allowed in stored function or trigger
-create trigger t1_ai after insert on t1 for each row reset master;
+create trigger t1_ai after insert on t1 for each row reset primary;
 ERROR 0A000: RESET is not allowed in stored function or trigger
-create trigger t1_ai after insert on t1 for each row reset slave;
+create trigger t1_ai after insert on t1 for each row reset replica;
 ERROR 0A000: RESET is not allowed in stored function or trigger
 create trigger t1_ai after insert on t1 for each row flush hosts;
 ERROR 0A000: FLUSH is not allowed in stored function or trigger
@@ -666,11 +666,11 @@ create procedure p1() reset query cache;
 insert into t1 values (0);
 ERROR 0A000: RESET is not allowed in stored function or trigger
 drop procedure p1;
-create procedure p1() reset master;
+create procedure p1() reset primary;
 insert into t1 values (0);
 ERROR 0A000: RESET is not allowed in stored function or trigger
 drop procedure p1;
-create procedure p1() reset slave;
+create procedure p1() reset replica;
 insert into t1 values (0);
 ERROR 0A000: RESET is not allowed in stored function or trigger
 drop procedure p1;
@@ -2308,9 +2308,9 @@ DROP TEMPORARY TABLE t2;
 #                                    commands in triggers
 #
 CREATE TABLE t1(a INT);
-CREATE TRIGGER t1_au AFTER UPDATE ON t1 FOR EACH ROW START SLAVE;
+CREATE TRIGGER t1_au AFTER UPDATE ON t1 FOR EACH ROW START REPLICA;
 ERROR HY000: Explicit or implicit commit is not allowed in stored function or trigger.
-CREATE TRIGGER t1_au AFTER UPDATE ON t1 FOR EACH ROW STOP SLAVE;
+CREATE TRIGGER t1_au AFTER UPDATE ON t1 FOR EACH ROW STOP REPLICA;
 ERROR HY000: Explicit or implicit commit is not allowed in stored function or trigger.
 CREATE TRIGGER t1_au AFTER UPDATE ON t1 FOR EACH ROW
 CREATE SERVER s FOREIGN DATA WRAPPER mysql OPTIONS (USER 'Remote',
@@ -2334,7 +2334,7 @@ ALTER USER 'u1'@'localhost' PASSWORD EXPIRE;
 ERROR HY000: Explicit or implicit commit is not allowed in stored function or trigger.
 DROP USER 'u1'@'localhost';
 CREATE TRIGGER tr1 AFTER UPDATE ON t1 FOR EACH ROW
-CHANGE MASTER TO MASTER_SSL = 0;
+CHANGE PRIMARY TO PRIMARY_SSL = 0;
 ERROR HY000: Explicit or implicit commit is not allowed in stored function or trigger.
 DROP TABLE t1;
 #

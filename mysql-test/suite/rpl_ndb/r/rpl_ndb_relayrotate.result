@@ -1,15 +1,15 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-include/sync_slave_sql_with_master.inc
-stop slave;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+include/sync_replica_sql_with_primary.inc
+stop replica;
 create table t1 (a int) engine=NDB;
-reset slave;
-start slave;
-stop slave;
-start slave;
+reset replica;
+start replica;
+stop replica;
+start replica;
 select max(a) from t1;
 max(a)
 loop_max

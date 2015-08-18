@@ -50,7 +50,7 @@ SELECT @@global.offline_mode;
 --echo
 
 --echo # Variables' values in a new session.
-connect (con1,"127.0.0.1",root,,test,$MASTER_MYPORT,);
+connect (con1,"127.0.0.1",root,,test,$PRIMARY_MYPORT,);
 
 --echo # Global - expect 0
 SELECT @@global.offline_mode;

@@ -106,7 +106,7 @@ public:
     Undefined = 1,
     NF_FakeErrorREF = 11,
     Busy = 701,
-    NotMaster = 702
+    NotPrimary = 702
   };
   STATIC_CONST( SignalLength = 7 );
   STATIC_CONST( SignalLength2 = SignalLength+1 );
@@ -126,7 +126,7 @@ public:
   Uint32 m_errorLine;
   Uint32 m_errorNode;
   // with SignalLength2
-  Uint32 m_masterNodeId;
+  Uint32 m_primaryNodeId;
   Uint32 getUserRef() const {
     return m_userRef;
   }
@@ -157,11 +157,11 @@ public:
   void setErrorNode(Uint32 val) {
     m_errorNode = val;
   }
-  Uint32 getMasterNode() const {
-    return m_masterNodeId;
+  Uint32 getPrimaryNode() const {
+    return m_primaryNodeId;
   }
-  void setMasterNode(Uint32 val) {
-    m_masterNodeId = val;
+  void setPrimaryNode(Uint32 val) {
+    m_primaryNodeId = val;
   }
 };
 
@@ -177,7 +177,7 @@ struct CreateEvntReq {
     RT_USER_GET = 2,
 
     RT_DICT_AFTER_GET = 0x1 << 4
-    //    RT_DICT_MASTER    = 0x2 << 4,
+    //    RT_DICT_PRIMARY    = 0x2 << 4,
 
     //    RT_DICT_COMMIT = 0xC << 4,
     //    RT_DICT_ABORT = 0xF << 4,
@@ -417,7 +417,7 @@ struct CreateEvntRef {
     Undefined = 1,
     NF_FakeErrorREF = 11,
     Busy = 701,
-    NotMaster = 702
+    NotPrimary = 702
   };
   union {
     Uint32 m_userRef;             // user block reference
@@ -438,7 +438,7 @@ struct CreateEvntRef {
   Uint32 m_errorLine;
   Uint32 m_errorNode;
   // with SignalLength2
-  Uint32 m_masterNodeId;
+  Uint32 m_primaryNodeId;
   Uint32 getUserRef() const {
     return m_userRef;
   }
@@ -507,11 +507,11 @@ struct CreateEvntRef {
   void setErrorNode(Uint32 val) {
     m_errorNode = val;
   }
-  Uint32 getMasterNode() const {
-    return m_masterNodeId;
+  Uint32 getPrimaryNode() const {
+    return m_primaryNodeId;
   }
-  void setMasterNode(Uint32 val) {
-    m_masterNodeId = val;
+  void setPrimaryNode(Uint32 val) {
+    m_primaryNodeId = val;
   }
 };
 

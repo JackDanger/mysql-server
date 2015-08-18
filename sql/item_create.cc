@@ -3002,17 +3002,17 @@ protected:
 };
 
 
-class Create_func_master_pos_wait : public Create_native_func
+class Create_func_primary_pos_wait : public Create_native_func
 {
 public:
   virtual Item *create_native(THD *thd, LEX_STRING name,
                               PT_item_list *item_list);
 
-  static Create_func_master_pos_wait s_singleton;
+  static Create_func_primary_pos_wait s_singleton;
 
 protected:
-  Create_func_master_pos_wait() {}
-  virtual ~Create_func_master_pos_wait() {}
+  Create_func_primary_pos_wait() {}
+  virtual ~Create_func_primary_pos_wait() {}
 };
 
 class Create_func_executed_gtid_set_wait : public Create_native_func
@@ -3028,17 +3028,17 @@ protected:
   virtual ~Create_func_executed_gtid_set_wait() {}
 };
 
-class Create_func_master_gtid_set_wait : public Create_native_func
+class Create_func_primary_gtid_set_wait : public Create_native_func
 {
 public:
   virtual Item *create_native(THD *thd, LEX_STRING name,
                               PT_item_list *item_list);
 
-  static Create_func_master_gtid_set_wait s_singleton;
+  static Create_func_primary_gtid_set_wait s_singleton;
 
 protected:
-  Create_func_master_gtid_set_wait() {}
-  virtual ~Create_func_master_gtid_set_wait() {}
+  Create_func_primary_gtid_set_wait() {}
+  virtual ~Create_func_primary_gtid_set_wait() {}
 };
 
 class Create_func_md5 : public Create_func_arg1
@@ -6513,10 +6513,10 @@ Create_func_make_set::create_native(THD *thd, LEX_STRING name,
 }
 
 
-Create_func_master_pos_wait Create_func_master_pos_wait::s_singleton;
+Create_func_primary_pos_wait Create_func_primary_pos_wait::s_singleton;
 
 Item*
-Create_func_master_pos_wait::create_native(THD *thd, LEX_STRING name,
+Create_func_primary_pos_wait::create_native(THD *thd, LEX_STRING name,
                                            PT_item_list *item_list)
 
 {
@@ -6532,7 +6532,7 @@ Create_func_master_pos_wait::create_native(THD *thd, LEX_STRING name,
   {
     Item *param_1= item_list->pop_front();
     Item *param_2= item_list->pop_front();
-    func= new (thd->mem_root) Item_master_pos_wait(pos, param_1, param_2);
+    func= new (thd->mem_root) Item_primary_pos_wait(pos, param_1, param_2);
     break;
   }
   case 3:
@@ -6540,7 +6540,7 @@ Create_func_master_pos_wait::create_native(THD *thd, LEX_STRING name,
     Item *param_1= item_list->pop_front();
     Item *param_2= item_list->pop_front();
     Item *param_3= item_list->pop_front();
-    func= new (thd->mem_root) Item_master_pos_wait(pos, param_1, param_2, param_3);
+    func= new (thd->mem_root) Item_primary_pos_wait(pos, param_1, param_2, param_3);
     break;
   }
   case 4:
@@ -6549,7 +6549,7 @@ Create_func_master_pos_wait::create_native(THD *thd, LEX_STRING name,
     Item *param_2= item_list->pop_front();
     Item *param_3= item_list->pop_front();
     Item *param_4= item_list->pop_front();
-    func= new (thd->mem_root) Item_master_pos_wait(pos, param_1, param_2, param_3,
+    func= new (thd->mem_root) Item_primary_pos_wait(pos, param_1, param_2, param_3,
                                                    param_4);
     break;
   }
@@ -6563,10 +6563,10 @@ Create_func_master_pos_wait::create_native(THD *thd, LEX_STRING name,
   return func;
 }
 
-Create_func_master_gtid_set_wait Create_func_master_gtid_set_wait::s_singleton;
+Create_func_primary_gtid_set_wait Create_func_primary_gtid_set_wait::s_singleton;
 
 Item*
-Create_func_master_gtid_set_wait::create_native(THD *thd, LEX_STRING name,
+Create_func_primary_gtid_set_wait::create_native(THD *thd, LEX_STRING name,
                                                 PT_item_list *item_list)
 
 {
@@ -6581,14 +6581,14 @@ Create_func_master_gtid_set_wait::create_native(THD *thd, LEX_STRING name,
   case 1:
   {
     Item *param_1= item_list->pop_front();
-    func= new (thd->mem_root) Item_master_gtid_set_wait(pos, param_1);
+    func= new (thd->mem_root) Item_primary_gtid_set_wait(pos, param_1);
     break;
   }
   case 2:
   {
     Item *param_1= item_list->pop_front();
     Item *param_2= item_list->pop_front();
-    func= new (thd->mem_root) Item_master_gtid_set_wait(pos, param_1, param_2);
+    func= new (thd->mem_root) Item_primary_gtid_set_wait(pos, param_1, param_2);
     break;
   }
   case 3:
@@ -6596,7 +6596,7 @@ Create_func_master_gtid_set_wait::create_native(THD *thd, LEX_STRING name,
     Item *param_1= item_list->pop_front();
     Item *param_2= item_list->pop_front();
     Item *param_3= item_list->pop_front();
-    func= new (thd->mem_root) Item_master_gtid_set_wait(pos, param_1, param_2,
+    func= new (thd->mem_root) Item_primary_gtid_set_wait(pos, param_1, param_2,
                                                         param_3);
     break;
   }
@@ -7568,7 +7568,7 @@ static Native_func_registry func_array[] =
   { { C_STRING_WITH_LEN("MAKEDATE") }, BUILDER(Create_func_makedate)},
   { { C_STRING_WITH_LEN("MAKETIME") }, BUILDER(Create_func_maketime)},
   { { C_STRING_WITH_LEN("MAKE_SET") }, BUILDER(Create_func_make_set)},
-  { { C_STRING_WITH_LEN("MASTER_POS_WAIT") }, BUILDER(Create_func_master_pos_wait)},
+  { { C_STRING_WITH_LEN("PRIMARY_POS_WAIT") }, BUILDER(Create_func_primary_pos_wait)},
   { { C_STRING_WITH_LEN("MBRCONTAINS") }, GEOM_BUILDER(Create_func_mbr_contains)},
   { { C_STRING_WITH_LEN("MBRCOVEREDBY") }, GEOM_BUILDER(Create_func_mbr_covered_by)},
   { { C_STRING_WITH_LEN("MBRCOVERS") }, GEOM_BUILDER(Create_func_mbr_covers)},
@@ -7634,7 +7634,7 @@ static Native_func_registry func_array[] =
   { { C_STRING_WITH_LEN("SOUNDEX") }, BUILDER(Create_func_soundex)},
   { { C_STRING_WITH_LEN("SPACE") }, BUILDER(Create_func_space)},
   { { C_STRING_WITH_LEN("WAIT_FOR_EXECUTED_GTID_SET") }, BUILDER(Create_func_executed_gtid_set_wait)},
-  { { C_STRING_WITH_LEN("WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS") }, BUILDER(Create_func_master_gtid_set_wait)},
+  { { C_STRING_WITH_LEN("WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS") }, BUILDER(Create_func_primary_gtid_set_wait)},
   { { C_STRING_WITH_LEN("SQRT") }, BUILDER(Create_func_sqrt)},
   { { C_STRING_WITH_LEN("SRID") }, GEOM_BUILDER(Create_func_srid_deprecated)},
   { { C_STRING_WITH_LEN("STARTPOINT") }, GEOM_BUILDER(Create_func_startpoint_deprecated)},

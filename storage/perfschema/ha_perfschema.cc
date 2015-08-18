@@ -275,7 +275,7 @@ int ha_perfschema::update_row(const uchar *old_data, uchar *new_data)
   if (!PFS_ENABLED())
     DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 
-  if (is_executed_by_slave())
+  if (is_executed_by_replica())
     DBUG_RETURN(0);
 
   DBUG_ASSERT(m_table);
@@ -395,7 +395,7 @@ int ha_perfschema::delete_all_rows(void)
   if (!PFS_ENABLED())
     DBUG_RETURN(0);
 
-  if (is_executed_by_slave())
+  if (is_executed_by_replica())
     DBUG_RETURN(0);
 
   DBUG_ASSERT(m_table_share);

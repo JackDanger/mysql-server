@@ -74,8 +74,8 @@ void ServerKeyExchange::createKey(SSL& ssl)
 }
 
 
-// build/set PreMaster secret and encrypt, client side
-void EncryptedPreMasterSecret::build(SSL& ssl)
+// build/set PrePrimary secret and encrypt, client side
+void EncryptedPrePrimarySecret::build(SSL& ssl)
 {
     opaque tmp[SECRET_LEN];
     memset(tmp, 0, sizeof(tmp));
@@ -83,7 +83,7 @@ void EncryptedPreMasterSecret::build(SSL& ssl)
     ProtocolVersion pv = ssl.getSecurity().get_connection().chVersion_;
     tmp[0] = pv.major_;
     tmp[1] = pv.minor_;
-    ssl.set_preMaster(tmp, SECRET_LEN);
+    ssl.set_prePrimary(tmp, SECRET_LEN);
 
     const CertManager& cert = ssl.getCrypto().get_certManager();
     RSA rsa(cert.get_peerKey(), cert.get_peerKeyLength());
@@ -100,7 +100,7 @@ void EncryptedPreMasterSecret::build(SSL& ssl)
 }
 
 
-// build/set premaster and Client Public key, client side
+// build/set preprimary and Client Public key, client side
 void ClientDiffieHellmanPublic::build(SSL& ssl)
 {
     DiffieHellman& dhServer = ssl.useCrypto().use_dh();
@@ -113,11 +113,11 @@ void ClientDiffieHellmanPublic::build(SSL& ssl)
     c16toa(keyLength, Yc_);
     memcpy(Yc_ + KEY_OFFSET, dhClient.get_publicKey(), keyLength);
 
-    // because of encoding first byte might be zero, don't use it for preMaster
+    // because of encoding first byte might be zero, don't use it for prePrimary
     if (*dhClient.get_agreedKey() == 0) 
-        ssl.set_preMaster(dhClient.get_agreedKey() + 1, keyLength - 1);
+        ssl.set_prePrimary(dhClient.get_agreedKey() + 1, keyLength - 1);
     else
-        ssl.set_preMaster(dhClient.get_agreedKey(), keyLength);
+        ssl.set_prePrimary(dhClient.get_agreedKey(), keyLength);
 }
 
 
@@ -217,8 +217,8 @@ void DH_Server::build(SSL& ssl)
 }
 
 
-// read PreMaster secret and decrypt, server side
-void EncryptedPreMasterSecret::read(SSL& ssl, input_buffer& input)
+// read PrePrimary secret and decrypt, server side
+void EncryptedPrePrimarySecret::read(SSL& ssl, input_buffer& input)
 {
     if (input.get_error()) {
         ssl.SetError(bad_input);
@@ -241,44 +241,44 @@ void EncryptedPreMasterSecret::read(SSL& ssl, input_buffer& input)
         return;
     }
 
-    opaque preMasterSecret[SECRET_LEN];
-    memset(preMasterSecret, 0, sizeof(preMasterSecret));
-    rsa.decrypt(preMasterSecret, secret_, length_, 
+    opaque prePrimarySecret[SECRET_LEN];
+    memset(prePrimarySecret, 0, sizeof(prePrimarySecret));
+    rsa.decrypt(prePrimarySecret, secret_, length_, 
                 ssl.getCrypto().get_random());
 
     ProtocolVersion pv = ssl.getSecurity().get_connection().chVersion_;
-    if (pv.major_ != preMasterSecret[0] || pv.minor_ != preMasterSecret[1])
+    if (pv.major_ != prePrimarySecret[0] || pv.minor_ != prePrimarySecret[1])
         ssl.SetError(pms_version_error); // continue deriving for timing attack
 
-    ssl.set_preMaster(preMasterSecret, SECRET_LEN);
-    ssl.makeMasterSecret();
+    ssl.set_prePrimary(prePrimarySecret, SECRET_LEN);
+    ssl.makePrimarySecret();
 }
 
 
-EncryptedPreMasterSecret::EncryptedPreMasterSecret()
+EncryptedPrePrimarySecret::EncryptedPrePrimarySecret()
     : secret_(0), length_(0)
 {}
 
 
-EncryptedPreMasterSecret::~EncryptedPreMasterSecret()
+EncryptedPrePrimarySecret::~EncryptedPrePrimarySecret()
 {
     ysArrayDelete(secret_);
 }
 
 
-int EncryptedPreMasterSecret::get_length() const
+int EncryptedPrePrimarySecret::get_length() const
 {
     return length_;
 }
 
 
-opaque* EncryptedPreMasterSecret::get_clientKey() const
+opaque* EncryptedPrePrimarySecret::get_clientKey() const
 {
     return secret_;
 }
 
 
-void EncryptedPreMasterSecret::alloc(int sz)
+void EncryptedPrePrimarySecret::alloc(int sz)
 {
     length_ = sz;
     secret_ = NEW_YS opaque[sz];
@@ -314,12 +314,12 @@ void ClientDiffieHellmanPublic::read(SSL& ssl, input_buffer& input)
     }
     dh.makeAgreement(Yc_, keyLength); 
 
-    // because of encoding, first byte might be 0, don't use for preMaster 
+    // because of encoding, first byte might be 0, don't use for prePrimary 
     if (*dh.get_agreedKey() == 0) 
-        ssl.set_preMaster(dh.get_agreedKey() + 1, dh.get_agreedKeyLength() - 1);
+        ssl.set_prePrimary(dh.get_agreedKey() + 1, dh.get_agreedKeyLength() - 1);
     else
-        ssl.set_preMaster(dh.get_agreedKey(), dh.get_agreedKeyLength());
-    ssl.makeMasterSecret();
+        ssl.set_prePrimary(dh.get_agreedKey(), dh.get_agreedKeyLength());
+    ssl.makePrimarySecret();
 }
 
 
@@ -1588,7 +1588,7 @@ void ServerHello::Process(input_buffer& input, SSL& ssl)
     if (ssl.getSecurity().get_resuming()) {
         if (memcmp(session_id_, ssl.getSecurity().get_resume().GetID(),
                    ID_LEN) == 0) {
-            ssl.set_masterSecret(ssl.getSecurity().get_resume().GetSecret());
+            ssl.set_primarySecret(ssl.getSecurity().get_resume().GetSecret());
             if (ssl.isTLS())
                 ssl.deriveTLSKeys();
             else
@@ -1781,7 +1781,7 @@ void ClientHello::Process(input_buffer& input, SSL& ssl)
         return;
     }
 
-    // store version for pre master secret
+    // store version for pre primary secret
     ssl.useSecurity().use_connection().chVersion_ = client_version_;
 
     if (client_version_.major_ != 3) {
@@ -1840,7 +1840,7 @@ void ClientHello::Process(input_buffer& input, SSL& ssl)
         ssl.matchSuite(session->GetSuite(), SUITE_LEN);
         if (ssl.GetError()) return;
         ssl.set_pending(ssl.getSecurity().get_parms().suite_[1]);
-        ssl.set_masterSecret(session->GetSecret());
+        ssl.set_primarySecret(session->GetSecret());
 
         opaque serverRandom[RAN_LEN];
         ssl.getCrypto().get_random().Fill(serverRandom, sizeof(serverRandom));
@@ -2489,8 +2489,8 @@ void clean(volatile opaque* p, uint sz, RandomPool& ran)
 
 
 Connection::Connection(ProtocolVersion v, RandomPool& ran)
-    : pre_master_secret_(0), sequence_number_(0), peer_sequence_number_(0),
-      pre_secret_len_(0), send_server_key_(false), master_clean_(false),
+    : pre_primary_secret_(0), sequence_number_(0), peer_sequence_number_(0),
+      pre_secret_len_(0), send_server_key_(false), primary_clean_(false),
       TLS_(v.major_ >= 3 && v.minor_ >= 1),
       TLSv1_1_(v.major_ >= 3 && v.minor_ >= 2), compression_(false),
       version_(v), random_(ran)
@@ -2501,13 +2501,13 @@ Connection::Connection(ProtocolVersion v, RandomPool& ran)
 
 Connection::~Connection() 
 { 
-    CleanMaster(); CleanPreMaster(); ysArrayDelete(pre_master_secret_);
+    CleanPrimary(); CleanPrePrimary(); ysArrayDelete(pre_primary_secret_);
 }
 
 
 void Connection::AllocPreSecret(uint sz) 
 { 
-    pre_master_secret_ = NEW_YS opaque[pre_secret_len_ = sz];
+    pre_primary_secret_ = NEW_YS opaque[pre_secret_len_ = sz];
 }
 
 
@@ -2525,26 +2525,26 @@ void Connection::TurnOffTLS1_1()
 }
 
 
-// wipeout master secret
-void Connection::CleanMaster()
+// wipeout primary secret
+void Connection::CleanPrimary()
 {
-    if (!master_clean_) {
-        volatile opaque* p = master_secret_;
+    if (!primary_clean_) {
+        volatile opaque* p = primary_secret_;
         clean(p, SECRET_LEN, random_);
-        master_clean_ = true;
+        primary_clean_ = true;
     }
 }
 
 
-// wipeout pre master secret
-void Connection::CleanPreMaster()
+// wipeout pre primary secret
+void Connection::CleanPrePrimary()
 {
-    if (pre_master_secret_) {
-        volatile opaque* p = pre_master_secret_;
+    if (pre_primary_secret_) {
+        volatile opaque* p = pre_primary_secret_;
         clean(p, pre_secret_len_, random_);
 
-        ysArrayDelete(pre_master_secret_);
-        pre_master_secret_ = 0;
+        ysArrayDelete(pre_primary_secret_);
+        pre_primary_secret_ = 0;
     }
 }
 
@@ -2575,7 +2575,7 @@ ServerKeyBase* CreateFortezzaServerKEA()  { return NEW_YS Fortezza_Server; }
 
 // Create functions for client key exchange factory
 ClientKeyBase* CreateRSAClient()      { return NEW_YS 
-                                                EncryptedPreMasterSecret; }
+                                                EncryptedPrePrimarySecret; }
 ClientKeyBase* CreateDHClient()       { return NEW_YS 
                                                 ClientDiffieHellmanPublic; }
 ClientKeyBase* CreateFortezzaClient() { return NEW_YS FortezzaKeys; }

@@ -66,7 +66,7 @@ private:
    * 
    * NOTE Not valid when send from Qmgr
    */
-  Uint32 masterNodeId;
+  Uint32 primaryNodeId;
 
   /**
    * This array defines all the ndb nodes in the system

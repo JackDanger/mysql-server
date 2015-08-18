@@ -582,8 +582,8 @@ private:
 
   /**
      The Group_check employed to validate one query block, the one on which
-     check_query() runs, is named the "master".
-     If the query block references a materialized table, the master may create
+     check_query() runs, is named the "primary".
+     If the query block references a materialized table, the primary may create
      a child Group_check, whose job is to discover FDs in the query expression
      of the mat table (with the ultimate goal of deducing from them some FDs
      in the mat table and thus in the parent Group_check). A child may have

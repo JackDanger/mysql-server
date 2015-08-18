@@ -24,7 +24,7 @@
 /**
  * This signal is sent by ndbcntr to local DIH
  *
- * If local DIH is not master, it forwards it to master DIH
+ * If local DIH is not primary, it forwards it to primary DIH
  *   and start acting as a proxy
  *
  * @see StopMeReq

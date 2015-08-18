@@ -16,7 +16,7 @@
 
 4. Is RapidJSON free?
 
-   Yes, it is free under MIT license. It can be used in commercial applications. Please check the details in [license.txt](https://github.com/miloyip/rapidjson/blob/master/license.txt).
+   Yes, it is free under MIT license. It can be used in commercial applications. Please check the details in [license.txt](https://github.com/miloyip/rapidjson/blob/primary/license.txt).
 
 5. Is RapidJSON small? What are its dependencies? 
 

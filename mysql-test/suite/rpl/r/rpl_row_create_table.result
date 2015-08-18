@@ -1,25 +1,25 @@
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
-**** Resetting master and slave ****
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-include/start_slave.inc
+start replica;
+**** Resetting primary and replica ****
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+include/start_replica.inc
 CREATE TABLE t1 (a INT, b INT);
 CREATE TABLE t2 (a INT, b INT) ENGINE=Merge;
 CREATE TABLE t3 (a INT, b INT) CHARSET=utf8;
 CREATE TABLE t4 (a INT, b INT) ENGINE=Merge CHARSET=utf8;
 show binlog events from <binlog_start>;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT, b INT)
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t2 (a INT, b INT) ENGINE=Merge
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t3 (a INT, b INT) CHARSET=utf8
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t4 (a INT, b INT) ENGINE=Merge CHARSET=utf8
-**** On Master ****
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT, b INT)
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t2 (a INT, b INT) ENGINE=Merge
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t3 (a INT, b INT) CHARSET=utf8
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t4 (a INT, b INT) ENGINE=Merge CHARSET=utf8
+**** On Primary ****
 SHOW CREATE TABLE t1;
 Table	t1
 Create Table	CREATE TABLE `t1` (
@@ -38,7 +38,7 @@ Create Table	CREATE TABLE `t3` (
   `a` int(11) DEFAULT NULL,
   `b` int(11) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
-**** On Slave ****
+**** On Replica ****
 SHOW CREATE TABLE t1;
 Table	t1
 Create Table	CREATE TABLE `t1` (
@@ -61,7 +61,7 @@ CREATE TABLE t5 (b INT, c INT) SELECT * FROM t3;
 CREATE TEMPORARY TABLE tt3 (a INT, b INT);
 INSERT INTO tt3 VALUES (1,2), (2,4), (3,6), (4,2), (5,10), (6,12);
 CREATE TABLE t6 (b INT, c INT) SELECT * FROM tt3;
-**** On Master ****
+**** On Primary ****
 SHOW CREATE TABLE t5;
 Table	t5
 Create Table	CREATE TABLE `t5` (
@@ -86,7 +86,7 @@ NULL	3	6
 NULL	4	2
 NULL	5	10
 NULL	6	12
-**** On Slave ****
+**** On Replica ****
 SHOW CREATE TABLE t5;
 Table	t5
 Create Table	CREATE TABLE `t5` (
@@ -111,11 +111,11 @@ NULL	3	6
 NULL	4	2
 NULL	5	10
 NULL	6	12
-**** Resetting master and slave ****
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-include/start_slave.inc
+**** Resetting primary and replica ****
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+include/start_replica.inc
 CREATE TABLE t7 (UNIQUE(b)) SELECT a,b FROM tt3;
 ERROR 23000: Duplicate entry '2' for key 'b'
 show binlog events from <binlog_start>;
@@ -130,21 +130,21 @@ a	b
 3	6
 show binlog events from <binlog_start>;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t7 (a INT, b INT UNIQUE)
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t7)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t7 (a INT, b INT UNIQUE)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t7)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	COMMIT
 SELECT * FROM t7 ORDER BY a,b;
 a	b
 1	2
 2	4
 3	6
-**** Resetting master and slave ****
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-include/start_slave.inc
+**** Resetting primary and replica ****
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+include/start_replica.inc
 CREATE TEMPORARY TABLE tt4 (a INT, b INT);
 INSERT INTO tt4 VALUES (4,8), (5,10), (6,12);
 BEGIN;
@@ -154,10 +154,10 @@ Warnings:
 Warning	1196	Some non-transactional changed tables couldn't be rolled back
 show binlog events from <binlog_start>;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t7)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t7)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	COMMIT
 SELECT * FROM t7 ORDER BY a,b;
 a	b
 1	2
@@ -174,17 +174,17 @@ a	b
 4	8
 5	10
 6	12
-**** Resetting master and slave ****
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-include/start_slave.inc
+**** Resetting primary and replica ****
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+include/start_replica.inc
 CREATE TABLE t8 LIKE t4;
 CREATE TABLE t9 LIKE tt4;
 CREATE TEMPORARY TABLE tt5 LIKE t4;
 CREATE TEMPORARY TABLE tt6 LIKE tt4;
 CREATE TEMPORARY TABLE tt7 SELECT 1;
-**** On Master ****
+**** On Primary ****
 SHOW CREATE TABLE t8;
 Table	t8
 Create Table	CREATE TABLE `t8` (
@@ -199,12 +199,12 @@ Create Table	CREATE TABLE `t9` (
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 show binlog events from <binlog_start>;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t8 LIKE t4
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t9` (
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t8 LIKE t4
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t9` (
   `a` int(11) DEFAULT NULL,
   `b` int(11) DEFAULT NULL
 )
-**** On Slave ****
+**** On Replica ****
 SHOW CREATE TABLE t8;
 Table	t8
 Create Table	CREATE TABLE `t8` (
@@ -218,16 +218,16 @@ Create Table	CREATE TABLE `t9` (
   `b` int(11) DEFAULT NULL
 ) ENGINE=MEMORY DEFAULT CHARSET=latin1
 DROP TABLE IF EXISTS t1,t2,t3,t4,t5,t6,t7,t8,t9;
-STOP SLAVE;
+STOP REPLICA;
 SET GLOBAL storage_engine=@storage_engine;
-START SLAVE;
+START REPLICA;
 ================ BUG#22864 ================
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
+start replica;
 SET AUTOCOMMIT=0;
 CREATE TABLE t1 (a INT);
 INSERT INTO t1 VALUES (1),(2),(3);
@@ -272,36 +272,36 @@ a
 3
 show binlog events from <binlog_start>;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT)
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t2` (
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t2` (
   `a` int(11) DEFAULT NULL
 ) ENGINE=InnoDB
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t2)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t3` (
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t2)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t3` (
   `a` int(11) DEFAULT NULL
 ) ENGINE=InnoDB
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t3)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t4` (
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t3)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `t4` (
   `a` int(11) DEFAULT NULL
 ) ENGINE=InnoDB
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t4)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t4)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	COMMIT
 SHOW TABLES;
 Tables_in_test
 t1
@@ -333,10 +333,10 @@ a
 3
 DROP TABLE IF EXISTS t1,t2,t3,t4;
 SET AUTOCOMMIT=1;
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-START SLAVE;
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+START REPLICA;
 CREATE TABLE t1 (a INT);
 INSERT INTO t1 VALUES (1),(2),(3);
 CREATE TABLE t2 (a INT) ENGINE=INNODB;
@@ -357,18 +357,18 @@ a
 9
 show binlog events from <binlog_start>;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT)
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	COMMIT
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t2 (a INT) ENGINE=INNODB
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t2)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Table_map	#	#	table_id: # (test.t2)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Xid	#	#	COMMIT /* XID */
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t1 (a INT)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t1)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE t2 (a INT) ENGINE=INNODB
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t2)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Table_map	#	#	table_id: # (test.t2)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Xid	#	#	COMMIT /* XID */
 SELECT * FROM t2 ORDER BY a;
 a
 1
@@ -377,11 +377,11 @@ a
 6
 9
 TRUNCATE TABLE t2;
-**** Resetting master and slave ****
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-include/start_slave.inc
+**** Resetting primary and replica ****
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+include/start_replica.inc
 BEGIN;
 INSERT INTO t2 SELECT a*a FROM t1;
 CREATE TEMPORARY TABLE tt2
@@ -405,42 +405,42 @@ CREATE TABLE t2 (a INT UNIQUE) ENGINE=INNODB SELECT * FROM t1;
 ERROR 23000: Duplicate entry '1' for key 'a'
 INSERT INTO t1 VALUES (2);
 *** the proof of the fix:
-select must show that the last insert performed on the slave ***
+select must show that the last insert performed on the replica ***
 SELECT * FROM t1;
 a
 1
 1
 2
 DROP TABLE t1;
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
+start replica;
 DROP DATABASE IF EXISTS mysqltest1;
 CREATE DATABASE mysqltest1;
 CREATE TABLE mysqltest1.without_select (f1 BIGINT);
 CREATE TABLE mysqltest1.with_select AS SELECT 1 AS f1;
 show binlog events from <binlog_start>;
 Log_name	Pos	Event_type	Server_id	End_log_pos	Info
-master-bin.000001	#	Query	#	#	DROP DATABASE IF EXISTS mysqltest1
-master-bin.000001	#	Query	#	#	CREATE DATABASE mysqltest1
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE mysqltest1.without_select (f1 BIGINT)
-master-bin.000001	#	Query	#	#	BEGIN
-master-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `mysqltest1`.`with_select` (
+primary-bin.000001	#	Query	#	#	DROP DATABASE IF EXISTS mysqltest1
+primary-bin.000001	#	Query	#	#	CREATE DATABASE mysqltest1
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE mysqltest1.without_select (f1 BIGINT)
+primary-bin.000001	#	Query	#	#	BEGIN
+primary-bin.000001	#	Query	#	#	use `test`; CREATE TABLE `mysqltest1`.`with_select` (
   `f1` int(1) NOT NULL DEFAULT '0'
 )
-master-bin.000001	#	Table_map	#	#	table_id: # (mysqltest1.with_select)
-master-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
-master-bin.000001	#	Query	#	#	COMMIT
+primary-bin.000001	#	Table_map	#	#	table_id: # (mysqltest1.with_select)
+primary-bin.000001	#	Write_rows	#	#	table_id: # flags: STMT_END_F
+primary-bin.000001	#	Query	#	#	COMMIT
 DROP DATABASE mysqltest1;
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
+start replica;
 CREATE TEMPORARY TABLE t7(c1 INT);
 CREATE TABLE t5(c1 INT);
 CREATE TABLE t4(c1 INT);

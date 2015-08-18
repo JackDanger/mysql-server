@@ -1,6 +1,6 @@
 -- BACKUP SIGNAL DIAGRAM COMPLEMENT TO BACKUP AMENDMENTS 2003-07-11 --
 
-USER		 MASTER		 MASTER		SLAVE		SLAVE
+USER		 PRIMARY		 PRIMARY		REPLICA		REPLICA
 ---------------------------------------------------------------------
 BACKUP_REQ      
 ----------------> 
@@ -56,13 +56,13 @@ BACKUP_COMPLETE_REP
 
 ----------------------------------------------------------------------------
 
-USER				BACKUP-MASTER
+USER				BACKUP-PRIMARY
 
 1)	BACKUP_REQ -->	
 				
-2)				To all slaves DEFINE_BACKUP_REQ
+2)				To all replicas DEFINE_BACKUP_REQ
 				   This signals contains info so that all
-				   slaves can take over as master
+				   replicas can take over as primary
 				   Tomas: Except triggerId info...
 
 3)				Wait for conf
@@ -71,7 +71,7 @@ USER				BACKUP-MASTER
 				    PREP_CREATE_TRIG_REQ
 				    Wait for Conf
 
-5)				To all slaves START_BACKUP_REQ
+5)				To all replicas START_BACKUP_REQ
 				    Include trigger ids
 				Wait for conf
 
@@ -90,7 +90,7 @@ USER				BACKUP-MASTER
 
 10)				Wait for GCP
 
-11)				To all slaves STOP_BACKUP_REQ
+11)				To all replicas STOP_BACKUP_REQ
 				   This signal turns off logging
 
 12)				Wait for conf
@@ -103,10 +103,10 @@ USER				BACKUP-MASTER
   a 'start backup snapshotstart' backup.
 ----
 
-Slave: Master Died
-Wait for master take-over, max 30 sec then abort everything
+Replica: Primary Died
+Wait for primary take-over, max 30 sec then abort everything
 
-Slave: Master TakeOver
+Replica: Primary TakeOver
 
 BACKUP_STATUS_REQ --> To all nodes
 <-- BACKUP_STATUS_CONF
@@ -116,7 +116,7 @@ BACKUP_STATUS_CONF
 	BACKUP_STARTED
 	BACKUP_FRAGMENT	
 
-Master: Slave died
+Primary: Replica died
 
 -- Define Backup Req --
 
@@ -155,35 +155,35 @@ Reasons for aborting:
 
 1a) client abort
 
-1b) slave failure
+1b) replica failure
 
 1c) node failure
 
 Resources to be cleaned up:
 
-Slave responsability:
+Replica responsability:
 
 2a) Close and remove files
 
 2b) Free allocated resources
 
-Master responsability:
+Primary responsability:
 
 2c) Drop triggers
 
-USER		 MASTER		 MASTER		SLAVE		SLAVE
+USER		 PRIMARY		 PRIMARY		REPLICA		REPLICA
 ---------------------------------------------------------------------
                  BACKUP_ABORT_ORD:
                  -------------------------(ALL)-->
-		 Set Master State ABORTING	Set Slave State ABORTING
+		 Set Primary State ABORTING	Set Replica State ABORTING
 		 Drop Triggers			Close and Remove files
-						CleanupSlaveResources()
+						CleanupReplicaResources()
 
                  BACKUP_ABORT_ORD:OkToClean
                  -------------------------(ALL)-->
 
 
-						CleanupMasterResources()
+						CleanupPrimaryResources()
 
 BACKUP_ABORT_REP      
 <--------------- 
@@ -192,109 +192,109 @@ BACKUP_ABORT_REP
 
 State descriptions:
 
-Master - INITIAL
+Primary - INITIAL
 BACKUP_REQ ->
-Master - DEFINING
+Primary - DEFINING
 DEFINE_BACKUP_CONF ->
-Master - DEFINED
+Primary - DEFINED
 CREATE_TRIG_CONF ->
-Master - STARTED
+Primary - STARTED
 <--->
-Master - SCANNING
+Primary - SCANNING
 WAIT_GCP_CONF ->
-Master - STOPPING
-(Master - CLEANING)
+Primary - STOPPING
+(Primary - CLEANING)
 --------
-Master - ABORTING
+Primary - ABORTING
 
 
-Slave - INITIAL
+Replica - INITIAL
 DEFINE_BACKUP_REQ ->
-Slave - DEFINING
+Replica - DEFINING
       - backupId
       - tables
 DIGETPRIMCONF ->
-Slave - DEFINED
+Replica - DEFINED
 START_BACKUP_REQ ->
-Slave - STARTED
-Slave - SCANNING
+Replica - STARTED
+Replica - SCANNING
 STOP_BACKUP_REQ ->
-Slave - STOPPING
+Replica - STOPPING
 FSCLOSECONF ->
-Slave - CLEANING
+Replica - CLEANING
 -----
-Slave - ABORTING
+Replica - ABORTING
 
 
 
 Testcases:
 
-2. Master failure at first START_BACKUP_CONF
+2. Primary failure at first START_BACKUP_CONF
 
-<masterId> error 10004
+<primaryId> error 10004
 start backup
 
 - Ok
 
-2. Master failure at first CREATE_TRIG_CONF
+2. Primary failure at first CREATE_TRIG_CONF
 
-<masterId> error 10003
+<primaryId> error 10003
 start backup
 
 - Ok
 
-2. Master failure at first ALTER_TRIG_CONF
+2. Primary failure at first ALTER_TRIG_CONF
 
-<masterId> error 10005
+<primaryId> error 10005
 start backup
 
 - Ok
 
-2. Master failure at WAIT_GCP_CONF
+2. Primary failure at WAIT_GCP_CONF
 
-<masterId> error 10007
+<primaryId> error 10007
 start backup
 
 - Ok
 
-2. Master failure at WAIT_GCP_CONF, nextFragment
+2. Primary failure at WAIT_GCP_CONF, nextFragment
 
-<masterId> error 10008
+<primaryId> error 10008
 start backup
 
 - Ok
 
-2. Master failure at WAIT_GCP_CONF, stopping
+2. Primary failure at WAIT_GCP_CONF, stopping
 
-<masterId> error 10009
+<primaryId> error 10009
 start backup
 
 - Ok
 
-2. Master failure at BACKUP_FRAGMENT_CONF
+2. Primary failure at BACKUP_FRAGMENT_CONF
 
-<masterId> error 10010
+<primaryId> error 10010
 start backup
 
 - Ok
 
-2. Master failure at first DROP_TRIG_CONF
+2. Primary failure at first DROP_TRIG_CONF
 
-<masterId> error 10012
+<primaryId> error 10012
 start backup
 
 - Ok
 
-1. Master failure at first STOP_BACKUP_CONF
+1. Primary failure at first STOP_BACKUP_CONF
 
-<masterId> error 10013
+<primaryId> error 10013
 start backup
 
 - Ok
 
 3. Multiple node failiure:
 
-<masterId> error 10001
+<primaryId> error 10001
 <otheId> error 10014
 start backup
 
@@ -302,7 +302,7 @@ start backup
 
 4. Multiple node failiure:
 
-<masterId> error 10007
+<primaryId> error 10007
 <takeover id> error 10002
 start backup
 
@@ -361,12 +361,12 @@ STOP_BACKUP_REF
   ABORT_BACKUP_ORD(no reply) when all STOP_BACKUP_ replies has arrived
 
 NF_COMPLETE_REP
-  slave dies
-    master sends OUTSTANDING_REF to self
-    slave does nothing
+  replica dies
+    primary sends OUTSTANDING_REF to self
+    replica does nothing
 
-  master dies
-    slave elects self as master and sets only itself as participant
+  primary dies
+    replica elects self as primary and sets only itself as participant
 
 
 DATA FORMATS

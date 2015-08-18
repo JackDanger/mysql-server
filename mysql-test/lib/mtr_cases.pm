@@ -195,12 +195,12 @@ sub collect_test_cases ($$$$) {
       push(@criteria, $tinfo->{template_path});
       # Group test with equal options together.
       # Ending with "~" makes empty sort later than filled
-      my $opts= $tinfo->{'master_opt'} ? $tinfo->{'master_opt'} : [];
+      my $opts= $tinfo->{'primary_opt'} ? $tinfo->{'primary_opt'} : [];
       push(@criteria, join("!", sort @{$opts}) . "~");
-      # Add slave opts if any
-      if ($tinfo->{'slave_opt'})
+      # Add replica opts if any
+      if ($tinfo->{'replica_opt'})
       {
-	push(@criteria, join("!", sort @{$tinfo->{'slave_opt'}}));
+	push(@criteria, join("!", sort @{$tinfo->{'replica_opt'}}));
       }
       # This sorts tests with force-restart *before* identical tests
       push(@criteria, $tinfo->{force_restart} ? "force-restart" : "no-restart");
@@ -514,9 +514,9 @@ sub collect_one_suite($)
 	  next if ( $test->{'skip'} );
 
 	  # Skip this combination if the values it provides
-	  # already are set in master_opt or slave_opt
-	  if (My::Options::is_set($test->{master_opt}, $comb->{comb_opt}) &&
-	      My::Options::is_set($test->{slave_opt}, $comb->{comb_opt}) ){
+	  # already are set in primary_opt or replica_opt
+	  if (My::Options::is_set($test->{primary_opt}, $comb->{comb_opt}) &&
+	      My::Options::is_set($test->{replica_opt}, $comb->{comb_opt}) ){
 	    next;
 	  }
 
@@ -530,9 +530,9 @@ sub collect_one_suite($)
 	    }
 	  }
 
-	  # Append the combination options to master_opt and slave_opt
-	  push(@{$new_test->{master_opt}}, @{$comb->{comb_opt}});
-	  push(@{$new_test->{slave_opt}}, @{$comb->{comb_opt}});
+	  # Append the combination options to primary_opt and replica_opt
+	  push(@{$new_test->{primary_opt}}, @{$comb->{comb_opt}});
+	  push(@{$new_test->{replica_opt}}, @{$comb->{comb_opt}});
 
 	  # Add combination name short name
 	  $new_test->{combination}= $comb->{name};
@@ -613,9 +613,9 @@ sub optimize_cases {
       # Use dynamic switching of binlog format
       # =======================================================
 
-      # Get binlog-format used by this test from master_opt
+      # Get binlog-format used by this test from primary_opt
       my $test_binlog_format;
-      foreach my $opt ( @{$tinfo->{master_opt}} ) {
+      foreach my $opt ( @{$tinfo->{primary_opt}} ) {
 	$test_binlog_format=
 	  mtr_match_prefix($opt, "--binlog-format=") || $test_binlog_format;
       }
@@ -641,7 +641,7 @@ sub optimize_cases {
     # =======================================================
     my %builtin_engines = ('myisam' => 1, 'memory' => 1, 'csv' => 1);
 
-    foreach my $opt ( @{$tinfo->{master_opt}} ) {
+    foreach my $opt ( @{$tinfo->{primary_opt}} ) {
       my $default_engine=
 	mtr_match_prefix($opt, "--default-storage-engine=");
       my $default_tmp_engine=
@@ -890,10 +890,10 @@ sub collect_one_test_case {
   }
 
   # ----------------------------------------------------------------------
-  # Append suite extra options to both master and slave
+  # Append suite extra options to both primary and replica
   # ----------------------------------------------------------------------
-  push(@{$tinfo->{'master_opt'}}, @$suite_opts);
-  push(@{$tinfo->{'slave_opt'}}, @$suite_opts);
+  push(@{$tinfo->{'primary_opt'}}, @$suite_opts);
+  push(@{$tinfo->{'replica_opt'}}, @$suite_opts);
 
   #-----------------------------------------------------------------------
   # Check for test specific config file
@@ -914,10 +914,10 @@ sub collect_one_test_case {
   }
 
   # ----------------------------------------------------------------------
-  # master sh
+  # primary sh
   # ----------------------------------------------------------------------
-  my $master_sh= "$testdir/$tname-master.sh";
-  if ( -f $master_sh )
+  my $primary_sh= "$testdir/$tname-primary.sh";
+  if ( -f $primary_sh )
   {
     if ( IS_WIN32PERL )
     {
@@ -927,15 +927,15 @@ sub collect_one_test_case {
     }
     else
     {
-      $tinfo->{'master_sh'}= $master_sh;
+      $tinfo->{'primary_sh'}= $primary_sh;
     }
   }
 
   # ----------------------------------------------------------------------
-  # slave sh
+  # replica sh
   # ----------------------------------------------------------------------
-  my $slave_sh= "$testdir/$tname-slave.sh";
-  if ( -f $slave_sh )
+  my $replica_sh= "$testdir/$tname-replica.sh";
+  if ( -f $replica_sh )
   {
     if ( IS_WIN32PERL )
     {
@@ -945,15 +945,15 @@ sub collect_one_test_case {
     }
     else
     {
-      $tinfo->{'slave_sh'}= $slave_sh;
+      $tinfo->{'replica_sh'}= $replica_sh;
     }
   }
 
   # ----------------------------------------------------------------------
-  # <tname>.slave-mi
+  # <tname>.replica-mi
   # ----------------------------------------------------------------------
-  mtr_error("$tname: slave-mi not supported anymore")
-    if ( -f "$testdir/$tname.slave-mi");
+  mtr_error("$tname: replica-mi not supported anymore")
+    if ( -f "$testdir/$tname.replica-mi");
 
 
   tags_from_test_file($tinfo,"$testdir/${tname}.test");
@@ -1010,17 +1010,17 @@ sub collect_one_test_case {
   if ($tinfo->{'federated_test'})
   {
     # This is a test that needs federated, enable it
-    push(@{$tinfo->{'master_opt'}}, "--loose-federated");
-    push(@{$tinfo->{'slave_opt'}}, "--loose-federated");
+    push(@{$tinfo->{'primary_opt'}}, "--loose-federated");
+    push(@{$tinfo->{'replica_opt'}}, "--loose-federated");
   }
   if ( $tinfo->{'myisam_test'})
   {
     # This is a temporary fix to allow non-innodb tests to run even if
     # the default storage engine is innodb.
-    push(@{$tinfo->{'master_opt'}}, "--default-storage-engine=MyISAM");
-    push(@{$tinfo->{'slave_opt'}}, "--default-storage-engine=MyISAM");
-    push(@{$tinfo->{'master_opt'}}, "--default-tmp-storage-engine=MyISAM");
-    push(@{$tinfo->{'slave_opt'}}, "--default-tmp-storage-engine=MyISAM");
+    push(@{$tinfo->{'primary_opt'}}, "--default-storage-engine=MyISAM");
+    push(@{$tinfo->{'replica_opt'}}, "--default-storage-engine=MyISAM");
+    push(@{$tinfo->{'primary_opt'}}, "--default-tmp-storage-engine=MyISAM");
+    push(@{$tinfo->{'replica_opt'}}, "--default-tmp-storage-engine=MyISAM");
   }
   if ( $tinfo->{'need_binlog'} )
   {
@@ -1035,8 +1035,8 @@ sub collect_one_test_case {
   {
     # Test does not need binlog, add --skip-binlog to
     # the options used when starting
-    push(@{$tinfo->{'master_opt'}}, "--loose-skip-log-bin");
-    push(@{$tinfo->{'slave_opt'}}, "--loose-skip-log-bin");
+    push(@{$tinfo->{'primary_opt'}}, "--loose-skip-log-bin");
+    push(@{$tinfo->{'replica_opt'}}, "--loose-skip-log-bin");
   }
 
   if ( $tinfo->{'rpl_test'} )
@@ -1062,8 +1062,8 @@ sub collect_one_test_case {
 #To be removed after completion of WL #6911.
     if ( !$tinfo->{'myisam_test'} && !defined $default_storage_engine)
     {
-      push(@{$tinfo->{'master_opt'}}, "--default-storage-engine=InnoDB");
-      push(@{$tinfo->{'master_opt'}}, "--default-tmp-storage-engine=InnoDB");
+      push(@{$tinfo->{'primary_opt'}}, "--default-storage-engine=InnoDB");
+      push(@{$tinfo->{'primary_opt'}}, "--default-tmp-storage-engine=InnoDB");
     }
   }
 
@@ -1120,20 +1120,20 @@ sub collect_one_test_case {
   }
 
   # ----------------------------------------------------------------------
-  # Append mysqld extra options to both master and slave
+  # Append mysqld extra options to both primary and replica
   # ----------------------------------------------------------------------
-  push(@{$tinfo->{'master_opt'}}, @::opt_extra_mysqld_opt);
-  push(@{$tinfo->{'slave_opt'}}, @::opt_extra_mysqld_opt);
+  push(@{$tinfo->{'primary_opt'}}, @::opt_extra_mysqld_opt);
+  push(@{$tinfo->{'replica_opt'}}, @::opt_extra_mysqld_opt);
 
   # ----------------------------------------------------------------------
-  # Add master opts, extra options only for master
+  # Add primary opts, extra options only for primary
   # ----------------------------------------------------------------------
-  process_opts_file($tinfo, "$testdir/$tname-master.opt", 'master_opt');
+  process_opts_file($tinfo, "$testdir/$tname-primary.opt", 'primary_opt');
 
   # ----------------------------------------------------------------------
-  # Add slave opts, list of extra option only for slave
+  # Add replica opts, list of extra option only for replica
   # ----------------------------------------------------------------------
-  process_opts_file($tinfo, "$testdir/$tname-slave.opt", 'slave_opt');
+  process_opts_file($tinfo, "$testdir/$tname-replica.opt", 'replica_opt');
 
   return $tinfo;
 }
@@ -1160,9 +1160,9 @@ my @tags=
  ["include/have_debug.inc", "need_debug", 1],
  ["include/have_ndb.inc", "ndb_test", 1],
  ["include/have_multi_ndb.inc", "ndb_test", 1],
- ["include/master-slave.inc", "rpl_test", 1],
- ["include/ndb_master-slave.inc", "rpl_test", 1],
- ["include/ndb_master-slave.inc", "ndb_test", 1],
+ ["include/primary-replica.inc", "rpl_test", 1],
+ ["include/ndb_primary-replica.inc", "rpl_test", 1],
+ ["include/ndb_primary-replica.inc", "ndb_test", 1],
  ["federated.inc", "federated_test", 1],
  ["include/not_embedded.inc", "not_embedded", 1],
  ["include/have_ssl.inc", "need_ssl", 1],

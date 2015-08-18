@@ -335,7 +335,7 @@ CREATE TABLE test_wl5522.t1 (
 # Stop purge so that it doesn't remove the delete marked entries.
 SET GLOBAL INNODB_PURGE_STOP_NOW=ON;
 
-# Disable change buffer merge from the master thread, additionally
+# Disable change buffer merge from the primary thread, additionally
 # enable aggressive flushing so that more changes are buffered.
 SET GLOBAL innodb_disable_background_merge=ON;
 SET GLOBAL innodb_monitor_reset = ibuf_merges;

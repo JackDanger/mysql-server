@@ -354,7 +354,7 @@ sub mtr_kill_leftovers () {
   my @kill_pids;
   my %admin_pids;
 
-  foreach my $srv (@{$::master}, @{$::slave})
+  foreach my $srv (@{$::primary}, @{$::replica})
   {
     mtr_debug("  - mysqld " .
               "(pid: $srv->{pid}; " .
@@ -742,7 +742,7 @@ sub mtr_mysqladmin_start($$$) {
   }
   mtr_add_arg($args, "--connect_timeout=5");
 
-  # Shutdown time must be high as slave may be in reconnect
+  # Shutdown time must be high as replica may be in reconnect
   mtr_add_arg($args, "--shutdown_timeout=$adm_shutdown_tmo");
   mtr_add_arg($args, "$command");
   my $pid= mtr_spawn($::exe_mysqladmin, $args,
@@ -839,7 +839,7 @@ sub mark_process_dead($)
 {
   my $ret_pid= shift;
 
-  foreach my $mysqld (@{$::master}, @{$::slave})
+  foreach my $mysqld (@{$::primary}, @{$::replica})
   {
     if ( $mysqld->{'pid'} eq $ret_pid )
     {
@@ -881,7 +881,7 @@ sub check_expected_crash_and_restart($)
 {
   my $ret_pid= shift;
 
-  foreach my $mysqld (@{$::master}, @{$::slave})
+  foreach my $mysqld (@{$::primary}, @{$::replica})
   {
     if ( $mysqld->{'pid'} eq $ret_pid )
     {
@@ -895,7 +895,7 @@ sub check_expected_crash_and_restart($)
       {
 	mtr_verbose("Crash was expected, file $expect_file exists");
 	mysqld_start($mysqld, $mysqld->{'start_opts'},
-		     $mysqld->{'start_slave_master_info'});
+		     $mysqld->{'start_replica_primary_info'});
 	unlink($expect_file);
       }
 

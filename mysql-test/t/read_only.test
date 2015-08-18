@@ -281,8 +281,8 @@ grant all on mysqltest_db2.* to `mysqltest_u1`@`%`;
 create database mysqltest_db1;
 grant all on mysqltest_db1.* to `mysqltest_u1`@`%`;
 flush privileges;
---echo connect (con_bug27440,127.0.0.1,mysqltest_u1,,test,MASTER_MYPORT,);
-connect (con_bug27440,127.0.0.1,mysqltest_u1,,test,$MASTER_MYPORT,);
+--echo connect (con_bug27440,127.0.0.1,mysqltest_u1,,test,PRIMARY_MYPORT,);
+connect (con_bug27440,127.0.0.1,mysqltest_u1,,test,$PRIMARY_MYPORT,);
 --echo connection con_bug27440;
 connection con_bug27440;
 --error ER_OPTION_PREVENTS_STATEMENT

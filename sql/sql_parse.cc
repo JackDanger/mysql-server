@@ -16,20 +16,20 @@
 #include "sql_parse.h"
 
 #include "auth_common.h"      // acl_authenticate
-#include "binlog.h"           // purge_master_logs
+#include "binlog.h"           // purge_primary_logs
 #include "debug_sync.h"       // DEBUG_SYNC
 #include "events.h"           // Events
 #include "item_timefunc.h"    // Item_func_unix_timestamp
 #include "log.h"              // query_logger
-#include "log_event.h"        // slave_execute_deferred_events
+#include "log_event.h"        // replica_execute_deferred_events
 #include "opt_explain.h"      // mysql_explain_other
 #include "opt_trace.h"        // Opt_trace_start
 #include "partition_info.h"   // partition_info
 #include "probes_mysql.h"     // MYSQL_COMMAND_START
 #include "rpl_filter.h"       // rpl_filter
-#include "rpl_master.h"       // register_slave
+#include "rpl_primary.h"       // register_replica
 #include "rpl_rli.h"          // mysql_show_relaylog_events
-#include "rpl_slave.h"        // change_master_cmd
+#include "rpl_replica.h"        // change_primary_cmd
 #include "sp.h"               // sp_create_routine
 #include "sp_cache.h"         // sp_cache_enforce_limit
 #include "sp_head.h"          // sp_head
@@ -66,8 +66,8 @@
 #include "sql_help.h"         // mysqld_help
 #include "rpl_constants.h"    // Incident, INCIDENT_LOST_EVENTS
 #include "log_event.h"
-#include "rpl_slave.h"
-#include "rpl_master.h"
+#include "rpl_replica.h"
+#include "rpl_primary.h"
 #include "rpl_msr.h"        /* Multisource replication */
 #include "rpl_filter.h"
 #include <m_ctype.h>
@@ -148,7 +148,7 @@ const LEX_STRING command_name[]={
   { C_STRING_WITH_LEN("Binlog Dump") },
   { C_STRING_WITH_LEN("Table Dump") },
   { C_STRING_WITH_LEN("Connect Out") },
-  { C_STRING_WITH_LEN("Register Slave") },
+  { C_STRING_WITH_LEN("Register Replica") },
   { C_STRING_WITH_LEN("Prepare") },
   { C_STRING_WITH_LEN("Execute") },
   { C_STRING_WITH_LEN("Long Data") },
@@ -192,7 +192,7 @@ inline bool db_stmt_db_ok(THD *thd, char* db)
 {
   DBUG_ENTER("db_stmt_db_ok");
 
-  if (!thd->slave_thread)
+  if (!thd->replica_thread)
     DBUG_RETURN(TRUE);
 
   /*
@@ -403,7 +403,7 @@ void init_update_queries(void)
   sql_command_flags[SQLCOM_SHOW_CHARSETS]=    CF_STATUS_COMMAND | CF_REEXECUTION_FRAGILE;
   sql_command_flags[SQLCOM_SHOW_COLLATIONS]=  CF_STATUS_COMMAND | CF_REEXECUTION_FRAGILE;
   sql_command_flags[SQLCOM_SHOW_BINLOGS]=     CF_STATUS_COMMAND;
-  sql_command_flags[SQLCOM_SHOW_SLAVE_HOSTS]= CF_STATUS_COMMAND;
+  sql_command_flags[SQLCOM_SHOW_REPLICA_HOSTS]= CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_BINLOG_EVENTS]= CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_STORAGE_ENGINES]= CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_PRIVILEGES]=  CF_STATUS_COMMAND;
@@ -416,8 +416,8 @@ void init_update_queries(void)
   sql_command_flags[SQLCOM_SHOW_GRANTS]=      CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_CREATE_DB]=   CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_CREATE]=  CF_STATUS_COMMAND;
-  sql_command_flags[SQLCOM_SHOW_MASTER_STAT]= CF_STATUS_COMMAND;
-  sql_command_flags[SQLCOM_SHOW_SLAVE_STAT]=  CF_STATUS_COMMAND;
+  sql_command_flags[SQLCOM_SHOW_PRIMARY_STAT]= CF_STATUS_COMMAND;
+  sql_command_flags[SQLCOM_SHOW_REPLICA_STAT]=  CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_CREATE_PROC]= CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_CREATE_FUNC]= CF_STATUS_COMMAND;
   sql_command_flags[SQLCOM_SHOW_CREATE_TRIGGER]=  CF_STATUS_COMMAND;
@@ -492,10 +492,10 @@ void init_update_queries(void)
   sql_command_flags[SQLCOM_CREATE_SERVER]=      CF_AUTO_COMMIT_TRANS;
   sql_command_flags[SQLCOM_ALTER_SERVER]=       CF_AUTO_COMMIT_TRANS;
   sql_command_flags[SQLCOM_DROP_SERVER]=        CF_AUTO_COMMIT_TRANS;
-  sql_command_flags[SQLCOM_CHANGE_MASTER]=      CF_AUTO_COMMIT_TRANS;
+  sql_command_flags[SQLCOM_CHANGE_PRIMARY]=      CF_AUTO_COMMIT_TRANS;
   sql_command_flags[SQLCOM_CHANGE_REPLICATION_FILTER]=    CF_AUTO_COMMIT_TRANS;
-  sql_command_flags[SQLCOM_SLAVE_START]=        CF_AUTO_COMMIT_TRANS;
-  sql_command_flags[SQLCOM_SLAVE_STOP]=         CF_AUTO_COMMIT_TRANS;
+  sql_command_flags[SQLCOM_REPLICA_START]=        CF_AUTO_COMMIT_TRANS;
+  sql_command_flags[SQLCOM_REPLICA_STOP]=         CF_AUTO_COMMIT_TRANS;
   sql_command_flags[SQLCOM_START_GROUP_REPLICATION]= CF_AUTO_COMMIT_TRANS;
   sql_command_flags[SQLCOM_STOP_GROUP_REPLICATION]=  CF_AUTO_COMMIT_TRANS;
   sql_command_flags[SQLCOM_ALTER_TABLESPACE]|=  CF_AUTO_COMMIT_TRANS;
@@ -944,14 +944,14 @@ static inline bool is_timer_applicable_to_statement(THD *thd)
     Following conditions are checked,
       - is SELECT statement.
       - timer support is implemented and it is initialized.
-      - statement is not made by the slave threads.
+      - statement is not made by the replica threads.
       - timer is not set for statement
       - timer out value of is set
       - SELECT statement is not from any stored programs.
   */
   return (thd->lex->sql_command == SQLCOM_SELECT &&
           (have_statement_timeout == SHOW_OPTION_YES) &&
-          !thd->slave_thread &&
+          !thd->replica_thread &&
           !thd->timer && timer_value_is_set &&
           !thd->sp_runtime_ctx);
 }
@@ -1075,8 +1075,8 @@ bool dispatch_command(THD *thd, COM_DATA *com_data,
 
      TODO: remove this when we have full 64 bit my_time_t support
     */
-    ulong master_access= thd->security_context()->master_access();
-    thd->security_context()->set_master_access(master_access | SHUTDOWN_ACL);
+    ulong primary_access= thd->security_context()->primary_access();
+    thd->security_context()->set_primary_access(primary_access | SHUTDOWN_ACL);
     command= COM_SHUTDOWN;
   }
   thd->set_query_id(next_query_id());
@@ -1141,10 +1141,10 @@ bool dispatch_command(THD *thd, COM_DATA *com_data,
     break;
   }
 #ifdef HAVE_REPLICATION
-  case COM_REGISTER_SLAVE:
+  case COM_REGISTER_REPLICA:
   {
     // TODO: access of protocol_classic should be removed
-    if (!register_slave(thd,
+    if (!register_replica(thd,
       thd->get_protocol_classic()->get_raw_packet(),
       thd->get_protocol_classic()->get_packet_length()))
       my_ok(thd);
@@ -1900,21 +1900,21 @@ bool sp_process_definer(THD *thd)
       - The user submitted a statement w/o the clause. This is a normal
         case, we should assign CURRENT_USER as definer.
 
-      - Our slave received an updated from the master, that does not
+      - Our replica received an updated from the primary, that does not
         replicate definer for stored rountines. We should also assign
         CURRENT_USER as definer here, but also we should mark this routine
         as NON-SUID. This is essential for the sake of backward
         compatibility.
 
-        The problem is the slave thread is running under "special" user (@),
+        The problem is the replica thread is running under "special" user (@),
         that actually does not exist. In the older versions we do not fail
         execution of a stored routine if its definer does not exist and
         continue the execution under the authorization of the invoker
-        (BUG#13198). And now if we try to switch to slave-current-user (@),
+        (BUG#13198). And now if we try to switch to replica-current-user (@),
         we will fail.
 
-        Actually, this leads to the inconsistent state of master and
-        slave (different definers, different SUID behaviour), but it seems,
+        Actually, this leads to the inconsistent state of primary and
+        replica (different definers, different SUID behaviour), but it seems,
         this is the best we can do.
   */
 
@@ -1928,7 +1928,7 @@ bool sp_process_definer(THD *thd)
     if (lex->definer == NULL)
       DBUG_RETURN(TRUE);
 
-    if (thd->slave_thread && lex->sphead)
+    if (thd->replica_thread && lex->sphead)
       lex->sphead->m_chistics->suid= SP_IS_NOT_SUID;
   }
   else
@@ -2132,7 +2132,7 @@ static inline void binlog_gtid_end_transaction(THD *thd)
     tables they match only thd->lex->sql_command == SQLCOM_*.)
   */
   if ((thd->lex->sql_command == SQLCOM_COMMIT ||
-       (thd->slave_thread &&
+       (thd->replica_thread &&
         (thd->lex->sql_command == SQLCOM_XA_COMMIT ||
          thd->lex->sql_command == SQLCOM_XA_ROLLBACK)) ||
        stmt_causes_implicit_commit(thd, CF_IMPLICIT_COMMIT_END) ||
@@ -2176,7 +2176,7 @@ mysql_execute_command(THD *thd)
   TABLE_LIST *all_tables;
   /* most outer SELECT_LEX_UNIT of query */
   SELECT_LEX_UNIT *const unit= lex->unit;
-  DBUG_ASSERT(select_lex->master_unit() == unit);
+  DBUG_ASSERT(select_lex->primary_unit() == unit);
   DBUG_ENTER("mysql_execute_command");
   /* EXPLAIN OTHER isn't explainable command, but can have describe flag. */
   DBUG_ASSERT(!lex->describe || is_explainable_query(lex->sql_command) ||
@@ -2228,7 +2228,7 @@ mysql_execute_command(THD *thd)
   }
 
 #ifdef HAVE_REPLICATION
-  if (unlikely(thd->slave_thread))
+  if (unlikely(thd->replica_thread))
   {
     // Database filters.
     if (lex->sql_command != SQLCOM_BEGIN &&
@@ -2246,7 +2246,7 @@ mysql_execute_command(THD *thd)
     {
       /*
         When dropping a trigger, we need to load its table name
-        before checking slave filter rules.
+        before checking replica filter rules.
       */
       add_table_for_trigger(thd, lex->spname->m_db,
                             lex->spname->m_name, true, &all_tables);
@@ -2257,30 +2257,30 @@ mysql_execute_command(THD *thd)
           If table name cannot be loaded,
           it means the trigger does not exists possibly because
           CREATE TRIGGER was previously skipped for this trigger
-          according to slave filtering rules.
+          according to replica filtering rules.
           Returning success without producing any errors in this case.
         */
         binlog_gtid_end_transaction(thd);
         DBUG_RETURN(0);
       }
       
-      // force searching in slave.cc:tables_ok() 
+      // force searching in replica.cc:tables_ok() 
       all_tables->updating= 1;
     }
 
     /*
-      For fix of BUG#37051, the master stores the table map for update
+      For fix of BUG#37051, the primary stores the table map for update
       in the Query_log_event, and the value is assigned to
       thd->variables.table_map_for_update before executing the update
       query.
 
       If thd->variables.table_map_for_update is set, then we are
-      replicating from a new master, we can use this value to apply
+      replicating from a new primary, we can use this value to apply
       filter rules without opening all the tables. However If
       thd->variables.table_map_for_update is not set, then we are
-      replicating from an old master, so we just skip this and
+      replicating from an old primary, so we just skip this and
       continue with the old method. And of course, the bug would still
-      exist for old masters.
+      exist for old primarys.
     */
     if (lex->sql_command == SQLCOM_UPDATE_MULTI &&
         thd->table_map_for_update)
@@ -2298,8 +2298,8 @@ mysql_execute_command(THD *thd)
 
       if (all_tables_not_ok(thd, all_tables))
       {
-        /* we warn the slave SQL thread */
-        my_message(ER_SLAVE_IGNORED_TABLE, ER(ER_SLAVE_IGNORED_TABLE), MYF(0));
+        /* we warn the replica SQL thread */
+        my_message(ER_REPLICA_IGNORED_TABLE, ER(ER_REPLICA_IGNORED_TABLE), MYF(0));
         binlog_gtid_end_transaction(thd);
         DBUG_RETURN(0);
       }
@@ -2309,17 +2309,17 @@ mysql_execute_command(THD *thd)
     }
     
     /*
-      Check if statment should be skipped because of slave filtering
+      Check if statment should be skipped because of replica filtering
       rules
 
       Exceptions are:
       - UPDATE MULTI: For this statement, we want to check the filtering
         rules later in the code
       - SET: we always execute it (Not that many SET commands exists in
-        the binary log anyway -- only 4.1 masters write SET statements,
+        the binary log anyway -- only 4.1 primarys write SET statements,
 	in 5.0 there are no SET statements in the binary log)
       - DROP TEMPORARY TABLE IF EXISTS: we always execute it (otherwise we
-        have stale files on slave caused by exclusion of one tmp table).
+        have stale files on replica caused by exclusion of one tmp table).
     */
     if (!(lex->sql_command == SQLCOM_UPDATE_MULTI) &&
 	!(lex->sql_command == SQLCOM_SET_OPTION) &&
@@ -2327,15 +2327,15 @@ mysql_execute_command(THD *thd)
           lex->drop_temporary && lex->drop_if_exists) &&
         all_tables_not_ok(thd, all_tables))
     {
-      /* we warn the slave SQL thread */
-      my_message(ER_SLAVE_IGNORED_TABLE, ER(ER_SLAVE_IGNORED_TABLE), MYF(0));
+      /* we warn the replica SQL thread */
+      my_message(ER_REPLICA_IGNORED_TABLE, ER(ER_REPLICA_IGNORED_TABLE), MYF(0));
       binlog_gtid_end_transaction(thd);
       DBUG_RETURN(0);
     }
     /* 
        Execute deferred events first
     */
-    if (slave_execute_deferred_events(thd))
+    if (replica_execute_deferred_events(thd))
       DBUG_RETURN(-1);
   }
   else
@@ -2351,7 +2351,7 @@ mysql_execute_command(THD *thd)
       DBUG_RETURN(-1);
     }
 #ifdef HAVE_REPLICATION
-  } /* endif unlikely slave */
+  } /* endif unlikely replica */
 #endif
 
   thd->status_var.com_stat[lex->sql_command]++;
@@ -2382,7 +2382,7 @@ mysql_execute_command(THD *thd)
     End a active transaction so that this command will have it's
     own transaction and will also sync the binary log. If a DDL is
     not run in it's own transaction it may simply never appear on
-    the slave in case the outside transaction rolls back.
+    the replica in case the outside transaction rolls back.
   */
   if (stmt_causes_implicit_commit(thd, CF_IMPLICIT_COMMIT_BEGIN))
   {
@@ -2557,8 +2557,8 @@ case SQLCOM_PREPARE:
   {
     if (check_global_access(thd, SUPER_ACL))
       goto error;
-    /* PURGE MASTER LOGS TO 'file' */
-    res = purge_master_logs(thd, lex->to_log);
+    /* PURGE PRIMARY LOGS TO 'file' */
+    res = purge_primary_logs(thd, lex->to_log);
     break;
   }
   case SQLCOM_PURGE_BEFORE:
@@ -2567,7 +2567,7 @@ case SQLCOM_PREPARE:
 
     if (check_global_access(thd, SUPER_ACL))
       goto error;
-    /* PURGE MASTER LOGS BEFORE 'data' */
+    /* PURGE PRIMARY LOGS BEFORE 'data' */
     it= lex->purge_value_list.head();
     if ((!it->fixed && it->fix_fields(lex->thd, &it)) ||
         it->check_cols(1))
@@ -2584,7 +2584,7 @@ case SQLCOM_PREPARE:
     time_t purge_time= static_cast<time_t>(it->val_int());
     if (thd->is_error())
       goto error;
-    res = purge_master_logs_before_date(thd, purge_time);
+    res = purge_primary_logs_before_date(thd, purge_time);
     break;
   }
 #endif
@@ -2618,23 +2618,23 @@ case SQLCOM_PREPARE:
   }
 
 #ifdef HAVE_REPLICATION
-  case SQLCOM_SHOW_SLAVE_HOSTS:
+  case SQLCOM_SHOW_REPLICA_HOSTS:
   {
-    if (check_global_access(thd, REPL_SLAVE_ACL))
+    if (check_global_access(thd, REPL_REPLICA_ACL))
       goto error;
-    res= show_slave_hosts(thd);
+    res= show_replica_hosts(thd);
     break;
   }
   case SQLCOM_SHOW_RELAYLOG_EVENTS:
   {
-    if (check_global_access(thd, REPL_SLAVE_ACL))
+    if (check_global_access(thd, REPL_REPLICA_ACL))
       goto error;
     res = mysql_show_relaylog_events(thd);
     break;
   }
   case SQLCOM_SHOW_BINLOG_EVENTS:
   {
-    if (check_global_access(thd, REPL_SLAVE_ACL))
+    if (check_global_access(thd, REPL_REPLICA_ACL))
       goto error;
     res = mysql_show_binlog_events(thd);
     break;
@@ -2664,28 +2664,28 @@ case SQLCOM_PREPARE:
     break;
   }
 #ifdef HAVE_REPLICATION
-  case SQLCOM_CHANGE_MASTER:
+  case SQLCOM_CHANGE_PRIMARY:
   {
 
     if (check_global_access(thd, SUPER_ACL))
       goto error;
-    res= change_master_cmd(thd);
+    res= change_primary_cmd(thd);
     break;
   }
-  case SQLCOM_SHOW_SLAVE_STAT:
+  case SQLCOM_SHOW_REPLICA_STAT:
   {
     /* Accept one of two privileges */
     if (check_global_access(thd, SUPER_ACL | REPL_CLIENT_ACL))
       goto error;
-    res= show_slave_status_cmd(thd);
+    res= show_replica_status_cmd(thd);
     break;
   }
-  case SQLCOM_SHOW_MASTER_STAT:
+  case SQLCOM_SHOW_PRIMARY_STAT:
   {
     /* Accept one of two privileges */
     if (check_global_access(thd, SUPER_ACL | REPL_CLIENT_ACL))
       goto error;
-    res = show_master_status(thd);
+    res = show_primary_status(thd);
     break;
   }
 
@@ -3080,24 +3080,24 @@ end_with_restore_list:
     break;
   }
 
-  case SQLCOM_SLAVE_START:
+  case SQLCOM_REPLICA_START:
   {
-    res= start_slave_cmd(thd);
+    res= start_replica_cmd(thd);
     break;
   }
-  case SQLCOM_SLAVE_STOP:
+  case SQLCOM_REPLICA_STOP:
   {
   /*
     If the client thread has locked tables, a deadlock is possible.
     Assume that
     - the client thread does LOCK TABLE t READ.
-    - then the master updates t.
-    - then the SQL slave thread wants to update t,
+    - then the primary updates t.
+    - then the SQL replica thread wants to update t,
       so it waits for the client thread because t is locked by it.
-    - then the client thread does SLAVE STOP.
-      SLAVE STOP waits for the SQL slave thread to terminate its
+    - then the client thread does REPLICA STOP.
+      REPLICA STOP waits for the SQL replica thread to terminate its
       update t, which waits for the client thread because t is locked by it.
-    To prevent that, refuse SLAVE STOP if the
+    To prevent that, refuse REPLICA STOP if the
     client thread has locked tables
   */
   if (thd->locked_tables_mode ||
@@ -3108,7 +3108,7 @@ end_with_restore_list:
     goto error;
   }
 
-  res= stop_slave_cmd(thd);
+  res= stop_replica_cmd(thd);
   break;
   }
 #endif /* HAVE_REPLICATION */
@@ -3237,8 +3237,8 @@ end_with_restore_list:
         Generate an incident log event before writing the real event
         to the binary log.  We put this event is before the statement
         since that makes it simpler to check that the statement was
-        not executed on the slave (since incidents usually stop the
-        slave).
+        not executed on the replica (since incidents usually stop the
+        replica).
 
         Observe that any row events that are generated will be
         generated before.
@@ -3404,7 +3404,7 @@ end_with_restore_list:
 
   case SQLCOM_UNLOCK_TABLES:
     /*
-      It is critical for mysqldump --single-transaction --master-data that
+      It is critical for mysqldump --single-transaction --primary-data that
       UNLOCK TABLES does not implicitely commit a connection which has only
       done FLUSH TABLES WITH READ LOCK + BEGIN. If this assumption becomes
       false, mysqldump will not work.
@@ -3487,16 +3487,16 @@ end_with_restore_list:
         (check_and_convert_db_name(&lex->name, FALSE) != IDENT_NAME_OK))
       break;
     /*
-      If in a slave thread :
+      If in a replica thread :
       CREATE DATABASE DB was certainly not preceded by USE DB.
-      For that reason, db_ok() in sql/slave.cc did not check the
+      For that reason, db_ok() in sql/replica.cc did not check the
       do_db/ignore_db. And as this query involves no tables, tables_ok()
       above was not called. So we have to check rules again here.
     */
 #ifdef HAVE_REPLICATION
     if (!db_stmt_db_ok(thd, lex->name.str))
     {
-      my_message(ER_SLAVE_IGNORED_TABLE, ER(ER_SLAVE_IGNORED_TABLE), MYF(0));
+      my_message(ER_REPLICA_IGNORED_TABLE, ER(ER_REPLICA_IGNORED_TABLE), MYF(0));
       break;
     }
 #endif
@@ -3511,16 +3511,16 @@ end_with_restore_list:
     if (check_and_convert_db_name(&lex->name, FALSE) != IDENT_NAME_OK)
       break;
     /*
-      If in a slave thread :
+      If in a replica thread :
       DROP DATABASE DB may not be preceded by USE DB.
-      For that reason, maybe db_ok() in sql/slave.cc did not check the 
+      For that reason, maybe db_ok() in sql/replica.cc did not check the 
       do_db/ignore_db. And as this query involves no tables, tables_ok()
       above was not called. So we have to check rules again here.
     */
 #ifdef HAVE_REPLICATION
     if (!db_stmt_db_ok(thd, lex->name.str))
     {
-      my_message(ER_SLAVE_IGNORED_TABLE, ER(ER_SLAVE_IGNORED_TABLE), MYF(0));
+      my_message(ER_REPLICA_IGNORED_TABLE, ER(ER_REPLICA_IGNORED_TABLE), MYF(0));
       break;
     }
 #endif
@@ -3536,7 +3536,7 @@ end_with_restore_list:
     if (!db_stmt_db_ok(thd, lex->name.str))
     {
       res= 1;
-      my_message(ER_SLAVE_IGNORED_TABLE, ER(ER_SLAVE_IGNORED_TABLE), MYF(0));
+      my_message(ER_REPLICA_IGNORED_TABLE, ER(ER_REPLICA_IGNORED_TABLE), MYF(0));
       break;
     }
 #endif
@@ -3562,16 +3562,16 @@ end_with_restore_list:
     if (check_and_convert_db_name(db, FALSE) != IDENT_NAME_OK)
       break;
     /*
-      If in a slave thread :
+      If in a replica thread :
       ALTER DATABASE DB may not be preceded by USE DB.
-      For that reason, maybe db_ok() in sql/slave.cc did not check the
+      For that reason, maybe db_ok() in sql/replica.cc did not check the
       do_db/ignore_db. And as this query involves no tables, tables_ok()
       above was not called. So we have to check rules again here.
     */
 #ifdef HAVE_REPLICATION
     if (!db_stmt_db_ok(thd, lex->name.str))
     {
-      my_message(ER_SLAVE_IGNORED_TABLE, ER(ER_SLAVE_IGNORED_TABLE), MYF(0));
+      my_message(ER_REPLICA_IGNORED_TABLE, ER(ER_REPLICA_IGNORED_TABLE), MYF(0));
       break;
     }
 #endif
@@ -4070,7 +4070,7 @@ end_with_restore_list:
       goto error;
 
     /*
-      Record the CURRENT_USER in binlog. The CURRENT_USER is used on slave to
+      Record the CURRENT_USER in binlog. The CURRENT_USER is used on replica to
       grant default privileges when sp_automatic_privileges variable is set.
     */
     thd->binlog_invoker();
@@ -4101,11 +4101,11 @@ end_with_restore_list:
       DBUG_ASSERT(thd->get_transaction()->is_empty(Transaction_ctx::STMT));
       close_thread_tables(thd);
       /*
-        Check if invoker exists on slave, then use invoker privilege to
+        Check if invoker exists on replica, then use invoker privilege to
         insert routine privileges to mysql.procs_priv. If invoker is not
         available then consider using definer.
 
-        Check if the definer exists on slave,
+        Check if the definer exists on replica,
         then use definer privilege to insert routine privileges to mysql.procs_priv.
 
         For current user of SQL thread has GLOBAL_ACL privilege,
@@ -4113,7 +4113,7 @@ end_with_restore_list:
         so no routine privilege record  will insert into mysql.procs_priv.
       */
 
-      if (thd->slave_thread)
+      if (thd->replica_thread)
       {
         LEX_CSTRING current_user;
         LEX_CSTRING current_host;
@@ -4155,7 +4155,7 @@ end_with_restore_list:
       */ 
       if (restore_backup_context)
       {
-        DBUG_ASSERT(thd->slave_thread == 1);
+        DBUG_ASSERT(thd->replica_thread == 1);
         thd->security_context()->restore_security_context(thd, backup);
       }
 #endif
@@ -4681,7 +4681,7 @@ finish:
     /* report error issued during command execution */
     if (thd->killed_errno())
       thd->send_kill_message();
-    if (thd->is_error() || (thd->variables.option_bits & OPTION_MASTER_SQL_ERROR))
+    if (thd->is_error() || (thd->variables.option_bits & OPTION_PRIMARY_SQL_ERROR))
       trans_rollback_stmt(thd);
     else
     {
@@ -5097,7 +5097,7 @@ void mysql_init_multi_delete(LEX *lex)
 
 /*
   When you modify mysql_parse(), you may need to mofify
-  mysql_test_parse_for_slave() in this same file.
+  mysql_test_parse_for_replica() in this same file.
 */
 
 /**
@@ -5162,7 +5162,7 @@ void mysql_parse(THD *thd, Parser_state *parser_state)
         for security reasons.
         Query-cache only handles SELECT, which we don't rewrite, so it's no
         concern of ours.
-        We're not general-logging if we're the slave, or if we've already
+        We're not general-logging if we're the replica, or if we've already
         done raw-logging earlier.
         Sub-routines of mysql_rewrite_query() should try to only rewrite when
         necessary (e.g. not do password obfuscation when query contains no
@@ -5170,7 +5170,7 @@ void mysql_parse(THD *thd, Parser_state *parser_state)
         no logging happens at all. If rewriting does not happen here,
         thd->rewritten_query is still empty from being reset in alloc_query().
       */
-      bool general= !(opt_general_log_raw || thd->slave_thread);
+      bool general= !(opt_general_log_raw || thd->replica_thread);
 
       if (general || opt_slow_log || opt_bin_log)
       {
@@ -5313,15 +5313,15 @@ void mysql_parse(THD *thd, Parser_state *parser_state)
     1	can be ignored
 */
 
-bool mysql_test_parse_for_slave(THD *thd)
+bool mysql_test_parse_for_replica(THD *thd)
 {
   LEX *lex= thd->lex;
   bool ignorable= false;
   sql_digest_state *parent_digest= thd->m_digest;
   PSI_statement_locker *parent_locker= thd->m_statement_psi;
-  DBUG_ENTER("mysql_test_parse_for_slave");
+  DBUG_ENTER("mysql_test_parse_for_replica");
 
-  DBUG_ASSERT(thd->slave_thread);
+  DBUG_ASSERT(thd->replica_thread);
 
   Parser_state parser_state;
   if (parser_state.init(thd, thd->query().str, thd->query().length) == 0)
@@ -6190,7 +6190,7 @@ public:
   {
     mysql_mutex_lock(&thd_to_kill->LOCK_thd_data);
 
-    /* Kill only if non super thread and non slave thread.
+    /* Kill only if non super thread and non replica thread.
        If an account has not yet been assigned to the security context of the
        thread we cannot tell if the account is super user or not. In this case
        we cannot kill that thread. In offline mode, after the account is
@@ -6201,7 +6201,7 @@ public:
     if (thd_to_kill->security_context()->has_account_assigned()
   && !(thd_to_kill->security_context()->check_access(SUPER_ACL))
 	&& thd_to_kill->killed != THD::KILL_CONNECTION
-	&& !thd_to_kill->slave_thread)
+	&& !thd_to_kill->replica_thread)
       thd_to_kill->awake(THD::KILL_CONNECTION);
 
     mysql_mutex_unlock(&thd_to_kill->LOCK_thd_data);

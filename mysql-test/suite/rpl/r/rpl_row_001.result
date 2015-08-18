@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE t1 (word CHAR(20) NOT NULL);
 LOAD DATA INFILE 'LOAD_FILE' INTO TABLE t1;
 LOAD DATA INFILE 'LOAD_FILE' INTO TABLE t1;
@@ -18,9 +18,9 @@ Aaron
 Aaron
 Ababa
 Ababa
-STOP SLAVE;
+STOP REPLICA;
 SET PASSWORD FOR root@"localhost" = 'foo';
-START SLAVE;
+START REPLICA;
 SET PASSWORD FOR root@"localhost" = '';
 CREATE TABLE t3(n INT);
 INSERT INTO t3 VALUES(1),(2);
@@ -33,15 +33,15 @@ SUM(LENGTH(word))
 1022
 DROP TABLE t1,t3;
 CREATE TABLE t1 (n INT) ENGINE=MYISAM;
-RESET MASTER;
-STOP SLAVE;
-RESET SLAVE;
+RESET PRIMARY;
+STOP REPLICA;
+RESET REPLICA;
 SELECT COUNT(*) FROM t1;
 COUNT(*)
 5000
-RESET MASTER;
+RESET PRIMARY;
 LOCK TABLES t1 READ;
-START SLAVE;
+START REPLICA;
 UNLOCK TABLES;
 SELECT COUNT(*) FROM t1;
 COUNT(*)

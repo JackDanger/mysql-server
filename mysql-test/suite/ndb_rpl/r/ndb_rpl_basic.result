@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
 `nom` char(4) default NULL,
 `prenom` char(4) default NULL,
@@ -105,7 +105,7 @@ CREATE TABLE `t1` (
 `lac_cell_id` bigint(20) unsigned DEFAULT NULL,
 `ms_classmark1` int(10) unsigned DEFAULT NULL,
 `cipher_key` int(10) unsigned DEFAULT NULL,
-`priid_master` int(10) unsigned DEFAULT NULL,
+`priid_primary` int(10) unsigned DEFAULT NULL,
 PRIMARY KEY (`prid`),
 UNIQUE KEY `fkimssub` (`fkimssub`,`ptg_nbr`) USING HASH
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1;
@@ -132,16 +132,16 @@ CREATE TABLE `t1` ( `nid` int(11) NOT NULL default '0',
 PRIMARY KEY USING HASH (`nid`)) 
 ENGINE=ndbcluster DEFAULT CHARSET=latin1;
 INSERT INTO t1 VALUES(1,"XYZ1","ABC1");
-**** On Slave ****
+**** On Replica ****
 BEGIN;
 UPDATE t1 SET `nom`="LOCK" WHERE `nid`=1;
-set GLOBAL slave_transaction_retries=1;
-**** On Master ****
+set GLOBAL replica_transaction_retries=1;
+**** On Primary ****
 UPDATE t1 SET `nom`="DEAD" WHERE `nid`=1;
-**** On Slave ****
-include/wait_for_slave_sql_error.inc [errno=1205 ]
-set GLOBAL slave_transaction_retries=10;
-include/start_slave.inc
+**** On Replica ****
+include/wait_for_replica_sql_error.inc [errno=1205 ]
+set GLOBAL replica_transaction_retries=10;
+include/start_replica.inc
 select * from t1 order by nid;
 nid	nom	prenom
 1	LOCK	ABC1

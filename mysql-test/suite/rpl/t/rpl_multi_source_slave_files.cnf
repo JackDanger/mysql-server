@@ -1,14 +1,14 @@
 !include ../my.cnf
 
 [mysqld.1]
-log-slave-updates
+log-replica-updates
 
 [mysqld.2]
-master-info-repository=TABLE
+primary-info-repository=TABLE
 relay-log-info-repository=TABLE
-log-slave-updates
+log-replica-updates
 log-bin
-log-slave-updates
+log-replica-updates
 relay-log-purge=0
 relay-log-recovery=1
 sync_relay_log=10
@@ -16,19 +16,19 @@ max-relay-log-size=1073741824
 relay-log-space-limit=1073741824
 relay-log=relaylog-msr
 relay-log-index=relaylog-msr.index
-sync-master-info=10
-master-info-file=master-msr.information
+sync-primary-info=10
+primary-info-file=primary-msr.information
 relay-log-info-file=relaylog-msr.information
 
 
 [mysqld.3]
-log-slave-updates
+log-replica-updates
 
 [mysqld.4]
-log-slave-updates
+log-replica-updates
 
 [mysqld.5]
-log-slave-updates
+log-replica-updates
 
 [ENV]
 SERVER_MYPORT_3=		@mysqld.3.port

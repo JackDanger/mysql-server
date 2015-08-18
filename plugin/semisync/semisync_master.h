@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA */
 
 
-#ifndef SEMISYNC_MASTER_H
-#define SEMISYNC_MASTER_H
+#ifndef SEMISYNC_PRIMARY_H
+#define SEMISYNC_PRIMARY_H
 
 #include "semisync.h"
 
@@ -27,11 +27,11 @@ extern PSI_mutex_key key_ss_mutex_LOCK_binlog_;
 extern PSI_cond_key key_ss_cond_COND_binlog_send_;
 #endif
 
-extern PSI_stage_info stage_waiting_for_semi_sync_ack_from_slave;
-extern PSI_stage_info stage_waiting_for_semi_sync_slave;
+extern PSI_stage_info stage_waiting_for_semi_sync_ack_from_replica;
+extern PSI_stage_info stage_waiting_for_semi_sync_replica;
 extern PSI_stage_info stage_reading_semi_sync_ack;
 
-extern unsigned int rpl_semi_sync_master_wait_for_slave_count;
+extern unsigned int rpl_semi_sync_primary_wait_for_replica_count;
 
 struct TranxNode {
   char             log_name_[FN_REFLEN];
@@ -398,7 +398,7 @@ public:
 
 /**
    AckInfo is a POD. It defines a structure includes information related to an ack:
-   server_id   - which slave the ack comes from.
+   server_id   - which replica the ack comes from.
    binlog_name - the binlog file name included in the ack.
    binlog_pos  - the binlog file position included in the ack.
 */
@@ -462,7 +462,7 @@ public:
   }
 
   /**
-     Adjust capacity for the container and report the ack to semisync master,
+     Adjust capacity for the container and report the ack to semisync primary,
      if it is full.
 
      @param[in] size size of the container.
@@ -473,13 +473,13 @@ public:
 
   /**
      Insert an ack's information into the container and report the minimum
-     ack to semisync master if it is full.
+     ack to semisync primary if it is full.
 
-     @param[in] server_id  slave server_id of the ack
+     @param[in] server_id  replica server_id of the ack
      @param[in] log_file_name  binlog file name of the ack
      @param[in] log_file_pos   binlog file position of the ack
 
-     @return Pointer of an ack if the ack should be reported to semisync master.
+     @return Pointer of an ack if the ack should be reported to semisync primary.
              Otherwise, NULL is returned.
   */
   const AckInfo* insert(int server_id, const char *log_file_name,
@@ -490,7 +490,7 @@ public:
   }
 
 private:
-  /* The greatest ack of the acks already reported to semisync master. */
+  /* The greatest ack of the acks already reported to semisync primary. */
   AckInfo m_greatest_ack;
 
   AckInfo *m_ack_array;
@@ -526,8 +526,8 @@ private:
   }
 
   /**
-     Update a slave's ack into the container if another ack of the
-     slave is already in it.
+     Update a replica's ack into the container if another ack of the
+     replica is already in it.
 
      @param[in] server_id      server_id of the ack
      @param[in] log_file_name  binlog file name of the ack
@@ -583,9 +583,9 @@ private:
 };
 
 /**
-   The extension class for the master of semi-synchronous replication
+   The extension class for the primary of semi-synchronous replication
 */
-class ReplSemiSyncMaster
+class ReplSemiSyncPrimary
   :public ReplSemiSyncBase {
  private:
   ActiveTranx    *active_tranxs_;  /* active transaction list: the list will
@@ -604,23 +604,23 @@ class ReplSemiSyncMaster
   /* This is set to true when reply_file_name_ contains meaningful data. */
   bool            reply_file_name_inited_;
 
-  /* The binlog name up to which we have received replies from any slaves. */
+  /* The binlog name up to which we have received replies from any replicas. */
   char            reply_file_name_[FN_REFLEN];
 
-  /* The position in that file up to which we have the reply from any slaves. */
+  /* The position in that file up to which we have the reply from any replicas. */
   my_off_t        reply_file_pos_;
 
   /* This is set to true when we know the 'smallest' wait position. */
   bool            wait_file_name_inited_;
 
   /* NULL, or the 'smallest' filename that a transaction is waiting for
-   * slave replies.
+   * replica replies.
    */
   char            wait_file_name_[FN_REFLEN];
 
   /* The smallest position in that file that a trx is waiting for: the trx
-   * can proceed and send an 'ok' to the client when the master has got the
-   * reply from the slave indicating that it already got the binlog events.
+   * can proceed and send an 'ok' to the client when the primary has got the
+   * reply from the replica indicating that it already got the binlog events.
    */
   my_off_t        wait_file_pos_;
 
@@ -629,7 +629,7 @@ class ReplSemiSyncMaster
    * We always maintain the position no matter whether semi-sync is switched
    * on switched off.  When a transaction wait timeout occurs, semi-sync will
    * switch off.  Binlog-dump thread can use the three fields to detect when
-   * slaves catch up on replication so that semi-sync can switch on again.
+   * replicas catch up on replication so that semi-sync can switch on again.
    */
   bool            commit_file_name_inited_;
 
@@ -640,7 +640,7 @@ class ReplSemiSyncMaster
   my_off_t        commit_file_pos_;
 
   /* All global variables which can be set by parameters. */
-  volatile bool            master_enabled_;      /* semi-sync is enabled on the master */
+  volatile bool            primary_enabled_;      /* semi-sync is enabled on the primary */
   unsigned long           wait_timeout_;      /* timeout period(ms) during tranx wait */
 
   bool            state_;                    /* whether semi-sync is switched */
@@ -655,8 +655,8 @@ class ReplSemiSyncMaster
     return (state_);
   }
 
-  void set_master_enabled(bool enabled) {
-    master_enabled_ = enabled;
+  void set_primary_enabled(bool enabled) {
+    primary_enabled_ = enabled;
   }
 
   /* Switch semi-sync off because of timeout in transaction waiting. */
@@ -664,15 +664,15 @@ class ReplSemiSyncMaster
 
   void force_switch_on();
 
-  /* Switch semi-sync on when slaves catch up. */
+  /* Switch semi-sync on when replicas catch up. */
   int try_switch_on(const char *log_file_name, my_off_t log_file_pos);
 public:
 
-  ReplSemiSyncMaster();
-  ~ReplSemiSyncMaster();
+  ReplSemiSyncPrimary();
+  ~ReplSemiSyncPrimary();
 
-  bool getMasterEnabled() {
-    return master_enabled_;
+  bool getPrimaryEnabled() {
+    return primary_enabled_;
   }
   void setTraceLevel(unsigned long trace_level) {
     trace_level_ = trace_level;
@@ -681,8 +681,8 @@ public:
       active_tranxs_->trace_level_ = trace_level;
   }
 
-  /* Set if the master has to wait for an ack from the salve or not. */
-  void set_wait_no_slave(const void *val);
+  /* Set if the primary has to wait for an ack from the salve or not. */
+  void set_wait_no_replica(const void *val);
 
   /* Set the transaction wait timeout period, in milliseconds. */
   void setWaitTimeout(unsigned long wait_timeout) {
@@ -694,33 +694,33 @@ public:
    */
   int initObject();
 
-  /* Enable the object to enable semi-sync replication inside the master. */
-  int enableMaster();
+  /* Enable the object to enable semi-sync replication inside the primary. */
+  int enablePrimary();
 
-  /* Enable the object to enable semi-sync replication inside the master. */
-  int disableMaster();
+  /* Enable the object to enable semi-sync replication inside the primary. */
+  int disablePrimary();
 
-  /* Add a semi-sync replication slave */
-  void add_slave();
+  /* Add a semi-sync replication replica */
+  void add_replica();
     
-  /* Remove a semi-sync replication slave */
-  void remove_slave();
+  /* Remove a semi-sync replication replica */
+  void remove_replica();
 
-  /* Is the slave servered by the thread requested semi-sync */
-  bool is_semi_sync_slave();
+  /* Is the replica servered by the thread requested semi-sync */
+  bool is_semi_sync_replica();
 
   /* It parses a reply packet and call reportReplyBinlog to handle it. */
   int reportReplyPacket(uint32 server_id, const uchar *packet,
                         ulong packet_len);
 
   /* In semi-sync replication, reports up to which binlog position we have
-   * received replies from the slave indicating that it already get the events
-   * or that was skipped in the master.
+   * received replies from the replica indicating that it already get the events
+   * or that was skipped in the primary.
    *
    * Input:
    *  log_file_name - (IN)  binlog file name
    *  end_offset    - (IN)  the offset in the binlog file up to which we have
-   *                        the replies from the slave or that was skipped
+   *                        the replies from the replica or that was skipped
    */
   void reportReplyBinlog(const char* log_file_name, my_off_t end_offset);
 
@@ -743,8 +743,8 @@ public:
                 my_off_t trx_wait_binlog_pos);
 
   /* Reserve space in the replication event packet header:
-   *  . slave semi-sync off: 1 byte - (0)
-   *  . slave semi-sync on:  3 byte - (0, 0xef, 0/1}
+   *  . replica semi-sync off: 1 byte - (0)
+   *  . replica semi-sync on:  3 byte - (0, 0xef, 0/1}
    * 
    * Input:
    *  header   - (IN)  the header buffer
@@ -755,15 +755,15 @@ public:
    */
   int reserveSyncHeader(unsigned char *header, unsigned long size);
 
-  /* Update the sync bit in the packet header to indicate to the slave whether
-   * the master will wait for the reply of the event.  If semi-sync is switched
-   * off and we detect that the slave is catching up, we switch semi-sync on.
+  /* Update the sync bit in the packet header to indicate to the replica whether
+   * the primary will wait for the reply of the event.  If semi-sync is switched
+   * off and we detect that the replica is catching up, we switch semi-sync on.
    * 
    * Input:
    *  packet        - (IN)  the packet containing the replication event
    *  log_file_name - (IN)  the event ending position's file name
    *  log_file_pos  - (IN)  the event ending position's file offset
-   *  server_id     - (IN)  master server id number
+   *  server_id     - (IN)  primary server id number
    *
    * Return:
    *  0: success;  non-zero: error
@@ -787,62 +787,62 @@ public:
    */
   int writeTranxInBinlog(const char* log_file_name, my_off_t log_file_pos);
 
-  /* Read the slave's reply so that we know how much progress the slave makes
+  /* Read the replica's reply so that we know how much progress the replica makes
    * on receive replication events.
    * 
    * Input:
-   *  net          - (IN)  the connection to master
-   *  server_id    - (IN)  master server id number
+   *  net          - (IN)  the connection to primary
+   *  server_id    - (IN)  primary server id number
    *  event_buf    - (IN)  pointer to the event packet
    *
    * Return:
    *  0: success;  non-zero: error
    */
-  int readSlaveReply(NET *net, uint32 server_id, const char *event_buf);
+  int readReplicaReply(NET *net, uint32 server_id, const char *event_buf);
 
   /* In semi-sync replication, this method simulates the reception of
    * an reply and executes reportReplyBinlog directly when a transaction
-   * is skipped in the master.
+   * is skipped in the primary.
    *
    * Input:
    *  event_buf     - (IN)  pointer to the event packet
-   *  server_id     - (IN)  master server id numbe
+   *  server_id     - (IN)  primary server id numbe
    *  log_file_name - (IN)  the event ending position's file name
    *  log_file_pos  - (IN)  the event ending position's file offset
    *
    * Return:
    *  0: success;  non-zero: error
    */
-  int skipSlaveReply(const char *event_buf, uint32 server_id,
+  int skipReplicaReply(const char *event_buf, uint32 server_id,
                      const char* log_file_name, my_off_t log_file_pos);
 
   /* Export internal statistics for semi-sync replication. */
   void setExportStats();
 
-  /* 'reset master' command is issued from the user and semi-sync need to
+  /* 'reset primary' command is issued from the user and semi-sync need to
    * go off for that.
    */
-  int resetMaster();
+  int resetPrimary();
 
   /*
-    'SET rpl_semi_sync_master_wait_for_slave_count' command is issued from user
-    and semi-sync need to update rpl_semi_sync_master_wait_for_slave_count and
+    'SET rpl_semi_sync_primary_wait_for_replica_count' command is issued from user
+    and semi-sync need to update rpl_semi_sync_primary_wait_for_replica_count and
     notify ack_container_ to resize itself.
 
     @param[in] new_value The value users want to set to.
 
     @return It returns 0 if succeeds, otherwise 1 is returned.
    */
-  int setWaitSlaveCount(unsigned int new_value);
+  int setWaitReplicaCount(unsigned int new_value);
 
   /*
     Update ack_array after receiving an ack from a dump connection. If any
-    binlog pos is already replied by rpl_semi_sync_master_wait_for_slave_count
-    slaves, it will call reportReplyBinlog to increase received binlog
+    binlog pos is already replied by rpl_semi_sync_primary_wait_for_replica_count
+    replicas, it will call reportReplyBinlog to increase received binlog
     position and wake up waiting transactions. It acquires LOCK_binlog_
     to protect the operation.
 
-    @param[in] server_id  slave server_id of the ack
+    @param[in] server_id  replica server_id of the ack
     @param[in] log_file_name  binlog file name of the ack
     @param[in] log_file_pos   binlog file position of the ack
   */
@@ -850,7 +850,7 @@ public:
                  my_off_t log_file_pos)
   {
     lock();
-    if (rpl_semi_sync_master_wait_for_slave_count == 1)
+    if (rpl_semi_sync_primary_wait_for_replica_count == 1)
       reportReplyBinlog(log_file_name, log_file_pos);
     else
     {
@@ -864,32 +864,32 @@ public:
   }
 };
 
-/* System and status variables for the master component */
-extern char rpl_semi_sync_master_enabled;
-extern char rpl_semi_sync_master_status;
-extern unsigned long rpl_semi_sync_master_clients;
-extern unsigned long rpl_semi_sync_master_timeout;
-extern unsigned long rpl_semi_sync_master_trace_level;
-extern unsigned long rpl_semi_sync_master_yes_transactions;
-extern unsigned long rpl_semi_sync_master_no_transactions;
-extern unsigned long rpl_semi_sync_master_off_times;
-extern unsigned long rpl_semi_sync_master_wait_timeouts;
-extern unsigned long rpl_semi_sync_master_timefunc_fails;
-extern unsigned long rpl_semi_sync_master_num_timeouts;
-extern unsigned long rpl_semi_sync_master_wait_sessions;
-extern unsigned long rpl_semi_sync_master_wait_pos_backtraverse;
-extern unsigned long rpl_semi_sync_master_avg_trx_wait_time;
-extern unsigned long rpl_semi_sync_master_avg_net_wait_time;
-extern unsigned long long rpl_semi_sync_master_net_wait_num;
-extern unsigned long long rpl_semi_sync_master_trx_wait_num;
-extern unsigned long long rpl_semi_sync_master_net_wait_time;
-extern unsigned long long rpl_semi_sync_master_trx_wait_time;
+/* System and status variables for the primary component */
+extern char rpl_semi_sync_primary_enabled;
+extern char rpl_semi_sync_primary_status;
+extern unsigned long rpl_semi_sync_primary_clients;
+extern unsigned long rpl_semi_sync_primary_timeout;
+extern unsigned long rpl_semi_sync_primary_trace_level;
+extern unsigned long rpl_semi_sync_primary_yes_transactions;
+extern unsigned long rpl_semi_sync_primary_no_transactions;
+extern unsigned long rpl_semi_sync_primary_off_times;
+extern unsigned long rpl_semi_sync_primary_wait_timeouts;
+extern unsigned long rpl_semi_sync_primary_timefunc_fails;
+extern unsigned long rpl_semi_sync_primary_num_timeouts;
+extern unsigned long rpl_semi_sync_primary_wait_sessions;
+extern unsigned long rpl_semi_sync_primary_wait_pos_backtraverse;
+extern unsigned long rpl_semi_sync_primary_avg_trx_wait_time;
+extern unsigned long rpl_semi_sync_primary_avg_net_wait_time;
+extern unsigned long long rpl_semi_sync_primary_net_wait_num;
+extern unsigned long long rpl_semi_sync_primary_trx_wait_num;
+extern unsigned long long rpl_semi_sync_primary_net_wait_time;
+extern unsigned long long rpl_semi_sync_primary_trx_wait_time;
 
 /*
-  This indicates whether we should keep waiting if no semi-sync slave
+  This indicates whether we should keep waiting if no semi-sync replica
   is available.
-     0           : stop waiting if detected no avaialable semi-sync slave.
-     1 (default) : keep waiting until timeout even no available semi-sync slave.
+     0           : stop waiting if detected no avaialable semi-sync replica.
+     1 (default) : keep waiting until timeout even no available semi-sync replica.
 */
-extern char rpl_semi_sync_master_wait_no_slave;
-#endif /* SEMISYNC_MASTER_H */
+extern char rpl_semi_sync_primary_wait_no_replica;
+#endif /* SEMISYNC_PRIMARY_H */

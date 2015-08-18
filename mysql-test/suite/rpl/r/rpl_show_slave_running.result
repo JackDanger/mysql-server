@@ -1,41 +1,41 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 SET DEBUG_SYNC= 'RESET';
-include/stop_slave.inc
+include/stop_replica.inc
 set global debug= 'd,dbug.before_get_running_status_yes';
-Slave_running, Slave_IO_Running, Slave_SQL_Running, must be OFF, NO, NO in three following queries
-SHOW STATUS LIKE 'Slave_running';
+Replica_running, Replica_IO_Running, Replica_SQL_Running, must be OFF, NO, NO in three following queries
+SHOW STATUS LIKE 'Replica_running';
 Variable_name	Value
-Slave_running	OFF
-Slave_IO_Running= No
-Slave_SQL_Running= No
-start slave io_thread;
-Slave_running, Slave_IO_Running, Slave_SQL_Running must be OFF Connecting NO in three following queries
-SHOW STATUS LIKE 'Slave_running';
+Replica_running	OFF
+Replica_IO_Running= No
+Replica_SQL_Running= No
+start replica io_thread;
+Replica_running, Replica_IO_Running, Replica_SQL_Running must be OFF Connecting NO in three following queries
+SHOW STATUS LIKE 'Replica_running';
 Variable_name	Value
-Slave_running	OFF
-Slave_IO_Running= Connecting
-Slave_SQL_Running= No
+Replica_running	OFF
+Replica_IO_Running= Connecting
+Replica_SQL_Running= No
 SET DEBUG_SYNC='now SIGNAL signal.io_thread_let_running';
-include/wait_for_slave_param.inc [Slave_IO_Running]
-Slave_running, Slave_IO_Running, Slave_SQL_Running must be OFF YES NO in three following queries
-SHOW STATUS LIKE 'Slave_running';
+include/wait_for_replica_param.inc [Replica_IO_Running]
+Replica_running, Replica_IO_Running, Replica_SQL_Running must be OFF YES NO in three following queries
+SHOW STATUS LIKE 'Replica_running';
 Variable_name	Value
-Slave_running	OFF
-Slave_IO_Running= Yes
-Slave_SQL_Running= No
-start slave sql_thread;
-include/wait_for_slave_sql_to_start.inc
-Slave_running, Slave_IO_Running, Slave_SQL_Running must be ON, YES, YES in three following queries
-SHOW STATUS LIKE 'Slave_running';
+Replica_running	OFF
+Replica_IO_Running= Yes
+Replica_SQL_Running= No
+start replica sql_thread;
+include/wait_for_replica_sql_to_start.inc
+Replica_running, Replica_IO_Running, Replica_SQL_Running must be ON, YES, YES in three following queries
+SHOW STATUS LIKE 'Replica_running';
 Variable_name	Value
-Slave_running	ON
-Slave_IO_Running= Yes
-Slave_SQL_Running= Yes
-include/sync_slave_sql_with_master.inc
+Replica_running	ON
+Replica_IO_Running= Yes
+Replica_SQL_Running= Yes
+include/sync_replica_sql_with_primary.inc
 set global debug= '';
 SET DEBUG_SYNC= 'RESET';
 End of tests

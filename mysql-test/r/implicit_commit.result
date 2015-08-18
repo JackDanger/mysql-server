@@ -408,18 +408,18 @@ IMPLICIT COMMIT
 YES
 drop temporary table t4;
 #
-# SQLCOM_SHOW_MASTER_STAT
+# SQLCOM_SHOW_PRIMARY_STAT
 #
 INSERT INTO db1.trans (a) VALUES (1);
-show master status;
+show primary status;
 CALL db1.test_if_commit();
 IMPLICIT COMMIT
 NO
 #
-# SQLCOM_SHOW_SLAVE_STAT
+# SQLCOM_SHOW_REPLICA_STAT
 #
 INSERT INTO db1.trans (a) VALUES (1);
-show slave status;
+show replica status;
 CALL db1.test_if_commit();
 IMPLICIT COMMIT
 NO
@@ -633,10 +633,10 @@ NO
 # SQLCOM_RELEASE_SAVEPOINT
 #
 #
-# SQLCOM_SLAVE_START
+# SQLCOM_REPLICA_START
 #
 #
-# SQLCOM_SLAVE_STOP
+# SQLCOM_REPLICA_STOP
 #
 #
 # SQLCOM_BEGIN
@@ -647,7 +647,7 @@ CALL db1.test_if_commit();
 IMPLICIT COMMIT
 YES
 #
-# SQLCOM_CHANGE_MASTER
+# SQLCOM_CHANGE_PRIMARY
 #
 #
 # SQLCOM_RENAME_TABLE
@@ -704,10 +704,10 @@ CALL db1.test_if_commit();
 IMPLICIT COMMIT
 NO
 #
-# SQLCOM_SHOW_SLAVE_HOSTS
+# SQLCOM_SHOW_REPLICA_HOSTS
 #
 INSERT INTO db1.trans (a) VALUES (1);
-show slave hosts;
+show replica hosts;
 CALL db1.test_if_commit();
 IMPLICIT COMMIT
 NO
@@ -720,7 +720,7 @@ CALL db1.test_if_commit();
 IMPLICIT COMMIT
 NO
 #
-# SQLCOM_SHOW_NEW_MASTER
+# SQLCOM_SHOW_NEW_PRIMARY
 #
 #
 # SQLCOM_SHOW_WARNS

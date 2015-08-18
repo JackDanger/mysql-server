@@ -2,22 +2,22 @@
 # rpl_colSize                                                    #
 #                                                                #
 # This test is designed to test the changes included in WL#3228. #
-# The changes include the ability to replicate with the master   #
-# having columns that are smaller (shorter) than the slave.      #
+# The changes include the ability to replicate with the primary   #
+# having columns that are smaller (shorter) than the replica.      #
 ##################################################################
 -- source include/not_group_replication_plugin.inc
 -- source include/have_binlog_format_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 
 --echo **** Testing WL#3228 changes. ****
---echo *** Create "wider" table on slave ***
---source include/sync_slave_sql_with_master.inc
+--echo *** Create "wider" table on replica ***
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # Check each column type to verify error 1532 fires (BUG#22086)
 # This check covers only those fields that require additional
-# metadata from the master to be replicated to the slave. These
+# metadata from the primary to be replicated to the replica. These
 # field types are:
 #   MYSQL_TYPE_NEWDECIMAL:
 #   MYSQL_TYPE_FLOAT:
@@ -32,18 +32,18 @@
 # Test: Checking MYSQL_TYPE_NEWDECIMAL fields
 #
 --echo Checking MYSQL_TYPE_NEWDECIMAL fields
-let $test_table_master = CREATE TABLE t1 (a DECIMAL(20, 10));
-let $test_table_slave = CREATE TABLE t1 (a DECIMAL(5,2));
+let $test_table_primary = CREATE TABLE t1 (a DECIMAL(20, 10));
+let $test_table_replica = CREATE TABLE t1 (a DECIMAL(5,2));
 let $test_insert = INSERT INTO t1 VALUES (901251.90125);
 source include/test_fieldsize.inc;
 
-let $test_table_master = CREATE TABLE t1 (a DECIMAL(27, 18));
-let $test_table_slave = CREATE TABLE t1 (a DECIMAL(27, 9));
+let $test_table_primary = CREATE TABLE t1 (a DECIMAL(27, 18));
+let $test_table_replica = CREATE TABLE t1 (a DECIMAL(27, 9));
 let $test_insert = INSERT INTO t1 VALUES (901251.90125);
 source include/test_fieldsize.inc;
 
-let $test_table_master = CREATE TABLE t1 (a NUMERIC(20, 10));
-let $test_table_slave = CREATE TABLE t1 (a NUMERIC(5,2));
+let $test_table_primary = CREATE TABLE t1 (a NUMERIC(20, 10));
+let $test_table_replica = CREATE TABLE t1 (a NUMERIC(5,2));
 let $test_insert = INSERT INTO t1 VALUES (901251.90125);
 source include/test_fieldsize.inc;
 
@@ -51,8 +51,8 @@ source include/test_fieldsize.inc;
 # Test: Checking MYSQL_TYPE_FLOAT fields
 #
 --echo Checking MYSQL_TYPE_FLOAT fields
-let $test_table_master = CREATE TABLE t1 (a FLOAT(47));
-let $test_table_slave = CREATE TABLE t1 (a FLOAT(20));
+let $test_table_primary = CREATE TABLE t1 (a FLOAT(47));
+let $test_table_replica = CREATE TABLE t1 (a FLOAT(20));
 let $test_insert = INSERT INTO t1 VALUES (901251.90125);
 source include/test_fieldsize.inc;
 
@@ -60,13 +60,13 @@ source include/test_fieldsize.inc;
 # Test: Checking MYSQL_TYPE_BIT fields
 #
 --echo Checking MYSQL_TYPE_BIT fields
-let $test_table_master = CREATE TABLE t1 (a BIT(64));
-let $test_table_slave = CREATE TABLE t1 (a BIT(5));
+let $test_table_primary = CREATE TABLE t1 (a BIT(64));
+let $test_table_replica = CREATE TABLE t1 (a BIT(5));
 let $test_insert = INSERT INTO t1 VALUES (B'10101');
 source include/test_fieldsize.inc;
 
-let $test_table_master = CREATE TABLE t1 (a BIT(12));
-let $test_table_slave = CREATE TABLE t1 (a BIT(11));
+let $test_table_primary = CREATE TABLE t1 (a BIT(12));
+let $test_table_replica = CREATE TABLE t1 (a BIT(11));
 let $test_insert = INSERT INTO t1 VALUES (B'10101');
 source include/test_fieldsize.inc;
 
@@ -74,8 +74,8 @@ source include/test_fieldsize.inc;
 # Test: Checking MYSQL_TYPE_SET fields
 #
 --echo Checking MYSQL_TYPE_SET fields
-let $test_table_master = CREATE TABLE t1 (a SET('1','2','3','4','5','6','7','8','9'));
-let $test_table_slave = CREATE TABLE t1 (a SET('4'));
+let $test_table_primary = CREATE TABLE t1 (a SET('1','2','3','4','5','6','7','8','9'));
+let $test_table_replica = CREATE TABLE t1 (a SET('4'));
 let $test_insert = INSERT INTO t1 VALUES ('4');
 source include/test_fieldsize.inc;
 
@@ -83,8 +83,8 @@ source include/test_fieldsize.inc;
 # Test: Checking MYSQL_TYPE_STRING fields
 #
 --echo Checking MYSQL_TYPE_STRING fields
-let $test_table_master = CREATE TABLE t1 (a CHAR(20));
-let $test_table_slave = CREATE TABLE t1 (a CHAR(10));
+let $test_table_primary = CREATE TABLE t1 (a CHAR(20));
+let $test_table_replica = CREATE TABLE t1 (a CHAR(10));
 let $test_insert = INSERT INTO t1 VALUES ('This is a test.');
 source include/test_fieldsize.inc;
 
@@ -92,7 +92,7 @@ source include/test_fieldsize.inc;
 # Test: Checking MYSQL_TYPE_ENUM fields
 #
 --echo Checking MYSQL_TYPE_ENUM fields
-let $test_table_master = CREATE TABLE t1 (a ENUM(
+let $test_table_primary = CREATE TABLE t1 (a ENUM(
             '01','02','03','04','05','06','07','08','09',
             '11','12','13','14','15','16','17','18','19',
             '21','22','23','24','25','26','27','28','29',
@@ -124,7 +124,7 @@ let $test_table_master = CREATE TABLE t1 (a ENUM(
             '281','282','283','284','285','286','287','288','289',
             '291','292','293','294','295','296','297','298','299'
             ));
-let $test_table_slave = CREATE TABLE t1 (a ENUM('44','54'));
+let $test_table_replica = CREATE TABLE t1 (a ENUM('44','54'));
 let $test_insert = INSERT INTO t1 VALUES ('44');
 source include/test_fieldsize.inc;
 
@@ -132,18 +132,18 @@ source include/test_fieldsize.inc;
 # Test: Checking MYSQL_TYPE_VARCHAR fields
 #
 --echo Checking MYSQL_TYPE_VARCHAR fields
-let $test_table_master = CREATE TABLE t1 (a VARCHAR(2000));
-let $test_table_slave = CREATE TABLE t1 (a VARCHAR(100));
+let $test_table_primary = CREATE TABLE t1 (a VARCHAR(2000));
+let $test_table_replica = CREATE TABLE t1 (a VARCHAR(100));
 let $test_insert = INSERT INTO t1 VALUES ('This is a test.');
 source include/test_fieldsize.inc;
 
-let $test_table_master = CREATE TABLE t1 (a VARCHAR(200));
-let $test_table_slave = CREATE TABLE t1 (a VARCHAR(10));
+let $test_table_primary = CREATE TABLE t1 (a VARCHAR(200));
+let $test_table_replica = CREATE TABLE t1 (a VARCHAR(10));
 let $test_insert = INSERT INTO t1 VALUES ('This is a test.');
 source include/test_fieldsize.inc;
 
-let $test_table_master = CREATE TABLE t1 (a VARCHAR(2000));
-let $test_table_slave = CREATE TABLE t1 (a VARCHAR(1000));
+let $test_table_primary = CREATE TABLE t1 (a VARCHAR(2000));
+let $test_table_replica = CREATE TABLE t1 (a VARCHAR(1000));
 let $test_insert = INSERT INTO t1 VALUES ('This is a test.');
 source include/test_fieldsize.inc;
 
@@ -151,20 +151,20 @@ source include/test_fieldsize.inc;
 # Test: Checking MYSQL_TYPE_BLOB fields
 #
 --echo Checking MYSQL_TYPE_BLOB fields
-let $test_table_master = CREATE TABLE t1 (a LONGBLOB);
-let $test_table_slave = CREATE TABLE t1 (a TINYBLOB);
+let $test_table_primary = CREATE TABLE t1 (a LONGBLOB);
+let $test_table_replica = CREATE TABLE t1 (a TINYBLOB);
 let $test_insert = INSERT INTO t1 VALUES ('This is a test.');
 source include/test_fieldsize.inc;
 
-connection slave;
-call mtr.add_suppression("Slave SQL.*Table definition on master and slave does not match: Column 0 ...e mismatch.* Error_code: 1535");
-call mtr.add_suppression("Slave SQL.*Column 0 of table .test.t1. cannot be converted from type.* Error_code: 1677");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+connection replica;
+call mtr.add_suppression("Replica SQL.*Table definition on primary and replica does not match: Column 0 ...e mismatch.* Error_code: 1535");
+call mtr.add_suppression("Replica SQL.*Column 0 of table .test.t1. cannot be converted from type.* Error_code: 1677");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
 --echo *** Cleanup  ***
-connection master;
+connection primary;
 DROP TABLE IF EXISTS t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 # END 5.1 Test Case
 
 --source include/rpl_end.inc

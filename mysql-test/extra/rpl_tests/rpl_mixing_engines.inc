@@ -37,7 +37,7 @@
 
 if ($commands == 'configure')
 {
-  connection master;
+  connection primary;
   
   --disable_query_log
   if ($database_name != 'test')
@@ -165,7 +165,7 @@ if ($commands == 'configure')
 
   DELIMITER ;|
 
-  let $pos_trans_command= query_get_value("SHOW MASTER STATUS", Position, 1);
+  let $pos_trans_command= query_get_value("SHOW PRIMARY STATUS", Position, 1);
 
   let $trans_id= 7;
   let $tb_id= 1;
@@ -176,7 +176,7 @@ if ($commands == 'configure')
 
 if ($commands == 'clean')
 {
-  connection master;
+  connection primary;
 
   --disable_query_log
   --eval use $database_name
@@ -209,7 +209,7 @@ if ($commands == 'clean')
   }
   --enable_query_log
 
-  sync_slave_with_master;
+  sync_replica_with_primary;
 
   --let $commands=
 }
@@ -225,7 +225,7 @@ while ($commands != '')
   if ($verbose)
   {
     --echo -b-b-b-b-b-b-b-b-b-b-b- >> $command << -b-b-b-b-b-b-b-b-b-b-b-
-    let $pos_command= query_get_value("SHOW MASTER STATUS", Position, 1);
+    let $pos_command= query_get_value("SHOW PRIMARY STATUS", Position, 1);
   }
   --enable_query_log
   if ($command == 'B')
@@ -617,7 +617,7 @@ while ($commands != '')
     # due to BUG#13692513.
     --connection server_1
     --source include/show_binlog_events.inc
-    --connection master
+    --connection primary
     --echo -e-e-e-e-e-e-e-e-e-e-e- >> $command << -e-e-e-e-e-e-e-e-e-e-e-
   }
   if ($commands == '')
@@ -626,10 +626,10 @@ while ($commands != '')
     --echo -b-b-b-b-b-b-b-b-b-b-b- >> $rme_initial_commands << -b-b-b-b-b-b-b-b-b-b-b-
     --connection server_1
     --source include/show_binlog_events.inc
-    --connection master
+    --connection primary
     --echo -e-e-e-e-e-e-e-e-e-e-e- >> $rme_initial_commands << -e-e-e-e-e-e-e-e-e-e-e-
     --echo
-    let $pos_trans_command= query_get_value("SHOW MASTER STATUS", Position, 1);
+    let $pos_trans_command= query_get_value("SHOW PRIMARY STATUS", Position, 1);
     let $stmt_id= 1;
     inc $trans_id;
   }

@@ -1,4 +1,4 @@
-#### suite/funcs_1/views/views_master.test
+#### suite/funcs_1/views/views_primary.test
 
 # See BUG#18404149
 set optimizer_switch='condition_fanout_filter=off';

@@ -58,7 +58,7 @@ class BackupData {
   /**
    * Sender(s)
    */
-  friend class BackupMaster;
+  friend class BackupPrimary;
   
   /**
    * Reciver(s)
@@ -86,8 +86,8 @@ public:
   };
 private:
   enum RequestType {
-    ClientToMaster = 1,
-    MasterToSlave  = 2
+    ClientToPrimary = 1,
+    PrimaryToReplica  = 2
   };
   Uint32 requestType;
   
@@ -131,7 +131,7 @@ public:
 private:
   enum ErrorCodes {
     Undefined = 1300,
-    IAmNotMaster  = 1301,
+    IAmNotPrimary  = 1301,
     OutOfBackupRecord = 1302,
     OutOfResources = 1303,
     SequenceFailure = 1304,
@@ -141,7 +141,7 @@ private:
   Uint32 senderData;
   Uint32 errorCode;
   union {
-    Uint32 masterRef;
+    Uint32 primaryRef;
   };
 };
 
@@ -225,7 +225,7 @@ private:
 };
 
 /**
- * A master has finished taking-over backup responsiblility
+ * A primary has finished taking-over backup responsiblility
  */
 class BackupNFCompleteRep {
   friend bool printBACKUP_NF_COMPLETE_REP(FILE*, const Uint32*, Uint32, Uint16);
@@ -248,11 +248,11 @@ public:
   enum RequestType {
     ClientAbort = 1321,
     BackupComplete = 1322,
-    BackupFailure = 1323,  // General backup failure coordinator -> slave
-    LogBufferFull = 1324,  //                        slave -> coordinator
-    FileOrScanError = 1325, //                       slave -> coordinator
-    BackupFailureDueToNodeFail = 1326, //             slave -> slave
-    OkToClean = 1327                  //             master -> slave
+    BackupFailure = 1323,  // General backup failure coordinator -> replica
+    LogBufferFull = 1324,  //                        replica -> coordinator
+    FileOrScanError = 1325, //                       replica -> coordinator
+    BackupFailureDueToNodeFail = 1326, //             replica -> replica
+    OkToClean = 1327                  //             primary -> replica
     
     ,AbortScan = 1328
     ,IncompatibleVersions = 1329

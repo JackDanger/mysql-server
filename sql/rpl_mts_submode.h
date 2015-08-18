@@ -26,16 +26,16 @@ class Mts_submode_database;
 class Mts_submode_logical_clock;
 class Query_log_event;
 class Relay_log_info;
-class Slave_worker;
+class Replica_worker;
 class THD;
 struct TABLE;
-typedef Prealloced_array<Slave_worker*, 4> Slave_worker_array;
+typedef Prealloced_array<Replica_worker*, 4> Replica_worker_array;
 
 
 enum enum_mts_parallel_type {
-  /* Parallel slave based on Database name */
+  /* Parallel replica based on Database name */
   MTS_PARALLEL_TYPE_DB_NAME= 0,
-  /* Parallel slave based on group information from Binlog group commit */
+  /* Parallel replica based on group information from Binlog group commit */
   MTS_PARALLEL_TYPE_LOGICAL_CLOCK= 1
 };
 
@@ -66,12 +66,12 @@ public:
                                   Query_log_event *ev)= 0;
 
   /* returns the least occupied worker. Should be extended in the derieved class  */
-  virtual Slave_worker* get_least_occupied_worker(Relay_log_info* rli,
-                                                  Slave_worker_array *ws,
+  virtual Replica_worker* get_least_occupied_worker(Relay_log_info* rli,
+                                                  Replica_worker_array *ws,
                                                   Log_event *ev)= 0;
-  /* wait for slave workers to finish */
+  /* wait for replica workers to finish */
   virtual int wait_for_workers_to_finish(Relay_log_info *rli,
-                                         Slave_worker *ignore= NULL)=0;
+                                         Replica_worker *ignore= NULL)=0;
 
   virtual ~Mts_submode(){}
 };
@@ -92,16 +92,16 @@ public:
                                                       Query_log_event *ev);
   void detach_temp_tables(THD *thd, const Relay_log_info* rli,
                                                       Query_log_event *ev);
-  Slave_worker* get_least_occupied_worker(Relay_log_info* rli,
-                                          Slave_worker_array *ws,
+  Replica_worker* get_least_occupied_worker(Relay_log_info* rli,
+                                          Replica_worker_array *ws,
                                           Log_event *ev);
   ~Mts_submode_database(){};
   int wait_for_workers_to_finish(Relay_log_info  *rli,
-                                 Slave_worker *ignore= NULL);
+                                 Replica_worker *ignore= NULL);
 };
 
 /**
-  Parallelization using Master parallelization information
+  Parallelization using Primary parallelization information
   For significance of each method check definition of Mts_submode
  */
 class Mts_submode_logical_clock: public Mts_submode
@@ -139,7 +139,7 @@ public:
 
 protected:
   std::pair<uint, my_thread_id> get_server_and_thread_id(TABLE* table);
-  Slave_worker* get_free_worker(Relay_log_info *rli);
+  Replica_worker* get_free_worker(Relay_log_info *rli);
 public:
   Mts_submode_logical_clock();
   int schedule_next_event(Relay_log_info* rli, Log_event *ev);
@@ -147,8 +147,8 @@ public:
                                                       Query_log_event *ev);
   void detach_temp_tables(THD *thd, const Relay_log_info* rli,
                                                       Query_log_event *ev);
-  Slave_worker* get_least_occupied_worker(Relay_log_info* rli,
-                                          Slave_worker_array *ws,
+  Replica_worker* get_least_occupied_worker(Relay_log_info* rli,
+                                          Replica_worker_array *ws,
                                           Log_event *ev);
   /* Sets the force new group variable */
   inline void start_new_group()
@@ -157,7 +157,7 @@ public:
     first_event= true;
   }
   int wait_for_workers_to_finish(Relay_log_info  *rli,
-                                 Slave_worker *ignore= NULL);
+                                 Replica_worker *ignore= NULL);
   bool wait_for_last_committed_trx(Relay_log_info* rli,
                                    longlong last_committed_arg,
                                    longlong lwm_estimate_arg);

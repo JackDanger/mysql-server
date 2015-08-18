@@ -229,7 +229,7 @@ private:
 static inline void rewrite_query_if_needed(THD *thd)
 {
   bool general= (opt_general_log &&
-                 !(opt_general_log_raw || thd->slave_thread));
+                 !(opt_general_log_raw || thd->replica_thread));
 
   if ((thd->sp_runtime_ctx == NULL) &&
       (general || opt_slow_log || opt_bin_log))
@@ -1976,12 +1976,12 @@ static bool check_prepared_statement(Prepared_statement *stmt)
   case SQLCOM_REPAIR:
   case SQLCOM_ANALYZE:
   case SQLCOM_OPTIMIZE:
-  case SQLCOM_CHANGE_MASTER:
+  case SQLCOM_CHANGE_PRIMARY:
   case SQLCOM_CHANGE_REPLICATION_FILTER:
   case SQLCOM_RESET:
   case SQLCOM_FLUSH:
-  case SQLCOM_SLAVE_START:
-  case SQLCOM_SLAVE_STOP:
+  case SQLCOM_REPLICA_START:
+  case SQLCOM_REPLICA_STOP:
   case SQLCOM_INSTALL_PLUGIN:
   case SQLCOM_UNINSTALL_PLUGIN:
   case SQLCOM_CREATE_DB:
@@ -2411,7 +2411,7 @@ bool reinit_stmt_before_use(THD *thd, LEX *lex)
         order->item= &order->item_ptr;
     }
     {
-      SELECT_LEX_UNIT *unit= sl->master_unit();
+      SELECT_LEX_UNIT *unit= sl->primary_unit();
       unit->unclean();
       unit->types.empty();
       /* for derived tables & PS (which can't be reset by Item_subquery) */

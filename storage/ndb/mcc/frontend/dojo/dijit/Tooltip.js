@@ -1,7 +1,7 @@
 //>>built
 require({cache:{"url:dijit/templates/Tooltip.html":"<div class=\"dijitTooltip dijitTooltipLeft\" id=\"dojoTooltip\"\n\t><div class=\"dijitTooltipContainer dijitTooltipContents\" data-dojo-attach-point=\"containerNode\" role='alert'></div\n\t><div class=\"dijitTooltipConnector\" data-dojo-attach-point=\"connectorNode\"></div\n></div>\n"}});
 define("dijit/Tooltip",["dojo/_base/array","dojo/_base/declare","dojo/_base/fx","dojo/dom","dojo/dom-class","dojo/dom-geometry","dojo/dom-style","dojo/_base/lang","dojo/_base/sniff","dojo/_base/window","./_base/manager","./place","./_Widget","./_TemplatedMixin","./BackgroundIframe","dojo/text!./templates/Tooltip.html","."],function(_1,_2,fx,_3,_4,_5,_6,_7,_8,_9,_a,_b,_c,_d,_e,_f,_10){
-var _11=_2("dijit._MasterTooltip",[_c,_d],{duration:_a.defaultDuration,templateString:_f,postCreate:function(){
+var _11=_2("dijit._PrimaryTooltip",[_c,_d],{duration:_a.defaultDuration,templateString:_f,postCreate:function(){
 _9.body().appendChild(this.domNode);
 this.bgIframe=new _e(this.domNode);
 this.fadeIn=fx.fadeIn({node:this.domNode,duration:this.duration,onEnd:_7.hitch(this,"_onShow")});
@@ -103,13 +103,13 @@ this.containerNode.dir=this.textDir;
 }
 }});
 _10.showTooltip=function(_28,_29,_2a,rtl,_2b){
-if(!_16._masterTT){
-_10._masterTT=_16._masterTT=new _11();
+if(!_16._primaryTT){
+_10._primaryTT=_16._primaryTT=new _11();
 }
-return _16._masterTT.show(_28,_29,_2a,rtl,_2b);
+return _16._primaryTT.show(_28,_29,_2a,rtl,_2b);
 };
 _10.hideTooltip=function(_2c){
-return _16._masterTT&&_16._masterTT.hide(_2c);
+return _16._primaryTT&&_16._primaryTT.hide(_2c);
 };
 var _16=_2("dijit.Tooltip",_c,{label:"",showDelay:400,connectId:[],position:[],_setConnectIdAttr:function(_2d){
 _1.forEach(this._connections||[],function(_2e){
@@ -181,7 +181,7 @@ delete this._showTimer;
 this.close();
 this.inherited(arguments);
 }});
-_16._MasterTooltip=_11;
+_16._PrimaryTooltip=_11;
 _16.show=_10.showTooltip;
 _16.hide=_10.hideTooltip;
 _16.defaultPosition=["after","before"];

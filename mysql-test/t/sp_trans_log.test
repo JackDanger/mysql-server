@@ -31,7 +31,7 @@ begin
 end|
 --delimiter ;
 
-reset master;
+reset primary;
 --error ER_DUP_ENTRY
 insert into t2 values (bug23333(),1); 
 # the following must show there are events after the query

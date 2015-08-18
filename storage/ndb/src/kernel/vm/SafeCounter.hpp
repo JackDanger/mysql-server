@@ -21,7 +21,7 @@
 /*************************************************************
  *
  * SafeCounter "automates" three way to node-fais safe protocols
- * for "slave" failures.  This is done by registing "fake" signals
+ * for "replica" failures.  This is done by registing "fake" signals
  * to be sent in case of nodefailure.
  *
  * init<SignalClass>(..., GSN, senderData);

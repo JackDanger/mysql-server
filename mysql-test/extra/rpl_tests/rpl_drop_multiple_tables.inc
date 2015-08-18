@@ -12,7 +12,7 @@
 # --let $table_list= TABLE_LIST
 # --let $remaining_table_list= TABLE_LIST
 # --let $automatic= [0|1]
-# --let $expect_slave_error= [0|1]
+# --let $expect_replica_error= [0|1]
 # --let $transaction_count= N
 # --source include/rpl_gtid_drop_multiple_tables.inc
 #
@@ -27,7 +27,7 @@
 #     This stored procedure will be called in the end of the
 #     execution.  The purpose is to drop any remaining tables.  This
 #     is useful in the case where tables fail to be dropped on the
-#     slave.
+#     replica.
 # 
 # Parameters:
 #
@@ -45,13 +45,13 @@
 #     GTID_NEXT='UUID:NUMBER' (if gtid_mode=on) or
 #     GTID_NEXT='ANONYMOUS' (if gtid_mode=off).
 #
-#   $expect_slave_error
+#   $expect_replica_error
 #     By default, this script assumes the statement executes the same
-#     way on master and slave. It assumes that that the statement is
-#     split, and thus asserts that it fails on master if GTID_MODE=ON
-#     and $automatic=0; otherwise it succeeds on master.  If this
+#     way on primary and replica. It assumes that that the statement is
+#     split, and thus asserts that it fails on primary if GTID_MODE=ON
+#     and $automatic=0; otherwise it succeeds on primary.  If this
 #     variable is 1, the script instead asserts that the statement
-#     succeeds on master and fails on slave.
+#     succeeds on primary and fails on replica.
 #
 #   $transaction_count
 #     The number of transactions that the DROP statement is expected
@@ -64,8 +64,8 @@ CALL create_tables();
 --source include/gtid_step_reset.inc
 
 # Get offset of events
---let $binlog_file= query_get_value(SHOW MASTER STATUS, File, 1)
---let $binlog_position= query_get_value(SHOW MASTER STATUS, Position, 1)
+--let $binlog_file= query_get_value(SHOW PRIMARY STATUS, File, 1)
+--let $binlog_position= query_get_value(SHOW PRIMARY STATUS, Position, 1)
 
 # Set GTID_NEXT.
 --let $expect_error= 0
@@ -122,29 +122,29 @@ if ($expect_error)
 --source include/assert_binlog_events.inc
 
 
-if ($expect_slave_error)
+if ($expect_replica_error)
 {
-  --connection slave
-  --let $slave_sql_errno= convert_error(ER_GTID_UNSAFE_BINLOG_SPLITTABLE_STATEMENT_AND_GTID_GROUP)
-  --source include/wait_for_slave_sql_error.inc
+  --connection replica
+  --let $replica_sql_errno= convert_error(ER_GTID_UNSAFE_BINLOG_SPLITTABLE_STATEMENT_AND_GTID_GROUP)
+  --source include/wait_for_replica_sql_error.inc
 
   --source include/rpl_skip_to_end_of_relay_log.inc
 
   # Drop temp tables.
-  --source include/stop_slave.inc
-  RESET SLAVE;
-  --source include/start_slave.inc
+  --source include/stop_replica.inc
+  RESET REPLICA;
+  --source include/start_replica.inc
 
   # Drop base table.
   if ($remaining_table_list != 'base')
   {
     eval DROP TABLE base;
   }
-  --connection master
+  --connection primary
 
   eval DROP TABLE IF EXISTS base, temp_t, temp_n;
 }
-if (!$expect_slave_error)
+if (!$expect_replica_error)
 {
   # Drop remaining tables.
   if ($remaining_table_list)

@@ -9,7 +9,7 @@ NDB_STTORY -> DICT
 sp = 1
 						      Read schema file
 
----- Master
+---- Primary
 
 NDB_STARTREQ -> DIH
 			   Read sysfile

@@ -1,28 +1,28 @@
 # Check replication of one statement assuming that the engine on the
-# slave is a blackhole engine.
+# replica is a blackhole engine.
 
 # Input:
 # $statement    Statement to evaluate, it is assumed to change t1
 
-# 1. Evaluate statement on master, it is assumed to change t1
-# 2. Wait for statement to be processed on slave
+# 1. Evaluate statement on primary, it is assumed to change t1
+# 2. Wait for statement to be processed on replica
 # 3. SELECT from table t1 to see what was written
-# 4. Compare position on slave before executing statement and after
+# 4. Compare position on replica before executing statement and after
 #    executing statement. If difference is >0, then something was
-#    written to the binary log on the slave.
+#    written to the binary log on the replica.
 
-connection slave;
-let $before = query_get_value("SHOW MASTER STATUS", Position, 1);
+connection replica;
+let $before = query_get_value("SHOW PRIMARY STATUS", Position, 1);
 
---echo [on master]
-connection master;
+--echo [on primary]
+connection primary;
 eval $statement;
 
---echo [on slave]
---source include/sync_slave_sql_with_master.inc
+--echo [on replica]
+--source include/sync_replica_sql_with_primary.inc
 --echo # Expect 0
 SELECT COUNT(*) FROM t1;
-let $after = query_get_value("SHOW MASTER STATUS", Position, 1);
+let $after = query_get_value("SHOW PRIMARY STATUS", Position, 1);
 let $something_written = `select $after - $before != 0`;
 if ($something_written) {
   --echo >>> Something was written to binary log <<<

@@ -1,14 +1,14 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-call mtr.add_suppression("Master command COM_REGISTER_SLAVE failed.");
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+call mtr.add_suppression("Primary command COM_REGISTER_REPLICA failed.");
 call mtr.add_suppression(" * does not exist in the InnoDB internal");
-include/assert.inc [On master, the table should return an empty set.]
+include/assert.inc [On primary, the table should return an empty set.]
 
 # Verify that SELECT works for every field and produces an output
-# similar to the corresponding field in SHOW SLAVE STATUS(SSS).
+# similar to the corresponding field in SHOW REPLICA STATUS(SSS).
 
 include/assert.inc [Value returned by SSS and PS table for Host should be same.]
 include/assert.inc [Value returned by SSS and PS table for Port should be same.]
@@ -39,25 +39,25 @@ set @orig_sql_mode= @@sql_mode;
 set sql_mode= (select replace(@@sql_mode,'NO_AUTO_CREATE_USER',''));
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-grant replication slave on *.* to replssl@localhost require ssl;
+grant replication replica on *.* to replssl@localhost require ssl;
 Warnings:
 Warning	1287	Using GRANT for creating new user is deprecated and will be removed in future release. Create new user with CREATE USER statement.
 set sql_mode= @orig_sql_mode;
 Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-change master to
-master_user= 'replssl',
-master_password= '',
-master_retry_count= 1,
-master_ssl= 1,
-master_ssl_ca= 'MYSQL_TEST_DIR/std_data/cacert.pem',
-master_ssl_cert= 'MYSQL_TEST_DIR/std_data/client-cert.pem',
-master_ssl_key= 'MYSQL_TEST_DIR/std_data/client-key.pem';
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+change primary to
+primary_user= 'replssl',
+primary_password= '',
+primary_retry_count= 1,
+primary_ssl= 1,
+primary_ssl_ca= 'MYSQL_TEST_DIR/std_data/cacert.pem',
+primary_ssl_cert= 'MYSQL_TEST_DIR/std_data/client-cert.pem',
+primary_ssl_key= 'MYSQL_TEST_DIR/std_data/client-key.pem';
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 
 # Checking SSL parameters, they were empty in tests done in the
 # previous section.
@@ -69,8 +69,8 @@ include/assert.inc [Value returned by SSS and PS table for SSL_Certificate shoul
 include/assert.inc [Value returned by SSS and PS table for SSL_Cipher should be same.]
 include/assert.inc [Value returned by SSS and PS table for SSL_Key should be same.]
 include/assert.inc [Value returned by SSS and PS table for SSL_Verify_Server_Certificate should be same.]
-change master to master_ssl=0;
-change master to master_ssl_crl= 'MYSQL_TEST_DIR/std_data/crl-client-revoked.crl', master_ssl_crlpath= 'MYSQL_TEST_DIR/std_data/crldir';
+change primary to primary_ssl=0;
+change primary to primary_ssl_crl= 'MYSQL_TEST_DIR/std_data/crl-client-revoked.crl', primary_ssl_crlpath= 'MYSQL_TEST_DIR/std_data/crldir';
 include/assert.inc [Value returned by SSS and PS table for SSL_Crl_File should be same.]
 include/assert.inc [Value returned by SSS and PS table for SSL_Crl_Path should be same.]
 
@@ -82,12 +82,12 @@ include/rpl_restart_server.inc [server_number=2 gtids=on]
 # 1) Test for Auto_position= 0.
 
 include/assert.inc [Value returned by SSS and PS table for Auto_Position should be same.]
-change master to
-master_user = 'root',
-master_auto_position= 1;
+change primary to
+primary_user = 'root',
+primary_auto_position= 1;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 
 # 2) Test for Auto_position= 1.
 

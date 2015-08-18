@@ -1,6 +1,6 @@
 # TBF - difference in row level logging
 -- source include/have_binlog_format_mixed_or_statement.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 --disable_warnings
 drop database if exists mysqltest1;
@@ -11,68 +11,68 @@ use mysqltest1;
 create table t1 (a int);
 insert into t1 values(9);
 select * from mysqltest1.t1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 show databases like 'mysqltest1'; # should be empty
 select * from test.t1;
 # cleanup
-connection master;
+connection primary;
 drop table t1;
 drop database mysqltest1;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 #
 # BUG#6353:
 #   Option --replicate-rewrite-db should work together with LOAD DATA INFILE
 #
 
-connection slave;
+connection replica;
 --disable_warnings
 drop database if exists rewrite;
 --enable_warnings
 create database rewrite;
 
-connection master;
+connection primary;
 use test;
 create table t1 (a date, b date, c date not null, d date);
 load data infile '../../std_data/loaddata1.dat' ignore into table t1 fields terminated by ',';
 load data infile '../../std_data/loaddata1.dat' into table t1 fields terminated by ',' IGNORE 2 LINES;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
+connection replica;
 select * from rewrite.t1;
 
-connection master;
+connection primary;
 truncate table t1;
 load data infile '../../std_data/loaddata1.dat' ignore into table t1 fields terminated by ',' LINES STARTING BY ',' (b,c,d);
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
+connection replica;
 select * from rewrite.t1;
 
-connection master;
+connection primary;
 drop table t1;
 create table t1 (a text, b text);
 load data infile '../../std_data/loaddata2.dat' ignore into table t1 fields terminated by ',' enclosed by '''';
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
+connection replica;
 select concat('|',a,'|'), concat('|',b,'|') from rewrite.t1;
 
-connection master;
+connection primary;
 drop table t1;
 create table t1 (a int, b char(10));
 load data infile '../../std_data/loaddata3.dat' ignore into table t1 fields terminated by '' enclosed by '' ignore 1 lines;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
+connection replica;
 select * from rewrite.t1;
 
-connection master;
+connection primary;
 truncate table t1;
 load data infile '../../std_data/loaddata4.dat' ignore into table t1 fields terminated by '' enclosed by '' lines terminated by '' ignore 1 lines;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
-connection slave;
+connection replica;
 # The empty line last comes from the end line field in the file
 select * from rewrite.t1;
 
@@ -80,7 +80,7 @@ set sql_log_bin= 0;
 drop database rewrite;
 set sql_log_bin= 1;
 
-connection master;
+connection primary;
 set sql_log_bin= 0;
 drop table t1;
 set sql_log_bin= 1;
@@ -96,24 +96,24 @@ set sql_log_bin= 1;
 --echo ****
 --echo **** Preparing the environment
 --echo ****
-connection master;
+connection primary;
 
-connect (con_temp_03,127.0.0.1,root,,test,$MASTER_MYPORT,);
-connect (con_temp_02,127.0.0.1,root,,test,$MASTER_MYPORT,);
-connect (con_temp_01,127.0.0.1,root,,test,$MASTER_MYPORT,);
+connect (con_temp_03,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+connect (con_temp_02,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
+connect (con_temp_01,127.0.0.1,root,,test,$PRIMARY_MYPORT,);
 
-connection master;
+connection primary;
 SET sql_log_bin= 0;
-CREATE DATABASE database_master_temp_01;
-CREATE DATABASE database_master_temp_02;
-CREATE DATABASE database_master_temp_03;
+CREATE DATABASE database_primary_temp_01;
+CREATE DATABASE database_primary_temp_02;
+CREATE DATABASE database_primary_temp_03;
 SET sql_log_bin= 1;
 
-connection slave;
+connection replica;
 SET sql_log_bin= 0;
-CREATE DATABASE database_slave_temp_01;
-CREATE DATABASE database_slave_temp_02;
-CREATE DATABASE database_slave_temp_03;
+CREATE DATABASE database_replica_temp_01;
+CREATE DATABASE database_replica_temp_02;
+CREATE DATABASE database_replica_temp_03;
 SET sql_log_bin= 1;
 
 --echo
@@ -121,23 +121,23 @@ SET sql_log_bin= 1;
 --echo **** Creating temporary tables on different databases with different connections
 --echo ****
 --echo **** con_temp_01 --> creates
---echo ****                  t_01_01_temp on database_master_temp_01
+--echo ****                  t_01_01_temp on database_primary_temp_01
 --echo ****
 --echo **** con_temp_02 --> creates
---echo ****                  t_01_01_temp on database_master_temp_01
---echo ****                  t_02_01_temp, t_02_02_temp on database_master_temp_02
+--echo ****                  t_01_01_temp on database_primary_temp_01
+--echo ****                  t_02_01_temp, t_02_02_temp on database_primary_temp_02
 --echo ****
 --echo **** con_temp_03 --> creates
---echo ****                  t_01_01_temp on database_master_temp_01
---echo ****                  t_02_01_temp, t_02_02_temp on database_master_temp_02
---echo ****                  t_03_01_temp, t_03_02_temp, t_03_03_temp on database_master_temp_03
+--echo ****                  t_01_01_temp on database_primary_temp_01
+--echo ****                  t_02_01_temp, t_02_02_temp on database_primary_temp_02
+--echo ****                  t_03_01_temp, t_03_02_temp, t_03_03_temp on database_primary_temp_03
 --echo ****
 
 --echo
 --echo con_temp_01
 --echo
 connection con_temp_01;
-USE database_master_temp_01;
+USE database_primary_temp_01;
 CREATE TEMPORARY TABLE t_01_01_temp(a int);
 INSERT INTO t_01_01_temp VALUES(1);
 
@@ -145,10 +145,10 @@ INSERT INTO t_01_01_temp VALUES(1);
 --echo con_temp_02
 --echo
 connection con_temp_02;
-USE database_master_temp_01;
+USE database_primary_temp_01;
 CREATE TEMPORARY TABLE t_01_01_temp(a int);
 INSERT INTO t_01_01_temp VALUES(1);
-USE database_master_temp_02;
+USE database_primary_temp_02;
 CREATE TEMPORARY TABLE t_02_01_temp(a int);
 INSERT INTO t_02_01_temp VALUES(1);
 CREATE TEMPORARY TABLE t_02_02_temp(a int);
@@ -158,15 +158,15 @@ INSERT INTO t_02_02_temp VALUES(1);
 --echo con_temp_03
 --echo
 connection con_temp_03;
-USE database_master_temp_01;
+USE database_primary_temp_01;
 CREATE TEMPORARY TABLE t_01_01_temp(a int);
 INSERT INTO t_01_01_temp VALUES(1);
-USE database_master_temp_02;
+USE database_primary_temp_02;
 CREATE TEMPORARY TABLE t_02_01_temp(a int);
 INSERT INTO t_02_01_temp VALUES(1);
 CREATE TEMPORARY TABLE t_02_02_temp(a int);
 INSERT INTO t_02_02_temp VALUES(1);
-USE database_master_temp_03;
+USE database_primary_temp_03;
 CREATE TEMPORARY TABLE t_03_01_temp(a int);
 INSERT INTO t_03_01_temp VALUES(1);
 CREATE TEMPORARY TABLE t_03_02_temp(a int);
@@ -177,15 +177,15 @@ INSERT INTO t_03_03_temp VALUES(1);
 --echo
 --echo **** Dropping the connections
 --echo **** To be sure that the DROP statements have been logged, we make
---echo **** sure that the number of open temporary tables at slave becomes
+--echo **** sure that the number of open temporary tables at replica becomes
 --echo **** zero. If not,the test will time out.
 --echo
-connection master;
---source include/sync_slave_sql_with_master.inc
-connection slave;
-show status like 'Slave_open_temp_tables';
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
+connection replica;
+show status like 'Replica_open_temp_tables';
 
-connection master;
+connection primary;
 flush logs;
 
 connection con_temp_01;
@@ -201,10 +201,10 @@ disconnect con_temp_03;
 --source include/wait_until_disconnected.inc
 
 --echo
---echo **** Wait until number of open temporary tables at slave becomes zero
+--echo **** Wait until number of open temporary tables at replica becomes zero
 --echo
-connection slave;
---let $status_var= Slave_open_temp_tables
+connection replica;
+--let $status_var= Replica_open_temp_tables
 --let $status_var_value= 0
 # The below include file accepts time in units of tenths of seconds.
 # Hence 3 minutes = 1800.
@@ -214,8 +214,8 @@ connection slave;
 --echo
 --echo **** Check if every drop temporary table command is prepended with "use"
 --echo
-connection master;
---let $current_binlog_file= query_get_value(SHOW MASTER STATUS,File,1)
+connection primary;
+--let $current_binlog_file= query_get_value(SHOW PRIMARY STATUS,File,1)
 --let $count_drop= 0
 --let $event_number= 1
 --let $binlog_event= query_get_value(SHOW BINLOG EVENTS IN '$current_binlog_file', Info, $event_number)
@@ -236,22 +236,22 @@ while($binlog_event != No such row)
 --echo ****
 --echo **** Cleaning up the test case
 --echo ****
-connection master;
+connection primary;
 SET sql_log_bin= 0;
-DROP DATABASE database_master_temp_01;
-DROP DATABASE database_master_temp_02;
-DROP DATABASE database_master_temp_03;
+DROP DATABASE database_primary_temp_01;
+DROP DATABASE database_primary_temp_02;
+DROP DATABASE database_primary_temp_03;
 SET sql_log_bin= 1;
 
-connection slave;
+connection replica;
 SET sql_log_bin= 0;
-DROP DATABASE database_slave_temp_01;
-DROP DATABASE database_slave_temp_02;
-DROP DATABASE database_slave_temp_03;
+DROP DATABASE database_replica_temp_01;
+DROP DATABASE database_replica_temp_02;
+DROP DATABASE database_replica_temp_03;
 SET sql_log_bin= 1;
 
-connection master;
---source include/sync_slave_sql_with_master.inc
+connection primary;
+--source include/sync_replica_sql_with_primary.inc
 
 # end of 5.0 tests
 --source include/rpl_end.inc

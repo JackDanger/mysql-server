@@ -1,14 +1,14 @@
-stop slave;
+stop replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-reset master;
-reset slave;
+reset primary;
+reset replica;
 drop table if exists t1,t2,t3,t4,t5,t6,t7,t8,t9;
-start slave;
+start replica;
 DROP TABLE IF EXISTS t1;
 **** Testing WL#3228 changes. ****
-*** Create "wider" table on slave ***
-STOP SLAVE;
-RESET SLAVE;
+*** Create "wider" table on replica ***
+STOP REPLICA;
+RESET REPLICA;
 CREATE TABLE t1 (
 a float     (47),
 b double    (143,9),
@@ -30,7 +30,7 @@ r TEXT,
 s MEDIUMTEXT,
 t LONGTEXT
 );
-*** Create same table on master but with narrow columns ***
+*** Create same table on primary but with narrow columns ***
 CREATE TABLE t1 (
 a float     (44),
 b double    (10,3),
@@ -52,10 +52,10 @@ r TEXT,
 s MEDIUMTEXT,
 t LONGTEXT
 );
-RESET MASTER;
+RESET PRIMARY;
 *** Start replication ***
-START SLAVE;
-*** Insert data on master and display it. ***
+START REPLICA;
+*** Insert data on primary and display it. ***
 INSERT INTO t1 () VALUES (
 17.567, 
 2.123, 
@@ -79,24 +79,24 @@ hex(64),
 SELECT * FROM t1 ORDER BY a;
 a	b	c	d	e	f	g	h	j	k	l	m	n	o	p	q	r	s	t
 17.567	2.123	10.20	125	#	TEST	This is a test	#	more binary data	6	7	blob 1	blob  2	blob   3	blob    4	text 1	text  2	text   3	text    4
-*** Select data from slave to compare ***
+*** Select data from replica to compare ***
 SELECT * FROM t1 ORDER BY a;
 a	b	c	d	e	f	g	h	j	k	l	m	n	o	p	q	r	s	t
 17.567	2.123000000	10.200000000000000000000000000000	125	#	TEST	This is a test	#	more binary data	6	7	blob 1	blob  2	blob   3	blob    4	text 1	text  2	text   3	text    4
 DROP TABLE t1;
-Create varchar table on master
+Create varchar table on primary
 CREATE TABLE t1 (
 a VARCHAR(50),
 b VARCHAR(100),
 c VARCHAR(300),
 d CHAR(5)
 );
-Alter varchar table on slave
+Alter varchar table on replica
 ALTER TABLE t1 CHANGE COLUMN a a VARCHAR(100);
 ALTER TABLE t1 CHANGE COLUMN b b VARCHAR(400);
 ALTER TABLE t1 CHANGE COLUMN c c VARCHAR(500);
 ALTER TABLE t1 CHANGE COLUMN d d CHAR(100);
-Insert some values and select them on master
+Insert some values and select them on primary
 INSERT INTO t1 VALUES ("This is a test of col a.", 
 "This is another test of col b.",
 "This is a test of the large col c.",
@@ -112,7 +112,7 @@ t1	CREATE TABLE `t1` (
   `c` varchar(300) DEFAULT NULL,
   `d` char(5) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
-Insert some values and select them on slave
+Insert some values and select them on replica
 SELECT * FROM t1;
 a	b	c	d
 This is a test of col a.	This is another test of col b.	This is a test of the large col c.	Col d
@@ -125,7 +125,7 @@ t1	CREATE TABLE `t1` (
   `d` char(100) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 DROP TABLE t1;
-Create bit table on master
+Create bit table on primary
 CREATE TABLE t1 (
 a BIT(7),
 b BIT(8),
@@ -133,7 +133,7 @@ c BIT(21),
 d BIT(11),
 e BIT(11)
 );
-Create bit table on slave
+Create bit table on replica
 DROP TABLE t1;
 CREATE TABLE t1 (
 a BIT(16),
@@ -142,7 +142,7 @@ c BIT(54),
 d BIT(25),
 e BIT(13)
 );
-Insert some values and select them on master
+Insert some values and select them on primary
 INSERT INTO t1 VALUES (
 b'1010101',
 b'10101011',
@@ -162,7 +162,7 @@ t1	CREATE TABLE `t1` (
   `d` bit(11) DEFAULT NULL,
   `e` bit(11) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
-Insert some values and select them on master
+Insert some values and select them on primary
 SELECT BIN(a), BIN(b), BIN(c), BIN(d), BIN(e) FROM t1;
 BIN(a)	BIN(b)	BIN(c)	BIN(d)	BIN(e)
 1010101	10101011	101010110101010101111	10101010101	10101011111

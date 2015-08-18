@@ -458,8 +458,8 @@ var PlotEvents = dojox.charting.plot2d._PlotEvents;
 				});
 				return anim;
 			});
-			var masterAnimation = coreFx.combine(anims.concat(anims1)); //dojo.fx.chain(anims);
-			masterAnimation.play();
+			var primaryAnimation = coreFx.combine(anims.concat(anims1)); //dojo.fx.chain(anims);
+			primaryAnimation.play();
 			return {group :ts, poly: spoly, circles: scircle};
 		},
 		plotEvent: function(o){

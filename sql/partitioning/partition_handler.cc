@@ -781,7 +781,7 @@ void Partition_helper
     where the number of candidate rows to insert is not known in advance
     we must hold a lock/mutex for the whole statement if we have statement
     based replication. Because the statement-based binary log contains
-    only the first generated value used by the statement, and slaves assumes
+    only the first generated value used by the statement, and replicas assumes
     all other generated values used by this statement were consecutive to
     this first one, we must exclusively lock the generator until the statement
     is done.

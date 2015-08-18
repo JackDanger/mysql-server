@@ -1,370 +1,370 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
-call mtr.add_suppression("Slave I/O: The slave I/O thread stops because a fatal error is encountered when it tried to SET @master_binlog_checksum");
-call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
+call mtr.add_suppression("Replica I/O: The replica I/O thread stops because a fatal error is encountered when it tried to SET @primary_binlog_checksum");
+call mtr.add_suppression("The replica coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
 *** Preparing ***
-include/sync_slave_sql_with_master.inc
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-SET @restore_slave_net_timeout=@@global.slave_net_timeout;
-RESET MASTER;
-SET @restore_slave_net_timeout=@@global.slave_net_timeout;
+include/sync_replica_sql_with_primary.inc
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+SET @restore_replica_net_timeout=@@global.replica_net_timeout;
+RESET PRIMARY;
+SET @restore_replica_net_timeout=@@global.replica_net_timeout;
 SET @restore_event_scheduler=@@global.event_scheduler;
 
 *** Default value ***
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root';
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root';
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-slave_net_timeout/slave_heartbeat_timeout=2.0000
-RESET SLAVE;
-RESET MASTER;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+replica_net_timeout/replica_heartbeat_timeout=2.0000
+RESET REPLICA;
+RESET PRIMARY;
 
-*** Reset slave affect ***
-SET @@global.slave_net_timeout=30;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=5;
+*** Reset replica affect ***
+SET @@global.replica_net_timeout=30;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=5;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-RESET SLAVE;
-RESET MASTER;
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+RESET REPLICA;
+RESET PRIMARY;
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	5.000
+Replica_heartbeat_period	5.000
 
-*** Default value if slave_net_timeout changed ***
-SET @@global.slave_net_timeout=50;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20;
+*** Default value if replica_net_timeout changed ***
+SET @@global.replica_net_timeout=50;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	25.000
-SET @@global.slave_net_timeout=@restore_slave_net_timeout;
-RESET SLAVE;
-RESET MASTER;
+Replica_heartbeat_period	25.000
+SET @@global.replica_net_timeout=@restore_replica_net_timeout;
+RESET REPLICA;
+RESET PRIMARY;
 
-*** Warning if updated slave_net_timeout < slave_heartbeat_timeout ***
-SET @@global.slave_net_timeout=FLOOR(SLAVE_HEARTBEAT_TIMEOUT)-1;
+*** Warning if updated replica_net_timeout < replica_heartbeat_timeout ***
+SET @@global.replica_net_timeout=FLOOR(REPLICA_HEARTBEAT_TIMEOUT)-1;
 Warnings:
-Warning	1704	The requested value for the heartbeat period exceeds the value of `slave_net_timeout' seconds. A sensible value for the period should be less than the timeout.
-SET @@global.slave_net_timeout=@restore_slave_net_timeout;
-RESET SLAVE;
-RESET MASTER;
+Warning	1704	The requested value for the heartbeat period exceeds the value of `replica_net_timeout' seconds. A sensible value for the period should be less than the timeout.
+SET @@global.replica_net_timeout=@restore_replica_net_timeout;
+RESET REPLICA;
+RESET PRIMARY;
 
-*** Warning if updated slave_heartbeat_timeout > slave_net_timeout ***
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=SLAVE_NET_TIMEOUT;
+*** Warning if updated replica_heartbeat_timeout > replica_net_timeout ***
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=REPLICA_NET_TIMEOUT;
 Warnings:
-Warning	####	The requested value for the heartbeat period exceeds the value of `slave_net_timeout' seconds. A sensible value for the period should be less than the timeout.
+Warning	####	The requested value for the heartbeat period exceeds the value of `replica_net_timeout' seconds. A sensible value for the period should be less than the timeout.
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-RESET SLAVE;
-RESET MASTER;
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+RESET REPLICA;
+RESET PRIMARY;
 
-*** CHANGE MASTER statement only updates slave_heartbeat_period ***
-SET @@global.slave_net_timeout=20;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=5;
-Warnings:
-Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-SHOW VARIABLES LIKE 'slave_net_timeout';
-Variable_name	Value
-slave_net_timeout	20
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
-Variable_name	Value
-Slave_heartbeat_period	5.000
-SET @@global.slave_net_timeout=2*@@global.slave_net_timeout;
-SHOW VARIABLES LIKE 'slave_net_timeout';
-Variable_name	Value
-slave_net_timeout	40
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
-Variable_name	Value
-Slave_heartbeat_period	5.000
-SET @@global.slave_net_timeout=@restore_slave_net_timeout;
-RESET SLAVE;
-RESET MASTER;
-
-*** Update slave_net_timeout on master ***
-SET @@global.slave_net_timeout=500;
-SET @@global.slave_net_timeout=200;
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20;
+*** CHANGE PRIMARY statement only updates replica_heartbeat_period ***
+SET @@global.replica_net_timeout=20;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=5;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-SHOW VARIABLES LIKE 'slave_net_timeout';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+SHOW VARIABLES LIKE 'replica_net_timeout';
 Variable_name	Value
-slave_net_timeout	200
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+replica_net_timeout	20
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	100.000
-SET @@global.slave_net_timeout=@restore_slave_net_timeout;
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-SET @@global.slave_net_timeout=@restore_slave_net_timeout;
+Replica_heartbeat_period	5.000
+SET @@global.replica_net_timeout=2*@@global.replica_net_timeout;
+SHOW VARIABLES LIKE 'replica_net_timeout';
+Variable_name	Value
+replica_net_timeout	40
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
+Variable_name	Value
+Replica_heartbeat_period	5.000
+SET @@global.replica_net_timeout=@restore_replica_net_timeout;
+RESET REPLICA;
+RESET PRIMARY;
 
-*** Start/stop slave ***
-SET @@global.slave_net_timeout=100;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=20;
+*** Update replica_net_timeout on primary ***
+SET @@global.replica_net_timeout=500;
+SET @@global.replica_net_timeout=200;
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+SHOW VARIABLES LIKE 'replica_net_timeout';
 Variable_name	Value
-Slave_heartbeat_period	20.000
-include/stop_slave.inc
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+replica_net_timeout	200
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	20.000
+Replica_heartbeat_period	100.000
+SET @@global.replica_net_timeout=@restore_replica_net_timeout;
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+SET @@global.replica_net_timeout=@restore_replica_net_timeout;
 
-*** Reload slave ***
-SET @@global.slave_net_timeout=50;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=30;
+*** Start/stop replica ***
+SET @@global.replica_net_timeout=100;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=20;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
+Variable_name	Value
+Replica_heartbeat_period	20.000
+include/stop_replica.inc
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
+Variable_name	Value
+Replica_heartbeat_period	20.000
+
+*** Reload replica ***
+SET @@global.replica_net_timeout=50;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=30;
+Warnings:
+Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 include/rpl_restart_server.inc [server_number=2]
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	30.000
-SET @restore_slave_net_timeout=@@global.slave_net_timeout;
+Replica_heartbeat_period	30.000
+SET @restore_replica_net_timeout=@@global.replica_net_timeout;
 
 *** Disable heartbeat ***
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=0;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=0;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	0.000
-SHOW STATUS LIKE 'slave_received_heartbeats';
+Replica_heartbeat_period	0.000
+SHOW STATUS LIKE 'replica_received_heartbeats';
 Variable_name	Value
-Slave_received_heartbeats	0
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Replica_received_heartbeats	0
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	0.000
-SHOW STATUS LIKE 'slave_received_heartbeats';
+Replica_heartbeat_period	0.000
+SHOW STATUS LIKE 'replica_received_heartbeats';
 Variable_name	Value
-Slave_received_heartbeats	0
-include/stop_slave.inc
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Replica_received_heartbeats	0
+include/stop_replica.inc
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	0.000
-SHOW STATUS LIKE 'slave_received_heartbeats';
+Replica_heartbeat_period	0.000
+SHOW STATUS LIKE 'replica_received_heartbeats';
 Variable_name	Value
-Slave_received_heartbeats	0
-RESET SLAVE;
-RESET MASTER;
-SELECT SLAVE_HEARTBEAT_TIMEOUT = 0 AS Result;
+Replica_received_heartbeats	0
+RESET REPLICA;
+RESET PRIMARY;
+SELECT REPLICA_HEARTBEAT_TIMEOUT = 0 AS Result;
 Result
 1
 
-*** Min slave_heartbeat_timeout ***
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=0.001;
+*** Min replica_heartbeat_timeout ***
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=0.001;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	0.001
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=0.0009;
+Replica_heartbeat_period	0.001
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=0.0009;
 Warnings:
 Warning	####	The requested value for the heartbeat period is less than 1 millisecond. The value is reset to 0, meaning that heartbeating will effectively be disabled.
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	0.000
-RESET SLAVE;
-RESET MASTER;
+Replica_heartbeat_period	0.000
+RESET REPLICA;
+RESET PRIMARY;
 
-*** Max slave_heartbeat_timeout ***
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=4294967;
+*** Max replica_heartbeat_timeout ***
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=4294967;
 Warnings:
-Warning	####	The requested value for the heartbeat period exceeds the value of `slave_net_timeout' seconds. A sensible value for the period should be less than the timeout.
+Warning	####	The requested value for the heartbeat period exceeds the value of `replica_net_timeout' seconds. A sensible value for the period should be less than the timeout.
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-SHOW GLOBAL STATUS LIKE 'slave_heartbeat_period';
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+SHOW GLOBAL STATUS LIKE 'replica_heartbeat_period';
 Variable_name	Value
-Slave_heartbeat_period	4294967.000
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=4294968;
+Replica_heartbeat_period	4294967.000
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=4294968;
 ERROR HY000: The requested value for the heartbeat period is either negative or exceeds the maximum allowed (4294967 seconds).
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=8589935;
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=8589935;
 ERROR HY000: The requested value for the heartbeat period is either negative or exceeds the maximum allowed (4294967 seconds).
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=4294967296;
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=4294967296;
 ERROR HY000: The requested value for the heartbeat period is either negative or exceeds the maximum allowed (4294967 seconds).
-RESET SLAVE;
-RESET MASTER;
+RESET REPLICA;
+RESET PRIMARY;
 
 *** Misc incorrect values ***
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD='-1';
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD='-1';
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''-1'' at line 1
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD='123abc';
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD='123abc';
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''123abc'' at line 1
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD='';
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD='';
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '''' at line 1
-RESET SLAVE;
-RESET MASTER;
+RESET REPLICA;
+RESET PRIMARY;
 
-*** Running slave ***
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD= 3.0;
+*** Running replica ***
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD= 3.0;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
 SELECT unix_timestamp() into @time_0;
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
 SELECT unix_timestamp() into @time_1;
 Heartbeat event received
 
-*** Stopped slave ***
-include/stop_slave.inc
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD= 0.1;
+*** Stopped replica ***
+include/stop_replica.inc
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD= 0.1;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-Number of received heartbeat events while slave stopped: 0
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+Number of received heartbeat events while replica stopped: 0
 
-*** Started slave ***
-include/start_slave.inc
+*** Started replica ***
+include/start_replica.inc
 Heartbeat event received
 
 *** Stopped IO thread ***
-include/stop_slave_io.inc
+include/stop_replica_io.inc
 Number of received heartbeat events while io thread stopped: 0
 
 *** Started IO thread ***
-START SLAVE IO_THREAD;
-include/wait_for_slave_io_to_start.inc
+START REPLICA IO_THREAD;
+include/wait_for_replica_io_to_start.inc
 Heartbeat event received
 
 *** Stopped SQL thread ***
-include/stop_slave_sql.inc
+include/stop_replica_sql.inc
 Heartbeat events are received while sql thread stopped (1 means 'yes'): 1
 
 *** Started SQL thread ***
-START SLAVE SQL_THREAD;
-include/wait_for_slave_sql_to_start.inc
+START REPLICA SQL_THREAD;
+include/wait_for_replica_sql_to_start.inc
 Heartbeat event received
 
 *** Stopped SQL thread by error ***
 CREATE TABLE t1 (a INT PRIMARY KEY, b VARCHAR(10), c LONGTEXT);
-include/sync_slave_sql_with_master.inc
-INSERT INTO t1 VALUES (1, 'on slave', NULL);
-INSERT INTO t1 VALUES (1, 'on master', NULL);
-call mtr.add_suppression("Slave SQL.*Duplicate entry .1. for key .PRIMARY.. on query.* Error_code: 1062");
-call mtr.add_suppression("Slave SQL.*Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
+include/sync_replica_sql_with_primary.inc
+INSERT INTO t1 VALUES (1, 'on replica', NULL);
+INSERT INTO t1 VALUES (1, 'on primary', NULL);
+call mtr.add_suppression("Replica SQL.*Duplicate entry .1. for key .PRIMARY.. on query.* Error_code: 1062");
+call mtr.add_suppression("Replica SQL.*Request to stop replica SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
 Heartbeat events are received while sql thread stopped (1 means 'yes'): 1
-include/stop_slave.inc
+include/stop_replica.inc
 DELETE FROM t1;
-include/start_slave.inc
-include/sync_slave_sql_with_master.inc
+include/start_replica.inc
+include/sync_replica_sql_with_primary.inc
 DROP TABLE t1;
 
-include/sync_slave_sql_with_master.inc
-*** Flush logs on slave ***
+include/sync_replica_sql_with_primary.inc
+*** Flush logs on replica ***
 include/rpl_reset.inc
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=0.5;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=0.5;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
 include/assert.inc [Should receive at least one heartbeat event while running FLUSH LOGS for 10 seconds]
 
 *** Compressed protocol ***
-SET @@global.slave_compressed_protocol=1;
-include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
-SET @@global.slave_compressed_protocol=1;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=0.1;
+SET @@global.replica_compressed_protocol=1;
+include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+SET @@global.replica_compressed_protocol=1;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=0.1;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
 Heartbeat event received
-SET @@global.slave_compressed_protocol=0;
-SET @@global.slave_compressed_protocol=0;
+SET @@global.replica_compressed_protocol=0;
+SET @@global.replica_compressed_protocol=0;
 
-*** Reset master ***
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=0.1;
+*** Reset primary ***
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=0.1;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
-RESET MASTER;
-include/sync_slave_sql_with_master.inc
-Heartbeat events are received after reset of master (1 means 'yes'): 1
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
+RESET PRIMARY;
+include/sync_replica_sql_with_primary.inc
+Heartbeat events are received after reset of primary (1 means 'yes'): 1
 
-*** Reload master ***
-STOP SLAVE;
-RESET SLAVE;
-RESET MASTER;
-CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=MASTER_PORT, MASTER_USER='root', MASTER_CONNECT_RETRY=20, MASTER_HEARTBEAT_PERIOD=0.1;
+*** Reload primary ***
+STOP REPLICA;
+RESET REPLICA;
+RESET PRIMARY;
+CHANGE PRIMARY TO PRIMARY_HOST='127.0.0.1', PRIMARY_PORT=PRIMARY_PORT, PRIMARY_USER='root', PRIMARY_CONNECT_RETRY=20, PRIMARY_HEARTBEAT_PERIOD=0.1;
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-include/start_slave.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+include/start_replica.inc
 Heartbeat event received
 include/rpl_restart_server.inc [server_number=1]
-include/wait_for_slave_io_to_start.inc
+include/wait_for_replica_io_to_start.inc
 Heartbeat event received
 
 *** Circular replication ***
 include/rpl_reset.inc
-include/stop_slave.inc
+include/stop_replica.inc
 include/rpl_change_topology.inc [new topology=1->2->1]
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-CHANGE MASTER TO MASTER_HEARTBEAT_PERIOD=1;
-include/start_slave.inc
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+CHANGE PRIMARY TO PRIMARY_HEARTBEAT_PERIOD=1;
+include/start_replica.inc
 CREATE TABLE t1 (a INT PRIMARY KEY, b VARCHAR(10));
-INSERT INTO t1 VALUES(1, 'on master');
-CHANGE MASTER TO MASTER_HEARTBEAT_PERIOD=0.1;
-include/start_slave.inc
-INSERT INTO t1 VALUES(2, 'on slave');
-include/sync_slave_sql_with_master.inc
+INSERT INTO t1 VALUES(1, 'on primary');
+CHANGE PRIMARY TO PRIMARY_HEARTBEAT_PERIOD=0.1;
+include/start_replica.inc
+INSERT INTO t1 VALUES(2, 'on replica');
+include/sync_replica_sql_with_primary.inc
 SELECT * FROM t1 ORDER BY a;
 a	b
-1	on master
-2	on slave
+1	on primary
+2	on replica
 SELECT * FROM t1 ORDER BY a;
 a	b
-1	on master
-2	on slave
-Heartbeat event received on master
-Heartbeat event received on slave
+1	on primary
+2	on replica
+Heartbeat event received on primary
+Heartbeat event received on replica
 *** Clean up ***
 DROP TABLE t1;
-SET @@global.slave_net_timeout=@restore_slave_net_timeout;
+SET @@global.replica_net_timeout=@restore_replica_net_timeout;
 include/rpl_end.inc

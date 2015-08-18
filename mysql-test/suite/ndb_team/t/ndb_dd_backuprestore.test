@@ -69,7 +69,7 @@ ENGINE = NDB;
 DROP LOGFILE GROUP log_group1
 ENGINE =NDB;
 
--- source include/ndb_restore_master.inc
+-- source include/ndb_restore_primary.inc
 
 SELECT COUNT(*) FROM test.t1; 
 
@@ -143,7 +143,7 @@ ENGINE = NDB;
 DROP LOGFILE GROUP log_group1
 ENGINE =NDB;
 
--- source include/ndb_restore_master.inc
+-- source include/ndb_restore_primary.inc
 
 SELECT COUNT(*) FROM test.t1;
 
@@ -278,7 +278,7 @@ ENGINE = NDB;
 DROP LOGFILE GROUP log_group1
 ENGINE =NDB;
 
--- source include/ndb_restore_master.inc
+-- source include/ndb_restore_primary.inc
 
 
 SHOW CREATE TABLE test.t1;

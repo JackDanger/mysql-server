@@ -1,8 +1,8 @@
-include/master-slave.inc
+include/primary-replica.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.
-Note	####	Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
-[connection master]
+Note	####	Storing MySQL user name or password information in the primary info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START REPLICA; see the 'START REPLICA Syntax' in the MySQL Manual for more information.
+[connection primary]
 
 ---Setup Section  --
 set timestamp=1000000000;
@@ -77,17 +77,17 @@ flush logs;
 
 --- Test 1 Dump binlog to file --
 
---- Test 1 delete tables, clean master and slave  --
+--- Test 1 delete tables, clean primary and replica  --
 DROP TABLE t1;
 DROP TABLE t2;
 DROP TABLE t3;
-stop slave;
-include/wait_for_slave_to_stop.inc
-reset master;
-reset slave;
-reset master;
-start slave;
-include/wait_for_slave_to_start.inc
+stop replica;
+include/wait_for_replica_to_stop.inc
+reset primary;
+reset replica;
+reset primary;
+start replica;
+include/wait_for_replica_to_start.inc
 
 --- Test 1 Load from Dump binlog file --
 
@@ -155,7 +155,7 @@ c1	c3	c4	c5
 
 --- Test 2 position test --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -178,11 +178,11 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 --- Test 3 First Remote test --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -218,19 +218,19 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 --- Test 4 Second Remote test --
 DROP TABLE t1;
 DROP TABLE t2;
 DROP TABLE t3;
-stop slave;
-include/wait_for_slave_to_stop.inc
-reset master;
-reset slave;
-reset master;
-start slave;
-include/wait_for_slave_to_start.inc
+stop replica;
+include/wait_for_replica_to_stop.inc
+reset primary;
+reset replica;
+reset primary;
+start replica;
+include/wait_for_replica_to_start.inc
 SELECT COUNT(*) from t1;
 COUNT(*)
 352
@@ -294,18 +294,18 @@ c1	c3	c4	c5
 
 --- Test 5 LOAD DATA --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 --- Test 6 reading stdin --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -341,11 +341,11 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 --- Test 7 reading stdin w/position --
 include/mysqlbinlog.inc
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=1*/;
 /*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
 DELIMITER /*!*/;
 ROLLBACK/*!*/;
@@ -368,16 +368,16 @@ DELIMITER ;
 # End of log file
 ROLLBACK /* added by mysqlbinlog */;
 /*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
-/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+/*!50530 SET @@SESSION.PSEUDO_REPLICA_MODE=0*/;
 
 --- Test 8 switch internal charset --
-stop slave;
-include/wait_for_slave_to_stop.inc
-reset master;
-reset slave;
-reset master;
-start slave;
-include/wait_for_slave_to_start.inc
+stop replica;
+include/wait_for_replica_to_stop.inc
+reset primary;
+reset replica;
+reset primary;
+start replica;
+include/wait_for_replica_to_start.inc
 create table t4 (f text character set utf8);
 create table t5 (f text character set cp932);
 flush logs;

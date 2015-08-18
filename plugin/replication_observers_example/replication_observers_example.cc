@@ -336,7 +336,7 @@ static int binlog_relay_applier_stop_call= 0;
 static int binlog_relay_before_request_transmit_call= 0;
 static int binlog_relay_after_read_event_call= 0;
 static int binlog_relay_after_queue_event_call= 0;
-static int binlog_relay_after_reset_slave_call= 0;
+static int binlog_relay_after_reset_replica_call= 0;
 
 static void dump_binlog_relay_calls()
 {
@@ -382,11 +382,11 @@ static void dump_binlog_relay_calls()
                           "\nreplication_observers_example_plugin:binlog_relay_after_queue_event");
   }
 
-  if (binlog_relay_after_reset_slave_call)
+  if (binlog_relay_after_reset_replica_call)
   {
     my_plugin_log_message(&plugin_info_ptr,
                           MY_INFORMATION_LEVEL,
-                          "\nreplication_observers_example_plugin:binlog_relay_after_reset_slave");
+                          "\nreplication_observers_example_plugin:binlog_relay_after_reset_replica");
   }
 }
 
@@ -439,9 +439,9 @@ int binlog_relay_after_queue_event(Binlog_relay_IO_param *param,
   return 0;
 }
 
-int binlog_relay_after_reset_slave(Binlog_relay_IO_param *param)
+int binlog_relay_after_reset_replica(Binlog_relay_IO_param *param)
 {
-  binlog_relay_after_reset_slave_call++;
+  binlog_relay_after_reset_replica_call++;
 
   return 0;
 }
@@ -455,7 +455,7 @@ Binlog_relay_IO_observer relay_io_observer = {
   binlog_relay_before_request_transmit,
   binlog_relay_after_read_event,
   binlog_relay_after_queue_event,
-  binlog_relay_after_reset_slave,
+  binlog_relay_after_reset_replica,
 };
 
 

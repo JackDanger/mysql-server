@@ -13,8 +13,8 @@
    along with this program; if not, write to the Free Software Foundation,
    51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
 
-#ifndef RPL_SLAVE_H
-#define RPL_SLAVE_H
+#ifndef RPL_REPLICA_H
+#define RPL_REPLICA_H
 
 #include "my_global.h"
 #include "my_thread.h"                     // my_start_routine
@@ -22,22 +22,22 @@
 #include "rpl_channel_service_interface.h" // enum_channel_type
 
 class Log_event;
-class Master_info;
+class Primary_info;
 class Relay_log_info;
 class THD;
 typedef struct st_bitmap MY_BITMAP;
-typedef struct st_lex_master_info LEX_MASTER_INFO;
+typedef struct st_lex_primary_info LEX_PRIMARY_INFO;
 typedef struct st_list LIST;
 typedef struct st_mysql MYSQL;
 typedef struct st_net NET;
-typedef struct struct_slave_connection LEX_SLAVE_CONNECTION;
+typedef struct struct_replica_connection LEX_REPLICA_CONNECTION;
 
-typedef enum { SLAVE_THD_IO, SLAVE_THD_SQL, SLAVE_THD_WORKER } SLAVE_THD_TYPE;
+typedef enum { REPLICA_THD_IO, REPLICA_THD_SQL, REPLICA_THD_WORKER } REPLICA_THD_TYPE;
 
 /**
-  MASTER_DELAY can be at most (1 << 31) - 1.
+  PRIMARY_DELAY can be at most (1 << 31) - 1.
 */
-#define MASTER_DELAY_MAX (0x7FFFFFFF)
+#define PRIMARY_DELAY_MAX (0x7FFFFFFF)
 #if INT_MAX < 0x7FFFFFFF
 #error "don't support platforms where INT_MAX < 0x7FFFFFFF"
 #endif
@@ -57,20 +57,20 @@ typedef enum { SLAVE_THD_IO, SLAVE_THD_SQL, SLAVE_THD_WORKER } SLAVE_THD_TYPE;
 /**
    The maximum is defined as (ULONG_MAX/1000) with 4 bytes ulong
 */
-#define SLAVE_MAX_HEARTBEAT_PERIOD 4294967
+#define REPLICA_MAX_HEARTBEAT_PERIOD 4294967
 
 #ifdef HAVE_REPLICATION
 
-#define SLAVE_NET_TIMEOUT  60
+#define REPLICA_NET_TIMEOUT  60
 
-#define MAX_SLAVE_ERROR    2000
+#define MAX_REPLICA_ERROR    2000
 
 #define MTS_WORKER_UNDEF ((ulong) -1)
 #define MTS_MAX_WORKERS  1024
-#define MAX_SLAVE_RETRY_PAUSE 5
+#define MAX_REPLICA_RETRY_PAUSE 5
 
 /* 
-   When using tables to store the slave workers bitmaps,
+   When using tables to store the replica workers bitmaps,
    we use a BLOB field. The maximum size of a BLOB is:
 
    2^16-1 = 65535 bytes => (2^16-1) * 8 = 524280 bits
@@ -85,10 +85,10 @@ extern bool server_id_supplied;
 
   Replication is implemented via two types of threads:
 
-    I/O Thread - One of these threads is started for each master server.
-                 They maintain a connection to their master server, read log
-                 events from the master as they arrive, and queues them into
-                 a single, shared relay log file.  A Master_info 
+    I/O Thread - One of these threads is started for each primary server.
+                 They maintain a connection to their primary server, read log
+                 events from the primary as they arrive, and queues them into
+                 a single, shared relay log file.  A Primary_info 
                  represents each of these threads.
 
     SQL Thread - One of these threads is started and reads from the relay log
@@ -96,9 +96,9 @@ extern bool server_id_supplied;
                  represents this thread.
 
   Buffering in the relay log file makes it unnecessary to reread events from
-  a master server across a slave restart.  It also decouples the slave from
-  the master where long-running updates and event logging are concerned--ie
-  it can continue to log new events while a slow query executes on the slave.
+  a primary server across a replica restart.  It also decouples the replica from
+  the primary where long-running updates and event logging are concerned--ie
+  it can continue to log new events while a slow query executes on the replica.
 
 *****************************************************************************/
 
@@ -107,26 +107,26 @@ extern bool server_id_supplied;
 
   LOCK_msr_map: This is to lock the Multisource datastructure (msr_map).
   Generally it used to retrieve an mi from msr_map.It is used to SERIALIZE ALL
-  administrative commands of replication: START SLAVE, STOP SLAVE, CHANGE
-  MASTER, RESET SLAVE, end_slave() (when mysqld stops) [init_slave() does not
+  administrative commands of replication: START REPLICA, STOP REPLICA, CHANGE
+  PRIMARY, RESET REPLICA, end_replica() (when mysqld stops) [init_replica() does not
   need it it's called early]. Any of these commands holds the mutex from the
   start till the end. This thus protects us against a handful of deadlocks
-  (consider start_slave_thread() which, when starting the I/O thread, releases
+  (consider start_replica_thread() which, when starting the I/O thread, releases
   mi->run_lock, keeps rli->run_lock, and tries to re-acquire mi->run_lock).
 
   Currently active_mi never moves (it's created at startup and deleted at
-  shutdown, and not changed: it always points to the same Master_info struct),
-  because we don't have multimaster. So for the moment, mi does not move, and
+  shutdown, and not changed: it always points to the same Primary_info struct),
+  because we don't have multiprimary. So for the moment, mi does not move, and
   mi->rli does not either.
 
-  In Master_info: run_lock, data_lock
-  run_lock protects all information about the run state: slave_running, thd
+  In Primary_info: run_lock, data_lock
+  run_lock protects all information about the run state: replica_running, thd
   and the existence of the I/O thread (to stop/start it, you need this mutex).
   data_lock protects some moving members of the struct: counters (log name,
   position) and relay log (MYSQL_BIN_LOG object).
 
   In Relay_log_info: run_lock, data_lock
-  see Master_info
+  see Primary_info
   However, note that run_lock does not protect
   Relay_log_info.run_state; that is protected by data_lock.
 
@@ -146,17 +146,17 @@ extern bool server_id_supplied;
   locks B, then we write "A | B".  If function F1 invokes function F2,
   then we write F2's name in parentheses in the list of locks for F1.
 
-    show_master_info:
+    show_primary_info:
       mi.data_lock, rli.data_lock, mi.err_lock, rli.err_lock
 
-    stop_slave:
+    stop_replica:
       LOCK_msr_map,
       ( mi.run_lock, thd.LOCK_thd_data
       | rli.run_lock, thd.LOCK_thd_data
       | relay.LOCK_log
       )
 
-    start_slave:
+    start_replica:
       mi.run_lock, rli.run_lock, rli.data_lock, global_sid_lock->wrlock
 
     reset_logs:
@@ -166,11 +166,11 @@ extern bool server_id_supplied;
       rli.data_lock, (relay.reset_logs) THD::LOCK_thd_data,
       relay.LOCK_log, relay.LOCK_index, global_sid_lock->wrlock
 
-    reset_master:
+    reset_primary:
       (binlog.reset_logs) THD::LOCK_thd_data, binlog.LOCK_log,
       binlog.LOCK_index, global_sid_lock->wrlock, LOCK_reset_gtid_table
 
-    reset_slave:
+    reset_replica:
       mi.run_lock, rli.run_lock, (purge_relay_logs) rli.data_lock,
       THD::LOCK_thd_data, relay.LOCK_log, relay.LOCK_index,
       global_sid_lock->wrlock
@@ -180,12 +180,12 @@ extern bool server_id_supplied;
 
       [Note: purge_logs contains a known bug: LOCK_index should not be
       taken before LOCK_thd_list.  This implies that, e.g.,
-      purge_master_logs can deadlock with reset_master.  However,
-      although purge_first_log and reset_slave take locks in reverse
+      purge_primary_logs can deadlock with reset_primary.  However,
+      although purge_first_log and reset_replica take locks in reverse
       order, they cannot deadlock because they both first acquire
       rli.data_lock.]
 
-    purge_master_logs, purge_master_logs_before_date, purge:
+    purge_primary_logs, purge_primary_logs_before_date, purge:
       (binlog.purge_logs) binlog.LOCK_index, LOCK_thd_list, thd.linfo.lock
 
     purge_first_log:
@@ -216,7 +216,7 @@ extern bool server_id_supplied;
       | (init_relay_log_pos) rli.data_lock, relay.log_lock
       )
 
-    change_master:
+    change_primary:
       mi.run_lock, rli.run_lock, (init_relay_log_pos) rli.data_lock,
       relay.log_lock
 
@@ -244,25 +244,25 @@ extern bool server_id_supplied;
     | mi.data_lock, rli.data_lock
 */
 
-extern ulong master_retry_count;
-extern MY_BITMAP slave_error_mask;
-extern char slave_skip_error_names[];
-extern bool use_slave_mask;
-extern char *slave_load_tmpdir;
-extern char *master_info_file, *relay_log_info_file;
+extern ulong primary_retry_count;
+extern MY_BITMAP replica_error_mask;
+extern char replica_skip_error_names[];
+extern bool use_replica_mask;
+extern char *replica_load_tmpdir;
+extern char *primary_info_file, *relay_log_info_file;
 extern char *opt_relay_logname, *opt_relaylog_index_name;
 extern char *opt_binlog_index_name;
-extern my_bool opt_skip_slave_start, opt_reckless_slave;
-extern my_bool opt_log_slave_updates;
-extern char *opt_slave_skip_errors;
+extern my_bool opt_skip_replica_start, opt_reckless_replica;
+extern my_bool opt_log_replica_updates;
+extern char *opt_replica_skip_errors;
 extern ulonglong relay_log_space_limit;
 
 extern const char *relay_log_index;
 extern const char *relay_log_basename;
 
 /*
-  3 possible values for Master_info::slave_running and
-  Relay_log_info::slave_running.
+  3 possible values for Primary_info::replica_running and
+  Relay_log_info::replica_running.
   The values 0,1,2 are very important: to keep the diff small, I didn't
   substitute places where we use 0/1 with the newly defined symbols. So don't change
   these values.
@@ -271,33 +271,33 @@ extern const char *relay_log_basename;
   I started with using an enum, but
   enum_variable=1; is not legal so would have required many line changes.
 */
-#define MYSQL_SLAVE_NOT_RUN         0
-#define MYSQL_SLAVE_RUN_NOT_CONNECT 1
-#define MYSQL_SLAVE_RUN_CONNECT     2
+#define MYSQL_REPLICA_NOT_RUN         0
+#define MYSQL_REPLICA_RUN_NOT_CONNECT 1
+#define MYSQL_REPLICA_RUN_CONNECT     2
 
 /*
   If the following is set, if first gives an error, second will be
   tried. Otherwise, if first fails, we fail.
 */
-#define SLAVE_FORCE_ALL 4
+#define REPLICA_FORCE_ALL 4
 
 /* @todo: see if you can change to int */
-bool start_slave_cmd(THD* thd);
-bool stop_slave_cmd(THD* thd);
-bool change_master_cmd(THD *thd);
-int change_master(THD* thd, Master_info* mi, LEX_MASTER_INFO* lex_mi,
+bool start_replica_cmd(THD* thd);
+bool stop_replica_cmd(THD* thd);
+bool change_primary_cmd(THD *thd);
+int change_primary(THD* thd, Primary_info* mi, LEX_PRIMARY_INFO* lex_mi,
                   bool preserve_logs= false);
-bool reset_slave_cmd(THD *thd);
-bool show_slave_status_cmd(THD *thd);
+bool reset_replica_cmd(THD *thd);
+bool show_replica_status_cmd(THD *thd);
 bool flush_relay_logs_cmd(THD *thd);
-bool is_any_slave_channel_running(int thread_mask,
-                                  Master_info* already_locked_mi=NULL);
+bool is_any_replica_channel_running(int thread_mask,
+                                  Primary_info* already_locked_mi=NULL);
 
-bool flush_relay_logs(Master_info *mi);
-int reset_slave(THD *thd, Master_info* mi, bool reset_all);
-int reset_slave(THD *thd);
-int init_slave();
-int init_recovery(Master_info* mi, const char** errmsg);
+bool flush_relay_logs(Primary_info *mi);
+int reset_replica(THD *thd, Primary_info* mi, bool reset_all);
+int reset_replica(THD *thd);
+int init_replica();
+int init_recovery(Primary_info* mi, const char** errmsg);
 /**
   Call mi->init_info() and/or mi->rli->init_info(), which will read
   the replication configuration from repositories.
@@ -305,32 +305,32 @@ int init_recovery(Master_info* mi, const char** errmsg);
   This takes care of creating a transaction context in case table
   repository is needed.
 
-  @param mi The Master_info object to use.
+  @param mi The Primary_info object to use.
 
   @param ignore_if_no_info If this is false, and the repository does
   not exist, it will be created. If this is true, and the repository
   does not exist, nothing is done.
 
   @param thread_mask Indicate which repositories will be initialized:
-  if (thread_mask&SLAVE_IO)!=0, then mi->init_info is called; if
-  (thread_mask&SLAVE_SQL)!=0, then mi->rli->init_info is called.
+  if (thread_mask&REPLICA_IO)!=0, then mi->init_info is called; if
+  (thread_mask&REPLICA_SQL)!=0, then mi->rli->init_info is called.
 
   @retval 0 Success
   @retval nonzero Error
 */
-int global_init_info(Master_info* mi, bool ignore_if_no_info, int thread_mask);
-void end_info(Master_info* mi);
-int remove_info(Master_info* mi);
-int flush_master_info(Master_info* mi, bool force);
-void add_slave_skip_errors(const char* arg);
-void set_slave_skip_errors(char** slave_skip_errors_ptr);
-int register_slave_on_master(MYSQL* mysql);
-int add_new_channel(Master_info** mi, const char* channel,
-                    enum_channel_type channel_type= SLAVE_REPLICATION_CHANNEL);
+int global_init_info(Primary_info* mi, bool ignore_if_no_info, int thread_mask);
+void end_info(Primary_info* mi);
+int remove_info(Primary_info* mi);
+int flush_primary_info(Primary_info* mi, bool force);
+void add_replica_skip_errors(const char* arg);
+void set_replica_skip_errors(char** replica_skip_errors_ptr);
+int register_replica_on_primary(MYSQL* mysql);
+int add_new_channel(Primary_info** mi, const char* channel,
+                    enum_channel_type channel_type= REPLICA_REPLICATION_CHANNEL);
 /**
-  Terminates the slave threads according to the given mask.
+  Terminates the replica threads according to the given mask.
 
-  @param mi                the master info repository
+  @param mi                the primary info repository
   @param thread_mask       the mask identifying which thread(s) to terminate
   @param stop_wait_timeout the timeout after which the method returns and error
   @param need_lock_term
@@ -340,38 +340,38 @@ int add_new_channel(Master_info** mi, const char* channel,
 
   @return the operation status
     @retval 0    OK
-    @retval ER_SLAVE_NOT_RUNNING
-      The slave is already stopped
-    @retval ER_STOP_SLAVE_SQL_THREAD_TIMEOUT
+    @retval ER_REPLICA_NOT_RUNNING
+      The replica is already stopped
+    @retval ER_STOP_REPLICA_SQL_THREAD_TIMEOUT
       There was a timeout when stopping the SQL thread
-    @retval ER_STOP_SLAVE_IO_THREAD_TIMEOUT
+    @retval ER_STOP_REPLICA_IO_THREAD_TIMEOUT
       There was a timeout when stopping the IO thread
     @retval ER_ERROR_DURING_FLUSH_LOGS
       There was an error while flushing the log/repositories
 */
-int terminate_slave_threads(Master_info* mi, int thread_mask,
+int terminate_replica_threads(Primary_info* mi, int thread_mask,
                             ulong stop_wait_timeout,
                             bool need_lock_term= true);
-int start_slave_threads(bool need_lock_slave, bool wait_for_start,
-			Master_info* mi, int thread_mask);
-int start_slave(THD *thd);
-int stop_slave(THD *thd);
-int start_slave(THD* thd,
-                LEX_SLAVE_CONNECTION* connection_param,
-                LEX_MASTER_INFO* master_param,
+int start_replica_threads(bool need_lock_replica, bool wait_for_start,
+			Primary_info* mi, int thread_mask);
+int start_replica(THD *thd);
+int stop_replica(THD *thd);
+int start_replica(THD* thd,
+                LEX_REPLICA_CONNECTION* connection_param,
+                LEX_PRIMARY_INFO* primary_param,
                 int thread_mask_input,
-                Master_info* mi,
+                Primary_info* mi,
                 bool set_mts_settings,
                 bool net_report);
-int stop_slave(THD* thd, Master_info* mi, bool net_report,
+int stop_replica(THD* thd, Primary_info* mi, bool net_report,
                bool for_one_channel=true);
 /*
   cond_lock is usually same as start_lock. It is needed for the case when
-  start_lock is 0 which happens if start_slave_thread() is called already
+  start_lock is 0 which happens if start_replica_thread() is called already
   inside the start_lock section, but at the same time we want a
   mysql_cond_wait() on start_cond, start_lock
 */
-int start_slave_thread(
+int start_replica_thread(
 #ifdef HAVE_PSI_INTERFACE
                        PSI_thread_key thread_key,
 #endif
@@ -379,66 +379,66 @@ int start_slave_thread(
                        mysql_mutex_t *start_lock,
                        mysql_mutex_t *cond_lock,
                        mysql_cond_t *start_cond,
-                       volatile uint *slave_running,
-                       volatile ulong *slave_run_id,
-                       Master_info *mi);
+                       volatile uint *replica_running,
+                       volatile ulong *replica_run_id,
+                       Primary_info *mi);
 
-/* retrieve table from master and copy to slave*/
-int fetch_master_table(THD* thd, const char* db_name, const char* table_name,
-		       Master_info* mi, MYSQL* mysql, bool overwrite);
+/* retrieve table from primary and copy to replica*/
+int fetch_primary_table(THD* thd, const char* db_name, const char* table_name,
+		       Primary_info* mi, MYSQL* mysql, bool overwrite);
 
-bool show_slave_status(THD* thd, Master_info* mi);
-bool show_slave_status(THD* thd);
-bool rpl_master_has_bug(const Relay_log_info *rli, uint bug_id, bool report,
+bool show_replica_status(THD* thd, Primary_info* mi);
+bool show_replica_status(THD* thd);
+bool rpl_primary_has_bug(const Relay_log_info *rli, uint bug_id, bool report,
                         bool (*pred)(const void *), const void *param);
-bool rpl_master_erroneous_autoinc(THD* thd);
+bool rpl_primary_erroneous_autoinc(THD* thd);
 
-const char *print_slave_db_safe(const char *db);
+const char *print_replica_db_safe(const char *db);
 void skip_load_data_infile(NET* net);
 
-void end_slave(); /* release slave threads */
-void delete_slave_info_objects(); /* clean up slave threads data */
+void end_replica(); /* release replica threads */
+void delete_replica_info_objects(); /* clean up replica threads data */
 void clear_until_condition(Relay_log_info* rli);
-void clear_slave_error(Relay_log_info* rli);
-void lock_slave_threads(Master_info* mi);
-void unlock_slave_threads(Master_info* mi);
-void init_thread_mask(int* mask,Master_info* mi,bool inverse);
-void set_slave_thread_options(THD* thd);
-void set_slave_thread_default_charset(THD *thd, Relay_log_info const *rli);
+void clear_replica_error(Relay_log_info* rli);
+void lock_replica_threads(Primary_info* mi);
+void unlock_replica_threads(Primary_info* mi);
+void init_thread_mask(int* mask,Primary_info* mi,bool inverse);
+void set_replica_thread_options(THD* thd);
+void set_replica_thread_default_charset(THD *thd, Relay_log_info const *rli);
 int apply_event_and_update_pos(Log_event* ev, THD* thd, Relay_log_info* rli);
-int rotate_relay_log(Master_info* mi);
-int queue_event(Master_info* mi,const char* buf, ulong event_len);
+int rotate_relay_log(Primary_info* mi);
+int queue_event(Primary_info* mi,const char* buf, ulong event_len);
 
-extern "C" void *handle_slave_io(void *arg);
-extern "C" void *handle_slave_sql(void *arg);
+extern "C" void *handle_replica_io(void *arg);
+extern "C" void *handle_replica_sql(void *arg);
 bool net_request_file(NET* net, const char* fname);
 
 extern bool volatile abort_loop;
-extern Master_info *active_mi;      /* active_mi  for multi-master */
-extern LIST master_list;
+extern Primary_info *active_mi;      /* active_mi  for multi-primary */
+extern LIST primary_list;
 extern my_bool replicate_same_server_id;
 
-extern int disconnect_slave_event_count, abort_slave_event_count ;
+extern int disconnect_replica_event_count, abort_replica_event_count ;
 
-/* the master variables are defaults read from my.cnf or command line */
-extern uint master_port, master_connect_retry, report_port;
-extern char * master_user, *master_password, *master_host;
-extern char *master_info_file, *relay_log_info_file, *report_user;
+/* the primary variables are defaults read from my.cnf or command line */
+extern uint primary_port, primary_connect_retry, report_port;
+extern char * primary_user, *primary_password, *primary_host;
+extern char *primary_info_file, *relay_log_info_file, *report_user;
 extern char *report_host, *report_password;
 
-extern my_bool master_ssl;
-extern char *master_ssl_ca, *master_ssl_capath, *master_ssl_cert;
-extern char *master_ssl_cipher, *master_ssl_key;
+extern my_bool primary_ssl;
+extern char *primary_ssl_ca, *primary_ssl_capath, *primary_ssl_cert;
+extern char *primary_ssl_cipher, *primary_ssl_key;
        
 int mts_recovery_groups(Relay_log_info *rli);
 bool mts_checkpoint_routine(Relay_log_info *rli, ulonglong period,
                             bool force, bool need_data_lock);
-bool sql_slave_killed(THD* thd, Relay_log_info* rli);
+bool sql_replica_killed(THD* thd, Relay_log_info* rli);
 #endif /* HAVE_REPLICATION */
 
-/* masks for start/stop operations on io and sql slave threads */
-#define SLAVE_IO  1
-#define SLAVE_SQL 2
+/* masks for start/stop operations on io and sql replica threads */
+#define REPLICA_IO  1
+#define REPLICA_SQL 2
 
 /**
   @} (end of group Replication)

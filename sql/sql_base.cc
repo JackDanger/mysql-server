@@ -396,15 +396,15 @@ static void init_tdc_psi_keys(void)
 }
 #endif /* HAVE_PSI_INTERFACE */
 
-static void modify_slave_open_temp_tables(THD *thd, int inc)
+static void modify_replica_open_temp_tables(THD *thd, int inc)
 {
-  if (thd->system_thread == SYSTEM_THREAD_SLAVE_WORKER)
+  if (thd->system_thread == SYSTEM_THREAD_REPLICA_WORKER)
   {
-    my_atomic_add32(&slave_open_temp_tables, inc);
+    my_atomic_add32(&replica_open_temp_tables, inc);
   }
   else
   {
-    slave_open_temp_tables += inc;
+    replica_open_temp_tables += inc;
   }
 }
 
@@ -441,9 +441,9 @@ static bool has_write_table_auto_increment_not_first_in_pk(TABLE_LIST *tables);
     table_name + \0
 
     if the table is a tmp table, we add the following to make each tmp table
-    unique on the slave:
+    unique on the replica:
 
-    4 bytes for master thread id
+    4 bytes for primary thread id
     4 bytes pseudo thread id
 
   @return Length of key.
@@ -1556,7 +1556,7 @@ void close_thread_tables(THD *thd)
 #endif
 
 #if defined(ENABLED_DEBUG_SYNC)
-  /* debug_sync may not be initialized for some slave threads */
+  /* debug_sync may not be initialized for some replica threads */
   if (thd->debug_sync_control)
     DEBUG_SYNC(thd, "before_close_thread_tables");
 #endif
@@ -1754,11 +1754,11 @@ static inline uint  tmpkeyval(THD *thd, TABLE *table)
   creates one DROP TEMPORARY TABLE binlog event for each pseudo-thread.
 
   TODO: In future, we should have temporary_table= 0 and
-        modify_slave_open_temp_tables() at one place instead of repeating
+        modify_replica_open_temp_tables() at one place instead of repeating
         it all across the function. An alternative would be to use
         close_temporary_table() instead of close_temporary() that maintains
         the correct invariant regarding empty list of temporary tables
-        and zero slave_open_temp_tables already.
+        and zero replica_open_temp_tables already.
 */
 
 bool close_temporary_tables(THD *thd)
@@ -1774,8 +1774,8 @@ bool close_temporary_tables(THD *thd)
   if (!thd->temporary_tables)
     DBUG_RETURN(FALSE);
 
-  DBUG_ASSERT(!thd->slave_thread ||
-              thd->system_thread != SYSTEM_THREAD_SLAVE_WORKER);
+  DBUG_ASSERT(!thd->replica_thread ||
+              thd->system_thread != SYSTEM_THREAD_REPLICA_WORKER);
 
   /*
     Ensure we don't have open HANDLERs for tables we are about to close.
@@ -1794,8 +1794,8 @@ bool close_temporary_tables(THD *thd)
     }
 
     thd->temporary_tables= 0;
-    if (thd->slave_thread)
-      modify_slave_open_temp_tables(thd, -slave_open_temp_tables);
+    if (thd->replica_thread)
+      modify_replica_open_temp_tables(thd, -replica_open_temp_tables);
 
     DBUG_RETURN(FALSE);
   }
@@ -1814,10 +1814,10 @@ bool close_temporary_tables(THD *thd)
   /*
     We must separate transactional temp tables and
     non-transactional temp tables in two distinct DROP statements
-    to avoid the splitting if a slave server reads from this binlog.
+    to avoid the splitting if a replica server reads from this binlog.
   */
 
-  /* Better add "if exists", in case a RESET MASTER has been done */
+  /* Better add "if exists", in case a RESET PRIMARY has been done */
   const char stub[]= "DROP /*!40005 TEMPORARY */ TABLE IF EXISTS ";
   uint stub_len= sizeof(stub) - 1;
   char buf_trans[256], buf_non_trans[256];
@@ -2008,8 +2008,8 @@ bool close_temporary_tables(THD *thd)
     thd->variables.option_bits&= ~OPTION_QUOTE_SHOW_CREATE; /* restore option */
 
   thd->temporary_tables=0;
-  if (thd->slave_thread)
-    modify_slave_open_temp_tables(thd, -slave_open_temp_tables);
+  if (thd->replica_thread)
+    modify_replica_open_temp_tables(thd, -replica_open_temp_tables);
 
   DBUG_RETURN(error);
 }
@@ -2412,19 +2412,19 @@ void close_temporary_table(THD *thd, TABLE *table,
     /* removing the item from the list */
     DBUG_ASSERT(table == thd->temporary_tables);
     /*
-      slave must reset its temporary list pointer to zero to exclude
-      passing non-zero value to end_slave via rli->save_temporary_tables
+      replica must reset its temporary list pointer to zero to exclude
+      passing non-zero value to end_replica via rli->save_temporary_tables
       when no temp tables opened, see an invariant below.
     */
     thd->temporary_tables= table->next;
     if (thd->temporary_tables)
       table->next->prev= 0;
   }
-  if (thd->slave_thread)
+  if (thd->replica_thread)
   {
     /* natural invariant of temporary_tables */
-    DBUG_ASSERT(slave_open_temp_tables || !thd->temporary_tables);
-    modify_slave_open_temp_tables(thd, -1);
+    DBUG_ASSERT(replica_open_temp_tables || !thd->temporary_tables);
+    modify_replica_open_temp_tables(thd, -1);
   }
   close_temporary(table, free_share, delete_table);
   DBUG_VOID_RETURN;
@@ -2464,7 +2464,7 @@ void close_temporary(TABLE *table, bool free_share, bool delete_table)
   only if the ALTER contained a RENAME clause (otherwise, table_name is the old
   name).
   Prepares a table cache key, which is the concatenation of db, table_name and
-  thd->slave_proxy_id, separated by '\0'.
+  thd->replica_proxy_id, separated by '\0'.
 */
 
 bool rename_temporary_table(THD* thd, TABLE *table, const char *db,
@@ -4603,9 +4603,9 @@ recover_from_failed_open()
           INSERT INTO .. SELECT FROM .. and CREATE TABLE .. SELECT FROM need
           to grab a TL_READ_NO_INSERT lock on the source table in order to
           prevent the replication of a concurrent statement that modifies the
-          source table. If such a statement gets applied on the slave before
-          the INSERT .. SELECT statement finishes, data on the master could
-          differ from data on the slave and end-up with a discrepancy between
+          source table. If such a statement gets applied on the replica before
+          the INSERT .. SELECT statement finishes, data on the primary could
+          differ from data on the replica and end-up with a discrepancy between
           the binary log and table state.
           This also applies to SELECT/SET/DO statements which use stored
           functions. Calls to such functions are going to be logged as a
@@ -4619,8 +4619,8 @@ recover_from_failed_open()
 
           Furthermore, this does not apply to I_S and log tables as it's
           always unsafe to replicate such tables under statement-based
-          replication as the table on the slave might contain other data
-          (ie: general_log is enabled on the slave). The statement will
+          replication as the table on the replica might contain other data
+          (ie: general_log is enabled on the replica). The statement will
           be marked as unsafe for SBR in decide_logging_format().
   @remark Note that even in prelocked mode it is important to correctly
           determine lock type value. In this mode lock type is passed to
@@ -6467,7 +6467,7 @@ bool lock_tables(THD *thd, TABLE_LIST *tables, uint count,
     DML statements that modify a table with an auto_increment column based on
     rows selected from a table are unsafe as the order in which the rows are
     fetched fron the select tables cannot be determined and may differ on
-    master and slave.
+    primary and replica.
     */
     if (thd->variables.binlog_format != BINLOG_FORMAT_ROW && tables &&
         has_write_table_with_auto_increment_and_select(tables))
@@ -6510,7 +6510,7 @@ bool lock_tables(THD *thd, TABLE_LIST *tables, uint count,
 
       /*
         A query that modifies autoinc column in sub-statement can make the 
-        master and slave inconsistent.
+        primary and replica inconsistent.
         We can solve these problems in mixed mode by switching to binlogging 
         if at least one updated table is used by sub-statement
       */
@@ -6797,8 +6797,8 @@ TABLE *open_table_uncached(THD *thd, const char *path, const char *db,
       tmp_table->next->prev= tmp_table;
     thd->temporary_tables= tmp_table;
     thd->temporary_tables->prev= 0;
-    if (thd->slave_thread)
-      modify_slave_open_temp_tables(thd, 1);
+    if (thd->replica_thread)
+      modify_replica_open_temp_tables(thd, 1);
   }
   tmp_table->pos_in_table_list= NULL;
 
@@ -9716,12 +9716,12 @@ int setup_ftfuncs(SELECT_LEX *select_lex)
     /*
       Notice that expressions added late (e.g. in ORDER BY) may be deleted
       during resolving. It is therefore important that an "early" expression
-      is used as master for a "late" one, and not the other way around.
+      is used as primary for a "late" one, and not the other way around.
     */
     while ((ftf2= lj++) != ftf)
     {
-      if (ftf->eq(ftf2, 1) && !ftf->master)
-        ftf2->set_master(ftf);
+      if (ftf->eq(ftf2, 1) && !ftf->primary)
+        ftf2->set_primary(ftf);
     }
   }
 

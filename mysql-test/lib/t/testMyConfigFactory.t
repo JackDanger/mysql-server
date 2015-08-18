@@ -31,7 +31,7 @@ my $gen1_cnf= "$dir/gen1.cnf";
 open(OUT, ">", $gen1_cnf) or die;
 
 print OUT <<EOF
-[mysqld.master]
+[mysqld.primary]
 # Comment
 option1=value1
 basedir=abasedir
@@ -42,7 +42,7 @@ option1=value1
 option2=value2
 
 [ENV]
-MASTER_MY_PORT=\@mysqld.master.port
+PRIMARY_MY_PORT=\@mysqld.primary.port
 
 EOF
 ;
@@ -63,7 +63,7 @@ my $config= My::ConfigFactory->new_config
 
 print $config;
 
-ok ( $config->group("mysqld.master"), "group mysqld.master exists");
+ok ( $config->group("mysqld.primary"), "group mysqld.primary exists");
 ok ( $config->group("mysqld.1"), "group mysqld.1 exists");
 ok ( $config->group("client"), "group client exists");
 ok ( !$config->group("mysqld.3"), "group mysqld.3 does not exist");
@@ -77,8 +77,8 @@ is( $config->value('client', 'host'), 'localhost',
     "client.host has been generated");
 
 is( $config->value('client', 'host'),
-    $config->value('mysqld.master', '#host'),
-    "client.host is same as mysqld.master.host");
+    $config->value('mysqld.primary', '#host'),
+    "client.host is same as mysqld.primary.host");
 
 ok ( $config->value("mysqld.1", 'character-sets-dir') =~ /$basedir.*charsets$/,
      "'character-sets-dir' generated");
@@ -86,14 +86,14 @@ ok ( $config->value("mysqld.1", 'character-sets-dir') =~ /$basedir.*charsets$/,
 ok ( $config->value("mysqld.1", 'lc-messages-dir') =~ /$basedir.*share$/,
      "'lc-messages-dir' generated");
 
-ok ( $config->value("ENV", 'MASTER_MY_PORT') =~ /\d/,
+ok ( $config->value("ENV", 'PRIMARY_MY_PORT') =~ /\d/,
      "'lc-messages-dir' generated");
 
 my $gen2_cnf= "$dir/gen2.cnf";
 open(OUT, ">", $gen2_cnf) or die;
 
 print OUT <<EOF
-[mysqld.master]
+[mysqld.primary]
 EOF
 ;
 close OUT;

@@ -22,7 +22,7 @@
 
 
 /**
- * This signal is sent from the master DIH to all DIHs
+ * This signal is sent from the primary DIH to all DIHs
  * when a node is starting.
  * If the typeStart is initial node restart then the node
  * has started without filesystem.

@@ -27,7 +27,7 @@ void Security_context::init()
   m_external_user.set("", 0, system_charset_info);
   m_priv_user[0]= m_priv_host[0]= m_proxy_user[0]= '\0';
   m_priv_user_length= m_priv_host_length= m_proxy_user_length= 0;
-  m_master_access= 0;
+  m_primary_access= 0;
 #ifndef NO_EMBEDDED_ACCESS_CHECKS
   m_db_access= NO_ACCESS;
 #endif
@@ -59,7 +59,7 @@ void Security_context::destroy()
   m_priv_user[0]= m_priv_host[0]= m_proxy_user[0]= 0;
   m_priv_user_length= m_priv_host_length= m_proxy_user_length= 0;
 
-  m_master_access= m_db_access=0;
+  m_primary_access= m_db_access=0;
   m_password_expired= false;
 
   DBUG_VOID_RETURN;
@@ -74,7 +74,7 @@ void Security_context::skip_grants()
   set_host_or_ip_ptr("", 0);
   assign_priv_user("", 0);
   assign_priv_host("", 0);
-  m_master_access= ~NO_ACCESS;
+  m_primary_access= ~NO_ACCESS;
 
   DBUG_VOID_RETURN;
 }
@@ -103,7 +103,7 @@ void Security_context::copy_security_ctx (const Security_context &src_sctx)
   assign_proxy_user(src_sctx.m_proxy_user, src_sctx.m_proxy_user_length);
   assign_priv_host(src_sctx.m_priv_host, src_sctx.m_priv_host_length);
   m_db_access= src_sctx.m_db_access;
-  m_master_access= src_sctx.m_master_access;
+  m_primary_access= src_sctx.m_primary_access;
   m_password_expired= src_sctx.m_password_expired;
 
   DBUG_VOID_RETURN;

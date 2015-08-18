@@ -10,198 +10,198 @@
 # 
 # Testing scenario: Cluster 1 replicates to Cluster 2
 #
-#  Key : BL= Binlogging, LSU = LogSlaveUpdates = On
+#  Key : BL= Binlogging, LSU = LogReplicaUpdates = On
 #
 #                       BL                        BL
-#  cluster 1 [  srv_master  srv_master1  srv_master2  ]
+#  cluster 1 [  srv_primary  srv_primary1  srv_primary2  ]
 #                   |
 #                   |-----------------------
 #                   v          v            v
-#  cluster 2 [  srv_slave  srv_slave1  srv_slave2 ]
+#  cluster 2 [  srv_replica  srv_replica1  srv_replica2 ]
 #                                  BL      BL LSU
 #
 #  Cluster 1:
 #  - Schema change originates on all severs in Cluster 1
-#  - MySQLD1 which is binlogging master. 
-#    Identification: connection (srv_master), config (mysqld.1.1).
+#  - MySQLD1 which is binlogging primary. 
+#    Identification: connection (srv_primary), config (mysqld.1.1).
 #  - MySQLD2 which is not binlogging.
-#    Identification: connection (srv_master1), config (mysqld.1.2).
-#  - MySQLD3 which is binlogging but not currently master.
-#    Identification: connection (srv_master2), config (mysqld.1.3).
+#    Identification: connection (srv_primary1), config (mysqld.1.2).
+#  - MySQLD3 which is binlogging but not currently primary.
+#    Identification: connection (srv_primary2), config (mysqld.1.3).
 #
 #  Cluster 2:
 #  - MySQLD1: 
-#    Can act as slave, not binlogging
-#    Identification: connection (srv_slave), config (mysqld.1.slave).
+#    Can act as replica, not binlogging
+#    Identification: connection (srv_replica), config (mysqld.1.replica).
 #  - MySQLD2: 
-#    Can act as slave, binlogging, log-slave-updates = off
-#    Identification: connection (srv_slave1), config (mysqld.2.slave).
+#    Can act as replica, binlogging, log-replica-updates = off
+#    Identification: connection (srv_replica1), config (mysqld.2.replica).
 #  - MySQLD3 
-#    Can act as slave, binlogging, log-slave-updates = on
-#    Identification: connection (srv_slave2), config (mysqld.3.slave).
+#    Can act as replica, binlogging, log-replica-updates = on
+#    Identification: connection (srv_replica2), config (mysqld.3.replica).
 #
 # See rpl_ndb_multi_binlog_update.test for default configuration.
 # Originally motivated by bug#45756
-# See rpl_ndb_slave_lsu.test for full testcase
+# See rpl_ndb_replica_lsu.test for full testcase
 #
 # Preconditions :
-#   - Connections srv_master, srv_master1, srv_master2, srv_slave, 
-#     srv_slave1, srv_slave2 exist.
-#   - $which_slave contains the name of the slave server performing
-#     the replication slave role.
+#   - Connections srv_primary, srv_primary1, srv_primary2, srv_replica, 
+#     srv_replica1, srv_replica2 exist.
+#   - $which_replica contains the name of the replica server performing
+#     the replication replica role.
 #
 ###############################################################################
 
 ###############################################################################
 #                            Checking Replication
 ###############################################################################
---echo *** Generating slave cluster originated binloggable changes ***
-connection srv_slave;
-CREATE TABLE bug_45756_slave_logged_1 (a int) engine = NDB;
-INSERT INTO bug_45756_slave_logged_1 VALUES (1);
-DROP TABLE bug_45756_slave_logged_1;
+--echo *** Generating replica cluster originated binloggable changes ***
+connection srv_replica;
+CREATE TABLE bug_45756_replica_logged_1 (a int) engine = NDB;
+INSERT INTO bug_45756_replica_logged_1 VALUES (1);
+DROP TABLE bug_45756_replica_logged_1;
 
-connection srv_slave1;
-CREATE TABLE bug_45756_slave_logged_2 (a int) engine = NDB;
-INSERT INTO bug_45756_slave_logged_2 VALUES (1);
-DROP TABLE bug_45756_slave_logged_2;
+connection srv_replica1;
+CREATE TABLE bug_45756_replica_logged_2 (a int) engine = NDB;
+INSERT INTO bug_45756_replica_logged_2 VALUES (1);
+DROP TABLE bug_45756_replica_logged_2;
 
-connection srv_slave2;
-CREATE TABLE bug_45756_slave_logged_3 (a int) engine = NDB;
-INSERT INTO bug_45756_slave_logged_3 VALUES (1);
-DROP TABLE bug_45756_slave_logged_3;
+connection srv_replica2;
+CREATE TABLE bug_45756_replica_logged_3 (a int) engine = NDB;
+INSERT INTO bug_45756_replica_logged_3 VALUES (1);
+DROP TABLE bug_45756_replica_logged_3;
 
---echo ***Generating slave cluster non-binloggable changes***
-connection srv_slave;
+--echo ***Generating replica cluster non-binloggable changes***
+connection srv_replica;
 SET SQL_LOG_BIN= 0;
-CREATE TABLE bug_45756_slave_not_logged_1 (a int) engine = NDB;
-INSERT INTO bug_45756_slave_not_logged_1 VALUES (1);
-DROP TABLE bug_45756_slave_not_logged_1;
+CREATE TABLE bug_45756_replica_not_logged_1 (a int) engine = NDB;
+INSERT INTO bug_45756_replica_not_logged_1 VALUES (1);
+DROP TABLE bug_45756_replica_not_logged_1;
 SET SQL_LOG_BIN= 1;
 
-connection srv_slave1;
+connection srv_replica1;
 SET SQL_LOG_BIN= 0;
-CREATE TABLE bug_45756_slave_not_logged_2 (a int) engine = NDB;
-INSERT INTO bug_45756_slave_not_logged_2 VALUES (1);
-DROP TABLE bug_45756_slave_not_logged_2;
+CREATE TABLE bug_45756_replica_not_logged_2 (a int) engine = NDB;
+INSERT INTO bug_45756_replica_not_logged_2 VALUES (1);
+DROP TABLE bug_45756_replica_not_logged_2;
 SET SQL_LOG_BIN= 1;
 
-connection srv_slave2;
+connection srv_replica2;
 SET SQL_LOG_BIN= 0;
-CREATE TABLE bug_45756_slave_not_logged_3 (a int) engine = NDB;
-INSERT INTO bug_45756_slave_not_logged_3 VALUES (1);
-DROP TABLE bug_45756_slave_not_logged_3;
+CREATE TABLE bug_45756_replica_not_logged_3 (a int) engine = NDB;
+INSERT INTO bug_45756_replica_not_logged_3 VALUES (1);
+DROP TABLE bug_45756_replica_not_logged_3;
 SET SQL_LOG_BIN= 1;
 
 --echo *** Generating data to be replicated ***
-connection srv_master;
-CREATE TABLE bug45756_master_logged_1 (a int) engine = NDB;
-INSERT INTO bug45756_master_logged_1 VALUES (1);
-DROP TABLE bug45756_master_logged_1;
+connection srv_primary;
+CREATE TABLE bug45756_primary_logged_1 (a int) engine = NDB;
+INSERT INTO bug45756_primary_logged_1 VALUES (1);
+DROP TABLE bug45756_primary_logged_1;
 
-connection srv_master1;
-CREATE TABLE bug45756_master_logged_2 (a int) engine = NDB;
-INSERT INTO bug45756_master_logged_2 VALUES (1);
-DROP TABLE bug45756_master_logged_2;
+connection srv_primary1;
+CREATE TABLE bug45756_primary_logged_2 (a int) engine = NDB;
+INSERT INTO bug45756_primary_logged_2 VALUES (1);
+DROP TABLE bug45756_primary_logged_2;
 
-connection srv_master2;
-CREATE TABLE bug45756_master_logged_3 (a int) engine = NDB;
-INSERT INTO bug45756_master_logged_3 VALUES (1);
-DROP TABLE bug45756_master_logged_3;
+connection srv_primary2;
+CREATE TABLE bug45756_primary_logged_3 (a int) engine = NDB;
+INSERT INTO bug45756_primary_logged_3 VALUES (1);
+DROP TABLE bug45756_primary_logged_3;
 
 --echo *** Generating changes not to be replicated ***
-connection srv_master;
+connection srv_primary;
 SET SQL_LOG_BIN= 0;
-CREATE TABLE bug45756_master_not_logged_1 (a int) engine = NDB;
-INSERT INTO bug45756_master_not_logged_1 VALUES (1);
-DROP TABLE bug45756_master_not_logged_1;
+CREATE TABLE bug45756_primary_not_logged_1 (a int) engine = NDB;
+INSERT INTO bug45756_primary_not_logged_1 VALUES (1);
+DROP TABLE bug45756_primary_not_logged_1;
 SET SQL_LOG_BIN= 1;
 
-connection srv_master1;
+connection srv_primary1;
 SET SQL_LOG_BIN= 0;
-CREATE TABLE bug45756_master_not_logged_2 (a int) engine = NDB;
-INSERT INTO bug45756_master_not_logged_2 VALUES (1);
-DROP TABLE bug45756_master_not_logged_2;
+CREATE TABLE bug45756_primary_not_logged_2 (a int) engine = NDB;
+INSERT INTO bug45756_primary_not_logged_2 VALUES (1);
+DROP TABLE bug45756_primary_not_logged_2;
 SET SQL_LOG_BIN= 1;
 
-connection srv_master2;
+connection srv_primary2;
 SET SQL_LOG_BIN= 0;
-CREATE TABLE bug45756_master_not_logged_3 (a int) engine = NDB;
-INSERT INTO bug45756_master_not_logged_3 VALUES (1);
-DROP TABLE bug45756_master_not_logged_3;
+CREATE TABLE bug45756_primary_not_logged_3 (a int) engine = NDB;
+INSERT INTO bug45756_primary_not_logged_3 VALUES (1);
+DROP TABLE bug45756_primary_not_logged_3;
 SET SQL_LOG_BIN= 1;
 
-connection srv_master;
-sync_slave_with_master $which_slave;
+connection srv_primary;
+sync_replica_with_primary $which_replica;
 
 --echo *** Checking binlog contents on every server in both clusters ***
-connection srv_master;
+connection srv_primary;
 --echo 
 --echo 
 --echo 
---echo connection srv_master;
+--echo connection srv_primary;
 show variables like 'server_id';
 show variables like 'log_bin';
-show variables like 'log_slave_updates';
+show variables like 'log_replica_updates';
 --source include/show_binlog_events.inc
-let $BINLOG_FILENAME=master-bin;
+let $BINLOG_FILENAME=primary-bin;
 --source suite/ndb_rpl/t/ndb_rpl_get_binlog_events.inc
 
 
-connection srv_master1;
+connection srv_primary1;
 --echo 
 --echo 
 --echo 
---echo connection srv_master1;
+--echo connection srv_primary1;
 show variables like 'server_id';
 show variables like 'log_bin';
-show variables like 'log_slave_updates';
+show variables like 'log_replica_updates';
 --source include/show_binlog_events.inc
 
-connection srv_master2;
+connection srv_primary2;
 --echo 
 --echo 
 --echo 
---echo connection srv_master2;
+--echo connection srv_primary2;
 show variables like 'server_id';
 show variables like 'log_bin';
-show variables like 'log_slave_updates';
+show variables like 'log_replica_updates';
 --source include/show_binlog_events.inc
-let $BINLOG_FILENAME=master-bin;
+let $BINLOG_FILENAME=primary-bin;
 --source suite/ndb_rpl/t/ndb_rpl_get_binlog_events.inc
 
-connection srv_slave;
+connection srv_replica;
 --echo 
 --echo 
 --echo 
---echo connection srv_slave;
+--echo connection srv_replica;
 show variables like 'server_id';
 show variables like 'log_bin';
-show variables like 'log_slave_updates';
+show variables like 'log_replica_updates';
 --source include/show_binlog_events.inc
 
-connection srv_slave1;
+connection srv_replica1;
 --echo 
 --echo 
 --echo 
---echo connection srv_slave1;
+--echo connection srv_replica1;
 show variables like 'server_id';
 show variables like 'log_bin';
-show variables like 'log_slave_updates';
+show variables like 'log_replica_updates';
 --source include/show_binlog_events.inc
-let $BINLOG_FILENAME=slave-master-bin;
+let $BINLOG_FILENAME=replica-primary-bin;
 --source suite/ndb_rpl/t/ndb_rpl_get_binlog_events.inc
 
-connection srv_slave2;
+connection srv_replica2;
 --echo 
 --echo 
 --echo 
---echo connection srv_slave2;
+--echo connection srv_replica2;
 show variables like 'server_id';
 show variables like 'log_bin';
-show variables like 'log_slave_updates';
+show variables like 'log_replica_updates';
 --source include/show_binlog_events.inc
-let $BINLOG_FILENAME=slave-master-bin;
+let $BINLOG_FILENAME=replica-primary-bin;
 --source suite/ndb_rpl/t/ndb_rpl_get_binlog_events.inc
 
-connection $which_slave;
+connection $which_replica;

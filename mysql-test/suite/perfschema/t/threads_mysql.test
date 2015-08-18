@@ -7,7 +7,7 @@
 --source include/not_embedded.inc
 --source include/have_perfschema.inc
 
-# Ensure that the event scheduler (started via threads_mysql-master.opt)
+# Ensure that the event scheduler (started via threads_mysql-primary.opt)
 # is really running.
 --source include/running_event_scheduler.inc
 

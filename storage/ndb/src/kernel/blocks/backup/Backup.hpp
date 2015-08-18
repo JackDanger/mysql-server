@@ -73,7 +73,7 @@ protected:
   void execBACKUP_COMPLETE_REP(Signal* signal);
   
   /**
-   * Signals sent from master
+   * Signals sent from primary
    */
   void execDEFINE_BACKUP_REQ(Signal* signal);
   void execBACKUP_DATA(Signal* signal);
@@ -133,7 +133,7 @@ protected:
   void execFSREMOVECONF(Signal* signal);
 
   /**
-   * Master functinallity
+   * Primary functinallity
    */
   void execBACKUP_REQ(Signal* signal);
   void execABORT_BACKUP_REQ(Signal* signal);
@@ -360,7 +360,7 @@ public:
   enum State {
     INITIAL  = 0,
     DEFINING = 1, // Defining backup content and parameters
-    DEFINED  = 2,  // DEFINE_BACKUP_CONF sent in slave, received all in master
+    DEFINED  = 2,  // DEFINE_BACKUP_CONF sent in replica, received all in primary
     STARTED  = 3,  // Creating triggers
     SCANNING = 4, // Scanning fragments
     STOPPING = 5, // Closing files
@@ -368,10 +368,10 @@ public:
     ABORTING = 7  // Aborting backup
   };
 
-  static const Uint32 validSlaveTransitionsCount;
-  static const Uint32 validMasterTransitionsCount;
-  static const State validSlaveTransitions[];
-  static const State validMasterTransitions[];
+  static const Uint32 validReplicaTransitionsCount;
+  static const Uint32 validPrimaryTransitionsCount;
+  static const State validReplicaTransitions[];
+  static const State validPrimaryTransitions[];
   
   class CompoundState {
   public:
@@ -420,10 +420,10 @@ public:
 		 ArrayPool<Table> & tp, 
 		 ArrayPool<BackupFile> & bp,
 		 ArrayPool<TriggerRecord> & trp) 
-      : slaveState(b, validSlaveTransitions, validSlaveTransitionsCount,1)
+      : replicaState(b, validReplicaTransitions, validReplicaTransitionsCount,1)
       , tables(tp), triggers(trp), files(bp)
       , ctlFilePtr(RNIL), logFilePtr(RNIL), dataFilePtr(RNIL)
-      , masterData(b), backup(b)
+      , primaryData(b), backup(b)
 
       {
         /*
@@ -431,14 +431,14 @@ public:
           if backup ia running and current state
         */
         m_gsn = 0;
-        masterData.gsn = 0;
+        primaryData.gsn = 0;
       }
     
     /* prev time backup status was reported */
     NDB_TICKS m_prev_report;
 
     Uint32 m_gsn;
-    CompoundState slaveState; 
+    CompoundState replicaState; 
     
     Uint32 clientRef;
     Uint32 clientData;
@@ -446,7 +446,7 @@ public:
     Uint32 signalNo;
     Uint32 backupId;
     Uint32 backupKey[2];
-    Uint32 masterRef;
+    Uint32 primaryRef;
     Uint32 errorCode;
     NdbNodeBitmask nodes;
     
@@ -469,7 +469,7 @@ public:
     Uint32 backupDataLen;  // Used for (un)packing backup request
     SimpleProperties props;// Used for (un)packing backup request
 
-    struct SlaveData {
+    struct ReplicaData {
       SignalCounter trigSendCounter;
       Uint32 gsn;
       struct {
@@ -478,10 +478,10 @@ public:
       struct {
 	Uint32 tableId;
       } dropTrig;
-    } slaveData;
+    } replicaData;
 
-    struct MasterData {
-      MasterData(Backup & b) 
+    struct PrimaryData {
+      PrimaryData(Backup & b) 
 	{
 	}
       MutexHandle2<BACKUP_DEFINE_MUTEX> m_defineBackupMutex;
@@ -506,7 +506,7 @@ public:
 	  Uint32 dummy;
 	} stopBackup;
       };
-    } masterData;
+    } primaryData;
     
     Uint32 nextList;
     union { Uint32 prevList; Uint32 nextPool; };
@@ -556,7 +556,7 @@ public:
    * Variables
    */
   Uint32 * c_startOfPages;
-  NodeId c_masterNodeId;
+  NodeId c_primaryNodeId;
   SLList<Node> c_nodes;
   NdbNodeBitmask c_aliveNodes;
   DLList<BackupRecord> c_backups;
@@ -734,11 +734,11 @@ public:
 
   void sendStopBackup(Signal*, BackupRecordPtr ptr);
   void sendAbortBackupOrd(Signal* signal, BackupRecordPtr ptr, Uint32 errCode);
-  void sendAbortBackupOrdSlave(Signal* signal, BackupRecordPtr ptr, 
+  void sendAbortBackupOrdReplica(Signal* signal, BackupRecordPtr ptr, 
 			       Uint32 errCode);
-  void masterAbort(Signal*, BackupRecordPtr ptr);
-  void masterSendAbortBackup(Signal*, BackupRecordPtr ptr);
-  void slaveAbort(Signal*, BackupRecordPtr ptr);
+  void primaryAbort(Signal*, BackupRecordPtr ptr);
+  void primarySendAbortBackup(Signal*, BackupRecordPtr ptr);
+  void replicaAbort(Signal*, BackupRecordPtr ptr);
   
   void abortFile(Signal* signal, BackupRecordPtr ptr, BackupFilePtr filePtr);
   void abortFileHook(Signal* signal, BackupFilePtr filePtr, bool scanDone);
@@ -749,10 +749,10 @@ public:
 		     BackupRecordPtr ptr,
 		     NodeId newCoord,
 		     Uint32 theFailedNodes[NdbNodeBitmask::Size]);
-  void masterTakeOver(Signal* signal, BackupRecordPtr ptr);
+  void primaryTakeOver(Signal* signal, BackupRecordPtr ptr);
 
 
-  NodeId getMasterNodeId() const { return c_masterNodeId; }
+  NodeId getPrimaryNodeId() const { return c_primaryNodeId; }
   bool findTable(const BackupRecordPtr &, TablePtr &, Uint32 tableId) const;
   bool parseTableDescription(Signal*, BackupRecordPtr ptr, TablePtr, const Uint32*, Uint32);
   

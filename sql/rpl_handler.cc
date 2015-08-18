@@ -18,7 +18,7 @@
 #include "debug_sync.h"        // DEBUG_SYNC
 #include "log.h"               // sql_print_error
 #include "replication.h"       // Trans_param
-#include "rpl_mi.h"            // Master_info
+#include "rpl_mi.h"            // Primary_info
 #include "sql_class.h"         // THD
 #include "sql_plugin.h"        // plugin_int_to_ref
 
@@ -757,7 +757,7 @@ int Binlog_transmit_delegate::after_send_event(THD *thd, ushort flags,
   return ret;
 }
 
-int Binlog_transmit_delegate::after_reset_master(THD *thd, ushort flags)
+int Binlog_transmit_delegate::after_reset_primary(THD *thd, ushort flags)
 
 {
   Binlog_transmit_param param;
@@ -765,22 +765,22 @@ int Binlog_transmit_delegate::after_reset_master(THD *thd, ushort flags)
   param.server_id= thd->server_id;
 
   int ret= 0;
-  FOREACH_OBSERVER(ret, after_reset_master, thd, (&param));
+  FOREACH_OBSERVER(ret, after_reset_primary, thd, (&param));
   return ret;
 }
 
 void Binlog_relay_IO_delegate::init_param(Binlog_relay_IO_param *param,
-                                          Master_info *mi)
+                                          Primary_info *mi)
 {
   param->mysql= mi->mysql;
   param->user= const_cast<char *>(mi->get_user());
   param->host= mi->host;
   param->port= mi->port;
-  param->master_log_name= const_cast<char *>(mi->get_master_log_name());
-  param->master_log_pos= mi->get_master_log_pos();
+  param->primary_log_name= const_cast<char *>(mi->get_primary_log_name());
+  param->primary_log_pos= mi->get_primary_log_pos();
 }
 
-int Binlog_relay_IO_delegate::thread_start(THD *thd, Master_info *mi)
+int Binlog_relay_IO_delegate::thread_start(THD *thd, Primary_info *mi)
 {
   Binlog_relay_IO_param param;
   init_param(&param, mi);
@@ -793,7 +793,7 @@ int Binlog_relay_IO_delegate::thread_start(THD *thd, Master_info *mi)
 }
 
 
-int Binlog_relay_IO_delegate::thread_stop(THD *thd, Master_info *mi)
+int Binlog_relay_IO_delegate::thread_stop(THD *thd, Primary_info *mi)
 {
 
   Binlog_relay_IO_param param;
@@ -807,7 +807,7 @@ int Binlog_relay_IO_delegate::thread_stop(THD *thd, Master_info *mi)
 }
 
 int Binlog_relay_IO_delegate::applier_stop(THD *thd,
-                                           Master_info *mi,
+                                           Primary_info *mi,
                                            bool aborted)
 {
   Binlog_relay_IO_param param;
@@ -821,7 +821,7 @@ int Binlog_relay_IO_delegate::applier_stop(THD *thd,
 }
 
 int Binlog_relay_IO_delegate::before_request_transmit(THD *thd,
-                                                      Master_info *mi,
+                                                      Primary_info *mi,
                                                       ushort flags)
 {
   Binlog_relay_IO_param param;
@@ -834,7 +834,7 @@ int Binlog_relay_IO_delegate::before_request_transmit(THD *thd,
   return ret;
 }
 
-int Binlog_relay_IO_delegate::after_read_event(THD *thd, Master_info *mi,
+int Binlog_relay_IO_delegate::after_read_event(THD *thd, Primary_info *mi,
                                                const char *packet, ulong len,
                                                const char **event_buf,
                                                ulong *event_len)
@@ -850,7 +850,7 @@ int Binlog_relay_IO_delegate::after_read_event(THD *thd, Master_info *mi,
   return ret;
 }
 
-int Binlog_relay_IO_delegate::after_queue_event(THD *thd, Master_info *mi,
+int Binlog_relay_IO_delegate::after_queue_event(THD *thd, Primary_info *mi,
                                                 const char *event_buf,
                                                 ulong event_len,
                                                 bool synced)
@@ -870,7 +870,7 @@ int Binlog_relay_IO_delegate::after_queue_event(THD *thd, Master_info *mi,
   return ret;
 }
 
-int Binlog_relay_IO_delegate::after_reset_slave(THD *thd, Master_info *mi)
+int Binlog_relay_IO_delegate::after_reset_replica(THD *thd, Primary_info *mi)
 
 {
   Binlog_relay_IO_param param;
@@ -879,7 +879,7 @@ int Binlog_relay_IO_delegate::after_reset_slave(THD *thd, Master_info *mi)
   param.thread_id= thd->thread_id();
 
   int ret= 0;
-  FOREACH_OBSERVER(ret, after_reset_slave, thd, (&param));
+  FOREACH_OBSERVER(ret, after_reset_replica, thd, (&param));
   return ret;
 }
 #endif /* HAVE_REPLICATION */

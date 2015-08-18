@@ -14,19 +14,19 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 // ---------------------------------------------------------------------------
-// This file contains a signal log trace for DBDICT at the master for a
+// This file contains a signal log trace for DBDICT at the primary for a
 // create table. Another file contains the signal log for the participant
-// node. Master node is 2, participant node 4 and api node is 3.
+// node. Primary node is 2, participant node 4 and api node is 3.
 
 // ---------------------------------------------------------------------------
 // This file contains a signal log trace for DBDICT at the participant for a
-// add table. Another file contains the signal log for the master
-// node. Master node is 2, participant node 4 and api node is 3.
+// add table. Another file contains the signal log for the primary
+// node. Primary node is 2, participant node 4 and api node is 3.
 //
 
 // ---------------------------------------------------------------------------
 //--------------------------------------------------------------------------
-// Master requests us to save a new state of the table in the schema file
+// Primary requests us to save a new state of the table in the schema file
 // == ADD_STARTED 
 //--------------------------------------------------------------------------
 
@@ -115,7 +115,7 @@ s.bn: 250 "DBDICT", s.proc: 4, sigId: 46718 length: 1 trace: 0
  H'00000004
 
 //--------------------------------------------------------------------------
-// We receive the table description from the master node.
+// We receive the table description from the primary node.
 // We set the data in the DICT block. (table and attribute records).
 //--------------------------------------------------------------------------
 
@@ -422,8 +422,8 @@ s.bn: 250 "DBDICT", s.proc: 4, sigId: 47846 length: 1 trace: 0
 ---- Received - Signal ----------------
 
 //--------------------------------------------------------------------------
-// Finally unblock the DICT block so that it can handle add table as master
-// if it becomes master in the future.
+// Finally unblock the DICT block so that it can handle add table as primary
+// if it becomes primary in the future.
 //--------------------------------------------------------------------------
 
 r.bn: 250 "DBDICT", r.proc: 4, sigId: 47846 gsn: 444 "UNBLO_DICTREQ" prio: 1

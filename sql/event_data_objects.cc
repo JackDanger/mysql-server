@@ -566,14 +566,14 @@ Event_queue_element::load_from_row(THD *thd, TABLE *table)
 
   DBUG_PRINT("load_from_row", ("Event [%s] is [%s]", name.str, ptr));
 
-  /* Set event status (ENABLED | SLAVESIDE_DISABLED | DISABLED) */
+  /* Set event status (ENABLED | REPLICASIDE_DISABLED | DISABLED) */
   switch (ptr[0])
   {
   case 'E' :
     status = Event_parse_data::ENABLED;
     break;
   case 'S' :
-    status = Event_parse_data::SLAVESIDE_DISABLED;
+    status = Event_parse_data::REPLICASIDE_DISABLED;
     break;
   case 'D' :
   default:
@@ -1247,8 +1247,8 @@ Event_timed::get_create_event(THD *thd, String *buf)
 
   if (status == Event_parse_data::ENABLED)
     buf->append(STRING_WITH_LEN("ENABLE"));
-  else if (status == Event_parse_data::SLAVESIDE_DISABLED)
-    buf->append(STRING_WITH_LEN("DISABLE ON SLAVE"));
+  else if (status == Event_parse_data::REPLICASIDE_DISABLED)
+    buf->append(STRING_WITH_LEN("DISABLE ON REPLICA"));
   else
     buf->append(STRING_WITH_LEN("DISABLE"));
 
@@ -1487,13 +1487,13 @@ end:
                           (const char *) dbname.str, (const char *) name.str);
     /*
       Construct a query for the binary log, to ensure the event is dropped
-      on the slave
+      on the replica
     */
     if (construct_drop_event_sql(thd, &sp_sql))
       ret= 1;
     else
     {
-      ulong saved_master_access;
+      ulong saved_primary_access;
 
       thd->set_query(sp_sql.c_ptr_safe(), sp_sql.length());
 
@@ -1506,8 +1506,8 @@ end:
         Temporarily reset it to read-write.
       */
 
-      saved_master_access= thd->security_context()->master_access();
-      thd->security_context()->set_master_access(saved_master_access |
+      saved_primary_access= thd->security_context()->primary_access();
+      thd->security_context()->set_primary_access(saved_primary_access |
                                                  SUPER_ACL);
       bool save_tx_read_only= thd->tx_read_only;
       thd->tx_read_only= false;
@@ -1515,7 +1515,7 @@ end:
       ret= Events::drop_event(thd, dbname, name, FALSE);
 
       thd->tx_read_only= save_tx_read_only;
-      thd->security_context()->set_master_access(saved_master_access);
+      thd->security_context()->set_primary_access(saved_primary_access);
     }
   }
 #ifndef NO_EMBEDDED_ACCESS_CHECKS

@@ -11,8 +11,8 @@
 #   When GTID_MODE=OFF, transactions have the special GTID
 #   "ANONYMOUS".
 #
-# - On a master, the GTID is generated during the transaction commit;
-#   prior to that it is "AUTOMATIC". On a slave, the GTID is specified
+# - On a primary, the GTID is generated during the transaction commit;
+#   prior to that it is "AUTOMATIC". On a replica, the GTID is specified
 #   (using SET GTID_NEXT) prior to executing the transaction.
 #
 # ==== Implementation ====

@@ -67,7 +67,7 @@ protected:
     // Slight hack: Makes THD::is_connected() return true.
     // This prevents MDL_context::acquire_lock() from thinking
     // the connection has died and the wait should be aborted.
-    m_thd->system_thread= SYSTEM_THREAD_SLAVE_IO;
+    m_thd->system_thread= SYSTEM_THREAD_REPLICA_IO;
   }
 
   virtual void TearDown()

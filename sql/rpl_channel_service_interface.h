@@ -20,7 +20,7 @@
 
 #define RPL_CHANNEL_SERVICE_RECEIVER_CONNECTION_ERROR      -1
 #define RPL_CHANNEL_SERVICE_DEFAULT_CHANNEL_CREATION_ERROR -2
-#define RPL_CHANNEL_SERVICE_SLAVE_SKIP_COUNTER_ACTIVE      -3
+#define RPL_CHANNEL_SERVICE_REPLICA_SKIP_COUNTER_ACTIVE      -3
 #define RPL_CHANNEL_SERVICE_CHANNEL_DOES_NOT_EXISTS_ERROR  -4
 //Error for the wait event consumption, equal to the server wait for GTID method
 #define REPLICATION_THREAD_WAIT_TIMEOUT_ERROR -1
@@ -38,7 +38,7 @@
 */
 enum enum_channel_type
 {
-  SLAVE_REPLICATION_CHANNEL,  //Master slave replication channels
+  REPLICA_REPLICATION_CHANNEL,  //Primary replica replication channels
   GROUP_REPLICATION_CHANNEL   //Group replication channels
 };
 
@@ -53,7 +53,7 @@ enum enum_multi_threaded_workers_type
 
 /**
  SSL information to be used when creating a channel.
- It maps the SSL options present in a CHANGE MASTER.
+ It maps the SSL options present in a CHANGE PRIMARY.
 */
 struct st_ssl_info
 {
@@ -73,7 +73,7 @@ void initialize_channel_ssl_info(Channel_ssl_info* channel_ssl_info);
 
 /**
  Creation information for a channel.
- It includes the data that is usually associated to a change master command
+ It includes the data that is usually associated to a change primary command
 */
 struct st_channel_info
 {
@@ -139,7 +139,7 @@ void
 initialize_channel_connection_info(Channel_connection_info* channel_info);
 
 /**
-  Initializes a channel connection in a similar way to a change master command.
+  Initializes a channel connection in a similar way to a change primary command.
 
   @note If the channel exists, it is reconfigured with the new options.
         About the logs, the preserve_relay_logs option allows the user to

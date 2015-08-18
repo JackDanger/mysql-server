@@ -10,16 +10,16 @@
 # after rotating the binary/relay logs and after crashes. The properties
 # are as follows:
 #
-# 1. Guarantee that an event generated on the master appears everywhere.
+# 1. Guarantee that an event generated on the primary appears everywhere.
 #
-# Property 1.1 The set of GTIDs generated on the master are unique and
+# Property 1.1 The set of GTIDs generated on the primary are unique and
 #              monotonically created.
 #
-# Property 1.2 The set of GTIDs generated on the master are preserved
+# Property 1.2 The set of GTIDs generated on the primary are preserved
 #              in the relay log after being fetched.
 #
-# Property 1.2 The set of GTIDs generated on the master are preserved
-#              in the slave's binary log after execution.
+# Property 1.2 The set of GTIDs generated on the primary are preserved
+#              in the replica's binary log after execution.
 #
 # 2. Guarantee that the Previous GTIDs events are correctly stored everywhere.
 #
@@ -30,37 +30,37 @@
 #                set of complete transactions stored in the previous relay
 #                logs.
 #
-# 3. Guarantee that RESET SLAVE/RESET MASTER cleans the appropriate states.
+# 3. Guarantee that RESET REPLICA/RESET PRIMARY cleans the appropriate states.
 #
-# Property 3.1 - RESET SLAVE cleans the GTIDs and previous GTIDs' state
+# Property 3.1 - RESET REPLICA cleans the GTIDs and previous GTIDs' state
 #                stored in the relay log.
 #
-# Property 3.2 - RESET MASTER cleans the GTIDs and previous GTIDs' state
+# Property 3.2 - RESET PRIMARY cleans the GTIDs and previous GTIDs' state
 #                stored in the binary log.
 #
-# 4. With CHANGE MASTER TO MASTER_AUTO_POSITION coordinates are not used.
+# 4. With CHANGE PRIMARY TO PRIMARY_AUTO_POSITION coordinates are not used.
 #
-# Property 4.1 - When MASTER_AUTO_POSITION is specified only missing data
-#                transactions on the slave are retrieved from the master.
+# Property 4.1 - When PRIMARY_AUTO_POSITION is specified only missing data
+#                transactions on the replica are retrieved from the primary.
 #          
 # We check if the aforementioned properties hold after generating a set
 # of transactions and rotating logs through different methods: 
 #
-# 1. On both master and slave, rotate logs through FLUSH LOGS.
-# 2. On the slave, generate spreaded events by rotating the relay log using
+# 1. On both primary and replica, rotate logs through FLUSH LOGS.
+# 2. On the replica, generate spreaded events by rotating the relay log using
 #    FLUSH RELAY LOGS when the IO thread is in the middle of a transaction.
-#    On the master, rotate logs through FLUSH LOGS.
-# 3. On the slave, rotate logs by restarting the server. On the master,
+#    On the primary, rotate logs through FLUSH LOGS.
+# 3. On the replica, rotate logs by restarting the server. On the primary,
 #    rotate logs through FLUSH LOGS.
-# 4. On the slave, rotate logs by start/stop. On the master, rotate logs by
+# 4. On the replica, rotate logs by start/stop. On the primary, rotate logs by
 #    restarting the server.
-# 5. RESET SLAVE must not affect its binary log. On the master, rotate logs
+# 5. RESET REPLICA must not affect its binary log. On the primary, rotate logs
 #    by restarting the server.
-# 6. On the slave, rotate logs by start/stop and calling CHANGE MASTER TO
-#    with MASTER_AUTO_POSITION enabled. On the master, rotate logs through
+# 6. On the replica, rotate logs by start/stop and calling CHANGE PRIMARY TO
+#    with PRIMARY_AUTO_POSITION enabled. On the primary, rotate logs through
 #    FLUSH LOGS.
-# 7. On the slave, rotate logs by start/stop and calling START SLAVE UNTIL
-#    GTID. On the master, rotate logs through FLUSH LOGS.
+# 7. On the replica, rotate logs by start/stop and calling START REPLICA UNTIL
+#    GTID. On the primary, rotate logs through FLUSH LOGS.
 #
 # We also check if the aforementioned properties hold after crashes:
 #
@@ -74,10 +74,10 @@
 --source include/not_windows.inc
 --source include/have_debug.inc
 --source include/have_gtid.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 --disable_warnings
-call mtr.add_suppression("Recovery from master pos .*");
+call mtr.add_suppression("Recovery from primary pos .*");
 call mtr.add_suppression("Error in Log_event::read_log_event()");
 call mtr.add_suppression("Failed to read information on Previous GTIDs.");
 call mtr.add_suppression("Error reading GTIDs from binary log");
@@ -85,19 +85,19 @@ call mtr.add_suppression("Error reading GTIDs from binary log");
 
 CREATE TABLE t1(id INTEGER) ENGINE= Innodb;
 
---let $master_uuid= query_get_value(SELECT @@SERVER_UUID, @@SERVER_UUID, 1)
---connection slave
---let $slave_uuid= query_get_value(SELECT @@SERVER_UUID, @@SERVER_UUID, 1)
+--let $primary_uuid= query_get_value(SELECT @@SERVER_UUID, @@SERVER_UUID, 1)
+--connection replica
+--let $replica_uuid= query_get_value(SELECT @@SERVER_UUID, @@SERVER_UUID, 1)
 
 
 #
 # 1. This part of the test case:
 #
-#  1.1 - Generates a set of transactions on the master.
+#  1.1 - Generates a set of transactions on the primary.
 #
-#  1.2 - Makes the slave to retrieve and apply these transactions.
+#  1.2 - Makes the replica to retrieve and apply these transactions.
 #
-#  1.3 - Rotates both the binary logs on the slave and master
+#  1.3 - Rotates both the binary logs on the replica and primary
 #        by calling FLUSH LOGS.
 #
 
@@ -112,8 +112,8 @@ while ($i != 5)
 {
   --echo ---- i=$i ----
 
-  #  1.1 - Generates a set of transactions on the master.
-  --connection master
+  #  1.1 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
@@ -121,7 +121,7 @@ while ($i != 5)
 
   # Check property 1.1 and 2.1.
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -138,13 +138,13 @@ while ($i != 5)
   }
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  1.2 - Makes the slave to retrieve and apply these transactions.
-  --source include/sync_slave_sql_with_master.inc
-  --connection slave
+  #  1.2 - Makes the replica to retrieve and apply these transactions.
+  --source include/sync_replica_sql_with_primary.inc
+  --connection replica
 
   # Check property 1.2 and 2.1.
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -163,7 +163,7 @@ while ($i != 5)
   
   # Check property 1.3 and 2.2.
   --let $binlog= relaylog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -187,7 +187,7 @@ while ($i != 5)
 
   # Check property 1.1 and 2.1.
   --let $binlog= binlog
-  --let $server_uuid= $slave_uuid
+  --let $server_uuid= $replica_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -204,9 +204,9 @@ while ($i != 5)
   }
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  1.3 - Rotates both the binary logs on the slave and master.
+  #  1.3 - Rotates both the binary logs on the replica and primary.
   FLUSH LOGS;
-  --connection master
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -215,23 +215,23 @@ while ($i != 5)
 #
 # 2. This part of the test case:
 #
-#  2.1 - Generates a set of transactions on the master.
+#  2.1 - Generates a set of transactions on the primary.
 #
-#  2.2 - Makes the slave to retrieve these transactions and
+#  2.2 - Makes the replica to retrieve these transactions and
 #        spread their events into two relay logs. Then apply
 #        the events.
 #
-#  2.3 - Rotates the binary log on the master
+#  2.3 - Rotates the binary log on the primary
 #        by calling FLUSH LOGS.
 #
 
 --echo ==== Part 2 ====
 
-# This test was designed to sync slave with the master using positions
+# This test was designed to sync replica with the primary using positions
 # instead of GTIDs. However, if the test is ran with GTID_MODE=ON it
-# uses GTIDs to sync the slave with the master.
-# When MTS is enabled, the slave may have the GITDs of transactions
-# in the GTID_EXECUTED before updating slave's applier position, and
+# uses GTIDs to sync the replica with the primary.
+# When MTS is enabled, the replica may have the GITDs of transactions
+# in the GTID_EXECUTED before updating replica's applier position, and
 # this situation may lead to fail in this part of the test.
 # So, it is better to ignore GTIDs on sync.
 --let $ignore_gtids_on_sync= 1
@@ -239,28 +239,28 @@ while ($i != 5)
 --disable_warnings
 --source include/rpl_reset.inc
 --enable_warnings
---connection slave
---source include/stop_slave.inc
+--connection replica
+--source include/stop_replica.inc
 --disable_warnings
---source include/start_slave.inc
+--source include/start_replica.inc
 --enable_warnings
 
---connection master
-# This transaction will be the MASTER_UUID:1
+--connection primary
+# This transaction will be the PRIMARY_UUID:1
 BEGIN;
 INSERT INTO t1 VALUES(0);
 COMMIT;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 --let $i=1
 while ($i != 5)
 {
   --echo ---- i=$i ----
-  --source include/rpl_connection_slave.inc
+  --source include/rpl_connection_replica.inc
   --let $debug_point= pause_on_queuing_event
   --source include/add_debug_point.inc
 
-  #  2.1 - Generates a set of transactions on the master.
+  #  2.1 - Generates a set of transactions on the primary.
   #        Each transaction will have more than three events
   #        depending on binlog format:
   #
@@ -269,16 +269,16 @@ while ($i != 5)
   #        GTID + QUERY(BEGIN) + TABLE_MAP + ROWS + XID
   #
   #        So, this part of the test will issue an "FLUSH LOCAL RELAY LOGS"
-  #        on the slave right before queuing the fourth event of the
+  #        on the replica right before queuing the fourth event of the
   #        transaction.
-  --source include/rpl_connection_master.inc
+  --source include/rpl_connection_primary.inc
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
   --let $event_counter= 3
-  --source include/rpl_connection_slave.inc
+  --source include/rpl_connection_replica.inc
   while ($event_counter > 0)
   {
     --echo Waiting for $event_counter more event(s) before flushing relaylog
@@ -298,23 +298,23 @@ while ($i != 5)
   # Let IO thread continue its work
   SET DEBUG_SYNC= 'now SIGNAL continue_queuing_event';
 
-  #  2.2 - Makes the slave to retrieve these transactions and
+  #  2.2 - Makes the replica to retrieve these transactions and
   #        spread their events into two relay logs. Then apply
   #        the events.
-  --source include/rpl_connection_master.inc
-  --source include/sync_slave_sql_with_master.inc
+  --source include/rpl_connection_primary.inc
+  --source include/sync_replica_sql_with_primary.inc
 
   # Check property 2.2.
   --let $binlog= relaylog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   --let $gtid_set_ini= 1
   --let $gtid_set_end= `SELECT $i`
   --let $gtid_ini=
   --let $gtid_end=
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  2.3 - Rotates the binary log on the master.
-  --connection master
+  #  2.3 - Rotates the binary log on the primary.
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -325,27 +325,27 @@ while ($i != 5)
 #
 # 3. This part of the test case:
 #
-#  3.1 - Generates a set of transactions on the master.
+#  3.1 - Generates a set of transactions on the primary.
 #
-#  3.2 - Makes the slave to retrieve and apply these transactions
+#  3.2 - Makes the replica to retrieve and apply these transactions
 #
-#  3.3 - Restarts the slave server to rotate binary and relay logs.
+#  3.3 - Restarts the replica server to rotate binary and relay logs.
 #
-#  3.4 - Rotates both the binary logs on the slave and master
+#  3.4 - Rotates both the binary logs on the replica and primary
 #        by calling FLUSH LOGS.
 #
 
 --echo ==== Part 3 ====
 
---connection slave
+--connection replica
 --disable_warnings
 --source include/rpl_reset.inc
 --enable_warnings
 
---source include/stop_slave.inc
+--source include/stop_replica.inc
 SET GLOBAL debug="";
 --disable_warnings
---source include/start_slave.inc
+--source include/start_replica.inc
 --enable_warnings
 
 --let $i=1
@@ -353,20 +353,20 @@ while ($i != 5)
 {
   --echo ---- i=$i ----
 
-  #  3.1 - Generates a set of transactions on the master.
-  --connection master
+  #  3.1 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
-  #  3.2 - Makes the slave to retrieve and apply these transactions.
-  --source include/sync_slave_sql_with_master.inc
+  #  3.2 - Makes the replica to retrieve and apply these transactions.
+  --source include/sync_replica_sql_with_primary.inc
  
   # Check property 1.2 and 2.1.
-  --connection slave
+  --connection replica
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -385,7 +385,7 @@ while ($i != 5)
 
   # Check property 1.3 and 2.2.
   --let $binlog= relaylog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -402,18 +402,18 @@ while ($i != 5)
   }
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  3.3 - Restarts the slave server to rotate binary and relay logs.
-  --source include/stop_slave.inc
+  #  3.3 - Restarts the replica server to rotate binary and relay logs.
+  --source include/stop_replica.inc
   --let $rpl_server_number= 2
   --source include/rpl_restart_server.inc
-  --connection slave
+  --connection replica
   --disable_warnings
-  --source include/start_slave.inc
+  --source include/start_replica.inc
   --enable_warnings
   
-  #  3.4 - Rotates both the binary logs on the slave and master.
+  #  3.4 - Rotates both the binary logs on the replica and primary.
   FLUSH LOGS;
-  --connection master
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -422,15 +422,15 @@ while ($i != 5)
 #
 # 4. This part of the test case:
 #
-#  4.1 - Generates a set of transactions on the master.
+#  4.1 - Generates a set of transactions on the primary.
 #
-#  4.2 - Makes the slave to retrieve and apply these transactions
+#  4.2 - Makes the replica to retrieve and apply these transactions
 #
-#  4.3 - Stops the slave, restart the master server and starts the
-#        slave to rotate both slave and master's binary and slave's
+#  4.3 - Stops the replica, restart the primary server and starts the
+#        replica to rotate both replica and primary's binary and replica's
 #        relay logs.
 #
-#  4.4 - Rotates both the binary logs on the slave and master
+#  4.4 - Rotates both the binary logs on the replica and primary
 #        by calling FLUSH LOGS.
 #
 
@@ -445,8 +445,8 @@ while ($i != 5)
 {
   --echo ---- i=$i ----
 
-  #  4.1 - Generates a set of transactions on the master.
-  --connection master
+  #  4.1 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
@@ -454,7 +454,7 @@ while ($i != 5)
 
   # Check property 1.1 and 2.1.
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -471,13 +471,13 @@ while ($i != 5)
   }
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  4.2 - Makes the slave to retrieve and apply these transactions.
-  --source include/sync_slave_sql_with_master.inc
+  #  4.2 - Makes the replica to retrieve and apply these transactions.
+  --source include/sync_replica_sql_with_primary.inc
  
   # Check property 1.2 and 2.1.
-  --connection slave
+  --connection replica
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -496,7 +496,7 @@ while ($i != 5)
 
   # Check property 1.3 and 2.2.
   --let $binlog= relaylog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -513,20 +513,20 @@ while ($i != 5)
   }
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  4.3 - Stops the slave, restart the master server and starts the
-  #        slave.
-  --source include/stop_slave.inc
-  --connection master
+  #  4.3 - Stops the replica, restart the primary server and starts the
+  #        replica.
+  --source include/stop_replica.inc
+  --connection primary
   --let $rpl_server_number= 1
   --source include/rpl_restart_server.inc
-  --connection slave
+  --connection replica
   --disable_warnings
-  --source include/start_slave.inc
+  --source include/start_replica.inc
   --enable_warnings
   
-  #  4.4 - Rotates both the binary logs on the slave and master.
+  #  4.4 - Rotates both the binary logs on the replica and primary.
   FLUSH LOGS;
-  --connection master
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -537,13 +537,13 @@ while ($i != 5)
 #
 #  5.1 - Resets the IO Thread's state but not SQL Thread's state.
 #
-#  5.2 - Generates a set of transactions on the master.
+#  5.2 - Generates a set of transactions on the primary.
 #
-#  5.3 - Stops the slave, restart the master server and starts the
-#        slave to rotate both slave and master's binary and slave's
+#  5.3 - Stops the replica, restart the primary server and starts the
+#        replica to rotate both replica and primary's binary and replica's
 #        relay logs.
 #
-#  5.4 - Rotates both the binary logs on the slave and master
+#  5.4 - Rotates both the binary logs on the replica and primary
 #        by calling FLUSH LOGS.
 #
 
@@ -555,19 +555,19 @@ while ($i != 5)
   --echo ---- i=$i ----
 
   #  5.1 - Resets the IO Thread's state but not SQL Thread's state.
-  --connection slave
-  --source include/stop_slave.inc
-  RESET SLAVE;
-  RESET MASTER;
-  --connection master
-  RESET MASTER;
-  --connection slave
+  --connection replica
+  --source include/stop_replica.inc
+  RESET REPLICA;
+  RESET PRIMARY;
+  --connection primary
+  RESET PRIMARY;
+  --connection replica
   --disable_warnings
-  --source include/start_slave.inc
+  --source include/start_replica.inc
   --enable_warnings
 
-  #  5.2 - Generates a set of transactions on the master.
-  --connection master
+  #  5.2 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
@@ -578,20 +578,20 @@ while ($i != 5)
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
-  #  5.3 - Makes the slave to retrieve and apply these transactions.
-  --source include/sync_slave_sql_with_master.inc
+  #  5.3 - Makes the replica to retrieve and apply these transactions.
+  --source include/sync_replica_sql_with_primary.inc
   # Check property 1.2, 2.1, 3.1 and 3.2
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   --let $gtid_set_ini=
   --let $gtid_set_end=
   --let $gtid_ini= 1
   --let $gtid_end= 2
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  5.4 - Rotates both the binary logs on the slave and master.
+  #  5.4 - Rotates both the binary logs on the replica and primary.
   FLUSH LOGS;
-  --connection master
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -600,66 +600,66 @@ while ($i != 5)
 #
 # 6. This part of the test case:
 #
-#  6.1 - Generates a set of transactions on the master.
+#  6.1 - Generates a set of transactions on the primary.
 #
-#  6.2 - Makes the slave to retrieve and apply these transactions through
-#        sync_slave_gtids_with_master
+#  6.2 - Makes the replica to retrieve and apply these transactions through
+#        sync_replica_gtids_with_primary
 #
-#  6.3 - Stop the slave, call CHANGE MASTER TO with MASTER_AUTO_POSITION and
-#        start the slave to rotate the relay log.
+#  6.3 - Stop the replica, call CHANGE PRIMARY TO with PRIMARY_AUTO_POSITION and
+#        start the replica to rotate the relay log.
 #
-#  6.4 - Rotates the binary log on master by calling FLUSH LOGS.
+#  6.4 - Rotates the binary log on primary by calling FLUSH LOGS.
 #
 
 --echo ==== Part 6 ====
 
---connection slave
---source include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
---connection master
-RESET MASTER;
---connection slave
---let $slave_master_host= query_get_value(SHOW SLAVE STATUS, Master_Host, 1)
---error ER_BAD_SLAVE_AUTO_POSITION
-CHANGE MASTER TO MASTER_AUTO_POSITION= 1, MASTER_LOG_FILE= 'master-bin.000001', MASTER_LOG_POS= 4;
+--connection replica
+--source include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+--connection primary
+RESET PRIMARY;
+--connection replica
+--let $replica_primary_host= query_get_value(SHOW REPLICA STATUS, Primary_Host, 1)
+--error ER_BAD_REPLICA_AUTO_POSITION
+CHANGE PRIMARY TO PRIMARY_AUTO_POSITION= 1, PRIMARY_LOG_FILE= 'primary-bin.000001', PRIMARY_LOG_POS= 4;
 --disable_warnings
---source include/start_slave.inc
+--source include/start_replica.inc
 --enable_warnings
 
---let $slave_uuid= `SELECT @@GLOBAL.SERVER_UUID`
---connection master
---let $master_uuid= `SELECT @@GLOBAL.SERVER_UUID`
+--let $replica_uuid= `SELECT @@GLOBAL.SERVER_UUID`
+--connection primary
+--let $primary_uuid= `SELECT @@GLOBAL.SERVER_UUID`
 
 --let $i=1
 while ($i != 5)
 {
   --echo ---- i=$i ----
 
-  # 6.1 - Generates a set of transactions on the master.
-  --connection master
+  # 6.1 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
-  --let $wait_gtids_first= query_get_value(SHOW MASTER STATUS, Executed_Gtid_Set, 1)
+  --let $wait_gtids_first= query_get_value(SHOW PRIMARY STATUS, Executed_Gtid_Set, 1)
 
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
-  --let $wait_gtids_second= query_get_value(SHOW MASTER STATUS, Executed_Gtid_Set, 1)
+  --let $wait_gtids_second= query_get_value(SHOW PRIMARY STATUS, Executed_Gtid_Set, 1)
 
   if (`SELECT ($i % 2) = 0`)
   {
-    --connection slave
-    --replace_result $master_uuid MASTER_UUID $slave_uuid SLAVE_UUID
+    --connection replica
+    --replace_result $primary_uuid PRIMARY_UUID $replica_uuid REPLICA_UUID
     --disable_result_log
     --eval SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('$wait_gtids_first', 300)
     --enable_result_log
-    --replace_result $master_uuid MASTER_UUID $slave_uuid SLAVE_UUID
+    --replace_result $primary_uuid PRIMARY_UUID $replica_uuid REPLICA_UUID
     --disable_result_log
     --eval SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('$wait_gtids_second', 300)
     --enable_result_log
@@ -667,12 +667,12 @@ while ($i != 5)
 
   if (`SELECT ($i % 2) = 1`)
   {
-    --connection slave
-    --replace_result $master_uuid MASTER_UUID $slave_uuid SLAVE_UUID
+    --connection replica
+    --replace_result $primary_uuid PRIMARY_UUID $replica_uuid REPLICA_UUID
     --disable_result_log
     --eval SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('$wait_gtids_first')
     --enable_result_log
-    --replace_result $master_uuid MASTER_UUID $slave_uuid SLAVE_UUID
+    --replace_result $primary_uuid PRIMARY_UUID $replica_uuid REPLICA_UUID
     --disable_result_log
     --eval SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('$wait_gtids_second')
     --enable_result_log
@@ -680,23 +680,23 @@ while ($i != 5)
 
   # Check property 4.1
   --let $binlog= relaylog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   --let $gtid_set_ini=
   --let $gtid_set_end=
   --let $gtid_ini= `SELECT ($i * 2) - 1`
   --let $gtid_end= `SELECT $i * 2`
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  # 6.3 - Stop and start the slave, call CHANGE MASTER TO with MASTER_AUTO_POSITION.
-  --source include/stop_slave.inc
-  --replace_result $slave_master_host SLAVE_MASTER_HOST
-  --eval CHANGE MASTER TO MASTER_HOST= '$slave_master_host', MASTER_AUTO_POSITION= 1
+  # 6.3 - Stop and start the replica, call CHANGE PRIMARY TO with PRIMARY_AUTO_POSITION.
+  --source include/stop_replica.inc
+  --replace_result $replica_primary_host REPLICA_PRIMARY_HOST
+  --eval CHANGE PRIMARY TO PRIMARY_HOST= '$replica_primary_host', PRIMARY_AUTO_POSITION= 1
   --disable_warnings
-  --source include/start_slave.inc
+  --source include/start_replica.inc
   --enable_warnings
 
-  # 6.4 - Rotates the binary log on master by calling FLUSH LOGS.
-  --connection master
+  # 6.4 - Rotates the binary log on primary by calling FLUSH LOGS.
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -705,34 +705,34 @@ while ($i != 5)
 #
 # 7. This part of the test case:
 #
-#  7.1 - Generates a set of transactions on the master.
+#  7.1 - Generates a set of transactions on the primary.
 #
-#  7.2 - Makes the slave to retrieve and apply these transactions through
-#        START SLAVE UNTIL GTID.
+#  7.2 - Makes the replica to retrieve and apply these transactions through
+#        START REPLICA UNTIL GTID.
 #
-#  7.3 - Rotates the binary log on master by calling FLUSH LOGS.
+#  7.3 - Rotates the binary log on primary by calling FLUSH LOGS.
 #
 
 --echo ==== Part 7 ====
 
---connection slave
---source include/stop_slave.inc
-RESET SLAVE;
-RESET MASTER;
---connection master
-RESET MASTER;
---connection slave
---let $slave_master_host= query_get_value(SHOW SLAVE STATUS, Master_Host, 1)
---replace_result $slave_master_host SLAVE_MASTER_HOST
---eval CHANGE MASTER TO MASTER_HOST= '$slave_master_host', MASTER_AUTO_POSITION= 1
+--connection replica
+--source include/stop_replica.inc
+RESET REPLICA;
+RESET PRIMARY;
+--connection primary
+RESET PRIMARY;
+--connection replica
+--let $replica_primary_host= query_get_value(SHOW REPLICA STATUS, Primary_Host, 1)
+--replace_result $replica_primary_host REPLICA_PRIMARY_HOST
+--eval CHANGE PRIMARY TO PRIMARY_HOST= '$replica_primary_host', PRIMARY_AUTO_POSITION= 1
 
 --let $i=1
 while ($i != 5)
 {
   --echo ---- i=$i ----
 
-  # 7.1 - Generates a set of transactions on the master.
-  --connection master
+  # 7.1 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
@@ -743,27 +743,27 @@ while ($i != 5)
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
-  # 7.2 - Makes the slave to retrieve and apply these transactions.
-  --connection slave
+  # 7.2 - Makes the replica to retrieve and apply these transactions.
+  --connection replica
   --let $sequence= `SELECT ($i * 2)`
-  --replace_result $master_uuid MASTER_UUID
+  --replace_result $primary_uuid PRIMARY_UUID
   --disable_warnings
-  --eval START SLAVE UNTIL SQL_BEFORE_GTIDS= "$master_uuid:$sequence"
+  --eval START REPLICA UNTIL SQL_BEFORE_GTIDS= "$primary_uuid:$sequence"
   --enable_warnings
-  --source include/wait_for_slave_sql_to_stop.inc
-  --source include/stop_slave.inc
+  --source include/wait_for_replica_sql_to_stop.inc
+  --source include/stop_replica.inc
 
   # Check property 1.2 and 4.1.
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   --let $gtid_set_ini=
   --let $gtid_set_end=
   --let $gtid_ini= 1
   --let $gtid_end= `SELECT ($i * 2) - 1`
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  # 7.3 - Rotates the binary log on master by calling FLUSH LOGS.
-  --connection master
+  # 7.3 - Rotates the binary log on primary by calling FLUSH LOGS.
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -772,29 +772,29 @@ while ($i != 5)
 #
 # 8. This part of the test case:
 #
-#  8.1 - Generates a set of transactions on the master.
+#  8.1 - Generates a set of transactions on the primary.
 #
-#  8.2 - Makes the slave to retrieve and apply these transactions
+#  8.2 - Makes the replica to retrieve and apply these transactions
 #
-#  8.3 - Restarts the slave server to rotate binary and relay logs.
+#  8.3 - Restarts the replica server to rotate binary and relay logs.
 #        However, binary logs without Previous Gtids are created.
 #
-#  8.4 - Rotates both the binary logs on the slave and master
+#  8.4 - Rotates both the binary logs on the replica and primary
 #        by calling FLUSH LOGS.
 #
 
 --echo ==== Part 8 ====
 
---connection slave
---source include/stop_slave.inc
-RESET MASTER;
-RESET SLAVE;
---eval CHANGE MASTER TO MASTER_HOST= '$slave_master_host', MASTER_AUTO_POSITION= 0
---connection master
-RESET MASTER;
---connection slave
+--connection replica
+--source include/stop_replica.inc
+RESET PRIMARY;
+RESET REPLICA;
+--eval CHANGE PRIMARY TO PRIMARY_HOST= '$replica_primary_host', PRIMARY_AUTO_POSITION= 0
+--connection primary
+RESET PRIMARY;
+--connection replica
 --disable_warnings
---source include/start_slave.inc
+--source include/start_replica.inc
 --enable_warnings
 
 --let $i=1
@@ -802,20 +802,20 @@ while ($i != 5)
 {
   --echo ---- i=$i ----
 
-  #  8.1 - Generates a set of transactions on the master.
-  --connection master
+  #  8.1 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
-  #  8.2 - Makes the slave to retrieve and apply these transactions.
-  --source include/sync_slave_sql_with_master.inc
+  #  8.2 - Makes the replica to retrieve and apply these transactions.
+  --source include/sync_replica_sql_with_primary.inc
  
   # Check property 1.2 and 2.1.
-  --connection slave
+  --connection replica
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -834,7 +834,7 @@ while ($i != 5)
 
   # Check property 1.3 and 2.2.
   --let $binlog= relaylog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -853,8 +853,8 @@ while ($i != 5)
   }
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  8.3 - Restarts the slave server to rotate binary and relay logs.
-  --source include/stop_slave.inc
+  #  8.3 - Restarts the replica server to rotate binary and relay logs.
+  --source include/stop_replica.inc
 
   --let $rpl_server_number= 2
   --let $rpl_server_parameters= --relay-log-recovery=1 --debug=d,skip_writing_previous_gtids_log_event
@@ -863,13 +863,13 @@ while ($i != 5)
    --let $rpl_server_parameters= --relay-log-recovery=1
   --source include/rpl_restart_server.inc
 
-  --connection slave
+  --connection replica
   --disable_warnings
-  --source include/start_slave.inc
+  --source include/start_replica.inc
   --enable_warnings
-  #  8.4 - Rotates both the binary logs on the slave and master.
+  #  8.4 - Rotates both the binary logs on the replica and primary.
   FLUSH LOGS;
-  --connection master
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -878,14 +878,14 @@ while ($i != 5)
 #
 # 9. This part of the test case:
 #
-#  9.1 - Generates a set of transactions on the master.
+#  9.1 - Generates a set of transactions on the primary.
 #
-#  9.2 - Makes the slave to retrieve and apply these transactions
+#  9.2 - Makes the replica to retrieve and apply these transactions
 #
-#  9.3 - Restarts the slave server to rotate binary and relay logs.
+#  9.3 - Restarts the replica server to rotate binary and relay logs.
 #        However, binary logs with corrupted Previous Gtids are created.
 #
-#  9.4 - Rotates both the binary logs on the slave and master
+#  9.4 - Rotates both the binary logs on the replica and primary
 #        by calling FLUSH LOGS.
 #
 
@@ -900,20 +900,20 @@ while ($i != 5)
 {
   --echo ---- i=$i ----
 
-  #  9.1 - Generates a set of transactions on the master.
-  --connection master
+  #  9.1 - Generates a set of transactions on the primary.
+  --connection primary
   BEGIN;
   INSERT INTO t1 VALUES(1);
   INSERT INTO t1 VALUES(2);
   COMMIT;
 
-  #  9.2 - Makes the slave to retrieve and apply these transactions.
-  --source include/sync_slave_sql_with_master.inc
+  #  9.2 - Makes the replica to retrieve and apply these transactions.
+  --source include/sync_replica_sql_with_primary.inc
  
   # Check property 1.2 and 2.1.
-  --connection slave
+  --connection replica
   --let $binlog= binlog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -932,7 +932,7 @@ while ($i != 5)
 
   # Check property 1.3 and 2.2.
   --let $binlog= relaylog
-  --let $server_uuid= $master_uuid
+  --let $server_uuid= $primary_uuid
   if ($i == 1)
   {
     --let $gtid_set_ini= 0
@@ -951,8 +951,8 @@ while ($i != 5)
   }
   --source extra/rpl_tests/rpl_check_gtid.inc
 
-  #  9.3 - Restarts the slave server to rotate binary and relay logs.
-  --source include/stop_slave.inc
+  #  9.3 - Restarts the replica server to rotate binary and relay logs.
+  --source include/stop_replica.inc
 
   --let $rpl_server_number= 2
   --let $rpl_server_parameters= --relay-log-recovery=1 --debug=d,write_partial_previous_gtids_log_event
@@ -962,13 +962,13 @@ while ($i != 5)
   --let $rpl_server_parameters= --relay-log-recovery=1
   --source include/rpl_restart_server.inc
 
-  --connection slave
+  --connection replica
   --disable_warnings
-  --source include/start_slave.inc
+  --source include/start_replica.inc
   --enable_warnings
-  #  9.4 - Rotates both the binary logs on the slave and master.
+  #  9.4 - Rotates both the binary logs on the replica and primary.
   FLUSH LOGS;
-  --connection master
+  --connection primary
   FLUSH LOGS;
 
   inc $i;
@@ -978,12 +978,12 @@ while ($i != 5)
 --source include/rpl_reset.inc
 --enable_warnings
 
---connection master
+--connection primary
 DROP TABLE t1;
 
 --echo # Failure on creating compression thread
---source include/sync_slave_sql_with_master.inc
---source include/stop_slave.inc
+--source include/sync_replica_sql_with_primary.inc
+--source include/stop_replica.inc
 call mtr.add_suppression("Can not create thread to compress gtid_executed table .*");
 --let $rpl_server_number= 2
 --let $rpl_server_parameters= --debug=d,simulate_create_compress_thread_failure
@@ -994,8 +994,8 @@ call mtr.add_suppression("Can not create thread to compress gtid_executed table 
 call mtr.add_suppression("Plugin 'InnoDB' will be forced to shutdown");
 call mtr.add_suppression("Plugin 'InnoDB' has ref_count=.* after shutdown");
 --let $rpl_server_parameters=
-# Restart slave server without setting simulate_create_compress_thread_failure
+# Restart replica server without setting simulate_create_compress_thread_failure
 --source include/rpl_restart_server.inc
---source include/start_slave.inc
+--source include/start_replica.inc
 
 --source include/rpl_end.inc

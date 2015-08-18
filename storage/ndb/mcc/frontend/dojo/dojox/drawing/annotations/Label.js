@@ -3,26 +3,26 @@ define(["dijit","dojo","dojox","dojo/require!dojox/drawing/stencil/Text"],functi
 _2.provide("dojox.drawing.annotations.Label");
 _2.require("dojox.drawing.stencil.Text");
 _3.drawing.annotations.Label=_3.drawing.util.oo.declare(_3.drawing.stencil.Text,function(_4){
-this.master=_4.stencil;
+this.primary=_4.stencil;
 this.labelPosition=_4.labelPosition||"BR";
 if(_2.isFunction(this.labelPosition)){
 this.setLabel=this.setLabelCustom;
 }
 this.setLabel(_4.text||"");
-this.connect(this.master,"onTransform",this,"setLabel");
-this.connect(this.master,"destroy",this,"destroy");
+this.connect(this.primary,"onTransform",this,"setLabel");
+this.connect(this.primary,"destroy",this,"destroy");
 if(this.style.labelSameColor){
-this.connect(this.master,"attr",this,"beforeAttr");
+this.connect(this.primary,"attr",this,"beforeAttr");
 }
 },{_align:"start",drawingType:"label",setLabelCustom:function(_5){
-var d=_2.hitch(this.master,this.labelPosition)();
+var d=_2.hitch(this.primary,this.labelPosition)();
 this.setData({x:d.x,y:d.y,width:d.w||this.style.text.minWidth,height:d.h||this._lineHeight});
 if(_5&&!_5.split){
 _5=this.getText();
 }
 this.render(this.typesetter(_5));
 },setLabel:function(_6){
-var x,y,_7=this.master.getBounds();
+var x,y,_7=this.primary.getBounds();
 if(/B/.test(this.labelPosition)){
 y=_7.y2-this._lineHeight;
 }else{

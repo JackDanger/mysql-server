@@ -188,9 +188,9 @@ pack_row(TABLE *table, MY_BITMAP const* cols,
    @param curr_row_end
                   Pointer to variable that will hold the value of the
                   one-after-end position for the current row
-   @param master_reclength
+   @param primary_reclength
                   Pointer to variable that will be set to the length of the
-                  record on the master side
+                  record on the primary side
    @param row_end
                   Pointer to variable that will hold the value of the
                   end position for the data in the row event
@@ -205,26 +205,26 @@ int
 unpack_row(Relay_log_info const *rli,
            TABLE *table, uint const colcnt,
            uchar const *const row_data, MY_BITMAP const *cols,
-           uchar const **const current_row_end, ulong *const master_reclength,
+           uchar const **const current_row_end, ulong *const primary_reclength,
            uchar const *const row_end)
 {
   DBUG_ENTER("unpack_row");
   DBUG_ASSERT(row_data);
   DBUG_ASSERT(table);
-  size_t const master_null_byte_count= (bitmap_bits_set(cols) + 7) / 8;
+  size_t const primary_null_byte_count= (bitmap_bits_set(cols) + 7) / 8;
   int error= 0;
 
   uchar const *null_ptr= row_data;
-  uchar const *pack_ptr= row_data + master_null_byte_count;
+  uchar const *pack_ptr= row_data + primary_null_byte_count;
 
   if (bitmap_is_clear_all(cols))
   {
     /**
-       There was no data sent from the master, so there is 
+       There was no data sent from the primary, so there is 
        nothing to unpack.    
      */
     *current_row_end= pack_ptr;
-    *master_reclength= 0;
+    *primary_reclength= 0;
     DBUG_RETURN(error);
   }
 
@@ -233,7 +233,7 @@ unpack_row(Relay_log_info const *rli,
   Field **field_ptr;
   Field **const end_ptr= begin_ptr + colcnt;
 
-  DBUG_ASSERT(null_ptr < row_data + master_null_byte_count);
+  DBUG_ASSERT(null_ptr < row_data + primary_null_byte_count);
 
   // Mask to mask out the correct bit among the null bits
   unsigned int null_mask= 1U;
@@ -276,7 +276,7 @@ unpack_row(Relay_log_info const *rli,
     DBUG_PRINT("debug", ("field: %s; null mask: 0x%x; null bits: 0x%lx;"
                          " row start: %p; null bytes: %ld",
                          f->field_name, null_mask, (ulong) null_bits,
-                         pack_ptr, (ulong) master_null_byte_count));
+                         pack_ptr, (ulong) primary_null_byte_count));
 
     /*
       No need to bother about columns that does not exist: they have
@@ -286,7 +286,7 @@ unpack_row(Relay_log_info const *rli,
     {
       if ((null_mask & 0xFF) == 0)
       {
-        DBUG_ASSERT(null_ptr < row_data + master_null_byte_count);
+        DBUG_ASSERT(null_ptr < row_data + primary_null_byte_count);
         null_mask= 1U;
         null_bits= *null_ptr++;
       }
@@ -334,7 +334,7 @@ unpack_row(Relay_log_info const *rli,
 
         /*
           We only unpack the field if it was non-null.
-          Use the master's size information if available else call
+          Use the primary's size information if available else call
           normal unpack operation.
         */
         uint16 const metadata= tabledef->field_metadata(i);
@@ -345,8 +345,8 @@ unpack_row(Relay_log_info const *rli,
         if ( pack_ptr + len > row_end )
         {
           pack_ptr+= len;
-          my_error(ER_SLAVE_CORRUPT_EVENT, MYF(0));
-          DBUG_RETURN(ER_SLAVE_CORRUPT_EVENT);
+          my_error(ER_REPLICA_CORRUPT_EVENT, MYF(0));
+          DBUG_RETURN(ER_REPLICA_CORRUPT_EVENT);
         }
         pack_ptr= f->unpack(f->ptr, pack_ptr, metadata, TRUE);
 	DBUG_PRINT("debug", ("Unpacked; metadata: 0x%x;"
@@ -367,7 +367,7 @@ unpack_row(Relay_log_info const *rli,
 
       /*
         If conv_field is set, then we are doing a conversion. In this
-        case, we have unpacked the master data to the conversion
+        case, we have unpacked the primary data to the conversion
         table, so we need to copy the value stored in the conversion
         table into the final table and do the conversion at the same time.
       */
@@ -410,7 +410,7 @@ unpack_row(Relay_log_info const *rli,
   }
 
   /*
-    throw away master's extra fields
+    throw away primary's extra fields
   */
   uint max_cols= min<ulong>(tabledef->size(), cols->n_bits);
   for (; i < max_cols; i++)
@@ -419,7 +419,7 @@ unpack_row(Relay_log_info const *rli,
     {
       if ((null_mask & 0xFF) == 0)
       {
-        DBUG_ASSERT(null_ptr < row_data + master_null_byte_count);
+        DBUG_ASSERT(null_ptr < row_data + primary_null_byte_count);
         null_mask= 1U;
         null_bits= *null_ptr++;
       }
@@ -431,8 +431,8 @@ unpack_row(Relay_log_info const *rli,
         pack_ptr+= len;
         if ( pack_ptr > row_end )
         {
-          my_error(ER_SLAVE_CORRUPT_EVENT, MYF(0));
-          DBUG_RETURN(ER_SLAVE_CORRUPT_EVENT);
+          my_error(ER_REPLICA_CORRUPT_EVENT, MYF(0));
+          DBUG_RETURN(ER_REPLICA_CORRUPT_EVENT);
         }
       }
       null_mask <<= 1;
@@ -443,17 +443,17 @@ unpack_row(Relay_log_info const *rli,
     We should now have read all the null bytes, otherwise something is
     really wrong.
    */
-  DBUG_ASSERT(null_ptr == row_data + master_null_byte_count);
+  DBUG_ASSERT(null_ptr == row_data + primary_null_byte_count);
 
   DBUG_DUMP("row_data", row_data, pack_ptr - row_data);
 
   *current_row_end = pack_ptr;
-  if (master_reclength)
+  if (primary_reclength)
   {
     if (*field_ptr)
-      *master_reclength = (*field_ptr)->ptr - table->record[0];
+      *primary_reclength = (*field_ptr)->ptr - table->record[0];
     else
-      *master_reclength = table->s->reclength;
+      *primary_reclength = table->s->reclength;
   }
   
   DBUG_RETURN(error);
@@ -482,7 +482,7 @@ int prepare_record(TABLE *const table, const MY_BITMAP *cols, const bool check)
     DBUG_RETURN(0);
 
   /*
-    For fields the extra fields on the slave, we check if they have a default.
+    For fields the extra fields on the replica, we check if they have a default.
     The check follows the same rules as the INSERT query without specifying an
     explicit value for a field not having the explicit default 
     (@c check_that_all_fields_are_given_values()).

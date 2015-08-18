@@ -1035,7 +1035,7 @@ dojox.drawing.stencil._Base = dojox.drawing.util.oo.declare(
 			//		"onStencilUp". To disable the selectability,
 			//		make the att "", which causes a standard
 			//		mouse event.
-			//		Labels are special and used to select master stencils.
+			//		Labels are special and used to select primary stencils.
 			var att = this.enabled && (!this.annotation || this.drawingType=="label") ? this.drawingType : "";
 			this.util.attr(shape, "drawingType", att);
 		},

@@ -14,11 +14,11 @@
 #   iii) The record is deleted using a where clause that matches it.
 #    iv) repeat i-iii) for bit key that has different size, generating
 #        different extra bits values 
-#     v) The slave is synchronized with master 
-#    vi) The table is dropped on master and the slave is re-synchronized
-#        with master.
+#     v) The replica is synchronized with primary 
+#    vi) The table is dropped on primary and the replica is re-synchronized
+#        with primary.
 #
-#  Step v) made the bug evident before the patch, as the slave would 
+#  Step v) made the bug evident before the patch, as the replica would 
 #  fail to find the correspondent row in its database (although it did
 #  the insert in step ii) ).
 #
@@ -30,7 +30,7 @@
 
 --source include/not_group_replication_plugin.inc
 --source include/have_myisam.inc
---source include/master-slave.inc
+--source include/primary-replica.inc
 
 disable_query_log;
 call mtr.add_suppression("Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT");
@@ -76,10 +76,10 @@ DELETE FROM `t8` WHERE `bit` < 2 LIMIT 4;
 
 
 --enable_warnings
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 
 # clean up 
-connection master;
+connection primary;
 DROP TABLE t1, t2, t3, t4, t5, t6, t7, t8;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 --source include/rpl_end.inc

@@ -2,7 +2,7 @@
 # Bug#12982188 MTS: SBR ABORTS WITH ERROR 1742 ON LOAD DATA WITH TRIGGER MYISAM TO INNODB
 #
 
---source include/master-slave.inc
+--source include/primary-replica.inc
 --source include/have_binlog_format_statement.inc
 --source include/not_gtid_enabled.inc
 --source include/have_myisam.inc
@@ -22,13 +22,13 @@ let $max_workers= 4;
 10
 EOF
 
---connection slave
---source include/stop_slave.inc
-SET @save_slave_parallel_workers= @@slave_parallel_workers;
-eval SET @@global.slave_parallel_workers=$max_workers;
---source include/start_slave.inc
+--connection replica
+--source include/stop_replica.inc
+SET @save_replica_parallel_workers= @@replica_parallel_workers;
+eval SET @@global.replica_parallel_workers=$max_workers;
+--source include/start_replica.inc
 
---connection master
+--connection primary
 --disable_warnings
 DROP DATABASE IF EXISTS db1;
 DROP DATABASE IF EXISTS db2;
@@ -41,15 +41,15 @@ CREATE TRIGGER db1.tr AFTER INSERT ON tb1 FOR EACH ROW INSERT INTO db2.tb2
 (f1) VALUES (new.f1);
 --replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
 eval LOAD DATA LOCAL INFILE '$MYSQLTEST_VARDIR/load_bug12982188.txt' INTO TABLE db1.tb1;
---sync_slave_with_master
+--sync_replica_with_primary
 SELECT COUNT(*) FROM db2.tb2;
 
 # cleanup
---connection master
+--connection primary
 DROP DATABASE db1;
 DROP DATABASE db2;
 --remove_file $MYSQLTEST_VARDIR/load_bug12982188.txt
 
---sync_slave_with_master
---source include/stop_slave.inc
-SET @@global.slave_parallel_workers= @save_slave_parallel_workers;
+--sync_replica_with_primary
+--source include/stop_replica.inc
+SET @@global.replica_parallel_workers= @save_replica_parallel_workers;

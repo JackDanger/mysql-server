@@ -24,7 +24,7 @@
 #include "Sysfile.hpp"
 #include <SignalCounter.hpp>
 
-#include <signaldata/MasterLCP.hpp>
+#include <signaldata/PrimaryLCP.hpp>
 #include <signaldata/CopyGCIReq.hpp>
 #include <blocks/mutexes.hpp>
 #include <signaldata/LCP.hpp>
@@ -85,7 +85,7 @@
 // Crash Codes
 // --------------------------------------
 #define ZCOULD_NOT_OCCUR_ERROR 300
-#define ZNOT_MASTER_ERROR 301
+#define ZNOT_PRIMARY_ERROR 301
 #define ZWRONG_FAILURE_NUMBER_ERROR 302
 #define ZWRONG_START_NODE_ERROR 303
 #define ZNO_REPLICA_FOUND_ERROR 304
@@ -113,7 +113,7 @@
 #define MAX_CONCURRENT_DIH_TAB_DEF_OPS (MAX_CONCURRENT_LCP_TAB_DEF_FLUSHES + 2)
 #define ZPAGEREC (MAX_CONCURRENT_DIH_TAB_DEF_OPS * PACK_TABLE_PAGES)
 #define ZCREATE_REPLICA_FILE_SIZE 4
-#define ZPROXY_MASTER_FILE_SIZE 10
+#define ZPROXY_PRIMARY_FILE_SIZE 10
 #define ZPROXY_FILE_SIZE 10
 #endif
 
@@ -342,7 +342,7 @@ public:
     /**
      * The NodeRecoveryStatus variable and all the timers connected to this
      * status is used for two purposes. The first purpose is for a NDBINFO
-     * table that the master node will use to be able to specify the times
+     * table that the primary node will use to be able to specify the times
      * a node restart has spent in the various node restart phases.
      *
      * This will help both the users and the developers to understand where
@@ -369,7 +369,7 @@ public:
       NODE_FAILED = 2,
       NODE_FAILURE_COMPLETED = 3,
 
-      /* The first set of states are only used in master nodes. */
+      /* The first set of states are only used in primary nodes. */
       ALLOCATED_NODE_ID = 4,
       INCLUDED_IN_HB_PROTOCOL = 5,
       NDBCNTR_START_WAIT = 6,
@@ -387,7 +387,7 @@ public:
       WAIT_SUMA_HANDOVER = 18,
       RESTART_COMPLETED = 19,
 
-      /* There is a set of states used in non-master nodes as well. */
+      /* There is a set of states used in non-primary nodes as well. */
       NODE_GETTING_PERMIT = 20,
       NODE_GETTING_INCLUDED = 21,
       NODE_GETTING_SYNCHED = 22,
@@ -396,10 +396,10 @@ public:
     };
 
     /**
-     * We need to ensure that we don't pause the node when the master node
+     * We need to ensure that we don't pause the node when the primary node
      * asks for it in case the node is already dead. We check this by
      * by verifying that the node is in the state NODE_GETTING_PERMIT in
-     * in the non-master nodes. Since we do not yet maintain the
+     * in the non-primary nodes. Since we do not yet maintain the
      * nodeRecoveryStatus in all restart situations we temporarily
      * put this into a separate variable that we maintain separately.
      * TODO: We should use nodeRecoveryStatus when we maintain this
@@ -447,7 +447,7 @@ public:
     Uint8 copyCompleted; // 0 = NO :-), 1 = YES, 2 = yes, first WAITING
    
     /**
-     * Used by master as part of running LCPs to keep track of fragments
+     * Used by primary as part of running LCPs to keep track of fragments
      * that have started checkpoints and fragments that have been queued
      * for LCP execution.
      */
@@ -470,7 +470,7 @@ public:
     Uint8 noOfQueuedChkpt;
     Uint8 noOfStartedChkpt;
 
-    MasterLCPConf::State lcpStateAtTakeOver;
+    PrimaryLCPConf::State lcpStateAtTakeOver;
     Uint32 m_remove_node_from_table_lcp_id;
   };
   typedef Ptr<NodeRecord> NodeRecordPtr;
@@ -557,7 +557,7 @@ public:
      * is to be able to copy the meta data without having to wait for the
      * current LCP to be fully completed. Instead we can copy it while we are
      * pausing the LCP reporting. This gives a possibility to provide
-     * new node with a snapshot of the metadata from the master node
+     * new node with a snapshot of the metadata from the primary node
      * without having to stop the progress with the LCP execution.
      */
     Uint32 nextList;
@@ -630,8 +630,8 @@ public:
       CS_LCP_READ_TABLE,
       CS_COPY_TAB_REQ,
       CS_COPY_NODE_STATE,
-      CS_ADD_TABLE_MASTER,
-      CS_ADD_TABLE_SLAVE,
+      CS_ADD_TABLE_PRIMARY,
+      CS_ADD_TABLE_REPLICA,
       CS_INVALIDATE_NODE_LCP,
       CS_ALTER_TABLE,
       CS_COPY_TO_SAVE
@@ -646,8 +646,8 @@ public:
       US_LOCAL_CHECKPOINT_QUEUED,
       US_REMOVE_NODE,
       US_COPY_TAB_REQ,
-      US_ADD_TABLE_MASTER,
-      US_ADD_TABLE_SLAVE,
+      US_ADD_TABLE_PRIMARY,
+      US_ADD_TABLE_REPLICA,
       US_INVALIDATE_NODE_LCP,
       US_CALLBACK
     };
@@ -731,40 +731,40 @@ public:
     TakeOverRecord() {}
 
     /**
-     * States possible on slave (starting node)
+     * States possible on replica (starting node)
      */
-    enum ToSlaveStatus {
-      TO_SLAVE_IDLE = 0
+    enum ToReplicaStatus {
+      TO_REPLICA_IDLE = 0
       ,TO_START_FRAGMENTS = 1      // Finding LCP for each fragment
       ,TO_RUN_REDO = 2             // Waiting for local LQH to run REDO
-      ,TO_START_TO = 3             // Waiting for master (START_TOREQ)
+      ,TO_START_TO = 3             // Waiting for primary (START_TOREQ)
       ,TO_SELECTING_NEXT = 4       // Selecting next fragment to copy
       ,TO_PREPARE_COPY = 5         // Waiting for local LQH (PREPARE_COPYREQ)
-      ,TO_UPDATE_BEFORE_STORED = 6 // Waiting on master (UPDATE_TOREQ)
+      ,TO_UPDATE_BEFORE_STORED = 6 // Waiting on primary (UPDATE_TOREQ)
       ,TO_UPDATE_FRAG_STATE_STORED = 7
                         // Waiting for all UPDATE_FRAG_STATEREQ stored
-      ,TO_UPDATE_AFTER_STORED = 8  // Waiting for master (UPDATE_TOREQ)
+      ,TO_UPDATE_AFTER_STORED = 8  // Waiting for primary (UPDATE_TOREQ)
       ,TO_COPY_FRAG = 9            // Waiting for copy node (COPY_FRAGREQ)
       ,TO_COPY_ACTIVE = 10         // Waiting for local LQH (COPY_ACTIVEREQ)
-      ,TO_UPDATE_BEFORE_COMMIT = 11// Waiting for master (UPDATE_TOREQ)
+      ,TO_UPDATE_BEFORE_COMMIT = 11// Waiting for primary (UPDATE_TOREQ)
       ,TO_UPDATE_FRAG_STATE_COMMIT = 12 
                             // Waiting for all (UPDATE_FRAG_STATEREQ commit)
-      ,TO_UPDATE_AFTER_COMMIT = 13 // Waiting for master (UPDATE_TOREQ)
+      ,TO_UPDATE_AFTER_COMMIT = 13 // Waiting for primary (UPDATE_TOREQ)
 
       ,TO_START_LOGGING = 14        // Enabling logging on all fragments
       ,TO_SL_COPY_ACTIVE = 15       // Start logging: Copy active (local)
       ,TO_SL_UPDATE_FRAG_STATE = 16 // Start logging: Create Frag (dist)
-      ,TO_END_TO = 17               // Waiting for master (END_TOREQ)
+      ,TO_END_TO = 17               // Waiting for primary (END_TOREQ)
       ,TO_QUEUED_UPDATE_BEFORE_STORED = 18 //Queued
       ,TO_QUEUED_UPDATE_BEFORE_COMMIT = 19  //Queued
       ,TO_QUEUED_SL_UPDATE_FRAG_STATE = 20  //Queued
     };
 
     /**
-     * States possible on master
+     * States possible on primary
      */
-    enum ToMasterStatus {
-      TO_MASTER_IDLE = 0
+    enum ToPrimaryStatus {
+      TO_PRIMARY_IDLE = 0
       ,TO_MUTEX_BEFORE_STORED = 1  // Waiting for lock
       ,TO_MUTEX_BEFORE_LOCKED = 2  // Lock held
       ,TO_AFTER_STORED = 3         // No lock, but NGPtr reservation
@@ -799,8 +799,8 @@ public:
     Uint32 toFailedNode;
     Uint32 toStartingNode;
     NDB_TICKS toStartTime;
-    ToSlaveStatus toSlaveStatus;
-    ToMasterStatus toMasterStatus;
+    ToReplicaStatus toReplicaStatus;
+    ToPrimaryStatus toPrimaryStatus;
    
     MutexHandle2<DIH_SWITCH_PRIMARY_MUTEX> m_switchPrimaryMutexHandle;
     MutexHandle2<DIH_FRAGMENT_INFO> m_fragmentInfoMutex;
@@ -893,7 +893,7 @@ private:
   void fill_row_with_node_restart_status(NodeRecordPtr nodePtr,
                                          Ndbinfo::Row &row);
   void write_zero_columns(Ndbinfo::Row &row, Uint32 num_rows);
-  void handle_before_master(NodeRecordPtr nodePtr, Ndbinfo::Row &row);
+  void handle_before_primary(NodeRecordPtr nodePtr, Ndbinfo::Row &row);
   /* End methods for Node Recovery Status module */
 
   void execDUMP_STATE_ORD(Signal *);
@@ -901,12 +901,12 @@ private:
   void execDEBUG_SIG(Signal *);
   void execEMPTY_LCP_CONF(Signal *);
   void execEMPTY_LCP_REP(Signal*);
-  void execMASTER_GCPREF(Signal *);
-  void execMASTER_GCPREQ(Signal *);
-  void execMASTER_GCPCONF(Signal *);
-  void execMASTER_LCPREF(Signal *);
-  void execMASTER_LCPREQ(Signal *);
-  void execMASTER_LCPCONF(Signal *);
+  void execPRIMARY_GCPREF(Signal *);
+  void execPRIMARY_GCPREQ(Signal *);
+  void execPRIMARY_GCPCONF(Signal *);
+  void execPRIMARY_LCPREF(Signal *);
+  void execPRIMARY_LCPREQ(Signal *);
+  void execPRIMARY_LCPCONF(Signal *);
   void execNF_COMPLETEREP(Signal *);
   void execSTART_PERMREQ(Signal *);
   void execSTART_PERMCONF(Signal *);
@@ -971,7 +971,7 @@ private:
   void startLcpMutex_locked(Signal* signal, Uint32, Uint32);
   void startLcpMutex_unlocked(Signal* signal, Uint32, Uint32);
   void lcpFragmentMutex_locked(Signal* signal, Uint32, Uint32);
-  void master_lcp_fragmentMutex_locked(Signal* signal, Uint32, Uint32);
+  void primary_lcp_fragmentMutex_locked(Signal* signal, Uint32, Uint32);
 
   void switch_primary_stop_node(Signal* signal, Uint32, Uint32);
 
@@ -1016,11 +1016,11 @@ private:
    * step we release the fragment info mutex if we can use the pause
    * lcp protocol with all nodes.
    */
-  bool c_lcp_runs_with_pause_support; /* Master state */
-  bool c_old_node_waiting_for_lcp_end; /* Master state */
+  bool c_lcp_runs_with_pause_support; /* Primary state */
+  bool c_old_node_waiting_for_lcp_end; /* Primary state */
 
   /**
-   * This is the state in the master that keeps track of where the master is 
+   * This is the state in the primary that keeps track of where the primary is 
    * in the PAUSE LCP process. We can follow two different tracks in the
    * state traversal.
    *
@@ -1060,15 +1060,15 @@ private:
     PAUSE_NOT_IN_LCP_COPY_META_DATA = 6,
     PAUSE_NOT_IN_LCP_UNPAUSE = 7
   };
-  PauseLCPState c_pause_lcp_master_state;
+  PauseLCPState c_pause_lcp_primary_state;
 
   /**
    * Bitmask of nodes that we're expecting a PAUSE_LCP_CONF response from.
    * This bitmask is cleared if the starting node dies (or for that matter
    * if any node dies since this will cause the starting node to also fail).
-   * The PAUSE_LCP_REQ_Counter is only used in the master node.
+   * The PAUSE_LCP_REQ_Counter is only used in the primary node.
    */
-  SignalCounter c_PAUSE_LCP_REQ_Counter; /* Master state */
+  SignalCounter c_PAUSE_LCP_REQ_Counter; /* Primary state */
 
   /**
    * We need to keep track of the LQH nodes that participated in the PAUSE
@@ -1233,9 +1233,9 @@ private:
   void sendGCP_SAVEREQ(Signal *, Uint32 nodeId, Uint32);
   void sendSUB_GCP_COMPLETE_REP(Signal*, Uint32 nodeId, Uint32);
   void sendINCL_NODEREQ(Signal *, Uint32 nodeId, Uint32);
-  void sendMASTER_GCPREQ(Signal *, Uint32 nodeId, Uint32);
-  void sendMASTER_LCPREQ(Signal *, Uint32 nodeId, Uint32);
-  void sendMASTER_LCPCONF(Signal * signal, Uint32 fromLine);
+  void sendPRIMARY_GCPREQ(Signal *, Uint32 nodeId, Uint32);
+  void sendPRIMARY_LCPREQ(Signal *, Uint32 nodeId, Uint32);
+  void sendPRIMARY_LCPCONF(Signal * signal, Uint32 fromLine);
   void sendSTART_RECREQ(Signal *, Uint32 nodeId, Uint32);
   void sendSTART_INFOREQ(Signal *, Uint32 nodeId, Uint32);
   void sendSTOP_ME_REQ(Signal *, Uint32 nodeId, Uint32);
@@ -1330,10 +1330,10 @@ private:
   void clearRestartInfoBits(Signal *);
   void invalidateLcpInfoAfterSr(Signal*);
 
-  bool isMaster();
-  bool isActiveMaster();
+  bool isPrimary();
+  bool isActivePrimary();
 
-  void handleGcpStateInMaster(Signal *, NodeRecordPtr failedNodeptr);
+  void handleGcpStateInPrimary(Signal *, NodeRecordPtr failedNodeptr);
   void initRestartInfo(Signal*);
   void initRestorableGciFiles();
   void makeNodeGroups(Uint32 nodeArray[]);
@@ -1348,7 +1348,7 @@ private:
                    NodeGroupRecordPtr NGPtr,
                    FragmentstorePtr regFragptr);
   void sendDihRestartRef(Signal*);
-  void selectMasterCandidateAndSend(Signal *);
+  void selectPrimaryCandidateAndSend(Signal *);
   void setLcpActiveStatusEnd(Signal*);
   void setLcpActiveStatusStart(Signal *);
   void setNodeActiveStatus();
@@ -1420,16 +1420,16 @@ private:
   void calculateKeepGciLab(Signal *, Uint32 tableId, Uint32 fragId);
   void tableUpdateLab(Signal *, TabRecordPtr regTabPtr);
   void checkLcpCompletedLab(Signal *);
-  void initLcpLab(Signal *, Uint32 masterRef, Uint32 tableId);
+  void initLcpLab(Signal *, Uint32 primaryRef, Uint32 tableId);
   void startGcpLab(Signal *);
   void checkGcpStopLab(Signal *);
-  void MASTER_GCPhandling(Signal *, Uint32 failedNodeId);
-  void MASTER_LCPhandling(Signal *, Uint32 failedNodeId);
+  void PRIMARY_GCPhandling(Signal *, Uint32 failedNodeId);
+  void PRIMARY_LCPhandling(Signal *, Uint32 failedNodeId);
   void rnfTableNotReadyLab(Signal *, TabRecordPtr regTabPtr, Uint32 removeNodeId);
   void startLcpTakeOverLab(Signal *, Uint32 failedNodeId);
 
-  void startLcpMasterTakeOver(Signal *, Uint32 failedNodeId);
-  void startGcpMasterTakeOver(Signal *, Uint32 failedNodeId);
+  void startLcpPrimaryTakeOver(Signal *, Uint32 failedNodeId);
+  void startGcpPrimaryTakeOver(Signal *, Uint32 failedNodeId);
   void checkGcpOutstanding(Signal*, Uint32 failedNodeId);
 
   void checkEmptyLcpComplete(Signal *);
@@ -1488,9 +1488,9 @@ private:
   void startRemoveFailedNode(Signal *, NodeRecordPtr failedNodePtr);
   void handleGcpTakeOver(Signal *, NodeRecordPtr failedNodePtr);
   void handleLcpTakeOver(Signal *, NodeRecordPtr failedNodePtr);
-  void handleNewMaster(Signal *, NodeRecordPtr failedNodePtr);
+  void handleNewPrimary(Signal *, NodeRecordPtr failedNodePtr);
   void handleTakeOver(Signal*, Ptr<TakeOverRecord>);
-  void handleLcpMasterTakeOver(Signal *, Uint32 nodeId);
+  void handleLcpPrimaryTakeOver(Signal *, Uint32 nodeId);
 
 //------------------------------------
 // Replica record specific methods
@@ -1590,8 +1590,8 @@ private:
   void initTableFile(TabRecordPtr regTabPtr);
   void releaseTable(TabRecordPtr tabPtr);
 
-  void handleTakeOverMaster(Signal *, Uint32 takeOverPtr);
-  void handleTakeOverNewMaster(Signal *, Uint32 takeOverPtr);
+  void handleTakeOverPrimary(Signal *, Uint32 takeOverPtr);
+  void handleTakeOverNewPrimary(Signal *, Uint32 takeOverPtr);
 
 //------------------------------------
 // Node Record specific methods
@@ -1667,7 +1667,7 @@ private:
   /**
    * Methods and variables used to control the node restart phase where a
    * node gets the data back from an alive node. This has two parts, one
-   * part in the master node which controls that certain critical data is
+   * part in the primary node which controls that certain critical data is
    * only updated one at a time. The other part is in the starting node
    * where there is one thread for each parallel fragment copy process.
    *
@@ -1689,10 +1689,10 @@ private:
    *
    * START_TOREQ/CONF/REF:
    * This is sent from the starting node to allocate a take over record in the
-   * master node. This is sent once at the start of the take over processing.
+   * primary node. This is sent once at the start of the take over processing.
    *
    * UPDATE_TOREQ/CONF/REF:
-   * This is sent from a starting node to inform the master of a step forward
+   * This is sent from a starting node to inform the primary of a step forward
    * in the copy process. In some of those phases it means acquiring the global
    * cluster mutex on updating fragment state, in some phases it means
    * releasing the same mutex. Also the global switch primary replica mutex
@@ -1733,7 +1733,7 @@ private:
    * Sent per fragment replica the starting node is taking over.
    *
    * END_TOREQ/CONF/REF:
-   * This is sent from the starting node to the master node. The response can
+   * This is sent from the starting node to the primary node. The response can
    * take a long time since it involves waiting for the proper LCP to complete
    * to ensure that the node is fully recoverable even on its own without other
    * nodes to assist it. For this to happen the node requires a complete
@@ -1752,7 +1752,7 @@ private:
    * Variable descriptions
    * ---------------------
    *
-   * We have a pool of take over records used by the master for
+   * We have a pool of take over records used by the primary for
    * handling parallel node recoveries. We also use the same pool
    * in starting nodes to keep one main take over record and then
    * one record for each parallel thread that we can copy from in
@@ -1763,7 +1763,7 @@ private:
    *
    * All threads are scanning fragments to find a fragment replica that needs
    * take over. When they discover one they try to update the fragment replica
-   * state on the master (start takeover), which requires that they
+   * state on the primary (start takeover), which requires that they
    * temporarily become the activeThread. If this succeeds they are placed in
    * the activeThread variable. If it isn't successful they are placed into the
    * c_queued_for_start_takeover_list. When the global fragment replica state
@@ -1795,7 +1795,7 @@ private:
    * main take over record.
    *
    * c_takeOverPool:
-   * This is the pool of records used by both master and starting
+   * This is the pool of records used by both primary and starting
    * node.
    * 
    * c_mainTakeOverPtr:
@@ -1803,13 +1803,13 @@ private:
    *
    * c_queued_for_start_takeover_list:
    * A takeover thread is ready to copy a fragment, but has to wait until
-   * another thread is ready with its master communication before
+   * another thread is ready with its primary communication before
    * proceeding.
    *
    * c_queued_for_commit_takeover_list:
    * A takeover thread is ready to complete the copy of a fragment, it has to
    * wait a while since there is another thread currently communicating with
-   * the master node.
+   * the primary node.
    *
    * These two are queues, so we implement them as a Single Linked List,
    * FIFO queue, this means a SLFifoList.
@@ -1829,7 +1829,7 @@ private:
    * responsible for, we are placed into this list. This list handling
    * is on the starting node.
    * 
-   * This list is also used on the master node to keep track of node
+   * This list is also used on the primary node to keep track of node
    * take overs.
    *
    * c_completed_copy_threads_list:
@@ -1840,7 +1840,7 @@ private:
    * we change state of ongoing transactions we release the thread.
    *
    * c_activeThreadTakeOverPtr:
-   * This is the pointer to the currently active thread using the master
+   * This is the pointer to the currently active thread using the primary
    * node to update the fragment state.
    *
    */
@@ -1857,8 +1857,8 @@ private:
   TakeOverRecordPtr c_mainTakeOverPtr;
   TakeOverRecordPtr c_activeThreadTakeOverPtr;
 
-  /* List used in takeover handling in master part. */
-  DLList<TakeOverRecord> c_masterActiveTakeOverList;
+  /* List used in takeover handling in primary part. */
+  DLList<TakeOverRecord> c_primaryActiveTakeOverList;
 
 
 //-----------------------------------------------------
@@ -1906,10 +1906,10 @@ private:
                               Uint32 storedType,
                               TakeOverRecordPtr takeOverPtr);
 
-  void releaseTakeOver(TakeOverRecordPtr takeOverPtr, bool from_master);
+  void releaseTakeOver(TakeOverRecordPtr takeOverPtr, bool from_primary);
 
 //-------------------------------------------------
-// Methods for take over functionality, master part
+// Methods for take over functionality, primary part
 //-------------------------------------------------
   void switchPrimaryMutex_locked(Signal* signal, Uint32, Uint32);
   void switchPrimaryMutex_unlocked(Signal* signal, Uint32, Uint32);
@@ -1967,7 +1967,7 @@ private:
   struct GcpSave
   {
     Uint32 m_gci;
-    Uint32 m_master_ref;
+    Uint32 m_primary_ref;
     enum State {
       GCP_SAVE_IDLE     = 0, // Idle
       GCP_SAVE_REQ      = 1, // REQ received
@@ -1980,7 +1980,7 @@ private:
       Uint32 m_new_gci;
       Uint32 m_time_between_gcp;   /* Delay between global checkpoints */
       NDB_TICKS m_start_time;
-    } m_master;
+    } m_primary;
   } m_gcp_save;
 
   /**
@@ -1990,7 +1990,7 @@ private:
   {
     MicroGcp() { }
     bool m_enabled;
-    Uint32 m_master_ref;
+    Uint32 m_primary_ref;
 
     /**
      * rw-lock that protects multiple parallel DIVERIFY (readers) from
@@ -2013,7 +2013,7 @@ private:
       Uint32 m_time_between_gcp;
       Uint64 m_new_gci;
       NDB_TICKS m_start_time;
-    } m_master;
+    } m_primary;
   } m_micro_gcp;
 
   struct GcpMonitor
@@ -2036,21 +2036,21 @@ private:
   } m_gcp_monitor;
 
   /*------------------------------------------------------------------------*/
-  /*       THIS VARIABLE KEEPS TRACK OF THE STATE OF THIS NODE AS MASTER.   */
+  /*       THIS VARIABLE KEEPS TRACK OF THE STATE OF THIS NODE AS PRIMARY.   */
   /*------------------------------------------------------------------------*/
-  enum MasterState {
-    MASTER_IDLE = 0,
-    MASTER_ACTIVE = 1,
-    MASTER_TAKE_OVER_GCP = 2
+  enum PrimaryState {
+    PRIMARY_IDLE = 0,
+    PRIMARY_ACTIVE = 1,
+    PRIMARY_TAKE_OVER_GCP = 2
   };
-  MasterState cmasterState;
-  Uint16      cmasterTakeOverNode;
-  /* NODE IS NOT MASTER            */
-  /* NODE IS ACTIVE AS MASTER      */
-  /* NODE IS TAKING OVER AS MASTER */
+  PrimaryState cprimaryState;
+  Uint16      cprimaryTakeOverNode;
+  /* NODE IS NOT PRIMARY            */
+  /* NODE IS ACTIVE AS PRIMARY      */
+  /* NODE IS TAKING OVER AS PRIMARY */
 
-  struct CopyGCIMaster {
-    CopyGCIMaster(){
+  struct CopyGCIPrimary {
+    CopyGCIPrimary(){
       m_copyReason = CopyGCIReq::IDLE;
       for (Uint32 i = 0; i<WAIT_CNT; i++)
         m_waiting[i] = CopyGCIReq::IDLE;
@@ -2069,10 +2069,10 @@ private:
     /*------------------------------------------------------------------------*/
     STATIC_CONST( WAIT_CNT = 2 );
     CopyGCIReq::CopyReason m_waiting[WAIT_CNT];
-  } c_copyGCIMaster;
+  } c_copyGCIPrimary;
   
-  struct CopyGCISlave {
-    CopyGCISlave(){ m_copyReason = CopyGCIReq::IDLE; m_expectedNextWord = 0;}
+  struct CopyGCIReplica {
+    CopyGCIReplica(){ m_copyReason = CopyGCIReq::IDLE; m_expectedNextWord = 0;}
     /*------------------------------------------------------------------------*/
     /*       THIS STATE VARIABLE IS USED TO INDICATE IF COPYING OF RESTART    */
     /*       INFO WAS STARTED BY A LOCAL CHECKPOINT OR AS PART OF A SYSTEM    */
@@ -2084,7 +2084,7 @@ private:
     CopyGCIReq::CopyReason m_copyReason;
     
     Uint32 m_expectedNextWord;
-  } c_copyGCISlave;
+  } c_copyGCIReplica;
   
   /*------------------------------------------------------------------------*/
   /*       THIS VARIABLE IS USED TO KEEP TRACK OF THE STATE OF LOCAL        */
@@ -2093,13 +2093,13 @@ private:
 public:
   enum LcpStatus {
     LCP_STATUS_IDLE        = 0,
-    LCP_TCGET              = 1,  // Only master
+    LCP_TCGET              = 1,  // Only primary
     LCP_STATUS_ACTIVE      = 2,
-    LCP_WAIT_MUTEX         = 3,  // Only master
-    LCP_CALCULATE_KEEP_GCI = 4,  // Only master
+    LCP_WAIT_MUTEX         = 3,  // Only primary
+    LCP_CALCULATE_KEEP_GCI = 4,  // Only primary
     LCP_COPY_GCI           = 5,  
     LCP_INIT_TABLES        = 6,
-    LCP_TC_CLOPSIZE        = 7,  // Only master
+    LCP_TC_CLOPSIZE        = 7,  // Only primary
     LCP_START_LCP_ROUND    = 8,
     LCP_TAB_COMPLETED      = 9,
     LCP_TAB_SAVED          = 10
@@ -2164,16 +2164,16 @@ private:
     /*       STARTED STATE BEFORE THIS IS DONE.                               */
     /*------------------------------------------------------------------------*/
     bool immediateLcpStart;  
-    bool m_LCP_COMPLETE_REP_From_Master_Received;
+    bool m_LCP_COMPLETE_REP_From_Primary_Received;
     SignalCounter m_LCP_COMPLETE_REP_Counter_DIH;
     SignalCounter m_LCP_COMPLETE_REP_Counter_LQH;
     SignalCounter m_LAST_LCP_FRAG_ORD;
     NdbNodeBitmask m_participatingLQH;
     NdbNodeBitmask m_participatingDIH;
     
-    Uint32 m_masterLcpDihRef;
-    bool   m_MASTER_LCPREQ_Received;
-    Uint32 m_MASTER_LCPREQ_FailedNodeId;
+    Uint32 m_primaryLcpDihRef;
+    bool   m_PRIMARY_LCPREQ_Received;
+    Uint32 m_PRIMARY_LCPREQ_FailedNodeId;
 
     Uint32 m_lastLCP_COMPLETE_REP_id;
     Uint32 m_lastLCP_COMPLETE_REP_ref;
@@ -2195,7 +2195,7 @@ private:
 
   BlockReference clocallqhblockref;
   BlockReference clocaltcblockref;
-  BlockReference cmasterdihref;
+  BlockReference cprimarydihref;
   Uint16 cownNodeId;
   BlockReference cndbStartReqBlockref;
   BlockReference cntrlblockref;
@@ -2214,7 +2214,7 @@ private:
   CountingSemaphore c_lcpTabDefWritesControl;
 
 public:
-  enum LcpMasterTakeOverState {
+  enum LcpPrimaryTakeOverState {
     LMTOS_IDLE = 0,
     LMTOS_WAIT_EMPTY_LCP = 1,   // Currently doing empty LCP
     LMTOS_WAIT_LCP_FRAG_REP = 2,// Currently waiting for outst. LCP_FRAG_REP
@@ -2225,27 +2225,27 @@ public:
     LMTOS_COPY_ONGOING = 7
   };
 private:
-  class MasterTakeOverState {
+  class PrimaryTakeOverState {
   public:
-    MasterTakeOverState() {}
-    void set(LcpMasterTakeOverState s, Uint32 line) { 
+    PrimaryTakeOverState() {}
+    void set(LcpPrimaryTakeOverState s, Uint32 line) { 
       state = s; updatePlace = line;
     }
     
-    LcpMasterTakeOverState state;
+    LcpPrimaryTakeOverState state;
     Uint32 updatePlace;
 
     Uint32 minTableId;
     Uint32 minFragId;
     Uint32 failedNodeId;
     bool use_empty_lcp;
-  } c_lcpMasterTakeOverState;
+  } c_lcpPrimaryTakeOverState;
   bool check_if_empty_lcp_needed(void);
   
-  Uint16 cmasterNodeId;
+  Uint16 cprimaryNodeId;
 
-  struct NodeStartMasterRecord {
-    NodeStartMasterRecord() {}
+  struct NodeStartPrimaryRecord {
+    NodeStartPrimaryRecord() {}
     Uint32 startNode;
     Uint32 wait;
     Uint32 failNr;
@@ -2255,14 +2255,14 @@ private:
     Uint32 m_outstandingGsn;
     MutexHandle2<DIH_FRAGMENT_INFO> m_fragmentInfoMutex;
   };
-  NodeStartMasterRecord c_nodeStartMaster;
+  NodeStartPrimaryRecord c_nodeStartPrimary;
   
-  struct NodeStartSlaveRecord {
-    NodeStartSlaveRecord() { nodeId = 0;}
+  struct NodeStartReplicaRecord {
+    NodeStartReplicaRecord() { nodeId = 0;}
 
     Uint32 nodeId;
   };
-  NodeStartSlaveRecord c_nodeStartSlave;
+  NodeStartReplicaRecord c_nodeStartReplica;
 
   Uint32 cfirstAliveNode;
   Uint32 cfirstDeadNode;
@@ -2299,8 +2299,8 @@ private:
   SignalCounter c_GCP_SAVEREQ_Counter;
   SignalCounter c_SUB_GCP_COMPLETE_REP_Counter;
   SignalCounter c_INCL_NODEREQ_Counter;
-  SignalCounter c_MASTER_GCPREQ_Counter;
-  SignalCounter c_MASTER_LCPREQ_Counter;
+  SignalCounter c_PRIMARY_GCPREQ_Counter;
+  SignalCounter c_PRIMARY_LCPREQ_Counter;
   SignalCounter c_START_INFOREQ_Counter;
   SignalCounter c_START_RECREQ_Counter;
   SignalCounter c_STOP_ME_REQ_Counter;
@@ -2316,7 +2316,7 @@ private:
   }
 
   /**
-   * SwitchReplicaRecord - Should only be used by master
+   * SwitchReplicaRecord - Should only be used by primary
    */
   struct SwitchReplicaRecord {
     SwitchReplicaRecord() {}
@@ -2333,11 +2333,11 @@ private:
     
     Uint32 clientData;
     BlockReference clientRef;
-    BlockReference masterRef;
+    BlockReference primaryRef;
   };
   
-  struct StopPermMasterRecord {
-    StopPermMasterRecord() { clientRef = 0;}
+  struct StopPermPrimaryRecord {
+    StopPermPrimaryRecord() { clientRef = 0;}
     
     Uint32 returnValue;
     
@@ -2346,10 +2346,10 @@ private:
   };
   
   StopPermProxyRecord c_stopPermProxy;
-  StopPermMasterRecord c_stopPermMaster;
+  StopPermPrimaryRecord c_stopPermPrimary;
   
   void checkStopPermProxy(Signal*, NodeId failedNodeId);
-  void checkStopPermMaster(Signal*, NodeRecordPtr failedNodePtr);
+  void checkStopPermPrimary(Signal*, NodeRecordPtr failedNodePtr);
   
   void switchReplica(Signal*, 
 		     Uint32 nodeId, 
@@ -2366,7 +2366,7 @@ private:
     
     Uint32 clientData;
     BlockReference clientRef;
-    BlockReference masterRef;
+    BlockReference primaryRef;
     
     union { Uint32 nextPool; Uint32 nextList; };
     Uint32 prevList;
@@ -2374,17 +2374,17 @@ private:
   typedef Ptr<WaitGCPProxyRecord> WaitGCPProxyPtr;
 
   /**
-   * Wait GCP (master)
+   * Wait GCP (primary)
    */
-  struct WaitGCPMasterRecord {
-    WaitGCPMasterRecord() { clientRef = 0;}
+  struct WaitGCPPrimaryRecord {
+    WaitGCPPrimaryRecord() { clientRef = 0;}
     Uint32 clientData;
     BlockReference clientRef;
 
     union { Uint32 nextPool; Uint32 nextList; };
     Uint32 prevList;
   };
-  typedef Ptr<WaitGCPMasterRecord> WaitGCPMasterPtr;
+  typedef Ptr<WaitGCPPrimaryRecord> WaitGCPPrimaryPtr;
 
   /**
    * Pool/list of WaitGCPProxyRecord record
@@ -2393,16 +2393,16 @@ private:
   DLList<WaitGCPProxyRecord> c_waitGCPProxyList;
 
   /**
-   * Pool/list of WaitGCPMasterRecord record
+   * Pool/list of WaitGCPPrimaryRecord record
    */
-  ArrayPool<WaitGCPMasterRecord> waitGCPMasterPool;
-  typedef DLList<WaitGCPMasterRecord> WaitGCPList;
-  WaitGCPList c_waitGCPMasterList;
-  WaitGCPList c_waitEpochMasterList;
+  ArrayPool<WaitGCPPrimaryRecord> waitGCPPrimaryPool;
+  typedef DLList<WaitGCPPrimaryRecord> WaitGCPList;
+  WaitGCPList c_waitGCPPrimaryList;
+  WaitGCPList c_waitEpochPrimaryList;
 
   void checkWaitGCPProxy(Signal*, NodeId failedNodeId);
-  void checkWaitGCPMaster(Signal*, NodeId failedNodeId);
-  void emptyWaitGCPMasterQueue(Signal*, Uint64, WaitGCPList&);
+  void checkWaitGCPPrimary(Signal*, NodeId failedNodeId);
+  void emptyWaitGCPPrimaryQueue(Signal*, Uint64, WaitGCPList&);
   
   /**
    * Stop me
@@ -2449,10 +2449,10 @@ private:
   void execNODE_START_REP(Signal* signal);
 
   /*
-   * Lock master DICT.  Only current use is by starting node
-   * during NR.  A pool of slave records is convenient anyway.
+   * Lock primary DICT.  Only current use is by starting node
+   * during NR.  A pool of replica records is convenient anyway.
    */
-  struct DictLockSlaveRecord {
+  struct DictLockReplicaRecord {
     Uint32 lockPtr;
     Uint32 lockType;
     bool locked;
@@ -2460,16 +2460,16 @@ private:
     Uint32 nextPool;
   };
 
-  typedef Ptr<DictLockSlaveRecord> DictLockSlavePtr;
-  ArrayPool<DictLockSlaveRecord> c_dictLockSlavePool;
+  typedef Ptr<DictLockReplicaRecord> DictLockReplicaPtr;
+  ArrayPool<DictLockReplicaRecord> c_dictLockReplicaPool;
 
-  // slave
+  // replica
   void sendDictLockReq(Signal* signal, Uint32 lockType, Callback c);
   void recvDictLockConf(Signal* signal);
-  void sendDictUnlockOrd(Signal* signal, Uint32 lockSlavePtrI);
+  void sendDictUnlockOrd(Signal* signal, Uint32 lockReplicaPtrI);
 
   // NR
-  Uint32 c_dictLockSlavePtrI_nodeRestart; // userPtr for NR
+  Uint32 c_dictLockReplicaPtrI_nodeRestart; // userPtr for NR
   void recvDictLockConf_nodeRestart(Signal* signal, Uint32 data, Uint32 ret);
 
   Uint32 c_error_7181_ref;
@@ -2496,7 +2496,7 @@ private:
    *   Reason for duplicating it is that
    *   - not to mess with current code
    *   - this one is "distributed", i.e maintained by *all* nodes,
-   *     not like c_lcpState which mixed master/slave state in a "unnatural"
+   *     not like c_lcpState which mixed primary/replica state in a "unnatural"
    *     way
    */
   struct LocalLCPState
@@ -2559,10 +2559,10 @@ private:
                     Uint32 delayMillis,
                     const NdbNodeBitmask& victims);
 
-  NodeId c_handled_master_take_over_copy_gci;
+  NodeId c_handled_primary_take_over_copy_gci;
 
-  bool handle_master_take_over_copy_gci(Signal *signal,
-                                        NodeId newMasterNodeId);
+  bool handle_primary_take_over_copy_gci(Signal *signal,
+                                        NodeId newPrimaryNodeId);
 };
 
 #if (DIH_CDATA_SIZE < _SYSFILE_SIZE32)

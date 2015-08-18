@@ -356,13 +356,13 @@ public:
   </tr>
 
   <tr>
-    <td>slave_proxy_id</td>
+    <td>replica_proxy_id</td>
     <td>4 byte unsigned integer</td>
     <td>An integer identifying the client thread that issued the
     query.  The id is unique per server.  (Note, however, that two
-    threads on different servers may have the same slave_proxy_id.)
+    threads on different servers may have the same replica_proxy_id.)
     This is used when a client thread creates a temporary table local
-    to the client.  The slave_proxy_id is used to distinguish
+    to the client.  The replica_proxy_id is used to distinguish
     temporary tables that belong to different clients.
     </td>
   </tr>
@@ -550,7 +550,7 @@ public:
   */
   uint32_t load_exec_time;
 
-  uint32_t slave_proxy_id;
+  uint32_t replica_proxy_id;
   size_t table_name_len;
 
   /**
@@ -575,7 +575,7 @@ public:
     Indicates that this event corresponds to LOAD DATA CONCURRENT,
 
     @note Since Load_event event coming from the binary log
-          lacks information whether LOAD DATA on master was concurrent
+          lacks information whether LOAD DATA on primary was concurrent
           or not, this flag is only set to TRUE for an auxiliary
           Load_event object which is used in mysql_load() to
           re-construct LOAD DATA statement from function parameters,
@@ -664,7 +664,7 @@ public:
   <tr>
     <td>file_id</td>
     <td>32 bit integer</td>
-    <td>The ID of the temporary file created by the slave to which
+    <td>The ID of the temporary file created by the replica to which
         the first data block is copied</td>
   </tr>
   </table>
@@ -674,7 +674,7 @@ class Create_file_event: public virtual Load_event
 protected:
   /**
     Pretend we are Load event, so we can write out just
-    our Load part - used on the slave when writing event out to
+    our Load part - used on the replica when writing event out to
     SQL_LOAD-*.info file
   */
   bool fake_base;
@@ -731,8 +731,8 @@ public:
 /**
   @class Delete_file_event
 
-  DELETE_FILE_EVENT occurs when the LOAD DATA failed on the master.
-  This event notifies the slave not to do the load and to delete
+  DELETE_FILE_EVENT occurs when the LOAD DATA failed on the primary.
+  This event notifies the replica not to do the load and to delete
   the temporary file.
 
   @section Delete_file_event_binary_format Binary Format
@@ -809,7 +809,7 @@ public:
   @class Execute_load_event
 
   Execute_load_event is created when the LOAD_DATA query succeeds on
-  the master. The slave should be notified to load the temporary file into
+  the primary. The replica should be notified to load the temporary file into
   the table. For server versions > 5.0.3, the temporary files that stores
   the parameters to LOAD DATA INFILE is not needed anymore, since they are
   stored in this event. There is still a temp file containing all the data

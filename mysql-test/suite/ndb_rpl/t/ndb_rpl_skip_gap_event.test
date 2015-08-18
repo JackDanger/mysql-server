@@ -5,9 +5,9 @@
 
 --source include/have_ndb.inc
 --source include/have_binlog_format_mixed_or_row.inc
---source suite/ndb_rpl/ndb_master-slave.inc
+--source suite/ndb_rpl/ndb_primary-replica.inc
 
---connection master
+--connection primary
 create table t1(pk int not null primary key, i int) engine = ndb;
 
 #
@@ -22,12 +22,12 @@ while ($1)
 }
 enable_query_log;
 
---sync_slave_with_master
-# connect to slave and ensure data is there.
---connection slave
+--sync_replica_with_primary
+# connect to replica and ensure data is there.
+--connection replica
 select count(*) from t1;
 
---connection master
+--connection primary
 
 --echo Restarting mysqld
  # Hack to allow using restart_mysqld.inc from rpl test
@@ -50,42 +50,42 @@ let $mysqld_name=mysqld.1.1;
 #
 # Show that the second log contains the LOST_EVENT incident
 # and that the binlog has been rotated(ie. flush, rotate and purge).
-let $binlog_file=master-bin.000002;
+let $binlog_file=primary-bin.000002;
 --source include/show_binlog_events.inc
 
 --disable_result_log
---connection slave
-# Get slave to try reconnection now.  Ignore errors if already started.
-start slave;
---connection master
+--connection replica
+# Get replica to try reconnection now.  Ignore errors if already started.
+start replica;
+--connection primary
 --enable_result_log
 
---echo Sync Slave with master
---sync_slave_with_master
+--echo Sync Replica with primary
+--sync_replica_with_primary
 
---connection slave
+--connection replica
 
---echo Show that Slave has not stopped (has skipped GAP)
+--echo Show that Replica has not stopped (has skipped GAP)
 
-let $status_items= Slave_IO_Running, Slave_SQL_Running, Last_Errno, Last_Error;	
--- source include/show_slave_status.inc
+let $status_items= Replica_IO_Running, Replica_SQL_Running, Last_Errno, Last_Error;	
+-- source include/show_replica_status.inc
 
 --echo Show that replication can continue
---connection master
+--connection primary
 insert into t1 values (1001, 1001);
 
---sync_slave_with_master
+--sync_replica_with_primary
 
---connection slave
+--connection replica
 
 select count(*) from t1;
 
---connection master
+--connection primary
 drop table t1;
 
---sync_slave_with_master
+--sync_replica_with_primary
 
 # NOTE: rpl_end.inc doesnt seem to work after having used restart_mysqld.inc
 # or something like that...probably needs investigation
---connection slave
---source include/stop_slave.inc
+--connection replica
+--source include/stop_replica.inc

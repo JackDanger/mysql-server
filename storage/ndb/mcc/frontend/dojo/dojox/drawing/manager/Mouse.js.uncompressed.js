@@ -5,7 +5,7 @@ dojo.provide("dojox.drawing.manager.Mouse");
 
 dojox.drawing.manager.Mouse = dojox.drawing.util.oo.declare(
 	// summary:
-	//		Master object (instance) that tracks mouse
+	//		Primary object (instance) that tracks mouse
 	//		events. A new instance is created for each
 	//		Drawing object.
 	// description:

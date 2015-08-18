@@ -10,7 +10,7 @@
 # [--let $rpl_only_running_threads= 1]
 # [--let $use_gtids= 1]
 # [--let $rpl_debug= 1]
-# [--let $slave_timeout= NUMBER]
+# [--let $replica_timeout= NUMBER]
 # --source include/rpl_sync.inc
 #
 # Parameters:
@@ -18,18 +18,18 @@
 #     By default, this script assumes that both the IO thread and the
 #     SQL thread are running and fails if one of them is stopped.  If
 #     $rpl_only_running_threads is set, this script first checks
-#     which slave threads are running: 
-#      - If both threads are running, sync both threads with master.
-#      - If only IO thread is running, sync IO thread with master.
+#     which replica threads are running: 
+#      - If both threads are running, sync both threads with primary.
+#      - If only IO thread is running, sync IO thread with primary.
 #      - If only SQL thread is running, sync SQL thread with IO thread.
 #      - If no thread is running, don't sync.
 #
 #   $use_gtids
 #     If set, uses GTIDs instead of filename and offset for positions.
 #
-#   $slave_timeout
+#   $replica_timeout
 #     Set the timeout when waiting for threads to sync. See
-#     include/wait_for_slave_param.inc
+#     include/wait_for_replica_param.inc
 #
 #   $rpl_debug
 #     See include/rpl_init.inc
@@ -38,23 +38,23 @@
 # ==== Side effects ====
 #
 # Does not change the current connection (note that this is different
-# from mysqltest's built-in sync_slave_with_master command).
+# from mysqltest's built-in sync_replica_with_primary command).
 
 
 --let $include_filename= rpl_sync.inc
 --source include/begin_include_file.inc
 
 #
-#@TODO: Ideally, just being in slave connection, we should have a way to sync
-# all the masters in one command, like below
-# --connection slave
+#@TODO: Ideally, just being in replica connection, we should have a way to sync
+# all the primarys in one command, like below
+# --connection replica
 # --source include/rpl_sync.inc
 # For now, we disable rpl_sync.inc when multisource is used.
 #
 
 if ($rpl_multi_source)
 {
-  --die ERROR IN TEST: rpl_sync.inc cannot be used when $rpl_multi_source=1. If you use multi-source, you must manually sync all servers using sync_slave_sql_with_master.inc or equivalent.
+  --die ERROR IN TEST: rpl_sync.inc cannot be used when $rpl_multi_source=1. If you use multi-source, you must manually sync all servers using sync_replica_sql_with_primary.inc or equivalent.
 }
 
 # Compute $rpl_sync_chain if needed.  We could have done this in
@@ -102,40 +102,40 @@ if(!$rpl_group_replication)
       if ($rpl_only_running_threads)
       {
         --connection server_$_rpl_server
-        --let $_rpl_slave_io_running= query_get_value(SHOW SLAVE STATUS, Slave_IO_Running, 1)
-        --let $_rpl_slave_sql_running= query_get_value(SHOW SLAVE STATUS, Slave_SQL_Running, 1)
+        --let $_rpl_replica_io_running= query_get_value(SHOW REPLICA STATUS, Replica_IO_Running, 1)
+        --let $_rpl_replica_sql_running= query_get_value(SHOW REPLICA STATUS, Replica_SQL_Running, 1)
         if ($rpl_debug)
         {
-          --echo Sync IO: $_rpl_slave_io_running; Sync SQL: $_rpl_slave_sql_running
+          --echo Sync IO: $_rpl_replica_io_running; Sync SQL: $_rpl_replica_sql_running
         }
-        if ($_rpl_slave_io_running != No)
+        if ($_rpl_replica_io_running != No)
         {
           --connection server_$_rpl_prev_server
-          --let $sync_slave_connection= server_$_rpl_server
-          if ($_rpl_slave_sql_running != No)
+          --let $sync_replica_connection= server_$_rpl_server
+          if ($_rpl_replica_sql_running != No)
           {
-            --source include/sync_slave_sql_with_master.inc
+            --source include/sync_replica_sql_with_primary.inc
           }
-          if ($_rpl_slave_sql_running == No)
+          if ($_rpl_replica_sql_running == No)
           {
-            --source include/sync_slave_io_with_master.inc
+            --source include/sync_replica_io_with_primary.inc
           }
         }
-        if ($_rpl_slave_io_running == No)
+        if ($_rpl_replica_io_running == No)
         {
-          if ($_rpl_slave_sql_running != No)
+          if ($_rpl_replica_sql_running != No)
           {
-            --source include/sync_slave_sql_with_io.inc
+            --source include/sync_replica_sql_with_io.inc
           }
         }
       }
       if (!$rpl_only_running_threads)
       {
         --connection server_$_rpl_prev_server
-        --let $saved_value= $sync_slave_connection
-        --let $sync_slave_connection= server_$_rpl_server
-        --source include/sync_slave_sql_with_master.inc
-        --let $sync_slave_connection= $saved_value
+        --let $saved_value= $sync_replica_connection
+        --let $sync_replica_connection= server_$_rpl_server
+        --source include/sync_replica_sql_with_primary.inc
+        --let $sync_replica_connection= $saved_value
       }
     }
 
@@ -195,10 +195,10 @@ if ($rpl_group_replication)
     {
       --let $rpl_connection_name= $biggest_gtid_executed_server
       --source include/rpl_connection.inc
-      --let $sync_slave_connection= server_$_rpl_server
-      if ($sync_slave_connection != $biggest_gtid_executed_server)
+      --let $sync_replica_connection= server_$_rpl_server
+      if ($sync_replica_connection != $biggest_gtid_executed_server)
       {
-        --source include/sync_slave_sql_with_master.inc
+        --source include/sync_replica_sql_with_primary.inc
       }
     }
     --dec $_rpl_server

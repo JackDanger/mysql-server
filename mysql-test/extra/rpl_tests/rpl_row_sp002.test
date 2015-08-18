@@ -15,7 +15,7 @@
 
 # Includes
 -- source include/have_binlog_format_row.inc
--- source include/master-slave.inc
+-- source include/primary-replica.inc
 
 # Begin test section 1
 
@@ -44,32 +44,32 @@ call test.p1('to');
 call test.p1('OK');
 call test.p1('MySQL');
 
-let $message=< -- test 1 select master after p1 -- >;
+let $message=< -- test 1 select primary after p1 -- >;
 --source include/show_msg.inc
 
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-let $message=< -- test 1 select slave after p1 -- >;
+let $message=< -- test 1 select replica after p1 -- >;
 --source include/show_msg.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-let $message=< -- test 1 call p2 & select master -- >;
+let $message=< -- test 1 call p2 & select primary -- >;
 --source include/show_msg.inc
-connection master;
+connection primary;
 call test.p2(4);
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-let $message=< -- test 1 select slave after p2 -- >;
+let $message=< -- test 1 select replica after p2 -- >;
 --source include/show_msg.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-connection master;
+connection primary;
 #show binlog events;
 let $message=< -- End test 1 Begin test 2 -- >;
 --source include/show_msg.inc
@@ -106,33 +106,33 @@ CALL test.p1(4,'to');
 CALL test.p1(5,'OK');
 CALL test.p1(6,'MySQL');
 
-let $message=< -- test 2 select Master after p1 -- >;
+let $message=< -- test 2 select Primary after p1 -- >;
 --source include/show_msg.inc
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-let $message=< -- test 2 select Slave after p1 -- >;
+let $message=< -- test 2 select Replica after p1 -- >;
 --source include/show_msg.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-let $message=< -- test 2 call p2 & select Master -- >;
+let $message=< -- test 2 call p2 & select Primary -- >;
 --source include/show_msg.inc
-connection master;
+connection primary;
 CALL test.p2(2);
 CALL test.p2(4);
 CALL test.p2(6);
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-let $message=< -- test 1 select Slave after p2 -- >;
+let $message=< -- test 1 select Replica after p2 -- >;
 --source include/show_msg.inc
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 SELECT * FROM test.t1;
 SELECT * FROM test.t2;
 
-connection master;
+connection primary;
 #show binlog events;
 let $message=< -- End test 2 Begin test 3 -- >;
 --source include/show_msg.inc
@@ -168,10 +168,10 @@ while ($n)
 
 ROLLBACK;
 select * from test.t3;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from test.t3;
 
-connection master;
+connection primary;
 START TRANSACTION;
 
 -- disable_query_log
@@ -187,10 +187,10 @@ while ($n)
 
 COMMIT;
 select * from test.t3;
---source include/sync_slave_sql_with_master.inc
+--source include/sync_replica_sql_with_primary.inc
 select * from test.t3;
 
-connection master;
+connection primary;
 #show binlog events from 1627;
 
 
