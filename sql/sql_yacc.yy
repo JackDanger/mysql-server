@@ -784,7 +784,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
 %token  PRIMARY_SSL_KEY_SYM
 %token  PRIMARY_SSL_SYM
 %token  PRIMARY_SSL_VERIFY_SERVER_CERT_SYM
-%token  PRIMARY_SYM
+%token  PRIMARY_NODE_SYM
 %token  PRIMARY_USER_SYM
 %token  PRIMARY_HEARTBEAT_PERIOD_SYM
 %token  MATCH                         /* SQL-2003-R */
@@ -1794,7 +1794,7 @@ help:
 /* change primary */
 
 change:
-          CHANGE PRIMARY_SYM TO_SYM
+          CHANGE PRIMARY_NODE_SYM TO_SYM
           {
             LEX *lex = Lex;
             lex->sql_command = SQLCOM_CHANGE_PRIMARY;
@@ -12003,7 +12003,7 @@ show_param:
               MYSQL_YYABORT;
             lex->only_view= 1;
           }
-        | PRIMARY_SYM STATUS_SYM
+        | PRIMARY_NODE_SYM STATUS_SYM
           {
             Lex->sql_command = SQLCOM_SHOW_PRIMARY_STAT;
           }
@@ -12078,7 +12078,7 @@ show_engine_param:
         ;
 
 primary_or_binary:
-          PRIMARY_SYM
+          PRIMARY_NODE_SYM
         | BINARY
         ;
 
@@ -12388,9 +12388,9 @@ reset_options:
         ;
 
 reset_option:
-          REPLICA               { Lex->type|= REFRESH_REPLICA; }
+          REPLICA             { Lex->type|= REFRESH_REPLICA; }
           replica_reset_options opt_channel
-        | PRIMARY_SYM          { Lex->type|= REFRESH_PRIMARY; }
+        | PRIMARY_NODE_SYM    { Lex->type|= REFRESH_PRIMARY; }
         | QUERY_SYM CACHE_SYM { Lex->type|= REFRESH_QUERY_CACHE;}
         ;
 
@@ -13384,7 +13384,7 @@ keyword_sp:
         | LOGFILE_SYM              {}
         | LOGS_SYM                 {}
         | MAX_ROWS                 {}
-        | PRIMARY_SYM               {}
+        | PRIMARY_NODE_SYM         {}
         | PRIMARY_HEARTBEAT_PERIOD_SYM {}
         | PRIMARY_HOST_SYM          {}
         | PRIMARY_PORT_SYM          {}
